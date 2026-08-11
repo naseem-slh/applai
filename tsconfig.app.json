@@ -25,8 +25,10 @@
     /* vite/client für import.meta.env-Typen. Testfunktionen (describe/it/
        expect) werden bewusst explizit aus 'vitest' importiert statt global
        aktiviert; die jest-dom-Matcher-Typen kommen automatisch mit dem
-       Seiteneffekt-Import in src/setupTests.ts. */
-    "types": ["vite/client"],
+       Seiteneffekt-Import in src/setupTests.ts. 'node' ausschließlich für
+       Tests, die Fixtures von der Festplatte laden (z. B. parse.test.ts via
+       node:fs/promises) — Vitest läuft in Node, nie im gebauten Browser-Code. */
+    "types": ["vite/client", "node"],
 
     /* Pfad-Alias */
     "baseUrl": ".",
