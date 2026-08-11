@@ -1,0 +1,21 @@
+{
+  "app": {
+    "name": "Applai"
+  },
+  "nav": {
+    "start": "Start",
+    "editor": "Editor",
+    "settings": "Settings"
+  },
+  "routes": {
+    "start": {
+      "heading": "Cover Letter and Job Ad"
+    },
+    "editor": {
+      "heading": "Workspace"
+    },
+    "settings": {
+      "heading": "Settings"
+    }
+  }
+}

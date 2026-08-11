@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!--
+      Die Content-Security-Policy als <meta http-equiv> wird ausschließlich im
+      produktiven Build eingefügt (siehe vite.config.ts, Plugin
+      "applai-csp-meta") — der Vite-Entwicklungsserver braucht Inline-Skripte
+      und würde sonst blockiert. Maßgeblich für die Auslieferung ist ohnehin
+      public/_headers (siehe G3).
+    -->
+    <title>Applai</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

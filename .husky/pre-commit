@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+
+# lint-staged für gestagte Dateien (--max-warnings=0, siehe G7)
+npx lint-staged

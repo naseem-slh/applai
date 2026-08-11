@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ====================
+  # LINT, TYPPRÜFUNG, TESTS, BUILD
+  # ====================
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Repository auschecken
+        uses: actions/checkout@v4
+
+      - name: Node.js einrichten
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Abhängigkeiten installieren
+        run: npm ci
+
+      - name: Lint (--max-warnings=0)
+        run: npm run lint
+
+      - name: Typprüfung
+        run: npm run typecheck
+
+      - name: Tests
+        run: npm test
+
+      - name: Produktions-Build
+        run: npm run build
+
+  # ====================
+  # SICHERHEITS-AUDIT (eigener Job, siehe Muster adg/.github/workflows/deploy.yml)
+  # ====================
+  security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Repository auschecken
+        uses: actions/checkout@v4
+
+      - name: Node.js einrichten
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Abhängigkeiten installieren
+        run: npm ci
+
+      # Anders als in adg (dort `npm audit ... || true`): Applai hat nur eine
+      # Handvoll Abhängigkeiten, deren Vertrauenswürdigkeit das
+      # Sicherheitsversprechen der App trägt (G9) — ein Fund ist ein echtes
+      # Signal und muss den Workflow blockieren, kein stummes Vorbeilaufen.
+      - name: npm audit (gatend, ohne Fallback)
+        run: npm audit --audit-level=high

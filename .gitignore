@@ -1,3 +1,55 @@
-node_modules/
-dist/
 .superpowers/
+
+node_modules/
+npm-debug.log*
+
+dist/
+dist-ssr/
+build/
+*.local
+*.tgz
+
+# Umgebungsvariablen — Applai braucht zur Laufzeit keine (Schlüssel kommen
+# ausschließlich vom Nutzer im Browser, siehe G4), aber bei einem öffentlichen
+# Repository ist diese Sperre nicht verhandelbar, falls doch einmal eine
+# lokale .env-Datei entsteht.
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.example
+.env.dev
+.env.prod
+
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+*.log
+logs/
+
+.nyc_output
+coverage/
+
+.cache/
+.vite/
+node_modules/.tmp/
+
+# Playwright-Testartefakte
+test-results/
+playwright-report/
+playwright/.cache/
+
+# WSL Zone.Identifier-Metadateien
+*:Zone.Identifier

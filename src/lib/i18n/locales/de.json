@@ -1,0 +1,21 @@
+{
+  "app": {
+    "name": "Applai"
+  },
+  "nav": {
+    "start": "Start",
+    "editor": "Editor",
+    "settings": "Einstellungen"
+  },
+  "routes": {
+    "start": {
+      "heading": "Anschreiben und Stellenausschreibung"
+    },
+    "editor": {
+      "heading": "Arbeitsfläche"
+    },
+    "settings": {
+      "heading": "Einstellungen"
+    }
+  }
+}
