@@ -29,6 +29,22 @@ export async function parseDocx(buffer: ArrayBuffer): Promise<DocxDocument> {
     throw new Error(`"${DOCUMENT_XML_PATH}" konnte nicht als XML geparst werden: ${parserError.textContent}`)
   }
 
+  const { paragraphs, text } = buildTextModel(doc)
+
+  return { zip, doc, paragraphs, text }
+}
+
+/**
+ * Baut das Offset-Modell (Absätze, Läufe, Fließtext) zu einem bereits
+ * geparsten `word/document.xml` auf.
+ *
+ * Bewusst getrennt von `parseDocx`, weil Aufgabe 3 dasselbe Modell nach dem
+ * Patchen des XML-Baums neu aufbauen muss: `replaceRange` gibt ein neues
+ * `DocxDocument` zurück und darf die Offsets nicht von Hand fortschreiben —
+ * beide Wege müssen exakt dieselbe Offset-Semantik erzeugen, deshalb gibt es
+ * nur diese eine Implementierung.
+ */
+export function buildTextModel(doc: XMLDocument): { paragraphs: Paragraph[]; text: string } {
   const paragraphNodes = Array.from(doc.getElementsByTagName('w:p'))
   const paragraphs: Paragraph[] = []
   let text = ''
@@ -50,7 +66,7 @@ export async function parseDocx(buffer: ArrayBuffer): Promise<DocxDocument> {
     }
   })
 
-  return { zip, doc, paragraphs, text }
+  return { paragraphs, text }
 }
 
 function parseParagraph(paragraphNode: Element): { text: string; runs: Run[] } {
@@ -68,30 +84,39 @@ function parseParagraph(paragraphNode: Element): { text: string; runs: Run[] } {
   return { text, runs }
 }
 
-// Baut den Text eines `w:r`-Laufs aus seinen Kindelementen zusammen:
-// `w:t` liefert seinen Textinhalt (unverändert, auch ohne
-// xml:space="preserve" wird hier nichts getrimmt — Word setzt das Attribut
-// ohnehin genau dann, wenn führende/nachgestellte Leerzeichen erhalten
-// bleiben sollen), `w:tab` wird zu einem Tabulator, `w:br` und `w:cr` zu
-// einem Zeilenumbruch. Andere Kindelemente (z. B. `w:rPr` für Formatierung)
-// tragen keinen Text bei und werden übersprungen.
+// Baut den Text eines `w:r`-Laufs aus seinen Kindelementen zusammen
+// (siehe runChildText): `w:t` liefert seinen Textinhalt (unverändert, auch
+// ohne xml:space="preserve" wird hier nichts getrimmt — Word setzt das
+// Attribut ohnehin genau dann, wenn führende/nachgestellte Leerzeichen
+// erhalten bleiben sollen), `w:tab` wird zu einem Tabulator, `w:br` und
+// `w:cr` zu einem Zeilenumbruch. Andere Kindelemente (z. B. `w:rPr` für
+// Formatierung) tragen keinen Text bei und werden übersprungen.
 function parseRunText(runNode: Element): string {
   let text = ''
   for (const child of Array.from(runNode.children)) {
-    switch (child.tagName) {
-      case 'w:t':
-        text += child.textContent ?? ''
-        break
-      case 'w:tab':
-        text += '\t'
-        break
-      case 'w:br':
-      case 'w:cr':
-        text += '\n'
-        break
-      default:
-        break
-    }
+    text += runChildText(child)
   }
   return text
+}
+
+/**
+ * Der Textbeitrag eines einzelnen Kindelements eines `w:r`.
+ *
+ * Einzige Quelle der Wahrheit für die Zuordnung XML → Zeichen-Offsets:
+ * `parseDocx` baut damit das Modell auf, `replaceRange` schneidet damit
+ * Bereiche aus den Läufen heraus. Beide müssen sich zwingend einig sein,
+ * wie lang ein Kindelement im Fließtext ist.
+ */
+export function runChildText(child: Element): string {
+  switch (child.tagName) {
+    case 'w:t':
+      return child.textContent ?? ''
+    case 'w:tab':
+      return '\t'
+    case 'w:br':
+    case 'w:cr':
+      return '\n'
+    default:
+      return ''
+  }
 }
