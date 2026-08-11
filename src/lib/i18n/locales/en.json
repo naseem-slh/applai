@@ -17,5 +17,16 @@
     "settings": {
       "heading": "Settings"
     }
+  },
+  "ai": {
+    "errors": {
+      "invalid_key": "The API key is invalid or has expired. Please check it in Settings.",
+      "rate_limit": "The provider is currently overloaded. Please try again shortly.",
+      "quota": "The API key's quota has been used up.",
+      "quota_gemini": "Gemini's free daily quota has been used up. It resets tomorrow, or you can add your own paid key.",
+      "network": "The request could not be sent. Please check your internet connection.",
+      "blocked": "The provider blocked the response for safety reasons.",
+      "unknown": "Unexpected error while calling the provider."
+    }
   }
 }
