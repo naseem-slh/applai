@@ -202,9 +202,9 @@ applai/
 
 ---
 
-## Aufgaben
+## Tasks
 
-### Aufgabe 1 — Projektgerüst, Werkzeugkette, CSP
+### Task 1 — Projektgerüst, Werkzeugkette, CSP
 
 **Dateien:** `package.json`, `vite.config.ts`, `tsconfig*.json`, `eslint.config.js`, `vitest.config.ts`, `playwright.config.ts`, `.husky/pre-commit`, `lint-staged.config.js`, `.github/workflows/ci.yml`, `public/_headers`, `index.html`, `src/main.tsx`, `src/App.tsx`, `src/styles/design.css`, `src/lib/utils.ts`, `src/lib/i18n/*`, `DESIGN.md`, `CLAUDE.md`, `docs/spec.md`, `.gitignore`
 
@@ -238,7 +238,7 @@ applai/
 
 ---
 
-### Aufgabe 2 — Word-Dokument lesen
+### Task 2 — Word-Dokument lesen
 
 **Dateien:** `src/lib/docx/model.ts`, `src/lib/docx/parse.ts`, `tests/fixtures/anschreiben.docx`, `src/lib/docx/parse.test.ts`
 
@@ -259,7 +259,7 @@ export function parseDocx(buffer: ArrayBuffer): Promise<DocxDocument>
 
 ---
 
-### Aufgabe 3 — Word-Dokument gezielt ändern und speichern
+### Task 3 — Word-Dokument gezielt ändern und speichern
 
 **Dateien:** `src/lib/docx/replace.ts`, `src/lib/docx/serialize.ts`, jeweils `.test.ts`
 
@@ -284,7 +284,7 @@ Dies ist die technisch heikelste Stelle des Projekts. Eine Markierung, die mitte
 
 ---
 
-### Aufgabe 4 — PDF lesen und Beta-Umwandlung nach Word
+### Task 4 — PDF lesen und Beta-Umwandlung nach Word
 
 **Dateien:** `src/lib/pdf/extract.ts`, `src/lib/pdf/toDocx.ts`, `tests/fixtures/lebenslauf.pdf`, jeweils `.test.ts`
 
@@ -307,7 +307,7 @@ export function detectMultiColumn(page: PdfPage): boolean       // steuert den W
 
 ---
 
-### Aufgabe 5 — Schlüsselablage und Verschlüsselung
+### Task 5 — Schlüsselablage und Verschlüsselung
 
 **Dateien:** `src/lib/storage/crypto.ts`, `src/lib/storage/keyVault.ts`, jeweils `.test.ts`
 
@@ -338,7 +338,7 @@ export function createKeyVault(idleTimeoutMs?: number): KeyVault    // Standard:
 
 ---
 
-### Aufgabe 6 — Speicherschnittstelle
+### Task 6 — Speicherschnittstelle
 
 **Dateien:** `src/lib/storage/adapter.ts`, `src/lib/storage/indexeddb.ts`, `.test.ts`
 
@@ -373,7 +373,7 @@ Die Schnittstelle ist der Punkt, an dem später eine serverseitige Umsetzung ein
 
 ---
 
-### Aufgabe 7 — KI-Adapter
+### Task 7 — KI-Adapter
 
 **Dateien:** `src/lib/ai/provider.ts`, `gemini.ts`, `openai.ts`, `anthropic.ts`, `errors.ts`, jeweils `.test.ts`
 
@@ -394,7 +394,7 @@ export class LlmError extends Error { kind: 'invalid_key' | 'rate_limit' | 'quot
 
 ---
 
-### Aufgabe 8 — Anonymisierung
+### Task 8 — Anonymisierung
 
 **Dateien:** `src/lib/privacy/anonymize.ts`, `.test.ts`
 
@@ -414,7 +414,7 @@ Ersetzt E-Mail, Telefon, Datum im Format `TT.MM.JJJJ` bzw. `DD/MM/YYYY`, Postlei
 
 ---
 
-### Aufgabe 9 — Stellenanzeige analysieren
+### Task 9 — Stellenanzeige analysieren
 
 **Dateien:** `src/lib/ai/prompts/jobAd.ts`, `src/lib/domain/jobAd.ts`, `.test.ts`
 
@@ -443,7 +443,7 @@ export function analyzeJobAd(text: string, provider: LlmProvider, apiKey: string
 
 ---
 
-### Aufgabe 10 — Stilprofil
+### Task 10 — Stilprofil
 
 **Dateien:** `src/lib/ai/prompts/styleProfile.ts`, `src/lib/domain/styleProfile.ts`, `.test.ts`
 
@@ -469,7 +469,7 @@ Das Stilprofil ist der Kern des Produktversprechens: Die KI soll nicht „gut" s
 
 ---
 
-### Aufgabe 11 — Umschreiben mit drei Varianten
+### Task 11 — Umschreiben mit drei Varianten
 
 **Dateien:** `src/lib/ai/prompts/rewrite.ts`, `src/lib/domain/rewrite.ts`, `.test.ts`
 
@@ -500,7 +500,7 @@ export function rewriteSelection(req: RewriteRequest, provider: LlmProvider, api
 
 ---
 
-### Aufgabe 12 — Lückenliste und Briefkopf
+### Task 12 — Lückenliste und Briefkopf
 
 **Dateien:** `src/lib/domain/gaps.ts`, `src/lib/domain/letterhead.ts`, `src/lib/ai/prompts/gaps.ts`, jeweils `.test.ts`
 
@@ -523,7 +523,7 @@ export function findForeignCompanyNames(text: string, currentCompany: string | n
 
 ---
 
-### Aufgabe 13 — Einstiegsseite und Onboarding
+### Task 13 — Einstiegsseite und Onboarding
 
 **Dateien:** `src/routes/Start.tsx`, `src/routes/Settings.tsx`, `src/components/onboarding/*`, `src/components/ui/*`
 
@@ -541,7 +541,7 @@ export function findForeignCompanyNames(text: string, currentCompany: string | n
 
 ---
 
-### Aufgabe 14 — Arbeitsfläche mit freier Markierung
+### Task 14 — Arbeitsfläche mit freier Markierung
 
 **Dateien:** `src/routes/Editor.tsx`, `src/components/editor/*`
 
@@ -562,7 +562,7 @@ export function findForeignCompanyNames(text: string, currentCompany: string | n
 
 ---
 
-### Aufgabe 15 — Export
+### Task 15 — Export
 
 **Dateien:** `src/lib/export/docx.ts`, `src/lib/export/print.css`, `src/components/editor/ExportBar.tsx`, `.test.ts`
 
@@ -575,7 +575,7 @@ export function findForeignCompanyNames(text: string, currentCompany: string | n
 
 ---
 
-### Aufgabe 16 — Ende-zu-Ende-Test, Barrierefreiheit, Veröffentlichung
+### Task 16 — Ende-zu-Ende-Test, Barrierefreiheit, Veröffentlichung
 
 **Dateien:** `e2e/happy-path.spec.ts`, `e2e/a11y.spec.ts`, `README.md`, `docs/datenschutz.md`, `src/routes/Privacy.tsx`
 
