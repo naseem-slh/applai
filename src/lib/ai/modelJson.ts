@@ -1,3 +1,4 @@
+import { z } from 'zod'
 import type { ZodType } from 'zod'
 
 /**
@@ -160,3 +161,79 @@ export function parseModelJson<T>(schema: ZodType<T>, raw: string, label: string
 
   return result.data
 }
+
+/**
+ * **Fix-Runde 1** (siehe task-9-report.md): bekannte Platzhalter-Wörter,
+ * mit denen Modelle "kein Wert vorhanden" ausdrücken, obwohl der Prompt
+ * ausdrücklich `null` verlangt. Ohne diese Liste hätte `nullableFactString`
+ * unten ein Modell, das z. B. "unbekannt" statt JSON-`null` schreibt,
+ * unbemerkt wie einen echten Wert durchgereicht — genau der G10-Verstoß,
+ * den die Zod-Schema-Grenze dieser Aufgabe verhindern soll: ein Aufrufer,
+ * der das naheliegende `if (jobAd.company)` schreibt, hätte einen Brief an
+ * die Firma "unbekannt" adressiert.
+ *
+ * Deutsch und Englisch (Applais beide Sprachen), sowohl kurze Abkürzungen
+ * als auch ausformulierte Varianten, die Modelle in der Praxis ebenso oft
+ * verwenden wie die Abkürzung selbst:
+ *
+ * - Kurzformen: "n/a", "n.a.", "na", "k.a.", "k. a.", "ka", "tbd", "-".
+ * - Ausformuliert Deutsch: "unbekannt", "nicht bekannt", "nicht angegeben",
+ *   "keine angabe".
+ * - Ausformuliert Englisch: "unknown", "not available", "not applicable",
+ *   "not specified", "unspecified", "to be determined", "none".
+ * - Sonstige: "null" (ein Modell, das das JSON-Schlüsselwort versehentlich
+ *   als Zeichenkette statt als Literal schreibt), "nil", "?", "???".
+ *
+ * Alle Einträge klein geschrieben — der Abgleich in {@link isPlaceholder}
+ * ist case-insensitive und prüft den **gesamten** getrimmten Wert, nie nur
+ * einen Teilstring: eine Firma, die zufällig "Unknown Origins GmbH" heißt,
+ * ist ein seltener, aber legitimer Name und darf nicht zu `null` werden.
+ */
+const PLACEHOLDER_VALUES: ReadonlySet<string> = new Set([
+  'n/a', 'n.a.', 'na',
+  'k.a.', 'k. a.', 'ka',
+  'tbd', 'to be determined',
+  '-', '–', '—',
+  'unbekannt', 'nicht bekannt', 'nicht angegeben', 'keine angabe',
+  'unknown', 'not available', 'not applicable', 'not specified', 'unspecified', 'none',
+  'null', 'nil', '?', '???',
+])
+
+function isPlaceholder(value: string): boolean {
+  return PLACEHOLDER_VALUES.has(value.toLowerCase())
+}
+
+/**
+ * Gemeinsame Zod-Grenze für ein nullable "Fakt"-Feld — einen Wert, der laut
+ * G10 nur wörtlich aus der Modellantwort übernommen werden darf, niemals
+ * erfunden. Gehört seit Fix-Runde 1 in diese Datei statt in `jobAd.ts`,
+ * weil das Platzhalter-Problem nicht spezifisch für Stellenanzeigen ist:
+ * jedes künftige Schema (Aufgaben 10–12), das ein Modell nach einem
+ * optionalen Fakt fragt ("nenne X, falls erkennbar, sonst null"), trifft
+ * auf dieselbe Modell-Neigung, statt `null` ein Platzhalterwort zu
+ * schreiben. Diese Funktion ist die einzige Stelle, die diesen Fall kennen
+ * muss.
+ *
+ * **Nur für Fakt-Felder verwenden** (Eigennamen, Zitate — z. B.
+ * `company`/`position`/`contactPerson`/`salutation` in `jobAd.ts`), **nie**
+ * für Freitext, den das Modell selbst formuliert (z. B. `tone` oder
+ * `requirements[].text`) — dort könnte ein legitimer Text zufällig ein
+ * Platzhalter-Wort *sein* (unwahrscheinlich, aber möglich) oder *enthalten*
+ * (die Teilstring-Sicherheit schützt bereits davor, ganz ausschließen sollte
+ * die engere Verwendung trotzdem nur bei echten Fakt-Feldern gelten).
+ *
+ * Normalisiert in dieser Reihenfolge: `null` bleibt `null`; eine (nach dem
+ * Trimmen) leere Zeichenkette wird zu `null` (Fix vor Fix-Runde 1: ein
+ * Modell, das statt `null` `""` liefert, meint dasselbe); ein bekanntes
+ * Platzhalterwort wird zu `null` (Fix-Runde 1); alles andere bleibt der
+ * getrimmte Originalwert.
+ */
+export const nullableFactString = z
+  .string()
+  .nullable()
+  .transform((value) => {
+    if (value === null) return null
+    const trimmed = value.trim()
+    if (trimmed === '' || isPlaceholder(trimmed)) return null
+    return trimmed
+  })

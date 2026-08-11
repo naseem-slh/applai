@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
-import { ModelResponseError, parseModelJson } from './modelJson'
+import { ModelResponseError, nullableFactString, parseModelJson } from './modelJson'
 
 /**
  * Testschema, stellvertretend für `JobAdSchema` (Aufgabe 9) und die noch
@@ -98,3 +98,48 @@ describe('parseModelJson', () => {
     }
   })
 })
+
+/**
+ * Fix-Runde 1 (siehe task-9-report.md, Review-Fund "Critical"): Platzhalter-
+ * Wörter, mit denen Modelle "kein Wert vorhanden" statt JSON-`null`
+ * schreiben, müssen ebenfalls zu `null` normalisiert werden — sonst
+ * erreicht z. B. "unbekannt" das Programm ununterscheidbar von einem
+ * echten Firmennamen.
+ */
+describe('nullableFactString', () => {
+  it('lässt null unverändert', () => {
+    expect(nullableFactString.parse(null)).toBeNull()
+  })
+
+  it('macht eine leere oder reine Leerraum-Zeichenkette zu null', () => {
+    expect(nullableFactString.parse('')).toBeNull()
+    expect(nullableFactString.parse('   ')).toBeNull()
+  })
+
+  it('trimmt und übernimmt einen echten Wert unverändert', () => {
+    expect(nullableFactString.parse('  Musterwerk Solutions GmbH  ')).toBe('Musterwerk Solutions GmbH')
+  })
+
+  it.each(['N/A', 'n/a', 'unbekannt', '-', 'null', 'k.A.', 'TBD', 'unknown'])(
+    'macht das bekannte Platzhalterwort "%s" zu null',
+    (placeholder) => {
+      expect(nullableFactString.parse(placeholder)).toBeNull()
+    },
+  )
+
+  it.each(['NA', 'Unbekannt', ' unknown ', 'K.A.', 'Tbd', 'None', 'Nicht angegeben', 'Keine Angabe'])(
+    'erkennt das Platzhalterwort "%s" unabhängig von Groß-/Kleinschreibung und umgebendem Leerraum',
+    (placeholder) => {
+      expect(nullableFactString.parse(placeholder)).toBeNull()
+    },
+  )
+
+  it('behandelt einen Platzhalter nur als ganzen Wert, niemals als Teilstring', () => {
+    // "unknown" steckt hier drin, ist aber nicht der gesamte Wert – ein
+    // echter, wenn auch seltener Firmenname muss erhalten bleiben.
+    expect(nullableFactString.parse('Unknown Origins GmbH')).toBe('Unknown Origins GmbH')
+    expect(nullableFactString.parse('k.A. Solutions AG')).toBe('k.A. Solutions AG')
+    expect(nullableFactString.parse('Firma TBD Consulting')).toBe('Firma TBD Consulting')
+  })
+})
+

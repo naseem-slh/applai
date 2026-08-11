@@ -225,4 +225,52 @@ describe('analyzeJobAd', () => {
     const provider = stubProvider(raw)
     await expect(analyzeJobAd(GERMAN_JOB_AD_FIXTURE, provider, 'test-key')).rejects.toThrow(/kind/)
   })
+
+  // ---------------------------------------------------------------------
+  // Fix-Runde 1 (siehe task-9-report.md, Review-Fund "Critical"): ein
+  // Modell, das statt JSON-`null` ein Platzhalterwort wie "unbekannt"
+  // schreibt, darf nicht unbemerkt wie ein echter Firmenname/Ansprechpartner
+  // durchgereicht werden.
+  // ---------------------------------------------------------------------
+  it('macht Platzhalterwörter statt null bei company/position/contactPerson/salutation zu echtem null (Ende-zu-Ende über analyzeJobAd)', async () => {
+    const raw = JSON.stringify({
+      language: 'de',
+      company: 'N/A',
+      position: 'unbekannt',
+      contactPerson: '-',
+      salutation: 'k.A.',
+      requirements: [],
+      tone: 'sachlich',
+    })
+    const provider = stubProvider(raw)
+    const result = await analyzeJobAd('anonyme Anzeige', provider, 'test-key')
+
+    expect(result.company).toBeNull()
+    expect(result.position).toBeNull()
+    expect(result.contactPerson).toBeNull()
+    expect(result.salutation).toBeNull()
+  })
+
+  it('lässt einen Firmennamen, der zufällig ein Platzhalterwort als Teilstring enthält, unangetastet', () => {
+    const parsed = JobAdSchema.safeParse({
+      language: 'de',
+      company: 'Unknown Origins GmbH',
+      position: null,
+      contactPerson: null,
+      salutation: null,
+      requirements: [],
+      tone: 'sachlich',
+    })
+    expect(parsed.success).toBe(true)
+    expect(parsed.data?.company).toBe('Unknown Origins GmbH')
+  })
+
+  it('lehnt eine Anforderung mit leerem "text" mit Feldbezug ab, statt sie stillschweigend zu übernehmen', async () => {
+    const raw = JSON.stringify({
+      ...JSON.parse(VALID_GERMAN_RESPONSE),
+      requirements: [{ text: '', kind: 'skill' }],
+    })
+    const provider = stubProvider(raw)
+    await expect(analyzeJobAd(GERMAN_JOB_AD_FIXTURE, provider, 'test-key')).rejects.toThrow(/text/)
+  })
 })
