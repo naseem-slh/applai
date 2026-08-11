@@ -45,7 +45,7 @@ export async function parseDocx(buffer: ArrayBuffer): Promise<DocxDocument> {
  * nur diese eine Implementierung.
  */
 export function buildTextModel(doc: XMLDocument): { paragraphs: Paragraph[]; text: string } {
-  const paragraphNodes = Array.from(doc.getElementsByTagName('w:p'))
+  const paragraphNodes = Array.from(doc.getElementsByTagName('w:p')).filter((node) => !isNestedContent(node))
   const paragraphs: Paragraph[] = []
   let text = ''
 
@@ -70,7 +70,9 @@ export function buildTextModel(doc: XMLDocument): { paragraphs: Paragraph[]; tex
 }
 
 function parseParagraph(paragraphNode: Element): { text: string; runs: Run[] } {
-  const runNodes = Array.from(paragraphNode.getElementsByTagName('w:r'))
+  const runNodes = Array.from(paragraphNode.getElementsByTagName('w:r')).filter((runNode) =>
+    belongsToParagraph(runNode, paragraphNode),
+  )
   const runs: Run[] = []
   let text = ''
 
@@ -119,4 +121,41 @@ export function runChildText(child: Element): string {
     default:
       return ''
   }
+}
+
+/**
+ * Steckt der Knoten in einem verschachtelten Textbereich — also in einem
+ * anderen Absatz oder im Inhalt eines Textfelds (`w:txbxContent`)?
+ *
+ * `getElementsByTagName` sucht rekursiv. Ohne diesen Filter erschiene der
+ * Absatz eines Textfelds zusätzlich als eigener Dokumentabsatz, während
+ * seine Läufe gleichzeitig als Läufe des umgebenden Absatzes gezählt
+ * würden: derselbe `w:r`-Knoten läge in zwei Absätzen mit zwei
+ * widersprüchlichen Offsets. Der Text stünde doppelt im Modell und eine
+ * gewöhnliche Markierung würde beim Ersetzen das Textfeld zerstören.
+ * Textfeldinhalt taucht deshalb bewusst gar nicht im Modell auf.
+ */
+function isNestedContent(node: Element): boolean {
+  for (let parent = node.parentElement; parent; parent = parent.parentElement) {
+    if (parent.tagName === 'w:p' || parent.tagName === 'w:txbxContent') {
+      return true
+    }
+  }
+  return false
+}
+
+// Ein Lauf gehört genau zu dem Absatz, der ihm am nächsten steht: Auf dem
+// Weg nach oben muss `paragraphNode` erreicht werden, bevor ein anderer
+// Absatz oder ein Textfeldinhalt dazwischenkommt. Läufe in `w:hyperlink`
+// o. Ä. bleiben damit Teil ihres Absatzes.
+function belongsToParagraph(runNode: Element, paragraphNode: Element): boolean {
+  for (let parent = runNode.parentElement; parent; parent = parent.parentElement) {
+    if (parent === paragraphNode) {
+      return true
+    }
+    if (parent.tagName === 'w:p' || parent.tagName === 'w:txbxContent') {
+      return false
+    }
+  }
+  return false
 }

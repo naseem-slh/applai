@@ -16,7 +16,12 @@ import { parseDocx } from './parse'
 // CLAUDE.md), erzeugt durch tests/fixtures/build-fixtures.mjs.
 const FIXTURES_DIR = join(dirname(fileURLToPath(import.meta.url)), '../../../tests/fixtures')
 
-const ALL_FIXTURES = ['anschreiben.docx', 'anschreiben-fett.docx', 'anschreiben-kopf-fuss.docx']
+const ALL_FIXTURES = [
+  'anschreiben.docx',
+  'anschreiben-fett.docx',
+  'anschreiben-kopf-fuss.docx',
+  'anschreiben-sonderfaelle.docx',
+]
 
 async function loadFixture(fileName: string) {
   const buffer = await readFile(join(FIXTURES_DIR, fileName))
@@ -133,6 +138,51 @@ describe('parseDocx', () => {
         'word/header1.xml',
       ].sort(),
     )
+  })
+
+  it('zählt einen Absatz in einem Textfeld nicht als eigenen Absatz', async () => {
+    const result = await loadFixture('anschreiben-sonderfaelle.docx')
+
+    // getElementsByTagName ist rekursiv: Ohne Filter erschiene der Absatz
+    // aus dem w:txbxContent zusätzlich als eigener Dokumentabsatz und sein
+    // Text stünde doppelt im Modell.
+    expect(result.paragraphs).toHaveLength(5)
+    expect(result.text).toBe('Alpha\n\nZelle\nVor\nGamma')
+    expect(result.text).not.toContain('BoxText')
+  })
+
+  it('zählt die Läufe eines Textfelds nicht zum umgebenden Absatz', async () => {
+    const result = await loadFixture('anschreiben-sonderfaelle.docx')
+    const paragraph = result.paragraphs[3]
+
+    // Sonst läge derselbe w:r-Knoten in zwei Absätzen mit zwei
+    // widersprüchlichen Offsets — der Vertrag „Läufe zerlegen den
+    // Absatztext lückenlos“ wäre verletzt und Aufgabe 3 würde beim
+    // Ersetzen das Textfeld zerstören.
+    expect(paragraph?.text).toBe('Vor')
+    // Zwei Läufe: der Text und der Lauf, der das Textfeld trägt. Letzterer
+    // steuert nichts zum Fließtext bei (Länge 0), gehört aber sehr wohl
+    // zum Absatz — der Lauf *innerhalb* des w:txbxContent dagegen nicht.
+    expect(paragraph?.runs).toHaveLength(2)
+    expect(paragraph?.runs[0]?.text).toBe('Vor')
+    expect(paragraph?.runs[1]?.text).toBe('')
+    expect(paragraph?.runs[1]?.node.getElementsByTagName('w:pict')).toHaveLength(1)
+  })
+
+  it('bildet einen Absatz in einer Tabellenzelle als eigenen Absatz ab', async () => {
+    const result = await loadFixture('anschreiben-sonderfaelle.docx')
+
+    expect(result.paragraphs[2]?.text).toBe('Zelle')
+    expect(result.paragraphs[2]?.node.parentElement?.tagName).toBe('w:tc')
+  })
+
+  it('bildet einen Absatz, der nur ein Bild trägt, als leeren Absatz ab', async () => {
+    const result = await loadFixture('anschreiben-sonderfaelle.docx')
+    const paragraph = result.paragraphs[1]
+
+    expect(paragraph?.text).toBe('')
+    expect(paragraph?.runs).toHaveLength(1)
+    expect(paragraph?.node.getElementsByTagName('w:drawing')).toHaveLength(1)
   })
 
   it('wirft einen aussagekräftigen Fehler, wenn word/document.xml im Archiv fehlt', async () => {

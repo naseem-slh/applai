@@ -37,9 +37,13 @@ const XML_NAMESPACE = 'http://www.w3.org/XML/1998/namespace'
  *   dadurch leer gebliebenen Absätze aus dem Dokument entfernt — mit
  *   Ausnahme des ersten betroffenen Absatzes, der immer ein Segment
  *   bekommt und deshalb nie verschwindet (nie den ganzen Bereich auf
- *   nichts zusammenstreichen). Gibt es mehr Segmente als Absätze, hängen
- *   die überzähligen am letzten betroffenen Absatz, dort per `w:br`
- *   getrennt.
+ *   nichts zusammenstreichen), und mit Ausnahme der Absätze, die mehr als
+ *   Text und Formatierung enthalten (siehe `mayBeRemoved`) — die bleiben
+ *   als Leerzeile stehen. Gibt es mehr Segmente als Absätze, hängen die
+ *   überzähligen am letzten betroffenen Absatz, dort per `w:br` getrennt.
+ * - **Leere Absätze** (Leerzeilen) gehören nur dann zum Bereich, wenn sie
+ *   echt in seinem Inneren liegen — an seinen Enden berührt der Bereich
+ *   kein Zeichen von ihnen.
  * - **Leerer Ersatztext** löscht nur den Text: ein dadurch leerer Absatz
  *   bleibt als Leerzeile bestehen.
  */
@@ -75,7 +79,7 @@ export function replaceRange(docx: DocxDocument, range: Range, newText: string):
     applyToParagraph(doc, paragraph, localFrom, localTo, segment ?? '')
 
     const remainder = paragraph.text.slice(0, localFrom) + paragraph.text.slice(localTo)
-    if (segment === undefined && remainder === '' && !carriesSectionBreak(paragraph.node)) {
+    if (segment === undefined && remainder === '' && mayBeRemoved(paragraph.node)) {
       paragraph.node.remove()
     }
   })
@@ -90,12 +94,12 @@ export function replaceRange(docx: DocxDocument, range: Range, newText: string):
 /**
  * Die Absätze, auf die sich der Bereich auswirkt.
  *
- * Ein Absatz zählt dazu, wenn der Bereich echten Text von ihm überdeckt
- * oder er vollständig im Bereich liegt (das schließt leere Absätze mitten
- * im Bereich ein). Absätze, die der Bereich nur am Rand berührt — etwa
- * weil er auf dem Absatztrennzeichen endet —, bleiben außen vor: das
- * Trennzeichen gehört zu keinem Absatz, und ein Absatz darf nicht wegen
- * einer Markierung verschwinden, die seinen Text gar nicht erfasst.
+ * Ein Absatz zählt dazu, wenn der Bereich mindestens ein Zeichen von ihm
+ * überdeckt; ein leerer Absatz, wenn er echt im Inneren des Bereichs liegt.
+ * Absätze, die der Bereich nur am Rand berührt — etwa weil er auf dem
+ * Absatztrennzeichen endet —, bleiben außen vor: Das Trennzeichen gehört zu
+ * keinem Absatz, und ein Absatz darf nicht wegen einer Markierung
+ * verschwinden, die seinen Text gar nicht erfasst.
  */
 function findAffectedParagraphs(paragraphs: Paragraph[], range: Range): Paragraph[] {
   const insertionPoint = (offset: number): Paragraph[] => {
@@ -107,10 +111,16 @@ function findAffectedParagraphs(paragraphs: Paragraph[], range: Range): Paragrap
     return insertionPoint(range.from)
   }
 
-  const overlapping = paragraphs.filter(
-    (paragraph) =>
-      Math.max(paragraph.start, range.from) < Math.min(paragraph.end, range.to) ||
-      (range.from <= paragraph.start && paragraph.end <= range.to),
+  const overlapping = paragraphs.filter((paragraph) =>
+    paragraph.start === paragraph.end
+      ? // Leerer Absatz (Leerzeile): Er hat kein Zeichen, das der Bereich
+        // überdecken könnte. Betroffen ist er nur, wenn er echt im Inneren
+        // liegt — berührt der Bereich ihn bloß an seinem Anfang oder Ende
+        // (`to` ist exklusiv!), bleibt er unangetastet. Sonst verschwände
+        // eine Leerzeile, die gar nicht markiert war, oder der Ersatztext
+        // landete in ihr statt im tatsächlich überdeckten Absatz.
+        range.from < paragraph.start && paragraph.end < range.to
+      : Math.max(paragraph.start, range.from) < Math.min(paragraph.end, range.to),
   )
   if (overlapping.length > 0) {
     return overlapping
@@ -259,6 +269,18 @@ function rewriteRun(doc: XMLDocument, run: Run, from: number, to: number, replac
   }
 
   run.node.replaceChildren(...rewritten)
+
+  // Ein Lauf, der Text hatte und nun nur noch seine eigene Formatierung
+  // enthält, wird entfernt — seine `w:rPr` galt genau diesem Text. Läufe,
+  // die von vornherein textlos waren, bleiben dagegen immer stehen: Sie
+  // tragen im Zweifel ein Bild oder ein Textfeld, das im Offset-Modell
+  // unsichtbar ist.
+  const keepsContent = rewritten.some(
+    (node) => node.nodeType === Node.ELEMENT_NODE && (node as Element).tagName !== 'w:rPr',
+  )
+  if (!keepsContent && run.text.length > 0) {
+    run.node.remove()
+  }
 }
 
 /**
@@ -286,7 +308,9 @@ function buildTextNodes(doc: XMLDocument, text: string): Element[] {
 
 // Setzt den Inhalt eines `w:t` und sichert ihn mit xml:space="preserve" ab:
 // ohne dieses Attribut schneidet Word führende und nachgestellte
-// Leerzeichen weg.
+// Leerzeichen weg. Das Attribut wird auch an bestehende `w:t` geschrieben,
+// die es noch nicht hatten — der Textinhalt ändert sich dadurch nicht, und
+// es entspricht genau der Lesart des Modells (parse.ts trimmt nie).
 function setTextContent(element: Element, text: string): Element {
   element.textContent = text
   element.setAttributeNS(XML_NAMESPACE, 'xml:space', 'preserve')
@@ -310,6 +334,26 @@ function childTextLength(node: Node): number {
   return node.nodeType === Node.ELEMENT_NODE ? runChildText(node as Element).length : 0
 }
 
+/**
+ * Darf dieser textlos gewordene Absatz wirklich aus dem Dokument entfernt
+ * werden — oder muss er als Leerzeile stehen bleiben?
+ *
+ * Das Textmodell sieht nur Zeichen. „Kein Text mehr übrig“ heißt deshalb
+ * nicht „nichts mehr drin“: Ein Absatz kann ein Bild, ein Textfeld, eine
+ * Fußnote oder einen Abschnittswechsel tragen, die im Modell die Länge 0
+ * haben. Ihn zu löschen, weil seine Zeichen ersetzt wurden, wäre stiller
+ * Datenverlust — und in einer Tabellenzelle sogar eine beschädigte Datei.
+ * Im Zweifel bleibt der Absatz leer stehen; das kostet höchstens eine
+ * Leerzeile, während die Gegenrichtung die Bewerbung zerstört.
+ */
+function mayBeRemoved(paragraphNode: Element): boolean {
+  return (
+    !carriesSectionBreak(paragraphNode) &&
+    !isLastParagraphInTableCell(paragraphNode) &&
+    containsOnlyTextAndFormatting(paragraphNode)
+  )
+}
+
 // Trägt der Absatz einen Abschnittswechsel (Seitenränder, Kopf-/Fußzeilen
 // des Abschnitts)? Ein solcher Absatz darf nie entfernt werden, sonst
 // ändert sich das Layout des gesamten davorliegenden Abschnitts — genau
@@ -320,6 +364,53 @@ function carriesSectionBreak(paragraphNode: Element): boolean {
       child.tagName === 'w:pPr' &&
       Array.from(child.children).some((grandChild) => grandChild.tagName === 'w:sectPr'),
   )
+}
+
+// Eine `w:tc` muss mindestens einen Absatz enthalten und mit einem `w:p`
+// enden (CT_Tc). Bliebe die Zelle leer zurück, hielte Word die Datei für
+// beschädigt und verlangte eine Reparatur — das schlimmstmögliche Ergebnis
+// für dieses Projekt. Der letzte Absatz einer Zelle wird deshalb nur
+// geleert. Adressblöcke und zweispaltige Lebensläufe sind Tabellen.
+function isLastParagraphInTableCell(paragraphNode: Element): boolean {
+  const parent = paragraphNode.parentElement
+  if (!parent || parent.tagName !== 'w:tc') {
+    return false
+  }
+  const paragraphsInCell = Array.from(parent.children).filter((child) => child.tagName === 'w:p')
+  return paragraphsInCell.at(-1) === paragraphNode
+}
+
+// Kindelemente, die ein Absatz enthalten darf, ohne dass beim Entfernen
+// etwas verloren ginge: reine Formatierung und reiner Text. `w:pPr` und
+// `w:rPr` werden nicht weiter durchsucht — sie enthalten ausschließlich
+// Formatierung (der Sonderfall `w:sectPr` wird oben eigens geprüft).
+// `w:proofErr` und `w:lastRenderedPageBreak` streut Word als reine
+// Hilfsmarkierung ein; ohne sie wäre in echten Word-Dateien kaum ein
+// Absatz je entfernbar. Alles andere — `w:drawing`, `w:pict`, `w:object`,
+// `w:hyperlink`, Lesezeichen, Kommentare, Felder — blockiert das Entfernen.
+const REMOVABLE_ELEMENTS = new Set([
+  'w:pPr',
+  'w:rPr',
+  'w:r',
+  'w:t',
+  'w:tab',
+  'w:br',
+  'w:cr',
+  'w:proofErr',
+  'w:lastRenderedPageBreak',
+])
+
+function containsOnlyTextAndFormatting(element: Element): boolean {
+  return Array.from(element.children).every((child) => {
+    if (!REMOVABLE_ELEMENTS.has(child.tagName)) {
+      return false
+    }
+    // Formatierungsblöcke tragen nie Inhalt, der verloren gehen könnte.
+    if (child.tagName === 'w:pPr' || child.tagName === 'w:rPr') {
+      return true
+    }
+    return containsOnlyTextAndFormatting(child)
+  })
 }
 
 function clamp(value: number, min: number, max: number): number {

@@ -69,13 +69,18 @@ function footerXml(text) {
 `
 }
 
+// Fester Zeitstempel: fflate setzt sonst Date.now() in jeden Zip-Eintrag,
+// dann erzeugt jeder Lauf andere Bytes und ein erneutes Ausführen des
+// Skripts sähe im Git-Diff wie eine echte Änderung aus.
+const FIXED_MTIME = Date.UTC(2026, 0, 1)
+
 function writeDocx(fileName, files) {
   const encoder = new TextEncoder()
   const zippable = {}
   for (const [path, content] of Object.entries(files)) {
     zippable[path] = encoder.encode(content)
   }
-  const zipped = zipSync(zippable, { level: 0 })
+  const zipped = zipSync(zippable, { level: 0, mtime: FIXED_MTIME })
   writeFileSync(join(fixturesDir, fileName), zipped)
   console.log(`geschrieben: ${fileName}`)
 }
@@ -133,5 +138,36 @@ function writeDocx(fileName, files) {
     'word/_rels/document.xml.rels': DOCUMENT_RELS_WITH_HEADER_FOOTER,
     'word/header1.xml': headerXml('Kopfzeilentext, der nicht im Fließtext auftauchen darf'),
     'word/footer1.xml': footerXml('Fußzeilentext, der nicht im Fließtext auftauchen darf'),
+  })
+}
+
+// --- Fixture 4: Sonderformen, die das Textmodell nicht sieht ---
+// Ein Absatz, der nur ein Bild trägt; eine Tabellenzelle; ein Textfeld.
+// Alle drei sind in echten Anschreiben üblich (Unterschriftsgrafik,
+// Adressblock als Tabelle, Randnotiz als Textfeld) und dürfen beim
+// Ersetzen weder verschwinden noch doppelt gezählt werden.
+{
+  const body = [
+    '    <w:p><w:r><w:t>Alpha</w:t></w:r></w:p>',
+    // Nur ein Bild, kein w:t: im Fließtext ist dieser Absatz leer.
+    '    <w:p><w:r><w:drawing/></w:r></w:p>',
+    '    <w:tbl>',
+    '      <w:tblPr/>',
+    '      <w:tblGrid><w:gridCol w:w="4530"/></w:tblGrid>',
+    '      <w:tr><w:tc><w:tcPr><w:tcW w:w="4530" w:type="dxa"/></w:tcPr><w:p><w:r><w:t>Zelle</w:t></w:r></w:p></w:tc></w:tr>',
+    '    </w:tbl>',
+    // Textfeld: der Absatz darin ist ein w:p innerhalb eines w:p — er darf
+    // weder als eigener Absatz noch als Lauf des äußeren Absatzes zählen.
+    '    <w:p>',
+    '      <w:r><w:t>Vor</w:t></w:r>',
+    '      <w:r><w:pict><v:shape xmlns:v="urn:schemas-microsoft-com:vml" style="width:100pt;height:20pt"><v:textbox><w:txbxContent><w:p><w:r><w:t>BoxText</w:t></w:r></w:p></w:txbxContent></v:textbox></v:shape></w:pict></w:r>',
+    '    </w:p>',
+    '    <w:p><w:r><w:t>Gamma</w:t></w:r></w:p>',
+  ].join('\n')
+
+  writeDocx('anschreiben-sonderfaelle.docx', {
+    '[Content_Types].xml': CONTENT_TYPES_BASE,
+    '_rels/.rels': PACKAGE_RELS,
+    'word/document.xml': documentXml(body),
   })
 }

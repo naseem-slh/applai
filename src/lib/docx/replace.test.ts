@@ -141,12 +141,16 @@ describe('replaceRange', () => {
 
     const result = replaceRange(original, { from: 0, to: original.text.length }, 'Erster Absatz\nZweiter Absatz')
 
-    expect(result.text).toBe('Erster Absatz\nZweiter Absatz')
-    expect(result.paragraphs).toHaveLength(2)
+    // Der letzte Absatz des Fixtures ist leer und liegt genau auf dem
+    // Bereichsende: Der Bereich überdeckt kein einziges seiner Zeichen, die
+    // Leerzeile bleibt deshalb stehen. Entfernt werden nur die drei
+    // Absätze, deren Text vollständig im Bereich lag.
+    expect(result.text).toBe('Erster Absatz\nZweiter Absatz\n')
+    expect(result.paragraphs).toHaveLength(3)
 
     const reparsed = await roundTrip(result)
-    expect(reparsed.text).toBe('Erster Absatz\nZweiter Absatz')
-    expect(reparsed.paragraphs).toHaveLength(2)
+    expect(reparsed.text).toBe('Erster Absatz\nZweiter Absatz\n')
+    expect(reparsed.paragraphs).toHaveLength(3)
   })
 
   it('lässt w:sectPr im Body unangetastet, wenn alle Absätze ersetzt werden', async () => {
@@ -187,12 +191,14 @@ describe('replaceRange', () => {
 
     const result = replaceRange(original, { from: 0, to: original.text.length }, '')
 
-    expect(result.text).toBe('')
-    expect(result.paragraphs).toHaveLength(1)
+    // Ein Absatz des Bereichs überlebt immer; die abschließende Leerzeile
+    // des Fixtures liegt außerhalb des Bereichs und bleibt ebenfalls.
+    expect(result.text).toBe('\n')
+    expect(result.paragraphs).toHaveLength(2)
 
     const reparsed = await roundTrip(result)
-    expect(reparsed.text).toBe('')
-    expect(reparsed.paragraphs).toHaveLength(1)
+    expect(reparsed.text).toBe('\n')
+    expect(reparsed.paragraphs).toHaveLength(2)
   })
 
   it('hängt überzählige Zeilen des Ersatztexts mit w:br an den letzten betroffenen Absatz', async () => {
@@ -277,6 +283,100 @@ describe('replaceRange', () => {
     expect(new XMLSerializer().serializeToString(original.doc)).toBe(xmlBefore)
   })
 
+  // Unabhängiges Zeichenketten-Modell der in replaceRange dokumentierten
+  // Regeln: Es rechnet ausschließlich mit Absatztexten und Offsets, während
+  // die Implementierung XML schneidet. Stimmen beide über *jeden* Bereich
+  // eines Dokuments überein, ist auch die absatzübergreifende Arithmetik
+  // abgesichert — samt Leerzeilen, die nur berührt statt überdeckt werden.
+  function erwarteteAbsaetze(paragraphs: string[], from: number, to: number, replacement: string): string[] {
+    const starts: number[] = []
+    let offset = 0
+    for (const text of paragraphs) {
+      starts.push(offset)
+      offset += text.length + 1 // Absatztrennzeichen
+    }
+    const startOf = (index: number) => starts[index]!
+    const endOf = (index: number) => starts[index]! + paragraphs[index]!.length
+
+    const einfuegepunkt = () => {
+      const index = paragraphs.findIndex((_, i) => startOf(i) <= from && from <= endOf(i))
+      return index === -1 ? [] : [index]
+    }
+
+    let affected: number[]
+    if (from === to) {
+      affected = einfuegepunkt()
+    } else {
+      affected = paragraphs
+        .map((_, index) => index)
+        .filter((index) => {
+          const start = startOf(index)
+          const end = endOf(index)
+          // Leerer Absatz: nur echt im Inneren des Bereichs betroffen.
+          return start === end ? from < start && end < to : Math.max(start, from) < Math.min(end, to)
+        })
+      if (affected.length === 0) {
+        affected = einfuegepunkt()
+      }
+    }
+
+    const segments = replacement.split('\n')
+    const result = [...paragraphs]
+    const entfernt = new Set<number>()
+
+    affected.forEach((paragraphIndex, position) => {
+      const segment =
+        position === affected.length - 1 && segments.length > affected.length
+          ? segments.slice(position).join('\n')
+          : segments[position]
+      const text = paragraphs[paragraphIndex]!
+      const localFrom = Math.min(Math.max(from - startOf(paragraphIndex), 0), text.length)
+      const localTo = Math.min(Math.max(to - startOf(paragraphIndex), 0), text.length)
+      const rest = text.slice(0, localFrom) + text.slice(localTo)
+      result[paragraphIndex] = text.slice(0, localFrom) + (segment ?? '') + text.slice(localTo)
+      if (segment === undefined && rest === '') {
+        entfernt.add(paragraphIndex)
+      }
+    })
+
+    return result.filter((_, index) => !entfernt.has(index))
+  }
+
+  it(
+    'bildet über das ganze Dokument jeden Bereich so ab wie das Regelmodell',
+    async () => {
+      // Bewusst kompakt, aber mit allem, was schiefgehen kann: zwei Läufe
+      // (einer fett), Tabulator, w:br, eine Leerzeile in der Mitte und eine
+      // am Ende. Alle Absätze enthalten nur Text und Formatierung, sind also
+      // regulär entfernbar — genau das setzt das Modell voraus.
+      const original = await parseDocx(
+        buildDocx(
+          '<w:p><w:r><w:t>Ab</w:t></w:r><w:r><w:rPr><w:b/></w:rPr><w:t>c</w:t></w:r></w:p>' +
+            '<w:p/>' +
+            '<w:p><w:r><w:t>d</w:t><w:tab/><w:t>e</w:t><w:br/><w:t>f</w:t></w:r></w:p>' +
+            '<w:p><w:r><w:t>gh</w:t></w:r></w:p>' +
+            '<w:p/>',
+        ),
+      )
+      expect(original.text).toBe('Abc\n\nd\te\nf\ngh\n')
+
+      const absaetze = original.paragraphs.map((paragraph) => paragraph.text)
+
+      for (let from = 0; from <= original.text.length; from += 1) {
+        for (let to = from; to <= original.text.length; to += 1) {
+          for (const replacement of ['XY', '', 'P\nQ', 'P\nQ\nR']) {
+            const result = replaceRange(original, { from, to }, replacement)
+            const erwartet = erwarteteAbsaetze(absaetze, from, to, replacement)
+            const fall = `Bereich ${from}..${to} ("${replacement.replace(/\n/g, '\\n')}")`
+            expect(result.text, fall).toBe(erwartet.join('\n'))
+            expect(result.paragraphs, fall).toHaveLength(erwartet.length)
+          }
+        }
+      }
+    },
+    20_000,
+  )
+
   // Erschöpfender Vergleich gegen die naive Zeichenkettenoperation: Solange
   // ein Bereich innerhalb eines Absatzes liegt und der Ersatztext keinen
   // Zeilenumbruch enthält, muss das Ergebnis exakt
@@ -307,6 +407,134 @@ describe('replaceRange', () => {
     // Standardgrenze von 5 s reicht dafür auf langsameren Rechnern nicht.
     20_000,
   )
+
+  it('entfernt keinen Absatz, der nur ein Bild trägt, und keine Tabellenzelle', async () => {
+    const original = await loadFixture('anschreiben-sonderfaelle.docx')
+    expect(original.text).toBe('Alpha\n\nZelle\nVor\nGamma')
+
+    const result = replaceRange(original, { from: 0, to: original.text.length }, 'Alles neu')
+    const reparsed = await roundTrip(result)
+
+    // Das Bild, die Zelle und das Textfeld sind für das Textmodell
+    // unsichtbar (Länge 0 bzw. gar nicht enthalten) — sie dürfen deshalb
+    // nicht mitgelöscht werden, nur weil ihr Absatz textlos zurückbleibt.
+    expect(reparsed.doc.getElementsByTagName('w:drawing')).toHaveLength(1)
+    expect(reparsed.doc.getElementsByTagName('w:tbl')).toHaveLength(1)
+    expect(reparsed.doc.getElementsByTagName('w:txbxContent')).toHaveLength(1)
+    expect(reparsed.doc.getElementsByTagName('w:txbxContent')[0]?.textContent).toContain('BoxText')
+
+    // Eine w:tc muss mindestens einen Absatz enthalten und als w:p enden,
+    // sonst hält Word die Datei für beschädigt.
+    const cell = reparsed.doc.getElementsByTagName('w:tc')[0]
+    const cellChildren = Array.from(cell?.children ?? [])
+    expect(cellChildren.filter((child) => child.tagName === 'w:p').length).toBeGreaterThanOrEqual(1)
+    expect(cellChildren.at(-1)?.tagName).toBe('w:p')
+
+    expect(reparsed.text).toBe('Alles neu\n\n\n')
+    expect(reparsed.paragraphs).toHaveLength(4)
+  })
+
+  it('lässt den letzten Absatz einer Tabellenzelle stehen, statt eine leere w:tc zu hinterlassen', async () => {
+    const original = await parseDocx(
+      buildDocx(
+        '<w:p><w:r><w:t>Alpha</w:t></w:r></w:p>' +
+          '<w:tbl><w:tr><w:tc><w:p><w:r><w:t>Zelle</w:t></w:r></w:p></w:tc></w:tr></w:tbl>' +
+          '<w:p><w:r><w:t>Gamma</w:t></w:r></w:p>',
+      ),
+    )
+
+    const result = replaceRange(original, { from: 0, to: original.text.length }, 'Neu')
+    const reparsed = await roundTrip(result)
+
+    const cell = reparsed.doc.getElementsByTagName('w:tc')[0]
+    expect(cell?.getElementsByTagName('w:p')).toHaveLength(1)
+    expect(new XMLSerializer().serializeToString(cell!)).not.toBe('<w:tc/>')
+  })
+
+  it('lässt einen leeren Absatz stehen, den der Bereich nur am Ende berührt', async () => {
+    // [Alpha 0..5] [leer 6..6] [Gamma 7..12]
+    const original = await parseDocx(
+      buildDocx('<w:p><w:r><w:t>Alpha</w:t></w:r></w:p><w:p/><w:p><w:r><w:t>Gamma</w:t></w:r></w:p>'),
+    )
+    expect(original.text).toBe('Alpha\n\nGamma')
+
+    // to ist exklusiv: Der Bereich überdeckt kein Zeichen des leeren
+    // Absatzes, die Leerzeile muss also bleiben.
+    const result = replaceRange(original, { from: 3, to: 6 }, 'X')
+
+    expect(result.text).toBe('AlpX\n\nGamma')
+    expect(result.paragraphs).toHaveLength(3)
+  })
+
+  it('schreibt in den Absatz, den der Bereich wirklich überdeckt, nicht in die davorliegende Leerzeile', async () => {
+    const original = await parseDocx(
+      buildDocx(
+        '<w:p><w:r><w:t>Alpha</w:t></w:r></w:p><w:p/>' +
+          '<w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Gamma</w:t></w:r></w:p>',
+      ),
+    )
+
+    const result = replaceRange(original, { from: 6, to: 10 }, 'X')
+
+    expect(result.text).toBe('Alpha\n\nXma')
+    expect(result.paragraphs).toHaveLength(3)
+    // Der Ersatztext muss die Formatierung des überdeckten Laufs erben und
+    // darf nicht in einem neuen, formatierungslosen Lauf der Leerzeile
+    // landen.
+    expect(result.paragraphs[1]?.runs).toHaveLength(0)
+    expect(result.paragraphs[2]?.runs[0]?.node.getElementsByTagName('w:b')).toHaveLength(1)
+    expect(result.paragraphs[2]?.runs[0]?.text).toBe('Xma')
+  })
+
+  it('behält die abschließende Leerzeile, wenn die Grußformel samt Zeilenumbruch ersetzt wird', async () => {
+    const original = await loadFixture('anschreiben.docx')
+    const from = original.text.indexOf('Mit freundlichen Grüßen')
+
+    const result = replaceRange(original, { from, to: original.text.length }, 'Beste Grüße')
+
+    // Leerzeilen sind der vertikale Abstand eines Anschreibens.
+    expect(result.paragraphs).toHaveLength(5)
+    expect(result.text).toBe(original.text.replace('Mit freundlichen Grüßen', 'Beste Grüße'))
+  })
+
+  it('entfernt einen Lauf, dessen Text vollständig ersetzt wurde, behält aber textlose Läufe', async () => {
+    const original = await loadFixture('anschreiben-fett.docx')
+    const to = original.text.indexOf(' mit einschlägiger')
+
+    const result = replaceRange(original, { from: 0, to }, 'Neu')
+
+    // Der fette Lauf war vollständig überdeckt und trägt keinen Text mehr:
+    // er verschwindet. Der formatierungsreine Lauf (w:i, nie mit Text) und
+    // der angeschnittene letzte Lauf bleiben.
+    expect(result.paragraphs[0]?.runs).toHaveLength(3)
+    expect(result.paragraphs[0]?.node.getElementsByTagName('w:b')).toHaveLength(0)
+    expect(result.paragraphs[0]?.node.getElementsByTagName('w:i')).toHaveLength(1)
+    expect(result.text).toBe('Neu mit einschlägiger Erfahrung.')
+  })
+
+  it('bleibt über viele aufeinanderfolgende Ersetzungen strukturell stabil', async () => {
+    const original = await loadFixture('anschreiben-fett.docx')
+    const laufZahl = (docx: DocxDocument) => docx.paragraphs[0]!.runs.length
+    const textKnoten = (docx: DocxDocument) => docx.paragraphs[0]!.node.getElementsByTagName('w:t').length
+
+    let current = replaceRange(original, { from: 12, to: 28 }, 'hoch motiviert')
+    const runsNachErsterErsetzung = laufZahl(current)
+    const textKnotenNachErsterErsetzung = textKnoten(current)
+
+    for (let index = 0; index < 25; index += 1) {
+      const from = current.text.indexOf('motiviert')
+      current = replaceRange(current, { from, to: from + 'motiviert'.length }, 'motiviert')
+    }
+
+    // Weder Läufe noch w:t dürfen sich aufschaukeln (Undo/Redo, Aufgabe 14).
+    expect(laufZahl(current)).toBe(runsNachErsterErsetzung)
+    expect(textKnoten(current)).toBe(textKnotenNachErsterErsetzung)
+    expect(current.text).toBe('Ich bin ein hoch motiviert Bewerber mit einschlägiger Erfahrung.')
+    expect(current.paragraphs[0]?.node.getElementsByTagName('w:b')).toHaveLength(1)
+
+    const reparsed = await roundTrip(current)
+    expect(reparsed.text).toBe(current.text)
+  })
 
   it('wirft aussagekräftige deutsche Fehler bei ungültigen Bereichen', async () => {
     const original = await loadFixture('anschreiben.docx')
