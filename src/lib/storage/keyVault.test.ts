@@ -44,6 +44,21 @@ function deleteDatabase(name: string): Promise<void> {
   })
 }
 
+/**
+ * Der abgelegte Datensatz, so wie ihn ein Angreifer in den
+ * Entwicklerwerkzeugen sähe — ohne die Typen des Tresors.
+ */
+interface RawRecord {
+  version?: unknown
+  provider?: unknown
+  protection?: unknown
+  iv?: unknown
+  ciphertext?: unknown
+  salt?: unknown
+  iterations?: unknown
+  deviceKey?: CryptoKey
+}
+
 /** Liest alle Datensätze des Tresor-Speichers roh aus — ohne den Tresor. */
 async function readAllRecords(): Promise<unknown[]> {
   const names = (await indexedDB.databases()).map((info) => info.name)
@@ -55,6 +70,12 @@ async function readAllRecords(): Promise<unknown[]> {
   } finally {
     db.close()
   }
+}
+
+/** Der einzige Datensatz des Tresors, roh. */
+async function readRawRecord(): Promise<RawRecord | undefined> {
+  const records = (await readAllRecords()) as RawRecord[]
+  return records[0]
 }
 
 async function putRawRecord(key: string, value: unknown): Promise<void> {
@@ -69,6 +90,28 @@ async function putRawRecord(key: string, value: unknown): Promise<void> {
   } finally {
     db.close()
   }
+}
+
+/**
+ * Kopiert ein Byte-Feld des rohen Datensatzes in ein `Uint8Array` dieser
+ * Umgebung — IndexedDB gibt strukturell geklonte Werte aus einem anderen
+ * Realm zurück.
+ */
+function toLocalBytes(value: unknown): Uint8Array<ArrayBuffer> {
+  if (!ArrayBuffer.isView(value)) throw new Error('Kein Byte-Feld im Datensatz')
+  const copy = new Uint8Array(value.byteLength)
+  copy.set(new Uint8Array(value.buffer, value.byteOffset, value.byteLength))
+  return copy
+}
+
+/** Erzeugt UTF-16LE-Bytes — die Kodierung, die latin1 und UTF-8 nicht finden. */
+function encodeUtf16Le(text: string): Uint8Array {
+  const bytes = new Uint8Array(text.length * 2)
+  const view = new DataView(bytes.buffer)
+  for (let index = 0; index < text.length; index += 1) {
+    view.setUint16(index * 2, text.charCodeAt(index), true)
+  }
+  return bytes
 }
 
 /** Dekodiert Bytes auf mehreren Wegen, damit die Suche keine Kodierung übersieht. */
@@ -169,6 +212,8 @@ beforeEach(async () => {
 
 afterEach(async () => {
   vi.useRealTimers()
+  vi.restoreAllMocks()
+  vi.unstubAllGlobals()
   while (openVaults.length > 0) openVaults.pop()?.destroy()
   await deleteDatabase(VAULT_DB_NAME)
 })
@@ -265,13 +310,170 @@ describe('KeyVault mit Passwort', () => {
     expect(await restored.isLocked()).toBe(true)
   })
 
-  it('verlangt ein Mindestmaß an Passwortlänge', async () => {
-    const vault = newVault()
+  it('verlangt ein Passwort, das einem Offline-Angriff standhält', () => {
+    // Dieses Passwort wird offline angegriffen: Salz, IV, Chiffrat und
+    // Rundenzahl liegen dem Angreifer vor, es gibt keine Sperre nach
+    // Fehlversuchen und keine Prüfung gegen Leak-Listen. Acht Zeichen aus
+    // menschlicher Hand wären gegen eine GPU zu wenig.
+    expect(MIN_PASSPHRASE_LENGTH).toBeGreaterThanOrEqual(12)
+  })
 
-    await expect(vault.save('openai', OPENAI_KEY, { passphrase: 'kurz' })).rejects.toThrow(
+  it('weist ein Passwort knapp unter der Grenze zurück und nimmt eines auf der Grenze an', async () => {
+    const vault = newVault()
+    const einsZuKurz = 'Nebelkraehe'
+    const geradeLang = 'Nebelkraehe7'
+    expect(einsZuKurz).toHaveLength(MIN_PASSPHRASE_LENGTH - 1)
+    expect(geradeLang).toHaveLength(MIN_PASSPHRASE_LENGTH)
+
+    await expect(vault.save('openai', OPENAI_KEY, { passphrase: einsZuKurz })).rejects.toThrow(
       new RegExp(String(MIN_PASSPHRASE_LENGTH)),
     )
     expect(await readAllRecords()).toHaveLength(0)
+
+    // Die Grenze selbst muss durchgehen — sonst belegt der Test nur, dass
+    // irgendetwas abgelehnt wird.
+    await vault.save('openai', OPENAI_KEY, { passphrase: geradeLang })
+    expect(vault.getKey()).toBe(OPENAI_KEY)
+  })
+
+  it('weist ein Passwort aus einem einzigen wiederholten Zeichen zurück', async () => {
+    const vault = newVault()
+
+    // Bewusst länger als MIN_PASSPHRASE_LENGTH: sonst schlüge nur die
+    // Längenprüfung an und der Test bewiese nichts über diesen Sonderfall.
+    // Aus demselben Grund ist die Meldung genauer geprüft als mit /Zeichen/ —
+    // das Wort steht auch in der Längenmeldung.
+    const nurEinZeichen = 'aaaaaaaaaaaaaaaa'
+    expect(nurEinZeichen.length).toBeGreaterThan(MIN_PASSPHRASE_LENGTH)
+
+    await expect(vault.save('openai', OPENAI_KEY, { passphrase: nurEinZeichen })).rejects.toThrow(
+      /verschiedene Zeichen/i,
+    )
+    expect(await readAllRecords()).toHaveLength(0)
+  })
+
+  it('weist ein Passwort zurück, das im API-Schlüssel selbst steht', async () => {
+    const vault = newVault()
+    // Ein Passwort aus dem Schlüssel selbst ist kein zweites Geheimnis: Wer
+    // den Schlüssel je zu Gesicht bekommt, hat damit auch das Passwort.
+    const partOfKey = OPENAI_KEY.slice(8, 28)
+
+    await expect(vault.save('openai', OPENAI_KEY, { passphrase: partOfKey })).rejects.toThrow(/API-Schlüssel/i)
+    expect(await readAllRecords()).toHaveLength(0)
+  })
+
+  it('weist ein Passwort auch bei abweichender Groß- und Kleinschreibung zurück', async () => {
+    const vault = newVault()
+
+    await expect(
+      vault.save('openai', OPENAI_KEY, { passphrase: OPENAI_KEY.slice(8, 28).toUpperCase() }),
+    ).rejects.toThrow(/API-Schlüssel/i)
+    expect(await readAllRecords()).toHaveLength(0)
+  })
+})
+
+describe('Aufwertung von Stufe 1 auf Stufe 2', () => {
+  it('entfernt beim Nachrüsten eines Passworts den Geräteschlüssel restlos', async () => {
+    // Der wichtigste Zustandswechsel der Datei: Bliebe der Geräteschlüssel
+    // liegen, wäre der kostenpflichtige Schlüssel weiterhin ohne Passwort zu
+    // entschlüsseln — die Passwortpflicht wäre nur noch Fassade.
+    const vault = newVault()
+    await vault.save('gemini', GEMINI_KEY)
+
+    const before = await readRawRecord()
+    expect(before?.protection).toBe('device')
+    const alterGeraeteschluessel = before?.deviceKey
+    if (alterGeraeteschluessel === undefined) throw new Error('Kein Geräteschlüssel im Datensatz')
+
+    await vault.save('gemini', GEMINI_KEY, { treatAsPaid: true, passphrase: PASSPHRASE })
+
+    const after = await readRawRecord()
+    expect(await readAllRecords()).toHaveLength(1)
+    expect(after?.protection).toBe('passphrase')
+    expect(after?.deviceKey).toBeUndefined()
+    // Nicht nur "undefined", sondern gar nicht mehr vorhanden.
+    expect(Object.keys(after ?? {})).not.toContain('deviceKey')
+    expect(after?.salt).toBeDefined()
+    // Der schärfere Nachweis: Selbst wer den alten Geräteschlüssel noch in
+    // der Hand hält, kommt an das neue Chiffrat nicht mehr heran.
+    await expect(
+      crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv: toLocalBytes(after?.iv) },
+        alterGeraeteschluessel,
+        toLocalBytes(after?.ciphertext),
+      ),
+    ).rejects.toThrow()
+
+    const restored = newVault()
+    await restored.initialize()
+
+    expect(restored.getKey()).toBeNull()
+    expect(await restored.isLocked()).toBe(true)
+    // Ohne Passwort fuehrt kein Weg mehr hinein.
+    await expect(restored.unlock()).rejects.toThrow(/Passwort/i)
+    expect(restored.getKey()).toBeNull()
+
+    await restored.unlock(PASSPHRASE)
+    expect(restored.getKey()).toBe(GEMINI_KEY)
+  })
+
+  it('entfernt beim Zurückstufen auf Stufe 1 Salz und Rundenzahl', async () => {
+    const vault = newVault()
+    await vault.save('gemini', GEMINI_KEY, { treatAsPaid: true, passphrase: PASSPHRASE })
+
+    await vault.save('gemini', GEMINI_KEY)
+
+    const after = await readRawRecord()
+    expect(after?.protection).toBe('device')
+    expect(Object.keys(after ?? {})).not.toContain('salt')
+    expect(Object.keys(after ?? {})).not.toContain('iterations')
+  })
+})
+
+describe('Geräteschlüssel in der Ablage', () => {
+  it('liegt als nicht auslesbares Schlüsselobjekt in IndexedDB', async () => {
+    await newVault().save('gemini', GEMINI_KEY)
+
+    const record = await readRawRecord()
+    const deviceKey = record?.deviceKey
+    if (deviceKey === undefined) throw new Error('Kein Geräteschlüssel im Datensatz')
+
+    // Der Kern von Stufe 1, direkt am abgelegten Objekt geprüft — nicht nur
+    // daran, dass im Dump keine Zeichenfolge auftaucht.
+    expect(deviceKey.extractable).toBe(false)
+    expect(deviceKey.algorithm.name).toBe('AES-GCM')
+    await expect(crypto.subtle.exportKey('raw', deviceKey)).rejects.toThrow()
+    await expect(crypto.subtle.exportKey('jwk', deviceKey)).rejects.toThrow()
+  })
+})
+
+describe('beschädigte oder manipulierte Datensätze', () => {
+  async function putRecordWithIterations(iterations: unknown): Promise<void> {
+    await newVault().save('openai', OPENAI_KEY, { passphrase: PASSPHRASE })
+    const record = await readRawRecord()
+    await putRawRecord('apiKey', { ...record, iterations })
+  }
+
+  it('lehnt eine unsinnige Rundenzahl ab, statt sie zu benutzen', async () => {
+    // NaN fuehrte sonst zu "Passwort falsch", obwohl das Passwort stimmt.
+    await putRecordWithIterations(Number.NaN)
+
+    const vault = newVault()
+    await expect(vault.unlock(PASSPHRASE)).rejects.toThrow(/beschädigt/i)
+  })
+
+  it('lehnt eine absurd hohe Rundenzahl ab, statt den Browser anzuhalten', async () => {
+    await putRecordWithIterations(1e12)
+
+    const vault = newVault()
+    await expect(vault.unlock(PASSPHRASE)).rejects.toThrow(/beschädigt/i)
+  })
+
+  it('lehnt eine zu niedrige Rundenzahl ab', async () => {
+    await putRecordWithIterations(1000)
+
+    const vault = newVault()
+    await expect(vault.unlock(PASSPHRASE)).rejects.toThrow(/beschädigt/i)
   })
 })
 
@@ -314,6 +516,21 @@ describe('Passwortpflicht bei kostenpflichtigen Schlüsseln', () => {
 
   it('weist einen leeren Schlüssel zurück', async () => {
     await expect(newVault().save('gemini', '   ')).rejects.toThrow(/Schlüssel/i)
+  })
+
+  it('weist eingebettete Steuerzeichen zurück', async () => {
+    // Ein eingefügter Zeilenumbruch mitten im Schlüssel fiele sonst erst
+    // beim Aufruf des Anbieters auf (Aufgabe 7) — als Kopfzeilen-Fehler oder,
+    // schlimmer, als eingeschmuggelte Kopfzeile.
+    const vault = newVault()
+    const withNewline = 'AIzaSy-Teil\r\nZweiterTeil'
+    const withDelete = `AIzaSy-Teil${String.fromCharCode(0x7f)}ZweiterTeil`
+    const withVerticalTab = `AIzaSy-Teil${String.fromCharCode(0x0b)}ZweiterTeil`
+
+    await expect(vault.save('gemini', withNewline)).rejects.toThrow(/Steuerzeichen/i)
+    await expect(vault.save('gemini', withDelete)).rejects.toThrow(/Steuerzeichen/i)
+    await expect(vault.save('gemini', withVerticalTab)).rejects.toThrow(/Steuerzeichen/i)
+    expect(await readAllRecords()).toHaveLength(0)
   })
 })
 
@@ -389,18 +606,43 @@ describe('IndexedDB-Inhalt', () => {
     expect(sessionStorage.length).toBe(0)
   })
 
-  it('Gegenprobe: der Suchlauf findet Klartext, wenn welcher dastünde', async () => {
-    // Beweist, dass der Test oben etwas taugt — dieselbe Suche über einen
-    // absichtlich im Klartext abgelegten Datensatz muss anschlagen.
+  it('Gegenprobe 1: der Suchlauf findet Klartext in einem Zeichenketten-Feld', async () => {
     await newVault().save('gemini', GEMINI_KEY)
-    await putRawRecord('lockvogel', {
-      version: 1,
-      provider: 'gemini',
-      apiKey: GEMINI_KEY,
-      ciphertext: new TextEncoder().encode(GEMINI_KEY),
-    })
+    await putRawRecord('lockvogel-text', { version: 1, provider: 'gemini', apiKey: GEMINI_KEY })
 
     expect(await dumpIndexedDb()).toContain(GEMINI_KEY)
+  })
+
+  it('Gegenprobe 2: der Suchlauf findet Klartext in UTF-8-Bytes', async () => {
+    await newVault().save('gemini', GEMINI_KEY)
+    await putRawRecord('lockvogel-utf8', { version: 1, ciphertext: new TextEncoder().encode(GEMINI_KEY) })
+
+    expect(await dumpIndexedDb()).toContain(GEMINI_KEY)
+  })
+
+  it('Gegenprobe 3: der Suchlauf findet Klartext in UTF-16LE-Bytes', async () => {
+    // Diese Form fände weder der latin1- noch der UTF-8-Weg — sie belegt,
+    // dass der UTF-16-Dekodierer im Suchlauf tatsächlich etwas beiträgt.
+    const utf16 = encodeUtf16Le(GEMINI_KEY)
+    expect(new TextDecoder('utf-8').decode(utf16)).not.toContain(GEMINI_KEY)
+
+    await newVault().save('gemini', GEMINI_KEY)
+    await putRawRecord('lockvogel-utf16', { version: 1, ciphertext: utf16 })
+
+    expect(await dumpIndexedDb()).toContain(GEMINI_KEY)
+  })
+})
+
+describe('unsichere Herkunft', () => {
+  it('deutet fehlendes WebCrypto nicht als falsches Passwort um', async () => {
+    await newVault().save('openai', OPENAI_KEY, { passphrase: PASSPHRASE })
+    const vault = newVault()
+
+    // Auf einer http-Seite (ohne localhost) stellt der Browser
+    // crypto.subtle nicht bereit.
+    vi.stubGlobal('crypto', { getRandomValues: (array: Uint8Array) => array })
+
+    await expect(vault.unlock(PASSPHRASE)).rejects.toThrow(/HTTPS/)
   })
 })
 
@@ -443,13 +685,33 @@ describe('Untätigkeitssperre', () => {
     expect(vault.getKey()).toBeNull()
   })
 
-  it('meldet nach destroy() keine Ereignisse mehr an', async () => {
+  it('meldet bei destroy() jeden angemeldeten Zuhörer wieder ab', async () => {
+    const windowAdd = vi.spyOn(window, 'addEventListener')
+    const windowRemove = vi.spyOn(window, 'removeEventListener')
+    const documentAdd = vi.spyOn(document, 'addEventListener')
+    const documentRemove = vi.spyOn(document, 'removeEventListener')
+
     const vault = newVault(25)
+    const addedOnWindow = [...windowAdd.mock.calls]
+    const addedOnDocument = [...documentAdd.mock.calls]
+    expect(addedOnWindow.length).toBeGreaterThan(0)
+    expect(addedOnDocument.some(([type]) => type === 'visibilitychange')).toBe(true)
+
     await vault.save('gemini', GEMINI_KEY)
     vault.destroy()
 
     expect(vault.getKey()).toBeNull()
+    // Jeder Zuhörer wird mit derselben Funktionsreferenz wieder abgemeldet —
+    // sonst bliebe er hängen, ohne dass ein Test es merkte.
+    for (const [type, listener] of addedOnWindow) {
+      expect(windowRemove.mock.calls.some(([other, fn]) => other === type && fn === listener)).toBe(true)
+    }
+    for (const [type, listener] of addedOnDocument) {
+      expect(documentRemove.mock.calls.some(([other, fn]) => other === type && fn === listener)).toBe(true)
+    }
+    // Und die Ereignisse selbst laufen danach ins Leere.
     window.dispatchEvent(new Event('keydown'))
     document.dispatchEvent(new Event('visibilitychange'))
+    expect(vault.getKey()).toBeNull()
   })
 })

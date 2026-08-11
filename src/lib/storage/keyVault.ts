@@ -7,6 +7,7 @@ import {
   encryptString,
   generateDeviceKey,
   randomBytes,
+  requireWebCrypto,
 } from './crypto'
 
 /**
@@ -56,11 +57,36 @@ const RECORD_VERSION = 1
 export const DEFAULT_IDLE_TIMEOUT_MS = 30 * 60 * 1000
 
 /**
- * Mindestlänge des Passworts. PBKDF2 verlangsamt das Durchprobieren, ersetzt
- * aber kein Passwort mit etwas Substanz — ein vierstelliges wäre auch mit
- * 600 000 Runden in Minuten geraten.
+ * Mindestlänge des Passworts.
+ *
+ * Dieses Passwort wird **offline** angegriffen: Wer einmal an die IndexedDB
+ * des Geräts kommt, hat Salz, IV, Chiffrat und Rundenzahl in der Hand und
+ * kann beliebig schnell durchprobieren — es gibt keine Sperre nach
+ * Fehlversuchen und keine Verzögerung außer PBKDF2 selbst. 600 000 Runden
+ * PBKDF2-HMAC-SHA-256 sind rund 20 Bit Arbeitsaufwand; ein von Hand
+ * gewähltes Passwort trägt erfahrungsgemäß etwa 30 Bit bei. Acht Zeichen
+ * fallen damit auf einer einzelnen GPU in Stunden. Die Untergrenze muss die
+ * Arbeit hier allein leisten, denn die Alternativen (Entropieschätzung,
+ * Abgleich mit Leak-Listen) kosten jeweils eine Abhängigkeit und verstoßen
+ * gegen G9.
+ *
+ * Exportiert, damit Aufgabe 13 dieselbe Grenze in der Oberfläche anzeigt —
+ * dort gehört auch das „warum“ hin, nicht nur die Zahl.
  */
-export const MIN_PASSPHRASE_LENGTH = 8
+export const MIN_PASSPHRASE_LENGTH = 12
+
+/**
+ * Plausibilitätsgrenzen für die aus dem Speicher gelesene Rundenzahl.
+ *
+ * Der Wert kommt aus IndexedDB und ist damit von außen beschreibbar. Eine
+ * verfälschte Rundenzahl ist zwar keine Abschwächung — das Chiffrat hängt an
+ * der ursprünglichen Ableitung, ein anderer Wert lässt die Entschlüsselung
+ * schlicht scheitern —, aber `1e12` legt den Tab lahm und `NaN` erzeugt die
+ * Meldung „Passwort falsch“, obwohl das Passwort stimmt. Außerhalb dieser
+ * Grenzen gilt der Datensatz deshalb als beschädigt.
+ */
+const MIN_STORED_ITERATIONS = 100_000
+const MAX_STORED_ITERATIONS = 10_000_000
 
 /**
  * Präfixe, an denen ein immer abrechnungspflichtiger Schlüssel erkennbar
@@ -124,7 +150,13 @@ export interface KeyVault {
   save(provider: ProviderId, apiKey: string, options?: SaveOptions): Promise<void>
   /** `true`, wenn ein Schlüssel gespeichert ist, aber nicht im Arbeitsspeicher liegt. */
   isLocked(): Promise<boolean>
-  unlock(passphrase: string): Promise<void>
+  /**
+   * Das Passwort ist optional, weil ein ohne Passwort abgelegter Schlüssel
+   * (Stufe 1) nach der Untätigkeitssperre ebenfalls über `unlock()` zurück
+   * in den Arbeitsspeicher kommt — dort gäbe es nichts zu übergeben. Bei
+   * Stufe 2 wirft `unlock()` ohne Passwort.
+   */
+  unlock(passphrase?: string): Promise<void>
   lock(): void
   /** Nur aus dem Arbeitsspeicher, nie synchron aus dem Speicher. */
   getKey(): string | null
@@ -157,6 +189,51 @@ export function isPaidKey(provider: ProviderId, key: string): boolean {
   if (provider === 'openai' || provider === 'anthropic') return true
   const trimmed = key.trim()
   return PAID_KEY_PREFIXES.some((prefix) => trimmed.startsWith(prefix))
+}
+
+/**
+ * Enthält die Zeichenkette ein Steuerzeichen?
+ *
+ * Bewusst als Schleife und nicht als regulärer Ausdruck: Steuerzeichen in
+ * einem Regex-Literal verbietet die ESLint-Regel `no-control-regex`, und ein
+ * Ausdruck mit maskierten Zeichen wäre hier schlechter zu lesen als die
+ * Schleife.
+ */
+function hasControlCharacter(value: string): boolean {
+  for (const character of value) {
+    const code = character.codePointAt(0) ?? 0
+    if (code < 0x20 || code === 0x7f) return true
+  }
+  return false
+}
+
+/**
+ * Prüft, ob das Passwort als alleiniger Schutz eines kostenpflichtigen
+ * Schlüssels taugen kann.
+ *
+ * Geprüft wird nur, was der Tresor ohne Hilfsmittel feststellen kann: Länge
+ * und zwei offensichtlich wertlose Fälle. Eine Entropieschätzung oder ein
+ * Abgleich mit Leak-Listen wäre jeweils eine neue Abhängigkeit (G9) — und
+ * genau deshalb muss die Untergrenze der Länge hoch genug sein
+ * (siehe `MIN_PASSPHRASE_LENGTH`).
+ */
+function assertUsablePassphrase(passphrase: string, apiKey: string): void {
+  if (passphrase.length < MIN_PASSPHRASE_LENGTH) {
+    throw new Error(`Das Passwort muss mindestens ${MIN_PASSPHRASE_LENGTH} Zeichen lang sein.`)
+  }
+  // „aaaaaaaaaaaa“ erfüllt jede Längenvorgabe und ist trotzdem im ersten
+  // Anlauf geraten.
+  if (new Set(passphrase).size === 1) {
+    throw new Error('Das Passwort besteht aus einem einzigen wiederholten Zeichen. Bitte verschiedene Zeichen verwenden.')
+  }
+  // Ein Passwort, das im API-Schlüssel selbst steht, ist kein zweites
+  // Geheimnis: Wer den Schlüssel je zu Gesicht bekommt — aus einem
+  // Protokoll, einer Bildschirmaufnahme, der Konsole des Anbieters —, hat
+  // damit auch das Passwort. Groß- und Kleinschreibung bleibt außer Betracht,
+  // weil eine umgeschriebene Kopie denselben Mangel hat.
+  if (apiKey.toLowerCase().includes(passphrase.toLowerCase())) {
+    throw new Error('Das Passwort darf kein Teil des API-Schlüssels sein. Bitte ein eigenständiges Passwort wählen.')
+  }
 }
 
 /**
@@ -239,6 +316,11 @@ function normalizeRecord(value: unknown): StoredRecord | null {
   if (iv === null || ciphertext === null) return null
   if (candidate.protection !== 'device' && candidate.protection !== 'passphrase') return null
   if (!isProviderId(candidate.provider)) return null
+  // Die Rundenzahl darf fehlen (Stufe 1 kennt keine); steht aber eine da,
+  // muss sie plausibel sein — sonst ist der Datensatz beschädigt und wird
+  // nicht stillschweigend mit einem Ersatzwert weiterverwendet.
+  const iterations: unknown = candidate.iterations
+  if (iterations !== undefined && !isPlausibleIterationCount(iterations)) return null
   return {
     version: typeof candidate.version === 'number' ? candidate.version : RECORD_VERSION,
     provider: candidate.provider,
@@ -246,9 +328,19 @@ function normalizeRecord(value: unknown): StoredRecord | null {
     iv,
     ciphertext,
     salt: toBytes(candidate.salt) ?? undefined,
-    iterations: typeof candidate.iterations === 'number' ? candidate.iterations : undefined,
+    iterations,
     deviceKey: candidate.deviceKey,
   }
+}
+
+/** Siehe `MIN_STORED_ITERATIONS`. Schließt `NaN` und Kommazahlen mit aus. */
+function isPlausibleIterationCount(value: unknown): value is number {
+  return (
+    typeof value === 'number' &&
+    Number.isInteger(value) &&
+    value >= MIN_STORED_ITERATIONS &&
+    value <= MAX_STORED_ITERATIONS
+  )
 }
 
 async function readRecord(): Promise<StoredRecord | undefined> {
@@ -333,6 +425,9 @@ export function createKeyVault(idleTimeoutMs: number = DEFAULT_IDLE_TIMEOUT_MS):
   document.addEventListener('visibilitychange', checkIdle)
 
   async function decryptIntoMemory(record: StoredRecord, passphrase: string | undefined): Promise<void> {
+    // Vor allem anderen: Fehlt `crypto.subtle` (unsichere Herkunft), soll das
+    // hier auffallen und nicht unten im `catch` als „Passwort falsch“ enden.
+    requireWebCrypto()
     let key: CryptoKey
     if (record.protection === 'passphrase') {
       if (passphrase === undefined || passphrase.length === 0) {
@@ -409,6 +504,14 @@ export function createKeyVault(idleTimeoutMs: number = DEFAULT_IDLE_TIMEOUT_MS):
       if (trimmedKey.length === 0) {
         throw new Error('Es wurde kein API-Schlüssel eingegeben.')
       }
+      // `trim()` nimmt nur führende und folgende Zeichen. Ein eingebetteter
+      // Zeilenumbruch fiele sonst erst beim Aufruf des Anbieters auf
+      // (Aufgabe 7/8) — im besten Fall als Fehler beim Setzen des
+      // `Authorization`-Kopffelds, im schlechteren als eingeschmuggelte
+      // zusätzliche Kopfzeile.
+      if (hasControlCharacter(trimmedKey)) {
+        throw new Error('Der API-Schlüssel enthält Steuerzeichen. Bitte ihn ohne Zeilenumbrüche einfügen.')
+      }
       const passphrase = options?.passphrase
       // Die harte Regel: kostenpflichtiger Schlüssel nur mit Passwort. Ohne
       // Passwort läge das Entschlüsselungsmaterial neben dem Chiffrat.
@@ -419,8 +522,8 @@ export function createKeyVault(idleTimeoutMs: number = DEFAULT_IDLE_TIMEOUT_MS):
           )
         }
       }
-      if (passphrase !== undefined && passphrase.length < MIN_PASSPHRASE_LENGTH) {
-        throw new Error(`Das Passwort muss mindestens ${MIN_PASSPHRASE_LENGTH} Zeichen lang sein.`)
+      if (passphrase !== undefined) {
+        assertUsablePassphrase(passphrase, trimmedKey)
       }
       // Erst prüfen, dann verschlüsseln, dann schreiben: bei einem Verstoß
       // gegen die Passwortpflicht darf nichts im Speicher zurückbleiben.
@@ -437,7 +540,7 @@ export function createKeyVault(idleTimeoutMs: number = DEFAULT_IDLE_TIMEOUT_MS):
       return (await readRecord()) !== undefined
     },
 
-    async unlock(passphrase: string): Promise<void> {
+    async unlock(passphrase?: string): Promise<void> {
       const record = await readRecord()
       if (record === undefined) {
         throw new Error('Es ist kein API-Schlüssel gespeichert.')

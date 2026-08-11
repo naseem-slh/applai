@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   AES_KEY_LENGTH,
   IV_LENGTH,
@@ -111,6 +111,28 @@ describe('crypto', () => {
       const payload = await encryptString(key, text)
 
       await expect(decryptString(key, payload)).resolves.toBe(text)
+    })
+  })
+
+  describe('unsichere Herkunft', () => {
+    afterEach(() => {
+      vi.unstubAllGlobals()
+    })
+
+    it('meldet fehlendes crypto.subtle als HTTPS-Anforderung', async () => {
+      // Vorbereitung noch mit echtem WebCrypto.
+      const salt = randomBytes(SALT_LENGTH)
+      const key = await generateDeviceKey()
+      const payload = await encryptString(key, PLAINTEXT)
+
+      // Ab hier: crypto.subtle fehlt, wie auf einer http-Seite.
+      vi.stubGlobal('crypto', { getRandomValues: (array: Uint8Array) => array })
+
+      await expect(generateDeviceKey()).rejects.toThrow(/HTTPS/)
+      await expect(deriveKeyFromPassphrase(PASSPHRASE, salt)).rejects.toThrow(/HTTPS/)
+      await expect(encryptString(key, PLAINTEXT)).rejects.toThrow(/HTTPS/)
+      // Wichtig: nicht als "falscher Schlüssel" umgedeutet.
+      await expect(decryptString(key, payload)).rejects.toThrow(/HTTPS/)
     })
   })
 

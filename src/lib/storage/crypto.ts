@@ -64,7 +64,31 @@ export interface EncryptedPayload {
 
 /** Kryptografisch sichere Zufallsbytes. */
 export function randomBytes(length: number): Bytes {
+  // Absichtlich ohne `requireWebCrypto()`: `getRandomValues` stellt der
+  // Browser auch auf einer unsicheren Herkunft bereit — nur `subtle` fehlt
+  // dort.
   return crypto.getRandomValues(new Uint8Array(length))
+}
+
+/**
+ * Gibt `crypto.subtle` zurück oder wirft mit einer Meldung, die den Grund
+ * benennt.
+ *
+ * Auf einer unsicheren Herkunft (`http:` außerhalb von `localhost`) stellt
+ * der Browser `crypto.subtle` überhaupt nicht bereit. Ohne diese Prüfung
+ * bekäme der Nutzer „Cannot read properties of undefined (reading
+ * 'importKey')“ zu sehen, und `keyVault.ts` würde denselben Fehler auf dem
+ * Entsperr-Weg als „Passwort falsch“ ausgeben — also eine falsche Diagnose.
+ *
+ * Bewusst ohne Ausweichlösung: eine selbstgebaute Verschlüsselung wäre
+ * schlechter als gar keine. Es bleibt beim lauten, aber benennbaren Fehler.
+ */
+export function requireWebCrypto(): SubtleCrypto {
+  const subtle: SubtleCrypto | undefined = globalThis.crypto?.subtle
+  if (subtle === undefined) {
+    throw new Error('Der Schlüsselspeicher braucht eine sichere Verbindung (HTTPS).')
+  }
+  return subtle
 }
 
 /**
@@ -81,10 +105,11 @@ export async function deriveKeyFromPassphrase(
   salt: Bytes,
   iterations: number = PBKDF2_ITERATIONS,
 ): Promise<CryptoKey> {
+  const subtle = requireWebCrypto()
   const passphraseBytes = new TextEncoder().encode(passphrase)
   try {
-    const material = await crypto.subtle.importKey('raw', passphraseBytes, 'PBKDF2', false, ['deriveKey'])
-    return await crypto.subtle.deriveKey(
+    const material = await subtle.importKey('raw', passphraseBytes, 'PBKDF2', false, ['deriveKey'])
+    return await subtle.deriveKey(
       { name: 'PBKDF2', salt, iterations, hash: PBKDF2_HASH },
       material,
       { name: AES_ALGORITHM, length: AES_KEY_LENGTH },
@@ -116,15 +141,16 @@ export async function deriveKeyFromPassphrase(
  * Schlüssel ablegt, braucht deshalb Stufe 2 (Passwort).
  */
 export async function generateDeviceKey(): Promise<CryptoKey> {
-  return crypto.subtle.generateKey({ name: AES_ALGORITHM, length: AES_KEY_LENGTH }, false, ['encrypt', 'decrypt'])
+  return requireWebCrypto().generateKey({ name: AES_ALGORITHM, length: AES_KEY_LENGTH }, false, ['encrypt', 'decrypt'])
 }
 
 /** Verschlüsselt eine Zeichenkette mit einem frischen, einmaligen IV. */
 export async function encryptString(key: CryptoKey, plaintext: string): Promise<EncryptedPayload> {
+  const subtle = requireWebCrypto()
   const iv = randomBytes(IV_LENGTH)
   const plaintextBytes = new TextEncoder().encode(plaintext)
   try {
-    const ciphertext = await crypto.subtle.encrypt({ name: AES_ALGORITHM, iv }, key, plaintextBytes)
+    const ciphertext = await subtle.encrypt({ name: AES_ALGORITHM, iv }, key, plaintextBytes)
     return { iv, ciphertext: new Uint8Array(ciphertext) }
   } finally {
     plaintextBytes.fill(0)
@@ -138,9 +164,12 @@ export async function encryptString(key: CryptoKey, plaintext: string): Promise<
  * wahrscheinliche ist, weiß erst `keyVault.ts`.
  */
 export async function decryptString(key: CryptoKey, payload: EncryptedPayload): Promise<string> {
+  // Der Guard steht bewusst vor dem `try`: ein fehlendes WebCrypto ist kein
+  // Entschlüsselungsfehler und darf nicht als solcher gemeldet werden.
+  const subtle = requireWebCrypto()
   let plaintextBytes: ArrayBuffer
   try {
-    plaintextBytes = await crypto.subtle.decrypt({ name: AES_ALGORITHM, iv: payload.iv }, key, payload.ciphertext)
+    plaintextBytes = await subtle.decrypt({ name: AES_ALGORITHM, iv: payload.iv }, key, payload.ciphertext)
   } catch {
     // Bewusst ohne `cause`: die ursprüngliche Ausnahme (`OperationError`)
     // sagt nichts Zusätzliches, und je weniger im Fehlerobjekt landet, desto
