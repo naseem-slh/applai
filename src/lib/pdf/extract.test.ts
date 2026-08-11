@@ -6,7 +6,7 @@ import { readFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { detectMultiColumn, extractPdf, groupItemsIntoLines, type PdfItem } from './extract'
+import { PASSWORD_PROTECTED_MESSAGE, detectMultiColumn, extractPdf, groupItemsIntoLines, type PdfItem } from './extract'
 
 // Fixtures liegen unter tests/fixtures/ (binäre Testdateien, siehe
 // CLAUDE.md), erzeugt durch tests/fixtures/build-pdf-fixtures.mjs.
@@ -134,6 +134,44 @@ describe('extractPdf', () => {
   it('wirft bei einem ungültigen PDF eine aussagekräftige Fehlermeldung', async () => {
     const garbage = new TextEncoder().encode('Das ist kein PDF.').buffer as ArrayBuffer
     await expect(extractPdf(garbage)).rejects.toThrow()
+  })
+
+  it('lehnt ein passwortgeschütztes PDF sofort mit einer klaren deutschen Meldung ab, statt zu hängen', async () => {
+    // "Sofort" ist hier wörtlich geprüft: Promise.race gegen einen kurzen
+    // Timeout stellt sicher, dass extractPdf tatsächlich ablehnt statt auf
+    // eine nie eintreffende Kennwort-Antwort zu warten (siehe extract.ts,
+    // loadingTask.onPassword — ohne diese Rückmeldung bliebe die Anfrage
+    // laut pdf.js-Quelltext unbeantwortet offen).
+    const buffer = await readFile(join(FIXTURES_DIR, 'verschluesselt.pdf'))
+    const arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength)
+
+    const outcome = await Promise.race([
+      extractPdf(arrayBuffer).then(
+        () => ({ hung: false, rejected: false, error: undefined }) as const,
+        (error: unknown) => ({ hung: false, rejected: true, error }) as const,
+      ),
+      new Promise<{ hung: true; rejected: false; error: undefined }>((resolve) =>
+        setTimeout(() => resolve({ hung: true, rejected: false, error: undefined }), 5000),
+      ),
+    ])
+
+    expect(outcome.hung).toBe(false)
+    expect(outcome.rejected).toBe(true)
+    expect((outcome.error as Error | undefined)?.message).toBe(PASSWORD_PROTECTED_MESSAGE)
+  })
+
+  it('liest dasselbe passwortgeschützte PDF mit korrektem pdf.js-Passwort regulär — belegt, dass die Ablehnung oben wirklich am fehlenden Kennwort liegt und nicht an einer kaputten Datei', async () => {
+    // Nutzt bewusst nicht extractPdf (dessen Signatur laut Aufgabenstellung
+    // kein Passwort entgegennimmt — Applai hat dafür keine Oberfläche,
+    // siehe Aufgabe 13), sondern direkt pdf.js, als Gegenprobe zur Fixture
+    // selbst.
+    const buffer = await readFile(join(FIXTURES_DIR, 'verschluesselt.pdf'))
+    const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs')
+    const doc = await pdfjs.getDocument({ data: new Uint8Array(buffer), verbosity: 0, password: 'geheim' }).promise
+    const page = await doc.getPage(1)
+    const content = await page.getTextContent()
+    expect(content.items.map((item) => ('str' in item ? item.str : '')).join('')).toBe('Geheimer Text')
+    await doc.destroy()
   })
 })
 

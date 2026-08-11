@@ -116,6 +116,24 @@ export function groupItemsIntoLines(items: PdfItem[]): PdfItem[][] {
   return lines
 }
 
+// Klare, auf Deutsch verständliche Fehlermeldung für passwortgeschützte
+// PDFs (siehe extractPdf) — benannte Konstante statt Inline-String, damit
+// extract.test.ts denselben Wortlaut referenzieren kann, ohne ihn zu
+// duplizieren.
+export const PASSWORD_PROTECTED_MESSAGE =
+  'Diese PDF-Datei ist passwortgeschützt. Passwortgeschützte PDF-Dateien werden nicht unterstützt — bitte entfernen Sie den Schutz und laden Sie die Datei erneut hoch.'
+
+// pdf.js exportiert `PasswordException` nicht über sein öffentliches
+// Typ-Barrel (dieselbe Lücke wie bei TextItem/TextMarkedContent, siehe
+// oben) — erkennbar bleibt sie trotzdem zuverlässig an `.name`: Der Worker
+// baut Ausnahmen anhand ihres serialisierten Namens wieder zum passenden
+// Klassentyp zusammen (`pdf.mjs`, `wrapReason`: `case "PasswordException":
+// return new PasswordException(...)`), `.name` ist also kein Zufallswert,
+// sondern Teil dieses Wiederaufbaus.
+function isPasswordException(error: unknown): boolean {
+  return error instanceof Error && error.name === 'PasswordException'
+}
+
 /**
  * Liest eine `.pdf`-Datei ein und liefert je Seite die enthaltenen
  * Textelemente **in Lesereihenfolge**: Die rohe Reihenfolge des
@@ -136,7 +154,35 @@ export async function extractPdf(buffer: ArrayBuffer): Promise<PdfPage[]> {
   // zweiter Aufruf mit demselben Buffer der Aufrufenden fehlschlagen.
   const data = new Uint8Array(buffer.slice(0))
   const loadingTask = pdfjsLib.getDocument({ data, verbosity: pdfjsLib.VerbosityLevel.ERRORS })
-  const doc = await loadingTask.promise
+
+  // `onPassword` ist eine Eigenschaft der Ladeaufgabe (kein Feld von
+  // `getDocument`s Parametern). Applai hat in dieser Schicht keine
+  // Möglichkeit, ein Kennwort abzufragen (kein Server, siehe G1; keine
+  // Oberfläche, siehe Aufgabe 13) — `updatePassword` mit einem Error lehnt
+  // die offene Anfrage sofort ab, statt sie unbeantwortet zu lassen.
+  //
+  // Wichtig, geprüft an einer echten (RC4-)verschlüsselten Testfixture: Der
+  // konkrete Wortlaut dieses Errors kommt bei pdf.js 5.4.624 NICHT beim
+  // Aufrufenden an — der Worker fängt eine abgelehnte "PasswordRequest"-
+  // Antwort intern ab und sendet stattdessen immer seine eigene,
+  // ursprüngliche PasswordException erneut (`pdf.worker.mjs`, `setupDoc` →
+  // `onFailure`: `.catch(() => handler.send("DocException", ex))` — `ex`
+  // ist die *ursprüngliche* Ausnahme, nicht das, womit `onPassword`
+  // abgelehnt hat). `onPassword` sorgt hier also nur dafür, dass überhaupt
+  // sofort abgelehnt wird (ein zusätzliches Sicherheitsnetz: pdf.js lehnt
+  // ohne gesetztes `onPassword` bei dieser Version zwar ebenfalls schon von
+  // sich aus ab, siehe `pdf.mjs`, `messageHandler.on("PasswordRequest", …)`
+  // — aber dieses Verhalten ist an eine interne Falllogik gebunden, auf die
+  // sich nicht production-kritisch verlassen werden soll). Die tatsächliche,
+  // auf Deutsch verständliche Meldung entsteht erst unten, beim Abfangen der
+  // abgelehnten `loadingTask.promise`.
+  loadingTask.onPassword = (updatePassword: (password: string | Error) => void) => {
+    updatePassword(new Error(PASSWORD_PROTECTED_MESSAGE))
+  }
+
+  const doc = await loadingTask.promise.catch((error: unknown) => {
+    throw isPasswordException(error) ? new Error(PASSWORD_PROTECTED_MESSAGE) : error
+  })
 
   try {
     const pages: PdfPage[] = []
