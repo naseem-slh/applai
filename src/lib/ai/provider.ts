@@ -14,6 +14,34 @@ import { createOpenAiProvider } from './openai'
 export interface LlmRequest {
   system: string
   user: string
+  /**
+   * **Fix-Runde 1 — auf den aktuell fest verdrahteten Standardmodellen alle
+   * drei Anbieter wirkungslos oder schädlich, deshalb von keiner
+   * Anbieterdatei gesendet:**
+   *
+   * - Gemini (`gemini-3.6-flash`): laut `ai.google.dev/gemini-api/docs/models`
+   *   sind `temperature`/`top_p`/`top_k` auf dieser und neueren Generationen
+   *   veraltet — die API ignoriert sie heute stillschweigend und ist für
+   *   künftige Modellgenerationen als Fehlerfall dokumentiert.
+   * - OpenAI (`gpt-5.6-terra`): ein Schlussfolgerungsmodell der GPT-5.6-Reihe.
+   *   Bei den GPT-5.x-Schlussfolgerungsmodellen wird `temperature` nur bei
+   *   `reasoning.effort: "none"` akzeptiert; mit jeder anderen (auch der
+   *   Standard-)Schlussfolgerungsstufe liefert die Anfrage einen Fehler,
+   *   siehe die OpenAI-Foren-Diskussion "Temperature in GPT-5 models" und
+   *   `developers.openai.com/api/docs/guides/reasoning`. `openai.ts` setzt
+   *   `reasoning.effort` nicht, `temperature` würde also fehlschlagen.
+   * - Anthropic (`claude-sonnet-5`): laut der aktuellen Anthropic-Dokumentation
+   *   liefert ein von der Vorgabe abweichender `temperature`-Wert einen
+   *   HTTP-400-Fehler ("Sampling parameters rejected").
+   *
+   * Das Feld bleibt Teil der Schnittstelle (wörtliche Vorgabe aus der
+   * Aufgabenstellung) und wird an keine der drei Anbieterdateien
+   * weitergereicht — siehe `gemini.ts`, `openai.ts`, `anthropic.ts`. **Für
+   * die Aufgaben 10/11 (Stilregler „förmlich↔locker", „kurz↔ausführlich"):
+   * `temperature` ist dafür auf keinem der drei fest verdrahteten
+   * Standardmodelle ein brauchbarer Hebel — die Regler müssen über den
+   * Systemprompt/Nutzertext gesteuert werden, nicht über diesen Parameter.**
+   */
   temperature?: number
   maxTokens?: number
   /**

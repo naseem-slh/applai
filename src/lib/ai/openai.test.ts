@@ -1,20 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { LlmError } from './errors'
 import { OPENAI_ENDPOINT, OPENAI_MODEL, createOpenAiProvider } from './openai'
+import { mockFetchResponse } from './mockFetchResponse'
 
 const REQUEST = {
   system: 'Du bist ein hilfreicher Assistent.',
   user: 'Formuliere den ersten Satz um.',
-}
-
-function jsonResponse(status: number, body: unknown, headers: Record<string, string> = {}): Response {
-  const headerEntries = new Map(Object.entries(headers).map(([key, value]) => [key.toLowerCase(), value]))
-  return {
-    ok: status >= 200 && status < 300,
-    status,
-    headers: { get: (name: string) => headerEntries.get(name.toLowerCase()) ?? null },
-    json: async () => body,
-  } as unknown as Response
 }
 
 describe('OpenAI-Adapter', () => {
@@ -31,7 +22,7 @@ describe('OpenAI-Adapter', () => {
 
   it('erzeugt die richtige Anfrage-Struktur gegen die Responses-API: URL, Kopfzeilen und Rumpf', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
-      jsonResponse(200, {
+      mockFetchResponse(200, {
         output: [{ type: 'message', role: 'assistant', content: [{ type: 'output_text', text: 'Antworttext' }] }],
       }),
     )
@@ -51,7 +42,6 @@ describe('OpenAI-Adapter', () => {
     const body = JSON.parse(init.body as string) as {
       model: string
       input: { role: string; content: string }[]
-      temperature?: number
       max_output_tokens?: number
       text?: { format: { type: string } }
     }
@@ -60,15 +50,32 @@ describe('OpenAI-Adapter', () => {
       { role: 'system', content: REQUEST.system },
       { role: 'user', content: REQUEST.user },
     ])
-    expect(body.temperature).toBe(0.6)
     expect(body.max_output_tokens).toBe(500)
     expect(body.text).toBeUndefined()
+  })
+
+  // Fix-Runde 1, Important (temperature bei Schlussfolgerungsmodellen):
+  // OPENAI_MODEL akzeptiert `temperature` nur bei `reasoning.effort: "none"`
+  // (das wir nicht setzen) — mit jeder anderen Stufe liefert die Anfrage
+  // sonst einen Fehler. Siehe LlmRequest.temperature in provider.ts.
+  it('sendet niemals temperature, auch wenn LlmRequest.temperature gesetzt ist', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(mockFetchResponse(200, { output: [{ type: 'message', content: [{ type: 'output_text', text: 'x' }] }] }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const provider = createOpenAiProvider()
+    await provider.generate({ ...REQUEST, temperature: 0.9 }, 'schluessel')
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    const body = JSON.parse(init.body as string) as Record<string, unknown>
+    expect('temperature' in body).toBe(false)
   })
 
   it('setzt text.format auf json_object, wenn json: true angefordert wird', async () => {
     const fetchMock = vi
       .fn()
-      .mockResolvedValue(jsonResponse(200, { output: [{ type: 'message', content: [{ type: 'output_text', text: '{}' }] }] }))
+      .mockResolvedValue(mockFetchResponse(200, { output: [{ type: 'message', content: [{ type: 'output_text', text: '{}' }] }] }))
     vi.stubGlobal('fetch', fetchMock)
 
     const provider = createOpenAiProvider()
@@ -82,7 +89,7 @@ describe('OpenAI-Adapter', () => {
   it('HTTP 401 → invalid_key', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue(jsonResponse(401, { error: { type: 'authentication_error', message: 'ungültig' } })),
+      vi.fn().mockResolvedValue(mockFetchResponse(401, { error: { type: 'authentication_error', message: 'ungültig' } })),
     )
 
     const provider = createOpenAiProvider()
@@ -99,7 +106,7 @@ describe('OpenAI-Adapter', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue(
-        jsonResponse(429, { error: { message: 'Rate limit reached for requests' } }, { 'retry-after': '7' }),
+        mockFetchResponse(429, { error: { message: 'Rate limit reached for requests' } }, { 'retry-after': '7' }),
       ),
     )
 
@@ -116,7 +123,7 @@ describe('OpenAI-Adapter', () => {
   it('HTTP 429 mit error.type = insufficient_quota → quota, ohne Wiederholungsversuch', async () => {
     const fetchMock = vi
       .fn()
-      .mockResolvedValue(jsonResponse(429, { error: { type: 'insufficient_quota', message: 'Guthaben aufgebraucht' } }))
+      .mockResolvedValue(mockFetchResponse(429, { error: { type: 'insufficient_quota', message: 'Guthaben aufgebraucht' } }))
     vi.stubGlobal('fetch', fetchMock)
     const sleep = vi.fn().mockResolvedValue(undefined)
 
@@ -147,9 +154,9 @@ describe('OpenAI-Adapter', () => {
   it('bei rate_limit wird genau einmal wiederholt und der zweite (erfolgreiche) Versuch geliefert', async () => {
     const fetchMock = vi
       .fn()
-      .mockResolvedValueOnce(jsonResponse(429, { error: { message: 'rate limited' } }, { 'retry-after': '2' }))
+      .mockResolvedValueOnce(mockFetchResponse(429, { error: { message: 'rate limited' } }, { 'retry-after': '2' }))
       .mockResolvedValueOnce(
-        jsonResponse(200, { output: [{ type: 'message', content: [{ type: 'output_text', text: 'Erfolg' }] }] }),
+        mockFetchResponse(200, { output: [{ type: 'message', content: [{ type: 'output_text', text: 'Erfolg' }] }] }),
       )
     vi.stubGlobal('fetch', fetchMock)
     const sleep = vi.fn().mockResolvedValue(undefined)
@@ -159,14 +166,14 @@ describe('OpenAI-Adapter', () => {
 
     expect(result).toBe('Erfolg')
     expect(fetchMock).toHaveBeenCalledTimes(2)
-    expect(sleep).toHaveBeenCalledWith(2_000)
+    expect(sleep).toHaveBeenCalledWith(2_000, undefined)
   })
 
   it('eine Ablehnung (refusal-Inhaltsblock) → blocked', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue(
-        jsonResponse(200, { output: [{ type: 'message', content: [{ type: 'refusal', refusal: 'kann ich nicht' }] }] }),
+        mockFetchResponse(200, { output: [{ type: 'message', content: [{ type: 'refusal', refusal: 'kann ich nicht' }] }] }),
       ),
     )
 
@@ -182,7 +189,7 @@ describe('OpenAI-Adapter', () => {
   it('eine per Inhaltsfilter abgebrochene Antwort (incomplete_details.reason = content_filter) → blocked', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue(jsonResponse(200, { output: [], incomplete_details: { reason: 'content_filter' } })),
+      vi.fn().mockResolvedValue(mockFetchResponse(200, { output: [], incomplete_details: { reason: 'content_filter' } })),
     )
 
     const provider = createOpenAiProvider()
@@ -195,7 +202,7 @@ describe('OpenAI-Adapter', () => {
   })
 
   it('ein unerwarteter HTTP-Status → unknown', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(500, { error: { message: 'Serverfehler' } })))
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(mockFetchResponse(500, { error: { message: 'Serverfehler' } })))
 
     const provider = createOpenAiProvider()
     const error = await provider.generate(REQUEST, 'schluessel').then(

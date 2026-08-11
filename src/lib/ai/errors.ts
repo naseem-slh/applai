@@ -117,14 +117,45 @@ function clampRetryAfter(ms: number): number {
   return Math.min(Math.max(ms, 0), RETRY_AFTER_CAP_MS)
 }
 
-/** Injizierbare Wartefunktion — siehe `withSingleRateLimitRetry`. */
-export type Sleep = (ms: number) => Promise<void>
+/**
+ * Injizierbare Wartefunktion — siehe `withSingleRateLimitRetry`. Nimmt ein
+ * optionales `AbortSignal` entgegen: **Fix-Runde 1, Important 1** — vorher
+ * kannte nur `fetch` selbst das Signal, ein Abbruch während der Wartezeit
+ * vor dem Wiederholungsversuch blieb bis zu `RETRY_AFTER_CAP_MS`
+ * (60 Sekunden) lang unbemerkt. `realSleep` unten wettet jetzt Timer gegen
+ * Abbruch-Ereignis.
+ */
+export type Sleep = (ms: number, signal?: AbortSignal) => Promise<void>
 
-/** Die echte Wartefunktion für den produktiven Betrieb. */
-export const realSleep: Sleep = (ms) =>
-  new Promise((resolve) => {
-    setTimeout(resolve, ms)
+/**
+ * Die echte Wartefunktion für den produktiven Betrieb. Löst nach `ms`
+ * Millisekunden auf — außer `signal` bricht vorher ab: dann lehnt sie
+ * sofort ab (kein Warten auf den Rest der Zeit), mit dem Abbruchgrund des
+ * Signals (`signal.reason`, oder ersatzweise einer neu erzeugten
+ * `AbortError`-`DOMException`, falls die Umgebung `reason` nicht setzt).
+ * Bereits abgebrochene Signale (`signal.aborted` beim Aufruf schon wahr)
+ * lehnen ohne jeden Timer ab.
+ */
+export const realSleep: Sleep = (ms, signal) =>
+  new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(toAbortError(signal))
+      return
+    }
+    const timer = setTimeout(resolve, ms)
+    signal?.addEventListener(
+      'abort',
+      () => {
+        clearTimeout(timer)
+        reject(toAbortError(signal))
+      },
+      { once: true },
+    )
   })
+
+function toAbortError(signal: AbortSignal): unknown {
+  return signal.reason ?? new DOMException('Abgebrochen', 'AbortError')
+}
 
 /**
  * Genau ein Wiederholungsversuch bei `rate_limit`, mit Wartezeit — sonst
@@ -151,13 +182,22 @@ export const realSleep: Sleep = (ms) =>
  * `rate_limit` fehl, wird **nicht** noch einmal gewartet — `attempt()` wird
  * hier nur noch einmal aufgerufen, dessen Fehlschlag propagiert ungefangen:
  * genau ein Versuch mehr, nie eine Schleife.
+ *
+ * `signal` wird an `sleep` durchgereicht (Fix-Runde 1, Important 1): bricht
+ * der Aufrufer während der Wartezeit ab, lehnt der Aufruf sofort ab, statt
+ * bis zu `RETRY_AFTER_CAP_MS` lang zu hängen — wichtig für Aufgabe 13s
+ * Abbrechen-Knopf.
  */
-export async function withSingleRateLimitRetry<T>(attempt: () => Promise<T>, sleep: Sleep = realSleep): Promise<T> {
+export async function withSingleRateLimitRetry<T>(
+  attempt: () => Promise<T>,
+  sleep: Sleep = realSleep,
+  signal?: AbortSignal,
+): Promise<T> {
   try {
     return await attempt()
   } catch (error) {
     if (error instanceof LlmError && error.kind === 'rate_limit') {
-      await sleep(error.retryAfterMs ?? DEFAULT_RATE_LIMIT_RETRY_MS)
+      await sleep(error.retryAfterMs ?? DEFAULT_RATE_LIMIT_RETRY_MS, signal)
       return await attempt()
     }
     throw error
@@ -174,4 +214,34 @@ export async function withSingleRateLimitRetry<T>(attempt: () => Promise<T>, sle
 export function isAbortError(error: unknown): boolean {
   if (typeof error !== 'object' || error === null) return false
   return (error as { name?: unknown }).name === 'AbortError'
+}
+
+/**
+ * Führt `fetch` aus und übersetzt einen echten Netzfehler in
+ * `LlmError('network', ...)`. Ein Abbruch über `AbortSignal` wird
+ * unverändert durchgereicht (siehe `isAbortError`) statt verpackt — kein
+ * Wiederholungsversuch, keine übersetzte Fehlermeldung, der Aufrufer
+ * erkennt ihn am Standard-JS-Muster `error.name === 'AbortError'`.
+ *
+ * Prüft bewusst **nicht** `response.ok` — das bleibt Sache der aufrufenden
+ * Anbieterdatei, weil die HTTP-Fehlerklassifizierung (401/429/…) je
+ * Anbieter unterschiedliche Fehlerkörper auswertet (siehe `gemini.ts`,
+ * `openai.ts`, `anthropic.ts`).
+ *
+ * Fix-Runde 1, Important 2: vorher war dieser try/catch-Block in allen drei
+ * Anbieterdateien Zeile für Zeile identisch, nur mit anderem `provider`/
+ * `label` — jetzt eine einzige Stelle.
+ */
+export async function fetchOrNetworkError(
+  url: string,
+  init: RequestInit,
+  provider: ProviderId,
+  label: string,
+): Promise<Response> {
+  try {
+    return await fetch(url, init)
+  } catch (error) {
+    if (isAbortError(error)) throw error
+    throw new LlmError('network', provider, `${label}: Netzwerkfehler beim Aufruf der API.`)
+  }
 }

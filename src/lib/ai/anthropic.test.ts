@@ -6,20 +6,11 @@ import {
   ANTHROPIC_VERSION,
   createAnthropicProvider,
 } from './anthropic'
+import { mockFetchResponse } from './mockFetchResponse'
 
 const REQUEST = {
   system: 'Du bist ein hilfreicher Assistent.',
   user: 'Formuliere den ersten Satz um.',
-}
-
-function jsonResponse(status: number, body: unknown, headers: Record<string, string> = {}): Response {
-  const headerEntries = new Map(Object.entries(headers).map(([key, value]) => [key.toLowerCase(), value]))
-  return {
-    ok: status >= 200 && status < 300,
-    status,
-    headers: { get: (name: string) => headerEntries.get(name.toLowerCase()) ?? null },
-    json: async () => body,
-  } as unknown as Response
 }
 
 describe('Anthropic-Adapter', () => {
@@ -37,7 +28,7 @@ describe('Anthropic-Adapter', () => {
   it('erzeugt die richtige Anfrage-Struktur: URL, Kopfzeilen (inkl. Browserzugriffs-Header) und Rumpf', async () => {
     const fetchMock = vi
       .fn()
-      .mockResolvedValue(jsonResponse(200, { content: [{ type: 'text', text: 'Antworttext' }], stop_reason: 'end_turn' }))
+      .mockResolvedValue(mockFetchResponse(200, { content: [{ type: 'text', text: 'Antworttext' }], stop_reason: 'end_turn' }))
     vi.stubGlobal('fetch', fetchMock)
 
     const provider = createAnthropicProvider()
@@ -61,20 +52,36 @@ describe('Anthropic-Adapter', () => {
       model: string
       max_tokens: number
       system: string
-      temperature?: number
       messages: { role: string; content: string }[]
     }
     expect(body.model).toBe(ANTHROPIC_MODEL)
     expect(body.max_tokens).toBe(900)
     expect(body.system).toBe(REQUEST.system)
-    expect(body.temperature).toBe(0.5)
     expect(body.messages).toEqual([{ role: 'user', content: REQUEST.user }])
+  })
+
+  // Fix-Runde 1, Important (temperature): ein von der Vorgabe abweichender
+  // Wert liefert auf ANTHROPIC_MODEL laut aktueller Anthropic-Dokumentation
+  // einen HTTP-400-Fehler ("Sampling parameters rejected") — siehe
+  // LlmRequest.temperature in provider.ts.
+  it('sendet niemals temperature, auch wenn LlmRequest.temperature gesetzt ist', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(mockFetchResponse(200, { content: [{ type: 'text', text: 'x' }], stop_reason: 'end_turn' }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const provider = createAnthropicProvider()
+    await provider.generate({ ...REQUEST, temperature: 0.9 }, 'schluessel')
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    const body = JSON.parse(init.body as string) as Record<string, unknown>
+    expect('temperature' in body).toBe(false)
   })
 
   it('setzt einen sinnvollen Standardwert für max_tokens, wenn maxTokens nicht angegeben ist', async () => {
     const fetchMock = vi
       .fn()
-      .mockResolvedValue(jsonResponse(200, { content: [{ type: 'text', text: 'x' }], stop_reason: 'end_turn' }))
+      .mockResolvedValue(mockFetchResponse(200, { content: [{ type: 'text', text: 'x' }], stop_reason: 'end_turn' }))
     vi.stubGlobal('fetch', fetchMock)
 
     const provider = createAnthropicProvider()
@@ -88,7 +95,7 @@ describe('Anthropic-Adapter', () => {
   it('hängt bei json: true eine Anweisung an das Systemprompt an, da Anthropic ohne Schema keinen schemafreien JSON-Modus kennt', async () => {
     const fetchMock = vi
       .fn()
-      .mockResolvedValue(jsonResponse(200, { content: [{ type: 'text', text: '{}' }], stop_reason: 'end_turn' }))
+      .mockResolvedValue(mockFetchResponse(200, { content: [{ type: 'text', text: '{}' }], stop_reason: 'end_turn' }))
     vi.stubGlobal('fetch', fetchMock)
 
     const provider = createAnthropicProvider()
@@ -104,7 +111,7 @@ describe('Anthropic-Adapter', () => {
   it('HTTP 401 → invalid_key', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue(jsonResponse(401, { error: { type: 'authentication_error', message: 'ungültig' } })),
+      vi.fn().mockResolvedValue(mockFetchResponse(401, { error: { type: 'authentication_error', message: 'ungültig' } })),
     )
 
     const provider = createAnthropicProvider()
@@ -122,7 +129,7 @@ describe('Anthropic-Adapter', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue(
-        jsonResponse(429, { error: { type: 'rate_limit_error', message: 'zu viele Anfragen' } }, { 'retry-after': retryAt }),
+        mockFetchResponse(429, { error: { type: 'rate_limit_error', message: 'zu viele Anfragen' } }, { 'retry-after': retryAt }),
       ),
     )
 
@@ -156,10 +163,10 @@ describe('Anthropic-Adapter', () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(
-        jsonResponse(429, { error: { type: 'rate_limit_error' } }, { 'retry-after': '4' }),
+        mockFetchResponse(429, { error: { type: 'rate_limit_error' } }, { 'retry-after': '4' }),
       )
       .mockResolvedValueOnce(
-        jsonResponse(200, { content: [{ type: 'text', text: 'Erfolg' }], stop_reason: 'end_turn' }),
+        mockFetchResponse(200, { content: [{ type: 'text', text: 'Erfolg' }], stop_reason: 'end_turn' }),
       )
     vi.stubGlobal('fetch', fetchMock)
     const sleep = vi.fn().mockResolvedValue(undefined)
@@ -169,13 +176,13 @@ describe('Anthropic-Adapter', () => {
 
     expect(result).toBe('Erfolg')
     expect(fetchMock).toHaveBeenCalledTimes(2)
-    expect(sleep).toHaveBeenCalledWith(4_000)
+    expect(sleep).toHaveBeenCalledWith(4_000, undefined)
   })
 
   it('stop_reason "refusal" → blocked', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue(jsonResponse(200, { content: [], stop_reason: 'refusal' })),
+      vi.fn().mockResolvedValue(mockFetchResponse(200, { content: [], stop_reason: 'refusal' })),
     )
 
     const provider = createAnthropicProvider()
@@ -188,7 +195,7 @@ describe('Anthropic-Adapter', () => {
   })
 
   it('ein unerwarteter HTTP-Status → unknown', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(529, { error: { message: 'überlastet' } })))
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(mockFetchResponse(529, { error: { message: 'überlastet' } })))
 
     const provider = createAnthropicProvider()
     const error = await provider.generate(REQUEST, 'schluessel').then(

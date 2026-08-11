@@ -1,7 +1,7 @@
 import {
   LlmError,
   type Sleep,
-  isAbortError,
+  fetchOrNetworkError,
   parseRetryAfterMs,
   realSleep,
   withSingleRateLimitRetry,
@@ -35,7 +35,7 @@ const DEFAULT_MAX_TOKENS = 4096
  * Schema (das Schema kommt erst in den Aufgaben 9–12 dazu, dort validiert
  * per Zod). Ohne Schema bietet Anthropic keinen schemafreien JSON-Modus wie
  * Gemini (`responseMimeType`) oder OpenAI (`text.format: {type:
- * "json_object"}"), und ein Antwort-Prefill (der frühere Behelf) liefert auf
+ * "json_object"}`), und ein Antwort-Prefill (der frühere Behelf) liefert auf
  * Sonnet 5 einen 400-Fehler. Deshalb bleibt hier nur die Anweisung im
  * Systemprompt — dokumentierte Einschränkung, kein Versehen.
  */
@@ -63,13 +63,16 @@ async function performAnthropicRequest(
     model: ANTHROPIC_MODEL,
     max_tokens: req.maxTokens ?? DEFAULT_MAX_TOKENS,
     system,
-    temperature: req.temperature,
+    // Kein `temperature` (siehe `LlmRequest.temperature` in `provider.ts`,
+    // Fix-Runde 1): ein von der Vorgabe abweichender Wert liefert auf
+    // ANTHROPIC_MODEL laut aktueller Anthropic-Dokumentation einen
+    // HTTP-400-Fehler ("Sampling parameters rejected").
     messages: [{ role: 'user', content: req.user }],
   }
 
-  let response: Response
-  try {
-    response = await fetch(url, {
+  const response = await fetchOrNetworkError(
+    url,
+    {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
@@ -84,11 +87,10 @@ async function performAnthropicRequest(
       },
       body: JSON.stringify(body),
       signal,
-    })
-  } catch (error) {
-    if (isAbortError(error)) throw error
-    throw new LlmError('network', 'anthropic', 'Anthropic: Netzwerkfehler beim Aufruf der API.')
-  }
+    },
+    'anthropic',
+    'Anthropic',
+  )
 
   if (!response.ok) {
     throw await buildAnthropicError(response)
@@ -124,6 +126,6 @@ export function createAnthropicProvider(sleep: Sleep = realSleep): LlmProvider {
     label: 'Anthropic',
     endpoint: ANTHROPIC_ENDPOINT,
     generate: (req, apiKey, signal) =>
-      withSingleRateLimitRetry(() => performAnthropicRequest(req, apiKey, signal), sleep),
+      withSingleRateLimitRetry(() => performAnthropicRequest(req, apiKey, signal), sleep, signal),
   }
 }

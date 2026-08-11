@@ -1,20 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { LlmError } from './errors'
+import { LlmError, realSleep } from './errors'
 import { GEMINI_ENDPOINT, GEMINI_MODEL, createGeminiProvider } from './gemini'
+import { mockFetchResponse } from './mockFetchResponse'
 
 const REQUEST: Parameters<ReturnType<typeof createGeminiProvider>['generate']>[0] = {
   system: 'Du bist ein hilfreicher Assistent.',
   user: 'Formuliere den ersten Satz um.',
-}
-
-function jsonResponse(status: number, body: unknown, headers: Record<string, string> = {}): Response {
-  const headerEntries = new Map(Object.entries(headers).map(([key, value]) => [key.toLowerCase(), value]))
-  return {
-    ok: status >= 200 && status < 300,
-    status,
-    headers: { get: (name: string) => headerEntries.get(name.toLowerCase()) ?? null },
-    json: async () => body,
-  } as unknown as Response
 }
 
 describe('Gemini-Adapter', () => {
@@ -31,7 +22,7 @@ describe('Gemini-Adapter', () => {
 
   it('erzeugt die richtige Anfrage-Struktur: URL, Kopfzeilen und Rumpf', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
-      jsonResponse(200, {
+      mockFetchResponse(200, {
         candidates: [{ content: { parts: [{ text: 'Antworttext' }] }, finishReason: 'STOP' }],
       }),
     )
@@ -57,15 +48,33 @@ describe('Gemini-Adapter', () => {
     }
     expect(body.contents).toEqual([{ role: 'user', parts: [{ text: REQUEST.user }] }])
     expect(body.systemInstruction).toEqual({ parts: [{ text: REQUEST.system }] })
-    expect(body.generationConfig.temperature).toBe(0.4)
     expect(body.generationConfig.maxOutputTokens).toBe(800)
     expect(body.generationConfig.responseMimeType).toBeUndefined()
+  })
+
+  // Fix-Runde 1, Important (Gemini/temperature): GEMINI_MODEL ignoriert
+  // temperature/top_p/top_k bereits heute und ist für künftige
+  // Modellgenerationen als Fehlerfall dokumentiert (siehe
+  // LlmRequest.temperature in provider.ts) — das Feld darf deshalb nie im
+  // Anfragekörper landen, auch wenn der Aufrufer es setzt.
+  it('sendet niemals generationConfig.temperature, auch wenn LlmRequest.temperature gesetzt ist', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(mockFetchResponse(200, { candidates: [{ content: { parts: [{ text: 'x' }] } }] }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const provider = createGeminiProvider()
+    await provider.generate({ ...REQUEST, temperature: 0.9 }, 'schluessel')
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    const body = JSON.parse(init.body as string) as { generationConfig: Record<string, unknown> }
+    expect('temperature' in body.generationConfig).toBe(false)
   })
 
   it('setzt responseMimeType auf application/json, wenn json: true angefordert wird', async () => {
     const fetchMock = vi
       .fn()
-      .mockResolvedValue(jsonResponse(200, { candidates: [{ content: { parts: [{ text: '{}' }] } }] }))
+      .mockResolvedValue(mockFetchResponse(200, { candidates: [{ content: { parts: [{ text: '{}' }] } }] }))
     vi.stubGlobal('fetch', fetchMock)
 
     const provider = createGeminiProvider()
@@ -80,7 +89,7 @@ describe('Gemini-Adapter', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue(
-        jsonResponse(401, { error: { code: 'authentication', message: 'API key not valid.' } }),
+        mockFetchResponse(401, { error: { code: 'authentication', message: 'API key not valid.' } }),
       ),
     )
 
@@ -99,7 +108,7 @@ describe('Gemini-Adapter', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue(
-        jsonResponse(
+        mockFetchResponse(
           429,
           { error: { code: 'rate_limit_exceeded', message: 'zu viele Anfragen' } },
           { 'retry-after': '12' },
@@ -121,7 +130,7 @@ describe('Gemini-Adapter', () => {
 
   it('HTTP 429 (quota_exceeded) → quota, ohne Wiederholungsversuch (fetch nur einmal aufgerufen)', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
-      jsonResponse(429, { error: { code: 'quota_exceeded', message: 'Tageskontingent aufgebraucht' } }),
+      mockFetchResponse(429, { error: { code: 'quota_exceeded', message: 'Tageskontingent aufgebraucht' } }),
     )
     vi.stubGlobal('fetch', fetchMock)
     const sleep = vi.fn().mockResolvedValue(undefined)
@@ -156,10 +165,10 @@ describe('Gemini-Adapter', () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(
-        jsonResponse(429, { error: { code: 'rate_limit_exceeded' } }, { 'retry-after': '3' }),
+        mockFetchResponse(429, { error: { code: 'rate_limit_exceeded' } }, { 'retry-after': '3' }),
       )
       .mockResolvedValueOnce(
-        jsonResponse(200, { candidates: [{ content: { parts: [{ text: 'Erfolg beim zweiten Versuch' }] } }] }),
+        mockFetchResponse(200, { candidates: [{ content: { parts: [{ text: 'Erfolg beim zweiten Versuch' }] } }] }),
       )
     vi.stubGlobal('fetch', fetchMock)
     const sleep = vi.fn().mockResolvedValue(undefined)
@@ -170,13 +179,45 @@ describe('Gemini-Adapter', () => {
     expect(result).toBe('Erfolg beim zweiten Versuch')
     expect(fetchMock).toHaveBeenCalledTimes(2)
     expect(sleep).toHaveBeenCalledTimes(1)
-    expect(sleep).toHaveBeenCalledWith(3_000)
+    // Kein Signal an generate() übergeben -> withSingleRateLimitRetry reicht `undefined` durch.
+    expect(sleep).toHaveBeenCalledWith(3_000, undefined)
+  })
+
+  // Fix-Runde 1, Important 1: der bisherige Abbruch-Test in provider.test.ts
+  // bricht schon vor dem ersten fetch ab und berührt den Wartepfad nie. Hier
+  // wird während der Wartezeit auf den Wiederholungsversuch abgebrochen —
+  // mit der echten `realSleep` (nicht dem Standard-Mock), damit der
+  // tatsächliche Produktionspfad bewiesen ist, unter Vitests Fake-Timern,
+  // damit dabei nie wirklich gewartet wird.
+  it('ein Abbruch während der Wartezeit auf den Wiederholungsversuch lehnt sofort ab, ohne den zweiten Versuch zu starten', async () => {
+    vi.useFakeTimers()
+    try {
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValueOnce(
+          mockFetchResponse(429, { error: { code: 'rate_limit_exceeded' } }, { 'retry-after': '30' }),
+        )
+      vi.stubGlobal('fetch', fetchMock)
+
+      const provider = createGeminiProvider(realSleep)
+      const controller = new AbortController()
+      const resultPromise = provider.generate(REQUEST, 'schluessel', controller.signal)
+      const rejection = expect(resultPromise).rejects.toMatchObject({ name: 'AbortError' })
+
+      await vi.advanceTimersByTimeAsync(0)
+      controller.abort()
+
+      await rejection
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('blockiert die Anfrage selbst (promptFeedback.blockReason) → blocked', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue(jsonResponse(200, { promptFeedback: { blockReason: 'SAFETY' }, candidates: [] })),
+      vi.fn().mockResolvedValue(mockFetchResponse(200, { promptFeedback: { blockReason: 'SAFETY' }, candidates: [] })),
     )
 
     const provider = createGeminiProvider()
@@ -192,7 +233,7 @@ describe('Gemini-Adapter', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue(
-        jsonResponse(200, { candidates: [{ content: { parts: [{ text: '' }] }, finishReason: 'SAFETY' }] }),
+        mockFetchResponse(200, { candidates: [{ content: { parts: [{ text: '' }] }, finishReason: 'SAFETY' }] }),
       ),
     )
 
@@ -206,7 +247,7 @@ describe('Gemini-Adapter', () => {
   })
 
   it('ein unerwarteter HTTP-Status → unknown', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(500, { error: { message: 'Serverfehler' } })))
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(mockFetchResponse(500, { error: { message: 'Serverfehler' } })))
 
     const provider = createGeminiProvider()
     const error = await provider.generate(REQUEST, 'schluessel').then(

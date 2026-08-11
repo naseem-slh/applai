@@ -1,10 +1,12 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   DEFAULT_RATE_LIMIT_RETRY_MS,
   LlmError,
   RETRY_AFTER_CAP_MS,
+  fetchOrNetworkError,
   isAbortError,
   parseRetryAfterMs,
+  realSleep,
   withSingleRateLimitRetry,
 } from './errors'
 
@@ -83,7 +85,8 @@ describe('withSingleRateLimitRetry', () => {
     expect(result).toBe('Ergebnis nach Wiederholung')
     expect(attempt).toHaveBeenCalledTimes(2)
     expect(sleep).toHaveBeenCalledTimes(1)
-    expect(sleep).toHaveBeenCalledWith(5_000)
+    // Kein Signal übergeben -> withSingleRateLimitRetry reicht `undefined` an sleep weiter.
+    expect(sleep).toHaveBeenCalledWith(5_000, undefined)
   })
 
   it('nutzt DEFAULT_RATE_LIMIT_RETRY_MS, wenn der Fehler keine retryAfterMs mitbringt', async () => {
@@ -95,7 +98,20 @@ describe('withSingleRateLimitRetry', () => {
 
     await withSingleRateLimitRetry(attempt, sleep)
 
-    expect(sleep).toHaveBeenCalledWith(DEFAULT_RATE_LIMIT_RETRY_MS)
+    expect(sleep).toHaveBeenCalledWith(DEFAULT_RATE_LIMIT_RETRY_MS, undefined)
+  })
+
+  it('reicht ein übergebenes AbortSignal unverändert an die sleep-Funktion weiter', async () => {
+    const attempt = vi
+      .fn()
+      .mockRejectedValueOnce(new LlmError('rate_limit', 'gemini', 'zu viele Anfragen', 5_000))
+      .mockResolvedValueOnce('ok')
+    const sleep = vi.fn().mockResolvedValue(undefined)
+    const controller = new AbortController()
+
+    await withSingleRateLimitRetry(attempt, sleep, controller.signal)
+
+    expect(sleep).toHaveBeenCalledWith(5_000, controller.signal)
   })
 
   it('wiederholt NICHT bei invalid_key, quota, blocked, network oder unknown', async () => {
@@ -151,10 +167,81 @@ describe('withSingleRateLimitRetry', () => {
     // beteiligt, nur ein Mikrotask-Tick).
     await Promise.resolve()
     await Promise.resolve()
-    expect(sleep).toHaveBeenCalledWith(60_000)
+    expect(sleep).toHaveBeenCalledWith(60_000, undefined)
     sleepResolve?.()
 
     await expect(resultPromise).resolves.toBe('ok')
+  })
+
+  // Fix-Runde 1, Important 1: ein Abbruch während der Wartezeit vor dem
+  // Wiederholungsversuch muss sofort ablehnen, ohne die volle Wartezeit
+  // (hier 60s, RETRY_AFTER_CAP_MS) verstreichen zu lassen. Nutzt bewusst die
+  // echte `realSleep`, nicht einen Mock, um den tatsächlichen Produktionspfad
+  // zu beweisen — mit Vitests Fake-Timern, damit dabei nie wirklich gewartet
+  // wird.
+  it('bricht während der echten Wartezeit (realSleep) sofort ab, ohne die volle Wartezeit verstreichen zu lassen', async () => {
+    vi.useFakeTimers()
+    try {
+      const attempt = vi.fn().mockRejectedValueOnce(new LlmError('rate_limit', 'gemini', 'x', 60_000))
+      const controller = new AbortController()
+
+      const resultPromise = withSingleRateLimitRetry(attempt, realSleep, controller.signal)
+      const rejection = expect(resultPromise).rejects.toMatchObject({ name: 'AbortError' })
+
+      // 0ms fortschalten: löst keinen Timer aus, spült aber die Mikrotasks
+      // zwischen dem abgelehnten ersten Versuch und dem Aufruf von
+      // realSleep(60_000, signal) — danach ist der Abbruch-Listener sicher
+      // registriert.
+      await vi.advanceTimersByTimeAsync(0)
+      controller.abort()
+
+      await rejection
+      // Kein zweiter Versuch: der Abbruch hat die Wartezeit beendet, bevor
+      // attempt() erneut aufgerufen wurde.
+      expect(attempt).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+})
+
+describe('realSleep', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('löst nach ms auf, wenn kein Signal übergeben wird', async () => {
+    vi.useFakeTimers()
+    const promise = realSleep(1_000)
+    let resolved = false
+    void promise.then(() => {
+      resolved = true
+    })
+
+    await vi.advanceTimersByTimeAsync(999)
+    expect(resolved).toBe(false)
+    await vi.advanceTimersByTimeAsync(1)
+    expect(resolved).toBe(true)
+  })
+
+  it('lehnt sofort ab, wenn das Signal bereits vor dem Aufruf abgebrochen wurde — ganz ohne Timer', async () => {
+    const controller = new AbortController()
+    controller.abort()
+
+    await expect(realSleep(60_000, controller.signal)).rejects.toMatchObject({ name: 'AbortError' })
+  })
+
+  it('lehnt sofort ab, sobald das Signal während der Wartezeit abbricht, ohne die volle Zeit verstreichen zu lassen', async () => {
+    vi.useFakeTimers()
+    const controller = new AbortController()
+
+    const promise = realSleep(60_000, controller.signal)
+    const rejection = expect(promise).rejects.toMatchObject({ name: 'AbortError' })
+
+    await vi.advanceTimersByTimeAsync(0)
+    controller.abort()
+
+    await rejection
   })
 })
 
@@ -174,5 +261,40 @@ describe('isAbortError', () => {
     expect(isAbortError('ein String')).toBe(false)
     expect(isAbortError(null)).toBe(false)
     expect(isAbortError(undefined)).toBe(false)
+  })
+})
+
+// Fix-Runde 1, Important 2: gemeinsamer fetch-Wrapper statt dreifach
+// dupliziertem try/catch in gemini.ts/openai.ts/anthropic.ts.
+describe('fetchOrNetworkError', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('liefert die Response unverändert, wenn fetch erfolgreich war — unabhängig von response.ok', async () => {
+    const response = { ok: false, status: 500 } as unknown as Response
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response))
+
+    await expect(fetchOrNetworkError('https://example.test', {}, 'gemini', 'Gemini')).resolves.toBe(response)
+  })
+
+  it('verpackt einen echten Netzfehler in LlmError("network", ...)', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')))
+
+    const error = await fetchOrNetworkError('https://example.test', {}, 'openai', 'OpenAI').then(
+      () => null,
+      (reason: unknown) => reason as LlmError,
+    )
+
+    expect(error).toBeInstanceOf(LlmError)
+    expect(error?.kind).toBe('network')
+    expect(error?.provider).toBe('openai')
+  })
+
+  it('reicht einen Abbruch (AbortError) unverändert durch, ohne ihn in LlmError zu verpacken', async () => {
+    const abortError = new DOMException('Abgebrochen', 'AbortError')
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(abortError))
+
+    await expect(fetchOrNetworkError('https://example.test', {}, 'anthropic', 'Anthropic')).rejects.toBe(abortError)
   })
 })

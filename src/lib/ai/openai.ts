@@ -1,7 +1,7 @@
 import {
   LlmError,
   type Sleep,
-  isAbortError,
+  fetchOrNetworkError,
   parseRetryAfterMs,
   realSleep,
   withSingleRateLimitRetry,
@@ -51,16 +51,20 @@ async function performOpenAiRequest(req: LlmRequest, apiKey: string, signal: Abo
       { role: 'system', content: req.system },
       { role: 'user', content: req.user },
     ],
-    temperature: req.temperature,
+    // Kein `temperature` (siehe `LlmRequest.temperature` in `provider.ts`,
+    // Fix-Runde 1): OPENAI_MODEL ist ein Schlussfolgerungsmodell der
+    // GPT-5.6-Reihe, das `temperature` nur bei `reasoning.effort: "none"`
+    // akzeptiert — mit jeder anderen (auch der Standard-)
+    // Schlussfolgerungsstufe liefert die Anfrage sonst einen Fehler.
     max_output_tokens: req.maxTokens,
     // Nativer, schemafreier JSON-Modus (kein Prompt-Zureden nötig) — siehe
     // OpenAI-Dokumentation, "Structured model outputs" → `text.format`.
     text: req.json ? { format: { type: 'json_object' } } : undefined,
   }
 
-  let response: Response
-  try {
-    response = await fetch(url, {
+  const response = await fetchOrNetworkError(
+    url,
+    {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
@@ -68,11 +72,10 @@ async function performOpenAiRequest(req: LlmRequest, apiKey: string, signal: Abo
       },
       body: JSON.stringify(body),
       signal,
-    })
-  } catch (error) {
-    if (isAbortError(error)) throw error
-    throw new LlmError('network', 'openai', 'OpenAI: Netzwerkfehler beim Aufruf der API.')
-  }
+    },
+    'openai',
+    'OpenAI',
+  )
 
   if (!response.ok) {
     throw await buildOpenAiError(response)
@@ -134,6 +137,7 @@ export function createOpenAiProvider(sleep: Sleep = realSleep): LlmProvider {
     id: 'openai',
     label: 'OpenAI',
     endpoint: OPENAI_ENDPOINT,
-    generate: (req, apiKey, signal) => withSingleRateLimitRetry(() => performOpenAiRequest(req, apiKey, signal), sleep),
+    generate: (req, apiKey, signal) =>
+      withSingleRateLimitRetry(() => performOpenAiRequest(req, apiKey, signal), sleep, signal),
   }
 }

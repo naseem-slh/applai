@@ -1,7 +1,7 @@
 import {
   LlmError,
   type Sleep,
-  isAbortError,
+  fetchOrNetworkError,
   parseRetryAfterMs,
   realSleep,
   withSingleRateLimitRetry,
@@ -51,7 +51,9 @@ async function performGeminiRequest(req: LlmRequest, apiKey: string, signal: Abo
     contents: [{ role: 'user', parts: [{ text: req.user }] }],
     systemInstruction: { parts: [{ text: req.system }] },
     generationConfig: {
-      temperature: req.temperature,
+      // Kein `temperature` (siehe `LlmRequest.temperature` in `provider.ts`,
+      // Fix-Runde 1): auf GEMINI_MODEL veraltet, wird heute ignoriert und ist
+      // für künftige Modellgenerationen als Fehlerfall dokumentiert.
       maxOutputTokens: req.maxTokens,
       // Nativer, schemafreier JSON-Modus (kein Prompt-Zureden nötig) — siehe
       // Gemini-API-Referenz, `generationConfig.responseMimeType`.
@@ -59,9 +61,9 @@ async function performGeminiRequest(req: LlmRequest, apiKey: string, signal: Abo
     },
   }
 
-  let response: Response
-  try {
-    response = await fetch(url, {
+  const response = await fetchOrNetworkError(
+    url,
+    {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
@@ -72,11 +74,10 @@ async function performGeminiRequest(req: LlmRequest, apiKey: string, signal: Abo
       },
       body: JSON.stringify(body),
       signal,
-    })
-  } catch (error) {
-    if (isAbortError(error)) throw error
-    throw new LlmError('network', 'gemini', 'Gemini: Netzwerkfehler beim Aufruf der API.')
-  }
+    },
+    'gemini',
+    'Gemini',
+  )
 
   if (!response.ok) {
     throw await buildGeminiError(response)
@@ -140,6 +141,7 @@ export function createGeminiProvider(sleep: Sleep = realSleep): LlmProvider {
     id: 'gemini',
     label: 'Google Gemini',
     endpoint: GEMINI_ENDPOINT,
-    generate: (req, apiKey, signal) => withSingleRateLimitRetry(() => performGeminiRequest(req, apiKey, signal), sleep),
+    generate: (req, apiKey, signal) =>
+      withSingleRateLimitRetry(() => performGeminiRequest(req, apiKey, signal), sleep, signal),
   }
 }

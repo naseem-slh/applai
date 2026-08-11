@@ -3,6 +3,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { PROVIDER_IDS } from '../storage/keyVault'
+import { mockFetchResponse } from './mockFetchResponse'
 import { PROVIDERS } from './provider'
 
 // Repository-Wurzel: von src/lib/ai/ drei Ebenen hoch.
@@ -81,12 +82,7 @@ describe('kein API-Schlüssel leckt aus einem Fehler (G4) — für jeden Anbiete
     for (const id of PROVIDER_IDS) {
       vi.stubGlobal(
         'fetch',
-        vi.fn().mockResolvedValue({
-          ok: false,
-          status: 401,
-          headers: { get: () => null },
-          json: async () => ({ error: { message: 'ungültig', code: 'authentication' } }),
-        }),
+        vi.fn().mockResolvedValue(mockFetchResponse(401, { error: { message: 'ungültig', code: 'authentication' } })),
       )
 
       const error = await PROVIDERS[id]
