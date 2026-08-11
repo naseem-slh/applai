@@ -14,7 +14,7 @@
     "typecheck": "tsc -b --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "fixtures:build": "node tests/fixtures/build-fixtures.mjs",
+    "fixtures:build": "node tests/fixtures/build-fixtures.mjs && node tests/fixtures/build-pdf-fixtures.mjs",
     "e2e": "playwright test",
     "prepare": "husky"
   },
@@ -23,6 +23,7 @@
     "clsx": "^2.1.1",
     "fflate": "^0.8.3",
     "i18next": "^26.3.6",
+    "pdfjs-dist": "^5.4.624",
     "radix-ui": "^1.6.7",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",

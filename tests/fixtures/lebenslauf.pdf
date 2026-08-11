@@ -1,0 +1,33 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 5 0 R /F2 6 0 R >> >> /Contents 4 0 R >>
+endobj
+4 0 obj
+<< /Length 600 >>
+stream
+BT /F1 22 Tf 72 780 Td (Anna Beispiel) Tj ET
+BT /F1 13 Tf 72 750 Td (Berufserfahrung) Tj ET
+BT /F2 11 Tf 72 730 Td (Mehrjaehrige Erfahrung in der Webentwicklung mit Fokus auf) Tj ET
+BT /F2 11 Tf 72 716 Td (moderne Frontend-Frameworks, agile Teams sowie kontinuierliche) Tj ET
+BT /F2 11 Tf 72 702 Td (Qualitaetssicherung in produktiven Umgebungen.) Tj ET
+BT /F2 11 Tf 72 676 Td (Zustaendig fuer Konzeption und Umsetzung neuer Module.) Tj ET
+BT /F1 13 Tf 72 646 Td (Kernkompetenzen) Tj ET
+BT /F2 11 Tf 72 626 Td (• Bullet mit Punktzeichen) Tj ET
+BT /F2 11 Tf 72 610 Td (- Bullet mit Bindestrich) Tj ET
+endstream
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>
+endobj
+6 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+trailer
+<< /Size 7 /Root 1 0 R >>
+%%EOF
