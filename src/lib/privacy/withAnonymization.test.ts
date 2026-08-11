@@ -130,6 +130,29 @@ describe('withAnonymization', () => {
     expect(ohneHinweis?.selection).toContain('Max Mustermann')
   })
 
+  it('ermittelt den Namenshinweis pro Feld, wenn userName null ist', async () => {
+    // Fix-Runde 1: Auf dem VERBUNDENEN Text greift die Kopfbereich-Erkennung
+    // aus Aufgabe 8 hier nicht mehr — ihre acht Zeilen sind von den ersten
+    // Feldern und den Feldtrennern aufgebraucht, bevor das Feld mit dem
+    // Lebenslauf-Kopf an die Reihe kommt.
+    const mehrzeilig = ['Zeile eins', 'Zeile zwei', 'Zeile drei', 'Zeile vier', 'Zeile fünf', 'Zeile sechs'].join('\n')
+    const lebenslauf = 'Lebenslauf\nName: Max Mustermann\nBerufserfahrung: Teamleitung Disposition'
+    let gesehen: { erstes: string; zweites: string } | undefined
+
+    await withAnonymization(
+      { erstes: mehrzeilig, zweites: lebenslauf },
+      { enabled: true, userName: null },
+      (f) => {
+        gesehen = f
+        return Promise.resolve(null)
+      },
+      (r) => r,
+    )
+
+    expect(gesehen?.zweites).toContain('[NAME]')
+    expect(gesehen?.zweites).not.toContain('Max Mustermann')
+  })
+
   it('reicht userEmail als Hinweis durch', async () => {
     let gesehen: { facts: string } | undefined
 

@@ -148,12 +148,36 @@ function normalizeWhitespace(text: string): string {
 }
 
 /**
- * Wie viele normalisierte Zeichen vom Rand des Kontexts wörtlich in einer
- * Antwort vorkommen müssen, damit sie als "Kontext verschluckt" gilt. 40
- * Zeichen sind lang genug, dass eine zufällige Übereinstimmung praktisch
- * ausgeschlossen ist (eine gängige Wendung wie "in Ihrem Unternehmen
- * einbringen" ist kürzer), und kurz genug, dass ein Modell, das den letzten
- * Satz des Kontexts mitliefert, sicher erwischt wird.
+ * Vergleichsform für die Echo-Prüfung: klein geschrieben, Satzzeichen und
+ * Symbole zu Leerraum, Leerraum zusammengezogen.
+ *
+ * **Fix-Runde 1 (Review-Fund):** Vorher wurde nur Leerraum normalisiert, die
+ * Prüfung verlangte also die exakten 40 Zeichen inklusive Interpunktion. Ein
+ * Modell, das den Kontextsatz übernimmt und nur das Satzende umbaut
+ * ("… übernommen." → "… übernommen, als ich …"), rutschte damit durch — der
+ * Kontext stünde danach trotzdem doppelt im Brief. Die Toleranz kostet
+ * nichts: Bei 40 Zeichen ist eine zufällige Übereinstimmung auch ohne
+ * Interpunktion praktisch ausgeschlossen.
+ *
+ * Bewusst NICHT für `assertClaimsAreVerbatim` und `assertVariantsAreDistinct`
+ * verwendet — dort geht es um Auffindbarkeit im Text bzw. um Wortgleichheit,
+ * beides braucht die strengere Form.
+ */
+function normalizeForEcho(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[\p{P}\p{S}]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+/**
+ * Wie viele normalisierte Zeichen vom Rand des Kontexts in einer Antwort
+ * vorkommen müssen, damit sie als "Kontext verschluckt" gilt. 40 Zeichen sind
+ * lang genug, dass eine zufällige Übereinstimmung praktisch ausgeschlossen
+ * ist (eine gängige Wendung wie "in Ihrem Unternehmen einbringen" ist
+ * kürzer), und kurz genug, dass ein Modell, das den letzten Satz des Kontexts
+ * mitliefert, sicher erwischt wird.
  *
  * Ist der Kontext selbst kürzer als diese Grenze (z. B. eine Markierung am
  * Anfang des Briefs), wird nicht geprüft — eine dokumentierte Lücke, kein
@@ -163,7 +187,7 @@ function normalizeWhitespace(text: string): string {
 const CONTEXT_ECHO_CHARS = 40
 
 function contextEdge(context: string, side: 'end' | 'start'): string | null {
-  const normalized = normalizeWhitespace(context)
+  const normalized = normalizeForEcho(context)
   if (normalized.length < CONTEXT_ECHO_CHARS) return null
   return side === 'end' ? normalized.slice(-CONTEXT_ECHO_CHARS) : normalized.slice(0, CONTEXT_ECHO_CHARS)
 }
@@ -183,6 +207,21 @@ function contextEdge(context: string, side: 'end' | 'start'): string | null {
  *
  * Geprüft wird die GESAMTE Antwort, nicht die einzelne Variante: Eine von
  * drei Varianten zu verwerfen würde die Zusage "genau drei" brechen.
+ *
+ * **BEKANNTE LÜCKE bei abweichender Zielsprache (Fix-Runde 1, ausdrücklich
+ * dokumentiert statt stillschweigend hingenommen):** Verglichen wird immer
+ * gegen den Kontext in der QUELLSPRACHE — der Kontext wird nie übersetzt
+ * (siehe `rewriteSelection`, der Brief drumherum bleibt unangetastet).
+ * Übersetzt oder formuliert das Modell den mitgelesenen Kontext also in die
+ * ZIELSPRACHE mit, findet diese wörtliche Prüfung nichts: Ein englischer
+ * Kontextsatz in der Variante steht nicht im deutschen Kontexttext. Dieser
+ * Weg ist deshalb zusätzlich über {@link assertPlausibleTranslationLength}
+ * abgesichert (nur der Übersetzungsschritt, wo eine Längenexplosion das
+ * verlässliche Anzeichen ist); für den anschließenden Umformulierungsschritt
+ * bleibt die Lücke bestehen und ist im Bericht (task-11-report.md,
+ * Fix-Runde 1) benannt. Sie zu schließen hieße, den Kontext ebenfalls
+ * übersetzen zu lassen — ein zusätzlicher Modellaufruf für Text, den niemand
+ * zurückbekommt, plus eine zweite Fehlerquelle.
  */
 function assertNoContextEcho(texts: string[], contextBefore: string, contextAfter: string, label: string): void {
   const edges = [contextEdge(contextBefore, 'end'), contextEdge(contextAfter, 'start')].filter(
@@ -191,7 +230,7 @@ function assertNoContextEcho(texts: string[], contextBefore: string, contextAfte
   if (edges.length === 0) return
 
   for (const text of texts) {
-    const normalized = normalizeWhitespace(text)
+    const normalized = normalizeForEcho(text)
     for (const edge of edges) {
       if (normalized.includes(edge)) {
         throw new ModelResponseError(
@@ -252,6 +291,44 @@ function assertClaimsAreVerbatim(variants: Variant[], label: string): void {
   }
 }
 
+/**
+ * Zweite Absicherung NUR für den Übersetzungsschritt (Fix-Runde 1,
+ * Review-Fund): Dort greift die wörtliche Echo-Prüfung systematisch daneben,
+ * wenn das Modell den mitgelesenen Kontext gleich MIT übersetzt — die
+ * Übersetzung steht dann in der Zielsprache, der Vergleichstext in der
+ * Quellsprache (siehe `assertNoContextEcho`, Abschnitt "BEKANNTE LÜCKE").
+ *
+ * Das verlässliche Anzeichen ist in diesem Schritt die Länge: Eine Übersetzung
+ * ist ungefähr so lang wie ihre Vorlage (zwischen Deutsch und Englisch grob
+ * 0,8- bis 1,3-fach). Kommt deutlich mehr zurück, steckt zusätzlicher Inhalt
+ * darin — praktisch immer der mitgelesene Kontext. Das gilt NUR hier: Beim
+ * Umformulieren ist "deutlich länger" ein zulässiges Ergebnis (Längenregler
+ * auf "ausführlicher"), dort wäre dieselbe Prüfung falsch.
+ *
+ * Schwelle bewusst großzügig — Faktor 2 UND mindestens 80 Zeichen mehr. Sie
+ * soll "600 Zeichen Kontext mitübersetzt" fangen, nicht eine legitim etwas
+ * längere Übersetzung, und bei einer sehr kurzen Auswahl ("Ja, gerne.") keinen
+ * Fehlalarm auslösen, wo Faktor 2 schnell erreicht ist, ohne dass etwas
+ * Fremdes hinzugekommen wäre.
+ */
+const TRANSLATION_LENGTH_FACTOR = 2
+const TRANSLATION_LENGTH_SLACK = 80
+
+function assertPlausibleTranslationLength(translation: string, selection: string, label: string): void {
+  const selectionLength = normalizeWhitespace(selection).length
+  const translationLength = normalizeWhitespace(translation).length
+
+  if (
+    translationLength > selectionLength * TRANSLATION_LENGTH_FACTOR &&
+    translationLength - selectionLength > TRANSLATION_LENGTH_SLACK
+  ) {
+    throw new ModelResponseError(
+      label,
+      `${label}: Die Übersetzung ist mit ${translationLength} Zeichen um ein Vielfaches länger als die Auswahl (${selectionLength} Zeichen) – das Modell hat mit hoher Wahrscheinlichkeit den umgebenden Kontext mitübersetzt, der ausschließlich zum Mitlesen gedacht ist. Gelieferter Text (gekürzt): "${truncateForError(translation)}"`,
+    )
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Regler — wirken über das Stilprofil und die Längenanweisung, nie über einen
 // Modellparameter (siehe `RewriteRequest.sliders`)
@@ -263,16 +340,28 @@ function clampSlider(value: number): number {
 }
 
 /**
- * Der Längenregler verändert das Stilprofil messbar: Er skaliert die
- * durchschnittliche Satzlänge zwischen 0,6-fach (0) und 1,4-fach (100),
- * wodurch `styleProfileToPromptFragment` eine andere Beschreibung rendert
- * ("kurze, prägnante Sätze" ↔ "lange, ausführliche Sätze"). Zusätzlich
- * erzeugt {@link lengthGoal} eine ausdrückliche Anweisung im Systemprompt.
- * Zwei Hebel für denselben Regler, weil die Satzlänge allein nur die Form
- * beschreibt, nicht den gewünschten Umfang der ganzen Textstelle.
+ * Aus der GEMESSENEN Satzlänge des Nutzers (`StyleProfile.sentenceLength`,
+ * von Aufgabe 10 deterministisch aus dem Anschreiben berechnet) wird eine
+ * ZIELVORGABE für diese eine Umformulierung: Faktor 0,6 (Regler 0) bis 1,4
+ * (Regler 100), dazwischen linear, bei 50 unverändert.
+ *
+ * **Fix-Runde 1 (Review-Fund, Benennung):** Der Name sagt jetzt, was
+ * tatsächlich passiert. Das Feld heißt im Profil "gemessene Satzlänge", der
+ * hier erzeugte Wert ist keine Messung mehr — er geht ausschließlich in den
+ * Stilbaustein des Umformulierungs-Prompts, und dort ist der Baustein eine
+ * Anweisung ("schreibe so") und kein Bericht ("so ist es"). Das gespeicherte
+ * Profil bleibt unangetastet: `applySliders` liefert eine Kopie, die Aufgabe 13
+ * weiterhin den gemessenen Wert anzeigt.
+ *
+ * Der Regler hat bewusst zwei Hebel: diesen (verändert die vom Stilbaustein
+ * gerenderte Beschreibung, "kurze, prägnante Sätze" ↔ "lange, ausführliche
+ * Sätze") und {@link lengthGoal} (ausdrückliche Längenanweisung im
+ * Systemprompt). Die Satzlänge allein beschreibt nur die Form, nicht den
+ * gewünschten Umfang der ganzen Textstelle.
  */
-function sentenceLengthFactor(length: number): number {
-  return 0.6 + (clampSlider(length) / 100) * 0.8
+function targetSentenceLength(measuredSentenceLength: number, lengthSlider: number): number {
+  const factor = 0.6 + (clampSlider(lengthSlider) / 100) * 0.8
+  return measuredSentenceLength * factor
 }
 
 function lengthGoal(length: number): LengthGoal {
@@ -282,11 +371,16 @@ function lengthGoal(length: number): LengthGoal {
   return 'similar'
 }
 
+/**
+ * Liefert eine KOPIE des Stilprofils, in der die Reglerwerte stehen — nur für
+ * das Rendern des Prompt-Bausteins. Das Profil des Nutzers wird nicht
+ * verändert (siehe {@link targetSentenceLength}).
+ */
 function applySliders(style: StyleProfile, sliders: RewriteRequest['sliders']): StyleProfile {
   return {
     ...style,
     formality: clampSlider(sliders.formality),
-    sentenceLength: style.sentenceLength * sentenceLengthFactor(sliders.length),
+    sentenceLength: targetSentenceLength(style.sentenceLength, sliders.length),
   }
 }
 
@@ -388,6 +482,7 @@ export async function rewriteSelection(
         )
         const translated = parseModelJson(TranslationSchema, rawTranslation, TRANSLATION_LABEL)
         assertNoContextEcho([translated.translation], fields.contextBefore, fields.contextAfter, TRANSLATION_LABEL)
+        assertPlausibleTranslationLength(translated.translation, fields.selection, TRANSLATION_LABEL)
         selection = translated.translation
       }
 

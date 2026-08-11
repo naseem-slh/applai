@@ -1,4 +1,4 @@
-import { anonymize, deanonymize } from './anonymize'
+import { anonymize, deanonymize, detectHeadName } from './anonymize'
 import type { AnonymizeHints } from './anonymize'
 
 /**
@@ -106,8 +106,13 @@ export interface AnonymizationSettings {
    * Kopfbereich — ohne Hinweis fände die Erkennung dort schlicht nichts und
    * der Klarname ginge an den Anbieter. Ein optionales Feld hätte man beim
    * Aufruf stillschweigend weglassen können; so muss jeder Aufrufer die
-   * Frage beantworten, und `null` ist die ausdrückliche Antwort "unbekannt,
-   * Kopfzeilen-Heuristik muss reichen".
+   * Frage beantworten.
+   *
+   * `null` heißt ausdrücklich "unbekannt": Dann sucht diese Klammer den
+   * Namen selbst — **pro Feld** über {@link detectHeadName}, das erste Feld
+   * mit einem Treffer gewinnt (siehe {@link resolveNameHint}). Das ist kein
+   * Ersatz für einen echten Hinweis, aber es ist die Erkennung, die Aufgabe 8
+   * anbietet, angewendet auf einen Text, in dem sie greifen kann.
    *
    * **Woher der Wert kommt:** aus dem Dokument, das die Oberfläche ohnehin
    * vollständig vorliegen hat (Anschreiben bzw. Lebenslauf, Aufgaben 2–4),
@@ -140,9 +145,45 @@ function joinFields(values: string[]): { joined: string; delimiter: string } {
   }
 }
 
-function hintsFrom(settings: AnonymizationSettings): AnonymizeHints {
+/**
+ * **Fix-Runde 1 (Review-Fund, kritisch).** Der Namenshinweis wird PRO FELD
+ * ermittelt, nicht auf dem verbundenen Text.
+ *
+ * Der Fehler vorher: `anonymize` bekam den verbundenen Text und suchte den
+ * Namen selbst — in dessen ersten acht nicht-leeren Zeilen
+ * (`HEAD_LINE_COUNT` in `anonymize.ts`). Bei einem mehrzeiligen Kontext (die
+ * laut Plan bis zu 600 Zeichen davor) ist dieses Fenster von Auswahl,
+ * Feldtrennern und Kontext aufgebraucht, bevor es die Faktenbasis erreicht —
+ * also genau das Feld, das den Lebenslauf-Kopf mit "Name: …" enthält. Der
+ * Klarname ging dann trotz eingeschalteter Anonymisierung an den Anbieter.
+ *
+ * Bewusst NICHT durch Umsortieren der Felder gelöst (Faktenbasis nach vorn):
+ * Das hätte heute funktioniert und wäre beim nächsten zusätzlichen Feld
+ * wieder gebrochen — eine Reihenfolgeabhängigkeit, die niemand sieht.
+ * Jedes Feld wird stattdessen einzeln gefragt; das erste mit einem Treffer
+ * gewinnt.
+ *
+ * Restrisiko, bewusst getragen: Enthält ein früheres Feld zufällig eine
+ * namensförmige Zeile (zwei bis vier großgeschriebene Wörter als eigene
+ * Zeile), gewinnt diese. Das ist dieselbe Heuristik-Grenze, die Aufgabe 8
+ * innerhalb eines Textes ohnehin hat — ein gesetztes `userName` schlägt sie
+ * immer, und genau dafür ist das Feld Pflicht.
+ */
+function resolveNameHint(settings: AnonymizationSettings, values: string[]): string | undefined {
+  const explicit = settings.userName?.trim()
+  if (explicit) return explicit
+
+  for (const value of values) {
+    const detected = detectHeadName(value)
+    if (detected) return detected
+  }
+  return undefined
+}
+
+function hintsFrom(settings: AnonymizationSettings, values: string[]): AnonymizeHints {
   const hints: AnonymizeHints = {}
-  if (settings.userName && settings.userName.trim() !== '') hints.name = settings.userName
+  const name = resolveNameHint(settings, values)
+  if (name) hints.name = name
   if (settings.userEmail && settings.userEmail.trim() !== '') hints.email = settings.userEmail
   return hints
 }
@@ -179,8 +220,11 @@ export async function withAnonymization<F extends string, T>(
     return restore(await send(fields), identity)
   }
 
-  const { joined, delimiter } = joinFields(keys.map((key) => fields[key]))
-  const { text, map } = anonymize(joined, hintsFrom(settings))
+  const values = keys.map((key) => fields[key])
+  const { joined, delimiter } = joinFields(values)
+  // Namenshinweis VOR dem Verbinden ermitteln (siehe `resolveNameHint`),
+  // anonymisiert wird danach in einem gemeinsamen Durchlauf (siehe oben).
+  const { text, map } = anonymize(joined, hintsFrom(settings, values))
 
   const parts = text.split(delimiter)
   if (parts.length !== keys.length) {

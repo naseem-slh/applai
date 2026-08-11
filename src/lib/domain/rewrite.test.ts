@@ -49,7 +49,11 @@ const STYLE: StyleProfile = {
   sentenceLength: 14,
   address: 'sie',
   traits: ['nennt Ergebnisse mit konkreten Zahlen', 'kurze Einleitungssätze'],
-  sample: 'Ihre Anzeige hat mich sofort angesprochen. Ich bringe die geforderte Erfahrung mit.',
+  // Enthält bewusst den Namen: "sample" sind laut Aufgabe 10 zwei WÖRTLICHE
+  // Sätze aus dem Anschreiben und können deshalb personenbezogene Daten
+  // tragen — die Anonymisierungs-Tests unten prüfen genau das mit
+  // (Fix-Runde 1, vorher stand hier ein Satz ohne Namen).
+  sample: 'Ihre Anzeige hat mich sofort angesprochen. Als Max Mustermann bringe ich die geforderte Erfahrung mit.',
 }
 
 const FACTS = `Lebenslauf
@@ -66,6 +70,18 @@ const CONTEXT_BEFORE =
   'Nach meinem Studium der Betriebswirtschaft bin ich in die Logistikbranche gewechselt und habe dort früh Verantwortung übernommen.'
 const CONTEXT_AFTER =
   'Diese Erfahrung möchte ich nun in Ihrem Unternehmen einbringen und gemeinsam mit Ihrem Team weiter ausbauen.'
+
+/**
+ * Mehrzeiliger Kontext davor — der Regelfall laut Plan ("bis zu 600 Zeichen
+ * davor"). Fix-Runde 1: Genau dieser Fall brach vorher die Namenserkennung,
+ * weil die acht Kopfzeilen der Erkennung schon vor der Faktenbasis
+ * aufgebraucht waren.
+ */
+const MEHRZEILIGER_KONTEXT_DAVOR = `Sehr geehrte Damen und Herren,
+
+mit großem Interesse habe ich Ihre Stellenanzeige gelesen.
+Nach meinem Studium der Betriebswirtschaft bin ich in die Logistikbranche gewechselt.
+Dort habe ich früh Verantwortung übernommen und mehrere Teams begleitet.`
 
 const BASIS: RewriteRequest = {
   selection: SELECTION,
@@ -227,6 +243,21 @@ describe('rewriteSelection — der Kontext ist nur zum Mitlesen', () => {
     await expect(rewriteSelection(BASIS, provider, 'k', PRIVAT_AUS)).rejects.toThrow(/Kontext/)
   })
 
+  it('scheitert auch, wenn die Variante den Kontext mit verändertem Satzende übernimmt', async () => {
+    // Fix-Runde 1: Vorher verlangte die Prüfung die exakten 40 Zeichen
+    // inklusive Interpunktion — ein umgebautes Satzende reichte zum Entkommen.
+    const echoMitAnderemSatzende = `${CONTEXT_BEFORE.replace(/\.$/, ', als ich die Leitung übernahm.')}`
+    const provider = stubProvider(
+      antwort([
+        { text: echoMitAnderemSatzende },
+        { text: 'Als Teamleiter trug ich drei Jahre lang die Verantwortung für fünf Mitarbeitende.' },
+        { text: 'Über drei Jahre hinweg habe ich fünf Mitarbeitende fachlich geführt.' },
+      ]),
+    )
+
+    await expect(rewriteSelection(BASIS, provider, 'k', PRIVAT_AUS)).rejects.toThrow(/Kontext/)
+  })
+
   it('lässt eine Variante durch, die den Kontext nur inhaltlich aufgreift', async () => {
     const provider = stubProvider(
       antwort([
@@ -327,6 +358,21 @@ describe('rewriteSelection — Anonymisierung', () => {
     expect(varianten[0]?.unbackedClaims[0]).toContain('Max Mustermann')
   })
 
+  it('ersetzt den Namen auch ohne userName, wenn er nur in der Faktenbasis steht (mehrzeiliger Kontext)', async () => {
+    // Fix-Runde 1 (kritischer Review-Fund): Vorher suchte die Erkennung im
+    // VERBUNDENEN Text und erreichte die Faktenbasis nie — der Klarname ging
+    // trotz eingeschalteter Anonymisierung an den Anbieter.
+    const provider = stubProvider(DREI_VARIANTEN)
+    await rewriteSelection({ ...BASIS, contextBefore: MEHRZEILIGER_KONTEXT_DAVOR }, provider, 'k', {
+      enabled: true,
+      userName: null,
+    })
+
+    const gesendet = provider.requests[0]?.user ?? ''
+    expect(gesendet).toContain('[NAME]')
+    expect(gesendet).not.toContain('Max Mustermann')
+  })
+
   it('sendet bei abgeschalteter Anonymisierung den Klartext', async () => {
     const provider = stubProvider(DREI_VARIANTEN)
     await rewriteSelection(BASIS, provider, 'k', PRIVAT_AUS)
@@ -402,6 +448,32 @@ describe('rewriteSelection — abweichende Zielsprache', () => {
 
     await expect(rewriteSelection({ ...BASIS, targetLanguage: 'en' }, provider, 'k', PRIVAT_AUS)).rejects.toThrow(/Kontext/)
     expect(provider.requests).toHaveLength(1)
+  })
+
+  it('scheitert, wenn die Übersetzung den Kontext mitübersetzt hat', async () => {
+    // Fix-Runde 1: Die wörtliche Echo-Prüfung greift hier nicht — der
+    // mitübersetzte Kontext steht in der Zielsprache, verglichen wird gegen
+    // den deutschen Originalkontext. Das Längenanzeichen fängt den Fall.
+    const kontextAufEnglisch =
+      'After my degree in business administration I moved into the logistics industry and took on responsibility early on.'
+    const provider = stubProvider(
+      JSON.stringify({ translation: `${kontextAufEnglisch} I led a team of five people for three years.` }),
+      ENGLISCHE_VARIANTEN,
+    )
+
+    await expect(rewriteSelection({ ...BASIS, targetLanguage: 'en' }, provider, 'k', PRIVAT_AUS)).rejects.toThrow(
+      /länger/,
+    )
+    expect(provider.requests).toHaveLength(1)
+  })
+
+  it('lässt eine legitim etwas längere Übersetzung durch', async () => {
+    const provider = stubProvider(
+      JSON.stringify({ translation: 'Over a period of three years I led and developed a team of five people.' }),
+      ENGLISCHE_VARIANTEN,
+    )
+
+    await expect(rewriteSelection({ ...BASIS, targetLanguage: 'en' }, provider, 'k', PRIVAT_AUS)).resolves.toHaveLength(3)
   })
 
   it('anonymisiert beide Aufrufe mit derselben Zuordnung', async () => {

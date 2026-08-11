@@ -361,7 +361,22 @@ function extractLabeledName(line: string): string | undefined {
   return isNameShapedLine(value) ? value : undefined
 }
 
-function detectHeadName(text: string): string | undefined {
+/**
+ * Liefert den im Kopfbereich erkannten Namen (erst "Name: …"-Label, dann
+ * erste namensförmige Zeile) oder `undefined`.
+ *
+ * **Exportiert seit Aufgabe 11, Fix-Runde 1** (Review-Fund): `withAnonymization`
+ * (`src/lib/privacy/withAnonymization.ts`) anonymisiert mehrere Textfelder in
+ * einem gemeinsamen Durchlauf und muss den Namenshinweis deshalb PRO FELD
+ * ermitteln, bevor die Felder verbunden werden. Auf dem verbundenen Text
+ * greift die Erkennung hier nicht mehr zuverlässig: Das Fenster von
+ * {@link HEAD_LINE_COUNT} Zeilen ist bereits von den ersten Feldern (Auswahl,
+ * Kontext) und den Feldtrennern aufgebraucht, bevor es das Feld erreicht, das
+ * den Kopfbereich tatsächlich enthält (die Faktenbasis aus dem Lebenslauf).
+ * Der Name stünde dann trotz eingeschalteter Anonymisierung im Klartext im
+ * Prompt.
+ */
+export function detectHeadName(text: string): string | undefined {
   const lines = text
     .split('\n')
     .map((l) => l.trim())
