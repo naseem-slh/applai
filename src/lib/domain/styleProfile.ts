@@ -1,0 +1,436 @@
+import { z } from 'zod'
+import type { LlmProvider } from '../ai/provider'
+import { ModelResponseError, parseModelJson } from '../ai/modelJson'
+import { buildStyleProfilePrompt } from '../ai/prompts/styleProfile'
+import { detectLanguage } from './language'
+
+/**
+ * Aufgabe 10 — Stilprofil aus dem bestehenden Anschreiben ableiten.
+ *
+ * Das Stilprofil ist der Kern des Produktversprechens (siehe Auftrag): Die
+ * KI soll nicht "gut" schreiben, sondern **wie der Nutzer**. Deshalb sind
+ * `sentenceLength` und `address` bewusst NICHT Teil der Modellantwort,
+ * sondern werden von `computeSentenceLength`/`detectAddress` unten rein
+ * deterministisch berechnet – dieselbe Linie wie `detectLanguage` in
+ * Aufgabe 9 ("reproduzierbares Ergebnis schlägt Modellmeinung").
+ *
+ * `traits` und `sample` sind Freitext und laufen deshalb bewusst NICHT durch
+ * `nullableFactString` (`src/lib/ai/modelJson.ts`) – diese Funktion ist nur
+ * für Fakt-Felder gedacht, die wörtlich aus einer Quelle übernommen werden
+ * (siehe deren Doc-Kommentar). Diese Aufgabe hat außerdem **kein** einziges
+ * `string | null`-Fakt-Feld: "formality" ist eine Pflichtzahl, "traits" eine
+ * Pflichtliste, "sample" ein Pflichtstring, der stattdessen über
+ * `assertSampleIsVerbatim` unten geprüft wird (siehe dort) – kein Feld
+ * dieser Aufgabe benötigt `nullableFactString`.
+ */
+
+/** Wie die Leserin/der Leser des Anschreibens angesprochen wird. */
+export type Address = 'sie' | 'du' | 'none'
+
+/**
+ * Das vollständige, von der Oberfläche einsehbare und korrigierbare
+ * Stilprofil (`docs/spec.md`: "einsehbar und korrigierbar"). **Reines
+ * Datenobjekt** – keine Klasse, kein privater Zustand, keine Methoden (siehe
+ * Auftrag): Aufgabe 13 liest und schreibt diese Felder direkt aus
+ * Formularen/Reglern.
+ */
+export interface StyleProfile {
+  /** 0 = locker, 100 = förmlich. Kommt vom Modell, siehe `deriveStyleProfile`. */
+  formality: number
+  /** Durchschnittliche Wörter pro Satz, deterministisch berechnet – siehe `computeSentenceLength`. */
+  sentenceLength: number
+  /** Wie das Anschreiben die Leserin/den Leser anspricht, deterministisch erkannt – siehe `detectAddress`. */
+  address: Address
+  /** Kurze, konkrete Stilbeobachtungen, z. B. "nennt Ergebnisse mit Zahlen", "kurze Einleitungssätze". Freitext vom Modell. */
+  traits: string[]
+  /** Zwei repräsentative Sätze aus dem Original, WÖRTLICH – siehe `assertSampleIsVerbatim`. */
+  sample: string
+}
+
+// ---------------------------------------------------------------------------
+// sentenceLength — deterministische Satzsegmentierung ohne Bibliothek (G9)
+// ---------------------------------------------------------------------------
+//
+// REGEL (siehe Auftrag: "Decide your rule, document it, and test the
+// abbreviations explicitly"): Ein Punkt/Ausrufe-/Fragezeichen bzw. eine
+// Ellipse gilt als Satzende, wenn danach Leerraum folgt (oder das Textende
+// erreicht ist) — AUSSER in drei Fällen, die vorher "maskiert" werden (ihr
+// Punkt wird durch ein Platzhalterzeichen ersetzt, das keine
+// Satzend-Interpunktion ist):
+//
+//   1. Mehrteilige Abkürzungen ("z. B.", "u. a.", "d. h.", …) — als exakte
+//      Phrase erkannt, alle darin enthaltenen Punkte werden maskiert.
+//   2. Einteilige Abkürzungen ("Dr.", "ca.", "usw.", …) — per Wortliste
+//      erkannt (Wortgrenze davor, Punkt direkt danach).
+//   3. Ein- bis zweistellige Ziffern direkt vor einem Punkt, gefolgt von
+//      Leerraum ("15.", "3.") — Tagesangabe in einem Datum ("15. März 2024")
+//      oder eine Ordinalzahl ("der 3. Platz"). Bewusst nur 1–2 Ziffern:
+//      eine vierstellige Jahreszahl ("Das war 1990.") bleibt ein normales,
+//      echtes Satzende (siehe "Bewusst falsch" unten).
+//
+// Ein Doppelpunkt vor einer Aufzählung wird nie als Satzende missverstanden,
+// weil ':' von vornherein nicht zur Satzend-Interpunktion zählt — kein
+// Sonderfall nötig. Eine Ellipse ("..." oder "…") wird vor allem anderen auf
+// ein einzelnes Zeichen vereinheitlicht und danach wie ein normaler
+// Satzendpunkt behandelt (Ellipse + Leerraum = Satzende).
+//
+// BEWUSST FALSCH (dokumentierte Grenzen, siehe Bericht):
+// - Ein Satz, der auf eine reine Zahl endet, OHNE dass danach ein Punkt mit
+//   mind. drei Ziffern folgt, kann fälschlich mit dem nächsten Satz
+//   verschmolzen werden, wenn die Zahl 1–2-stellig ist (z. B. "Ich war Platz
+//   2. Das hat mich überrascht." → "2." wird als Ordinalzahl maskiert, beide
+//   Sätze zählen als einer). Seltener Fall in einem Anschreiben, aber real.
+// - Die feste Abkürzungsliste ist nicht vollständig — eine unbekannte
+//   Abkürzung ("ggf.a." o. Ä.) wird wie ein normales Satzende behandelt.
+// - Anführungszeichen/Klammern nach dem Satzendezeichen ("Ich schaffe das!")
+//   werden nicht gesondert behandelt; das ist unproblematisch, weil danach
+//   ohnehin Leerraum folgt.
+// ---------------------------------------------------------------------------
+
+/** Steht für einen Punkt, der KEIN Satzende ist (Abkürzung/Ordinalzahl). */
+const NON_TERMINAL_PERIOD = ''
+
+const MULTI_WORD_ABBREVIATIONS = [
+  'z. B.', 'z.B.',
+  'u. a.', 'u.a.',
+  'd. h.', 'd.h.',
+  'u. v. m.', 'u.v.m.',
+  'i. d. R.', 'i.d.R.',
+  'u. U.', 'u.U.',
+  'o. Ä.', 'o.Ä.',
+  'z. T.', 'z.T.',
+  's. o.', 's.o.',
+  's. u.', 's.u.',
+  'v. a.', 'v.a.',
+]
+
+const SINGLE_WORD_ABBREVIATIONS = [
+  'dr', 'prof', 'ca', 'nr', 'usw', 'bzw', 'ggf', 'inkl', 'exkl', 'etc',
+  'tel', 'str', 'hr', 'fr', 'mio', 'mrd', 'sog', 'bspw', 'evtl', 'insb',
+  'vgl', 'geb', 'jr', 'co',
+]
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function maskNonTerminalPeriods(text: string): string {
+  // Mehrere Punkte in Folge ("...") vereinheitlicht als eine Ellipse – wird
+  // unten wie ein normales Satzende behandelt (Zeichen + Leerraum = Ende).
+  let masked = text.replace(/\.{2,}/g, '…')
+
+  for (const phrase of MULTI_WORD_ABBREVIATIONS) {
+    const re = new RegExp(`(?<![\\p{L}])${escapeRegExp(phrase)}`, 'giu')
+    masked = masked.replace(re, (match) => match.replaceAll('.', NON_TERMINAL_PERIOD))
+  }
+
+  const singleWordPattern = new RegExp(`\\b(${SINGLE_WORD_ABBREVIATIONS.join('|')})\\.`, 'gi')
+  masked = masked.replace(singleWordPattern, (_match, word: string) => `${word}${NON_TERMINAL_PERIOD}`)
+
+  // Ordinalzahl/Tagesangabe: ein bis zwei Ziffern direkt vor einem Punkt,
+  // gefolgt von Leerraum (siehe Regel 3 oben) – bewusst NICHT bei drei oder
+  // mehr Ziffern (Jahreszahlen bleiben echte Satzenden).
+  masked = masked.replace(/(?<!\d)(\d{1,2})\.(?=\s)/g, (_match, digits: string) => `${digits}${NON_TERMINAL_PERIOD}`)
+
+  return masked
+}
+
+function splitSentences(text: string): string[] {
+  const masked = maskNonTerminalPeriods(text.trim())
+  if (masked === '') return []
+  return masked
+    .split(/(?<=[.!?…])\s+/)
+    .map((chunk) => chunk.trim())
+    .filter((chunk) => chunk.length > 0)
+}
+
+function countWords(text: string): number {
+  return (text.match(/\p{L}+/gu) ?? []).length
+}
+
+/**
+ * Durchschnittliche Wörter pro Satz, rein deterministisch berechnet (siehe
+ * Segmentierungsregel oben) – auf eine Nachkommastelle gerundet. `0` für
+ * einen leeren oder nur aus Leerraum bestehenden Text.
+ */
+export function computeSentenceLength(text: string): number {
+  const sentences = splitSentences(text)
+  if (sentences.length === 0) return 0
+  const totalWords = sentences.reduce((sum, sentence) => sum + countWords(sentence), 0)
+  return Math.round((totalWords / sentences.length) * 10) / 10
+}
+
+// ---------------------------------------------------------------------------
+// address — deterministische Anrede-Erkennung ohne Bibliothek (G9)
+// ---------------------------------------------------------------------------
+//
+// REGEL (siehe Auftrag: "beware that capitalised Sie also begins sentences
+// as 'she/they'"): "sie"/"ihre"/"ihnen"/… klein geschrieben bedeuten IMMER
+// die 3. Person ("sie"/"ihr" im Sinne von "she/they/her/their"), NIE die
+// Höflichkeitsanrede – Großschreibung ist im Deutschen bei der
+// Höflichkeitsanrede verbindlich. Ein großgeschriebener Treffer ("Sie",
+// "Ihre", "Ihnen", …) ist deshalb ein starkes Signal – ABER: am Satzanfang
+// wird JEDES Wort großgeschrieben, unabhängig von seiner Bedeutung. Ein
+// großgeschriebener Treffer am Satzanfang ist deshalb zweideutig (könnte die
+// 3. Person "Sie"/"Ihre" sein, nur zufällig am Satzanfang) und wird bewusst
+// NICHT gezählt – weder für noch gegen die Höflichkeitsanrede. Nur ein
+// großgeschriebener Treffer MITTEN im Satz ist ein eindeutiger Beleg für die
+// Höflichkeitsanrede.
+//
+// "du"/"dich"/"dir"/"dein…" sind nie mit einem anderen, bedeutungsähnlichen
+// Wort verwechselbar (kein Homonym-Problem wie bei "sie") – hier zählt jede
+// Fundstelle unabhängig von Groß-/Kleinschreibung und Satzposition.
+//
+// ENTSCHEIDUNG bei Gleichstand (inkl. 0:0): 'none' – ein Anschreiben, das
+// weder eindeutig "Sie" noch eindeutig "du" verwendet (oder beides exakt
+// gleich oft, ein Anzeichen für einen gemischten/fehlerhaften Text), spricht
+// die Leserin/den Leser nicht konsistent direkt an. 'none' ist hier die
+// ehrliche Antwort (siehe Auftrag), keine Notlösung.
+// ---------------------------------------------------------------------------
+
+const FORMAL_ADDRESS_WORDS: ReadonlySet<string> = new Set(['sie', 'ihnen', 'ihr', 'ihre', 'ihrem', 'ihren', 'ihrer'])
+const INFORMAL_ADDRESS_WORDS: ReadonlySet<string> = new Set([
+  'du', 'dich', 'dir', 'dein', 'deine', 'deinem', 'deinen', 'deiner', 'deines',
+])
+
+const SENTENCE_BOUNDARY_CHARS: ReadonlySet<string> = new Set(['.', '!', '?', '…'])
+const OPENING_QUOTE_CHARS: ReadonlySet<string> = new Set(['"', "'", '„', '“', '‚', '‘', '»', '«'])
+
+/**
+ * Steht `index` am Anfang eines Satzes (Textanfang oder unmittelbar nach
+ * Satzend-Interpunktion, übersprungenem Leerraum und öffnenden
+ * Anführungszeichen)? Bewusst einfach gehalten (kein Abgleich mit der
+ * abkürzungsbewussten Segmentierung oben) – hier geht es nur darum, die
+ * Großschreibungs-Zweideutigkeit von "Sie"/"Ihre"/… zu erkennen, nicht um
+ * eine exakte Satzgrenze.
+ */
+function isSentenceInitial(text: string, index: number): boolean {
+  let i = index - 1
+  while (i >= 0 && (/\s/.test(text[i]!) || OPENING_QUOTE_CHARS.has(text[i]!))) i--
+  if (i < 0) return true
+  return SENTENCE_BOUNDARY_CHARS.has(text[i]!)
+}
+
+function isCapitalized(word: string): boolean {
+  return word.length > 0 && word[0] !== word[0]!.toLowerCase()
+}
+
+/**
+ * Erkennt, ob das Anschreiben die Leserin/den Leser förmlich ("Sie"),
+ * persönlich ("du") oder gar nicht direkt anspricht – siehe Regel oben.
+ */
+export function detectAddress(text: string): Address {
+  let formalHits = 0
+  let informalHits = 0
+
+  const wordRe = /\p{L}+/gu
+  let match: RegExpExecArray | null
+  while ((match = wordRe.exec(text))) {
+    const word = match[0]
+    const lower = word.toLowerCase()
+
+    if (INFORMAL_ADDRESS_WORDS.has(lower)) {
+      informalHits++
+      continue
+    }
+
+    if (FORMAL_ADDRESS_WORDS.has(lower) && isCapitalized(word) && !isSentenceInitial(text, match.index)) {
+      formalHits++
+    }
+  }
+
+  if (formalHits === 0 && informalHits === 0) return 'none'
+  if (formalHits === informalHits) return 'none'
+  return formalHits > informalHits ? 'sie' : 'du'
+}
+
+// ---------------------------------------------------------------------------
+// Modellantwort — formality, traits, sample
+// ---------------------------------------------------------------------------
+
+const StyleProfileModelSchema = z.object({
+  formality: z.number().min(0).max(100),
+  traits: z.array(z.string().min(1)).min(1),
+  sample: z.string().min(1),
+})
+
+const STYLE_PROFILE_LABEL = 'Stilprofil-Analyse'
+
+function normalizeWhitespace(text: string): string {
+  return text.replace(/\s+/g, ' ').trim()
+}
+
+const SAMPLE_SNIPPET_LIMIT = 300
+
+function truncateSample(text: string): string {
+  const trimmed = text.trim()
+  return trimmed.length <= SAMPLE_SNIPPET_LIMIT ? trimmed : `${trimmed.slice(0, SAMPLE_SNIPPET_LIMIT)}…`
+}
+
+/**
+ * G10 hat hier "echte Zähne" (siehe Auftrag): "sample" MUSS wörtlich im
+ * Originaltext stehen, sonst hat das Modell einen Beispielsatz erfunden
+ * oder umformuliert – irreführend für den Nutzer, der "sample" als Zitat
+ * aus dem eigenen Brief liest. Verglichen wird NACH Normalisierung von
+ * Leerraum (Zeilenumbrüche/mehrfache Leerzeichen → ein Leerzeichen), weil
+ * ein Modell die Zeilenumbrüche des Originaltexts naturgemäß nicht
+ * reproduziert, wenn es zwei Sätze "abtippt" – das ist keine inhaltliche
+ * Änderung, nur eine Layout-Frage. Bei Verstoß: **Scheitern statt
+ * Selbstheilung**, dieselbe Linie wie `salutation`↔`contactPerson` in
+ * Aufgabe 9 – ein Modell, das hier bereits erfindet, hat im Zweifel auch
+ * anderswo in derselben Antwort improvisiert.
+ */
+function assertSampleIsVerbatim(sample: string, letterText: string, label: string): void {
+  const normalizedSample = normalizeWhitespace(sample)
+  const normalizedLetter = normalizeWhitespace(letterText)
+  if (normalizedSample === '' || !normalizedLetter.includes(normalizedSample)) {
+    throw new ModelResponseError(
+      label,
+      `${label}: "sample" steht nicht wörtlich im Originalanschreiben – die KI darf keine Beispielsätze erfinden oder umformulieren (G10). Gelieferter Text (gekürzt): "${truncateSample(sample)}"`,
+    )
+  }
+}
+
+/**
+ * Ab welcher formality ein "du"-Anschreiben als in sich widersprüchlich gilt
+ * (siehe Auftrag: "a du-letter scoring 95 is incoherent... make it explicit
+ * and testable, not a silent clamp"). Der Systemprompt definiert 100 explizit
+ * als "durchgehend Sie-Anrede" – ein deterministisch als "du" erkannter Text
+ * kann diesen Bereich per Definition nicht ehrlich erreichen. 80 liegt
+ * deutlich im oberen, laut Prompt exklusiv "Sie" beschriebenen Viertel der
+ * Skala: genug Sicherheitsabstand von 100, um auch ein Modell zu fassen, das
+ * knapp darunter bleibt (z. B. 90), aber niedrig genug, um moderat-förmliche,
+ * professionelle "du"-Anschreiben (z. B. 55–75, in manchen Unternehmenskulturen
+ * durchaus real) NICHT fälschlich zu verwerfen. Bewusst NUR in dieser einen
+ * Richtung geprüft – ein "Sie"-Anschreiben mit niedriger formality ist
+ * plausibel (z. B. eine moderne, aber weiterhin siezende Firma) und wird
+ * nicht beanstandet, siehe Bericht.
+ */
+const DU_FORMALITY_INCOHERENCE_THRESHOLD = 80
+
+function assertCoherentFormality(address: Address, formality: number, label: string): void {
+  if (address === 'du' && formality > DU_FORMALITY_INCOHERENCE_THRESHOLD) {
+    throw new ModelResponseError(
+      label,
+      `${label}: Modellantwort widerspricht sich selbst – "formality" ist ${formality}, obwohl das Anschreiben deterministisch als "du"-Anrede erkannt wurde (Systemprompt definiert Werte nahe 100 explizit als "durchgehend Sie"). Kein Meinungsunterschied, sondern ein Zeichen für eine unzuverlässige Modellantwort.`,
+    )
+  }
+}
+
+/**
+ * Leitet das Stilprofil aus einem bestehenden Anschreiben ab.
+ *
+ * Ablauf:
+ * 1. `computeSentenceLength`/`detectAddress` berechnen zwei der fünf Felder
+ *    deterministisch, VOR jedem Modellaufruf.
+ * 2. `detectLanguage` (Aufgabe 9) erkennt die Sprache des Anschreibens –
+ *    steuert, in welcher Sprache das Modell "traits" formuliert.
+ * 3. Der Prompt (`buildStyleProfilePrompt`) bekommt Sprache, Anredeform und
+ *    Satzlänge nur als Kontext mit, nie zur Übernahme.
+ * 4. Die Modellantwort läuft durch `parseModelJson(StyleProfileModelSchema, …)`
+ *    – dieselbe Zod-Grenze wie in Aufgabe 9.
+ * 5. `assertSampleIsVerbatim` prüft "sample" gegen den Originaltext (G10).
+ * 6. `assertCoherentFormality` prüft "formality" gegen die deterministisch
+ *    erkannte Anredeform.
+ *
+ * Ruft `anonymize` (Aufgabe 8) bewusst **nicht** auf – siehe Bericht
+ * (task-10-report.md, Abschnitt "Anonymisierung"): diese Entscheidung liegt
+ * laut Auftrag nicht bei dieser Aufgabe.
+ */
+export async function deriveStyleProfile(letterText: string, provider: LlmProvider, apiKey: string): Promise<StyleProfile> {
+  const sentenceLength = computeSentenceLength(letterText)
+  const address = detectAddress(letterText)
+  const detectedLanguage = detectLanguage(letterText)
+
+  const { system, user } = buildStyleProfilePrompt(letterText, detectedLanguage, address, sentenceLength)
+  const raw = await provider.generate({ system, user, json: true }, apiKey)
+  const parsed = parseModelJson(StyleProfileModelSchema, raw, STYLE_PROFILE_LABEL)
+
+  assertSampleIsVerbatim(parsed.sample, letterText, STYLE_PROFILE_LABEL)
+  assertCoherentFormality(address, parsed.formality, STYLE_PROFILE_LABEL)
+
+  return {
+    formality: parsed.formality,
+    sentenceLength,
+    address,
+    traits: parsed.traits,
+    sample: parsed.sample,
+  }
+}
+
+// ---------------------------------------------------------------------------
+// styleProfileToPromptFragment — reine Rendering-Funktion, kein Modellaufruf
+// ---------------------------------------------------------------------------
+//
+// Wird von Aufgabe 11 in den Umformulierungs-Prompt eingefügt und ändert
+// sich bei jedem Reglerwert neu (Auftrag: "the style sliders... will steer
+// by adjusting this profile and re-rendering the fragment"). Muss deshalb
+// mit einem handbearbeiteten, ggf. außerhalb des gültigen Bereichs liegenden
+// Profil sinnvoll umgehen (Auftrag: "task 13's slider will produce them") –
+// hier wird geklemmt (0–100 bzw. ≥ 0), weil das eine reine
+// Anzeige-/Renderfunktion ist, keine Validierungsgrenze wie
+// `deriveStyleProfile` oben: ein Regler, der kurzzeitig 104 erzeugt, soll
+// den Prompt nicht mit einem unsinnigen Wert füttern, aber auch nicht mit
+// einem Fehler abbrechen.
+// ---------------------------------------------------------------------------
+
+const FORMALITY_FALLBACK = 50
+
+function clampFormality(value: number): number {
+  if (!Number.isFinite(value)) return FORMALITY_FALLBACK
+  return Math.min(100, Math.max(0, Math.round(value)))
+}
+
+function clampSentenceLength(value: number): number {
+  if (!Number.isFinite(value) || value < 0) return 0
+  return Math.round(value * 10) / 10
+}
+
+function describeFormality(formality: number): string {
+  if (formality <= 33) return 'locker, persönlich – neigt zu "du" oder umgangssprachlichen Formulierungen'
+  if (formality <= 66) return 'neutral-professionell'
+  return 'förmlich, zurückhaltend – neigt zu durchgehender "Sie"-Anrede'
+}
+
+function describeSentenceLength(sentenceLength: number): string {
+  if (sentenceLength <= 10) return 'kurze, prägnante Sätze'
+  if (sentenceLength <= 20) return 'mittellange Sätze'
+  return 'lange, ausführliche Sätze'
+}
+
+const ADDRESS_DESCRIPTIONS: Record<Address, string> = {
+  sie: 'verwendet die förmliche Anrede "Sie"',
+  du: 'verwendet die persönliche Anrede "du"',
+  none: 'spricht die Leserin/den Leser nicht direkt an',
+}
+
+/**
+ * Rendert das Stilprofil als Fließtext-Baustein für den
+ * Umformulierungs-Prompt (Aufgabe 11) – enthält alle fünf Profilfelder.
+ * Reine Funktion, kein Modellaufruf. Wie `prompts/jobAd.ts` ein
+ * Entwicklerartefakt, kein Oberflächentext (G8 gilt hier nicht).
+ */
+export function styleProfileToPromptFragment(p: StyleProfile): string {
+  const formality = clampFormality(p.formality)
+  const sentenceLength = clampSentenceLength(p.sentenceLength)
+  const addressDescription = ADDRESS_DESCRIPTIONS[p.address] ?? ADDRESS_DESCRIPTIONS.none
+
+  const traitLines = p.traits
+    .map((trait) => trait.trim())
+    .filter((trait) => trait.length > 0)
+    .map((trait) => `- ${trait}`)
+    .join('\n')
+  const traitsBlock = traitLines.length > 0 ? traitLines : '- (keine besonderen Stilmerkmale hinterlegt)'
+
+  const sample = p.sample.trim()
+  const sampleBlock = sample
+    ? `\n- Beispieltext aus dem Original (zeigt den Ton, nicht wörtlich kopieren):\n"${sample}"`
+    : ''
+
+  return `Stilprofil des Nutzers (aus dem bestehenden Anschreiben abgeleitet – im EIGENEN Stil des Nutzers schreiben, nicht in einem allgemein "guten" Stil):
+- Förmlichkeit: ${formality}/100 (${describeFormality(formality)})
+- Durchschnittliche Satzlänge: ${sentenceLength} Wörter pro Satz (${describeSentenceLength(sentenceLength)})
+- Anrede der Leserin/des Lesers: ${addressDescription}
+- Stilmerkmale:
+${traitsBlock}${sampleBlock}`
+}
