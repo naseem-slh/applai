@@ -184,68 +184,105 @@ export function computeSentenceLength(text: string): number {
 // address — deterministische Anrede-Erkennung ohne Bibliothek (G9)
 // ---------------------------------------------------------------------------
 //
-// REGEL (siehe Auftrag: "beware that capitalised Sie also begins sentences
-// as 'she/they'"): "sie"/"ihre"/"ihnen"/… klein geschrieben bedeuten IMMER
-// die 3. Person ("sie"/"ihr" im Sinne von "she/they/her/their"), NIE die
-// Höflichkeitsanrede – Großschreibung ist im Deutschen bei der
-// Höflichkeitsanrede verbindlich. Ein großgeschriebener Treffer ("Sie",
-// "Ihre", "Ihnen", …) ist deshalb ein starkes Signal – ABER: am Satzanfang
-// wird JEDES Wort großgeschrieben, unabhängig von seiner Bedeutung. Ein
-// großgeschriebener Treffer am Satzanfang ist deshalb zweideutig (könnte die
-// 3. Person "Sie"/"Ihre" sein, nur zufällig am Satzanfang). Nur ein
-// großgeschriebener Treffer MITTEN im Satz ist ein eindeutiger Beleg für die
-// Höflichkeitsanrede ("sichere" Zählung, `formalHits` unten).
+// **Fix-Runde 2 (Entscheidung des Koordinators nach Rücksprache mit dem
+// menschlichen Projektpartner – keine Empfehlung mehr, sondern verbindlich;
+// siehe task-10-report.md): Anrede und Grußformel sind das PRIMÄRE
+// deterministische Signal, nicht die Pronomen-Zählung.** Jedes echte
+// Anschreiben hat eine Anrede – das ist es, was einen Brief zu einem Brief
+// macht. "Sehr geehrte(r) …" bzw. "Hallo/Liebe(r)/Hi …" sind anders als ein
+// großgeschriebenes Pronomen NIEMALS mit einer 3.-Person-Bedeutung zu
+// verwechseln.
+//
+// PRIORITÄT (absteigend – die erste Stufe mit irgendeinem Treffer
+// entscheidet, tiefere Stufen werden dann gar nicht mehr angesehen):
+//   1. Anrede – nur in den ersten `SALUTATION_WINDOW_LINES` nicht-leeren
+//      Zeilen gesucht (wie die Namenserkennung in `privacy/anonymize.ts`).
+//   2. Grußformel – nur in den letzten `CLOSING_WINDOW_LINES` nicht-leeren
+//      Zeilen gesucht.
+//   3. Pronomen – großgeschrieben MITTEN im Satz, plus "Ihnen" unabhängig
+//      von der Position (siehe unten); "du"-Formen immer, unabhängig von
+//      Position und Groß-/Kleinschreibung.
+//   4. `'none'`, wenn keine der drei Stufen irgendeinen Treffer liefert.
+//
+// Liefert eine Stufe SOWOHL einen förmlichen als auch einen informellen
+// Treffer (widersprüchlich), gewinnt innerhalb dieser Stufe informell –
+// dieselbe "informell gewinnt bei Gleichstand"-Regel wie bei den reinen
+// Pronomentreffern unten.
+//
+// **Warum Anrede über Grußformel gewinnt, wenn beide widersprechen**
+// (vom Koordinator ausdrücklich zur Entscheidung gestellt): Die Anrede ist
+// die bewusstere, verbindlichere Formulierung im ganzen Brief – "Sehr
+// geehrte Damen und Herren" erzwingt eine aktive Entscheidung (richtiges
+// Anrede-Geschlecht, vollständige Höflichkeitsform), niemand schreibt sie
+// aus reiner Gewohnheit. Die Grußformel ist dagegen im heutigen deutschen
+// Schriftverkehr stark konventionalisiert: "Viele Grüße" wird von vielen
+// Schreibenden als Standard-Abschluss verwendet, unabhängig vom
+// tatsächlichen Register des Briefs – ein ansonsten strikt förmlicher Brief,
+// der aus Gewohnheit mit "Viele Grüße" statt "Mit freundlichen Grüßen"
+// endet, ist real und häufig (vom Koordinator namentlich als Testfall
+// verlangt). Deshalb entscheidet die Anrede, sobald sie ein Signal liefert;
+// die Grußformel wird nur konsultiert, wenn die Anrede GAR KEIN Signal
+// liefert (keine der beiden Wortlisten trifft in den ersten Zeilen).
+//
+// **Bekannte Grenze, vom Koordinator ausdrücklich angefragt:** Ein
+// Anschreiben, dessen Text OHNE die Anrede-Zeile vorliegt (z. B. weil eine
+// vorgelagerte Dokumentenverarbeitung nur den reinen Fließtext-Body liefert
+// und die Kopfzeile abschneidet), verliert dieses primäre Signal komplett.
+// Fehlt in so einem Fall AUCH eine Grußformel UND jede eindeutige
+// Pronomen-Evidenz (mitten im Satz oder "Ihnen"), liefert diese Funktion
+// `'none'` – selbst wenn ein Mensch den Text zweifelsfrei als förmlich läse
+// (z. B. ausschließlich satzanfangsbedingt großgeschriebene "Ihre"-Sätze
+// ohne jede andere Evidenz, siehe `styleProfile.test.ts`, Test
+// "BEKANNTE GRENZE"). Bewusst in Kauf genommen statt mit einem dritten
+// Pronomen-Positionstrick "repariert" – siehe nächster Absatz.
+//
+// **Warum es KEINEN Positions-Fallback für "sie"/"ihr"/"ihre"/… mehr gibt**
+// (Fix-Runde 1 hatte hier einen Fallback für satzanfangsbedingt
+// großgeschriebene Possessivformen eingeführt – Fix-Runde 2 entfernt ihn
+// ersatzlos, wie vom Koordinator vorgeschlagen): Zwei aufeinanderfolgende
+// Review-Runden haben zwei verschiedene Positions-Heuristiken für
+// satzanfangsbedingt großgeschriebenes "Sie"/"Ihre" widerlegt (Runde 1: ALLE
+// satzanfangsbedingten Treffer zählen NICHT → falsches `'none'` für "Ihre
+// Anzeige…"; Runde 2, erster Versuch: Possessivformen zählen am Satzanfang
+// ALS Fallback → falsches `'sie'` für "Ihre Anliegen [der zuvor genannten
+// Kunden]…"). Eine dritte, noch engere Heuristik (z. B. "nur der
+// allererste Wort-Token des gesamten Texts zählt") hätte zwar beide
+// bekannten Gegenbeispiele gelöst, ist aber genau die Art fragiler
+// Sonderfall-Cleverness, die die letzten beiden Runden bereits zweimal
+// widerlegt hat – jede neue Grenze lädt zu einem neuen, noch nicht
+// gefundenen Gegenbeispiel ein. Jetzt, wo Anrede/Grußformel als primäres
+// Signal existieren, ist der Grenznutzen eines dritten Pronomen-
+// Positionstricks gering, das Risiko eines weiteren stillen Fehlers hoch –
+// deshalb ersatzlos gestrichen (Entscheidung "drop it entirely" statt
+// "narrow it to Ihnen alone" – "Ihnen" ist ohnehin schon die einzige echte
+// Ausnahme, siehe unten, kein Positionstrick).
+//
+// "sie"/"ihr"/"ihre"/"ihrem"/"ihren"/"ihrer" klein geschrieben bedeuten
+// IMMER die 3. Person, nie die Höflichkeitsanrede – Großschreibung ist bei
+// der Höflichkeitsanrede verbindlich, aber am Satzanfang wird JEDES Wort
+// großgeschrieben, unabhängig von seiner Bedeutung. Deshalb zählt nur ein
+// großgeschriebener Treffer MITTEN im Satz sicher; ein satzanfangsbedingter
+// Treffer zählt für KEINE dieser sechs Formen mehr – "sie" und
+// "ihr"/"ihre"/"ihrem"/"ihren"/"ihrer" werden jetzt konsistent GLEICH
+// behandelt, das war genau der vom Review in Fix-Runde 1 gefundene
+// Widerspruch (das bloße Pronomen wurde ausgeschlossen, die Possessivformen
+// nicht, ohne tragfähigen Unterschied).
+//
+// "Ihnen" (Dativ) bleibt die einzige Ausnahme und zählt unabhängig von der
+// Satzposition: als Dativ-Pronomen eröffnet es im Deutschen so gut wie nie
+// einen Satz in der 3. Person ("Ihnen wurde geholfen" ist selten und selbst
+// dann meist schon gehoben/förmlich) – eine grammatische Tatsache, kein
+// Positionstrick, unverändert seit Fix-Runde 1.
 //
 // "du"/"dich"/"dir"/"dein…" sind nie mit einem anderen, bedeutungsähnlichen
 // Wort verwechselbar (kein Homonym-Problem wie bei "sie") – hier zählt jede
-// Fundstelle unabhängig von Groß-/Kleinschreibung und Satzposition.
-//
-// **Fix-Runde 1 (Review-Fund, siehe task-10-report.md): satzanfangsbedingte
-// Großschreibung darf die einzige verfügbare Evidenz nicht komplett
-// verwerfen.** Ein Anschreiben wie "Ihre Anzeige hat mich begeistert. Ihr
-// Unternehmen ist mir positiv aufgefallen. Ihre Referenzen zeigen Qualität."
-// besteht ausschließlich aus satzanfangsbedingt großgeschriebenen Treffern
-// und lieferte vor diesem Fix `'none'` – falsch, das ist eindeutig ein
-// "Sie"-Brief, nur zufällig mit jedem Treffer am Satzanfang. Deshalb jetzt
-// EIN zusätzlicher Fallback-Mechanismus, aber differenziert nach Wortart:
-//
-// - Das bloße Pronomen "sie" (Nominativ/Akkusativ) bleibt am Satzanfang
-//   IMMER vollständig ausgeschlossen, auch als Fallback: "sie" ist die
-//   häufigste 3.-Person-Subjekt-Konstruktion im Deutschen überhaupt ("Die
-//   Firma wurde X gegründet. Sie tut Y.") – hier bliebe die Zweideutigkeit
-//   zu groß, ein Fallback würde genau die im Auftrag beschriebene Falle
-//   ("Sie beschäftigt heute …", bezogen auf die Firma) reaktivieren.
-// - Die Possessivformen "ihr"/"ihre"/"ihrem"/"ihren"/"ihrer" sind an sich
-//   ebenso zweideutig, tragen aber – anders als das bloße Pronomen – zu
-//   einer FALLBACK-Zählung (`formalFallbackHits`) bei: nur verwendet, wenn
-//   es überhaupt KEINE sichere Evidenz gibt (weder `formalHits` noch
-//   `informalHits` > 0). Das deckt genau den Fall oben ab, ohne den
-//   satzanfangsbedingten "sie"-Fall zu verändern.
-// - "Ihnen" (Dativ) zählt dagegen IMMER sicher, unabhängig von der Position
-//   – als Dativ-Pronomen eröffnet es im Deutschen so gut wie nie einen Satz
-//   in der 3. Person ("Ihnen wurde geholfen" ist eine seltene, meist selbst
-//   schon gehobene/förmliche Konstruktion); die Zweideutigkeit ist hier
-//   deutlich schwächer als bei "sie"/"Ihr"/"Ihre" am Satzanfang.
-//
-// TIE-BREAK-REIHENFOLGE: zuerst sichere Treffer (`formalHits`/
-// `informalHits`) – gewinnt einer von beiden, entscheidet er, ein
-// informeller sicherer Treffer schlägt also IMMER einen unsicheren
-// Fallback-Treffer. Erst wenn beide sicheren Zählungen 0 sind, entscheidet
-// `formalFallbackHits` (> 0 → `'sie'`, sonst weiterhin `'none'`).
-//
-// ENTSCHEIDUNG bei Gleichstand sicherer Treffer (inkl. 0:0 vor Fallback):
-// 'none' – ein Anschreiben, das weder eindeutig "Sie" noch eindeutig "du"
-// verwendet (oder beides exakt gleich oft, ein Anzeichen für einen
-// gemischten/fehlerhaften Text), spricht die Leserin/den Leser nicht
-// konsistent direkt an. 'none' ist hier die ehrliche Antwort (siehe
-// Auftrag), keine Notlösung.
+// Fundstelle unabhängig von Groß-/Kleinschreibung und Satzposition, auf
+// jeder der drei Stufen.
 // ---------------------------------------------------------------------------
 
 const FORMAL_ADDRESS_WORDS: ReadonlySet<string> = new Set(['sie', 'ihnen', 'ihr', 'ihre', 'ihrem', 'ihren', 'ihrer'])
 /** Zählt unabhängig von der Satzposition immer sicher, siehe Kommentarblock oben. */
 const POSITION_INDEPENDENT_FORMAL_WORDS: ReadonlySet<string> = new Set(['ihnen'])
-/** Tragen am Satzanfang NUR zur Fallback-Zählung bei (nie zu `formalHits`), siehe oben. */
-const FALLBACK_ELIGIBLE_FORMAL_WORDS: ReadonlySet<string> = new Set(['ihr', 'ihre', 'ihrem', 'ihren', 'ihrer'])
 const INFORMAL_ADDRESS_WORDS: ReadonlySet<string> = new Set([
   'du', 'dich', 'dir', 'dein', 'deine', 'deinem', 'deinen', 'deiner', 'deines',
 ])
@@ -272,14 +309,63 @@ function isCapitalized(word: string): boolean {
   return word.length > 0 && word[0] !== word[0]!.toLowerCase()
 }
 
+/** Ergebnis einer Signalstufe: wie viele förmliche bzw. informelle Treffer sie geliefert hat. */
+interface AddressTally {
+  formal: number
+  informal: number
+}
+
 /**
- * Erkennt, ob das Anschreiben die Leserin/den Leser förmlich ("Sie"),
- * persönlich ("du") oder gar nicht direkt anspricht – siehe Regel oben.
+ * Entscheidet eine einzelne Stufe (Anrede/Grußformel/Pronomen): `null`, wenn
+ * die Stufe gar kein Signal liefert (nächste Stufe entscheidet dann
+ * stattdessen); sonst `'sie'` bei Mehrheit für förmlich, sonst `'du'` –
+ * sowohl bei einer informellen Mehrheit als auch bei einem echten
+ * Gleichstand mit Treffern auf beiden Seiten ("informell gewinnt bei
+ * Gleichstand", siehe Kommentarblock oben).
  */
-export function detectAddress(text: string): Address {
-  let formalHits = 0
-  let informalHits = 0
-  let formalFallbackHits = 0
+function resolveTally(tally: AddressTally): Address | null {
+  if (tally.formal === 0 && tally.informal === 0) return null
+  return tally.informal >= tally.formal ? 'du' : 'sie'
+}
+
+function nonEmptyLines(text: string): string[] {
+  return text.split('\n').filter((line) => line.trim().length > 0)
+}
+
+/** Wie viele nicht-leere Zeilen am Anfang/Ende des Texts auf eine Anrede/Grußformel geprüft werden. */
+const SALUTATION_WINDOW_LINES = 3
+const CLOSING_WINDOW_LINES = 3
+
+// Zeilenanfang-verankert (multiline 'm'), case-insensitive ('i'). Feste
+// Wortlisten statt eines allgemeinen Musters – exakt die vom Koordinator
+// vorgegebenen Formulierungen (siehe Kommentarblock oben), keine eigene
+// Erweiterung (z. B. deckt "Liebes Team," mit sächlichem "Liebes" bewusst
+// NICHT ab – nicht in der Vorgabe, siehe Bericht).
+const FORMAL_SALUTATION_RE = /^\s*sehr geehrte[nr]?\b/im
+const FORMAL_CLOSING_RE = /^\s*(mit (freundlichen|besten) grüßen|hochachtungsvoll)\b/im
+const INFORMAL_SALUTATION_RE = /^\s*(hallo|liebe|lieber|hi)\b/im
+const INFORMAL_CLOSING_RE = /^\s*(liebe|viele|beste) grüße\b/im
+
+function salutationTally(text: string): AddressTally {
+  const window = nonEmptyLines(text).slice(0, SALUTATION_WINDOW_LINES).join('\n')
+  return {
+    formal: FORMAL_SALUTATION_RE.test(window) ? 1 : 0,
+    informal: INFORMAL_SALUTATION_RE.test(window) ? 1 : 0,
+  }
+}
+
+function closingTally(text: string): AddressTally {
+  const lines = nonEmptyLines(text)
+  const window = lines.slice(Math.max(0, lines.length - CLOSING_WINDOW_LINES)).join('\n')
+  return {
+    formal: FORMAL_CLOSING_RE.test(window) ? 1 : 0,
+    informal: INFORMAL_CLOSING_RE.test(window) ? 1 : 0,
+  }
+}
+
+function pronounTally(text: string): AddressTally {
+  let formal = 0
+  let informal = 0
 
   const wordRe = /\p{L}+/gu
   let match: RegExpExecArray | null
@@ -288,32 +374,29 @@ export function detectAddress(text: string): Address {
     const lower = word.toLowerCase()
 
     if (INFORMAL_ADDRESS_WORDS.has(lower)) {
-      informalHits++
+      informal++
       continue
     }
 
     if (!FORMAL_ADDRESS_WORDS.has(lower) || !isCapitalized(word)) continue
 
-    if (POSITION_INDEPENDENT_FORMAL_WORDS.has(lower)) {
-      formalHits++
-      continue
+    if (POSITION_INDEPENDENT_FORMAL_WORDS.has(lower) || !isSentenceInitial(text, match.index)) {
+      formal++
     }
-
-    if (!isSentenceInitial(text, match.index)) {
-      formalHits++
-    } else if (FALLBACK_ELIGIBLE_FORMAL_WORDS.has(lower)) {
-      formalFallbackHits++
-    }
-    // Bloßes "sie" am Satzanfang: weder formalHits noch formalFallbackHits
-    // (siehe Kommentarblock oben) – trägt bewusst zu nichts bei.
+    // Satzanfangsbedingt großgeschrieben und nicht "Ihnen": zweideutig,
+    // zählt bewusst nicht (siehe Kommentarblock oben).
   }
 
-  if (formalHits > 0 || informalHits > 0) {
-    if (formalHits === informalHits) return 'none'
-    return formalHits > informalHits ? 'sie' : 'du'
-  }
+  return { formal, informal }
+}
 
-  return formalFallbackHits > 0 ? 'sie' : 'none'
+/**
+ * Erkennt, ob das Anschreiben die Leserin/den Leser förmlich ("Sie"),
+ * persönlich ("du") oder gar nicht direkt anspricht – siehe Kommentarblock
+ * oben für die dreistufige Priorität (Anrede → Grußformel → Pronomen).
+ */
+export function detectAddress(text: string): Address {
+  return resolveTally(salutationTally(text)) ?? resolveTally(closingTally(text)) ?? resolveTally(pronounTally(text)) ?? 'none'
 }
 
 // ---------------------------------------------------------------------------

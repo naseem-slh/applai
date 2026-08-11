@@ -130,15 +130,11 @@ describe('detectAddress', () => {
   it('zählt ein großgeschriebenes "Sie" am Satzanfang NICHT als Höflichkeitsanrede, wenn es die einzige Fundstelle ist', () => {
     // "Sie" bezieht sich hier beide Male auf "Die Musterwerk GmbH" (die
     // Firma), ist aber jeweils nur wegen der Satzanfangsposition
-    // großgeschrieben – keine echte Anrede der Leserin/des Lesers.
+    // großgeschrieben – keine echte Anrede der Leserin/des Lesers. Kein
+    // Anrede-/Grußformel-Signal in diesem kurzen Ausschnitt vorhanden.
     const text =
       'Die Musterwerk GmbH wurde 1998 gegründet. Sie beschäftigt heute über 300 Mitarbeitende in ganz Deutschland. ' +
       'Sie exportiert ihre Produkte in über 20 Länder.'
-    expect(detectAddress(text)).toBe('none')
-  })
-
-  it('liefert "none" bei einem Unentschieden zwischen "Sie"- und "du"-Treffern', () => {
-    const text = 'Ich habe Ihre Anzeige gelesen. Kannst du mir mehr erzählen?'
     expect(detectAddress(text)).toBe('none')
   })
 
@@ -146,24 +142,7 @@ describe('detectAddress', () => {
     expect(detectAddress('')).toBe('none')
   })
 
-  // -------------------------------------------------------------------
-  // Fix-Runde 1 (Review-Fund): Fallback-Regel, wenn ALLE Treffer
-  // satzanfangsbedingt großgeschrieben sind – siehe Kommentarblock über
-  // detectAddress in styleProfile.ts.
-  // -------------------------------------------------------------------
-
-  it('erkennt "Sie" auch dann, wenn ausnahmslos alle Treffer satzanfangsbedingt großgeschrieben sind (Fallback-Regel)', () => {
-    const text =
-      'Ihre Anzeige hat mich begeistert. Ihr Unternehmen ist mir positiv aufgefallen. Ihre Referenzen zeigen Qualität.'
-    expect(detectAddress(text)).toBe('sie')
-  })
-
-  it('lässt einen sicheren "du"-Treffer gegen einen bloß satzanfangsbedingten "Ihre"-Fallback-Treffer gewinnen', () => {
-    const text = 'Ihre Anzeige hat mich begeistert. Kannst du mir mehr erzählen?'
-    expect(detectAddress(text)).toBe('du')
-  })
-
-  it('zählt ein satzanfangsbedingt großgeschriebenes "Ihnen" (Dativ) als sicheren Treffer, nicht nur als Fallback', () => {
+  it('zählt ein satzanfangsbedingt großgeschriebenes "Ihnen" (Dativ) als sicheren Treffer – die einzige Ausnahme von der Positionsregel', () => {
     // "Ihnen" eröffnet im Deutschen so gut wie nie einen Satz in der
     // 3. Person – deutlich schwächere Zweideutigkeit als bei "sie"/"Ihr"/"Ihre".
     const text = 'Ihnen möchte ich für die Gelegenheit danken, mich vorzustellen.'
@@ -173,6 +152,80 @@ describe('detectAddress', () => {
   it('erkennt "du" auch dann, wenn alle Treffer satzanfangsbedingt stehen (kein Zweideutigkeitsproblem bei "du"-Formen)', () => {
     const text = 'Du hast sicher schon viel von uns gehört. Dein Team wartet schon auf dich.'
     expect(detectAddress(text)).toBe('du')
+  })
+
+  // -------------------------------------------------------------------
+  // Fix-Runde 2 (Review-Fund + Koordinator-Entscheidung): Anrede und
+  // Grußformel sind jetzt das primäre Signal, der Possessivform-Fallback
+  // aus Fix-Runde 1 wurde ersatzlos gestrichen (siehe Kommentarblock über
+  // detectAddress in styleProfile.ts für die vollständige Begründung).
+  // -------------------------------------------------------------------
+
+  it('erkennt "sie" NICHT als Anrede, wenn "Ihre"/"Ihr" sich auf zuvor genannte Dritte beziehen, statt fälschlich "sie" zu liefern (Gegenbeispiel aus dem Review, das Fix-Runde 1 noch nicht bestand)', () => {
+    // "Ihre Anliegen"/"Ihre Zufriedenheit" beziehen sich auf "Kunden" aus
+    // dem Vorsatz – 3. Person Plural, keine Anrede. Beide Treffer sind
+    // satzanfangsbedingt großgeschrieben und zählen deshalb nicht mehr
+    // (kein Possessivform-Fallback mehr, siehe Kommentarblock).
+    const text =
+      'Beim vorherigen Arbeitgeber betreute ich zahlreiche Kunden. Ihre Anliegen bearbeitete ich stets zügig. ' +
+      'Ihre Zufriedenheit lag mir sehr am Herzen.'
+    expect(detectAddress(text)).toBe('none')
+  })
+
+  it('erkennt "Sie" über die Anrede, wenn im Fließtext ausschließlich satzanfangsbedingt großgeschriebene "Ihre"/"Ihr"-Treffer vorkommen (Anrede ist jetzt das primäre Signal, kein Pronomen-Fallback mehr nötig)', () => {
+    const text =
+      'Sehr geehrte Damen und Herren,\n\nIhre Anzeige hat mich begeistert. Ihr Unternehmen ist mir positiv aufgefallen. Ihre Referenzen zeigen Qualität.'
+    expect(detectAddress(text)).toBe('sie')
+  })
+
+  it('BEKANNTE GRENZE: liefert "none" für denselben Text OHNE die Anrede-Zeile – ausschließlich satzanfangsbedingte Pronomen reichen seit Fix-Runde 2 nicht mehr aus (siehe Kommentarblock, Abschnitt "Bekannte Grenze")', () => {
+    const text = 'Ihre Anzeige hat mich begeistert. Ihr Unternehmen ist mir positiv aufgefallen. Ihre Referenzen zeigen Qualität.'
+    expect(detectAddress(text)).toBe('none')
+  })
+
+  it('lässt einen Gleichstand zwischen einem sicheren "Sie"- und einem "du"-Pronomentreffer zugunsten von "du" auflösen (informell gewinnt bei Gleichstand)', () => {
+    const text = 'Ich habe Ihre Anzeige gelesen. Kannst du mir mehr erzählen?'
+    expect(detectAddress(text)).toBe('du')
+  })
+
+  it('lässt einen mitten im Satz großgeschriebenen "Sie"-Treffer gegen einen "du"-Treffer im selben Brief zugunsten von "du" auflösen', () => {
+    const text = 'Ich habe gesehen, dass Sie noch Verstärkung suchen. Kannst du mir mehr Details schicken?'
+    expect(detectAddress(text)).toBe('du')
+  })
+
+  it('nutzt die Anrede in den ersten Zeilen als primäres Signal, auch bei einer vollständigen, realistischen Briefstruktur', () => {
+    const text =
+      'Sehr geehrte Frau Meier,\n\nhiermit bewerbe ich mich um die ausgeschriebene Stelle als Sachbearbeiter.\n\nMit freundlichen Grüßen\nAlex Berger'
+    expect(detectAddress(text)).toBe('sie')
+  })
+
+  it('nutzt "Hallo"/"Liebe(r)"/"Hi" als informelles Anrede-Signal', () => {
+    const text = 'Hi Team,\n\nich habe eure Stellenanzeige gesehen und möchte mich bewerben.'
+    expect(detectAddress(text)).toBe('du')
+  })
+
+  it('lässt eine förmliche Anrede gewinnen, auch wenn die Grußformel informell ist ("Viele Grüße" unter einem sonst förmlichen Brief – ein häufiger Praxisfall, siehe Bericht)', () => {
+    const text =
+      'Sehr geehrte Damen und Herren,\n\nhiermit bewerbe ich mich um die ausgeschriebene Stelle.\n\nViele Grüße\nAlex Berger'
+    expect(detectAddress(text)).toBe('sie')
+  })
+
+  it('lässt eine informelle Anrede gewinnen, auch wenn die Grußformel förmlich ist (symmetrischer Fall zum vorigen Test)', () => {
+    const text = 'Hallo Team,\n\nich bewerbe mich hiermit um die ausgeschriebene Stelle.\n\nMit freundlichen Grüßen\nAlex Berger'
+    expect(detectAddress(text)).toBe('du')
+  })
+
+  it('nutzt die Grußformel als Ersatzsignal, wenn keine Anrede vorhanden ist', () => {
+    const text = 'Hiermit bewerbe ich mich um die ausgeschriebene Stelle.\n\nMit freundlichen Grüßen\nAlex Berger'
+    expect(detectAddress(text)).toBe('sie')
+  })
+
+  it('erkennt "Hiermit" am Zeilenanfang NICHT fälschlich als informelle Anrede ("Hi…")', () => {
+    // Regressionsschutz für die Wortgrenze in INFORMAL_SALUTATION_RE – ein
+    // sehr häufiger Bewerbungsschreiben-Einstieg, der "Hi" nur als Präfix
+    // enthält, kein eigenständiges Wort.
+    const text = 'Hiermit bewerbe ich mich um die ausgeschriebene Stelle. Über eine Rückmeldung würde ich mich freuen.'
+    expect(detectAddress(text)).toBe('none')
   })
 })
 
