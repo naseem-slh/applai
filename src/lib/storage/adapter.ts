@@ -59,14 +59,34 @@ export interface StorageAdapter {
   /**
    * Sucht einen bereits vorhandenen Eintrag mit derselben Firma und
    * derselben Stelle (Groß-/Kleinschreibung und umgebende Leerzeichen
-   * spielen keine Rolle). `null`, wenn keiner gefunden wurde. Löst selbst
-   * nichts aus — die Oberfläche entscheidet, was der Hinweis „doppelte
-   * Bewerbung" bewirkt.
+   * spielen keine Rolle). `null`, wenn keiner gefunden wurde. Ein leerer
+   * Suchbegriff ist kein Sonderfall: er passt nur auf einen gespeicherten
+   * Wert, der nach demselben Trimmen ebenfalls leer ist. Löst selbst nichts
+   * aus — die Oberfläche entscheidet, was der Hinweis „doppelte Bewerbung"
+   * bewirkt.
    */
   findDuplicate(company: string, position: string): Promise<Application | null>
   /** Legt einen Entwurf an oder überschreibt ihn (Schlüssel: `Draft.id`) — so funktioniert das automatische Zwischenspeichern. */
   saveDraft(d: Draft): Promise<void>
   loadDraft(id: string): Promise<Draft | null>
+  /**
+   * Löscht genau einen Entwurf. Das ist die „nach Export"-Hälfte von G5
+   * (`docs/spec.md`: „Entwürfe … gelöscht nach Export oder nach 7 Tagen") —
+   * `purgeExpiredDrafts` deckt nur die zweite Hälfte ab, die Fristlöschung;
+   * ein zu klein gewähltes `maxAgeMs` wäre kein Ersatz, weil es jeden
+   * Entwurf träfe, nicht nur den gerade exportierten.
+   *
+   * Löst bei einer unbekannten Kennung **nicht**: Der erwartete Aufrufer
+   * (Aufgabe 15) ruft dies unmittelbar nach einem erfolgreichen Export auf,
+   * wenn die Kennung sicher existiert; ein doppelter Aufruf (etwa durch ein
+   * zweites Browser-Tab oder einen zwischenzeitlichen Ablauf durch
+   * `purgeExpiredDrafts`) soll dieselbe Wirkung haben wie ein einziger, statt
+   * eine Ausnahme zu werfen, die der Aufrufer eigens abfangen müsste. Damit
+   * verhält sich diese Methode wie `IDBObjectStore.delete()` selbst und wie
+   * `loadDraft()` (liefert `null` statt zu werfen) — „fehlt bereits" ist in
+   * dieser Schicht durchgehend kein Fehlerfall.
+   */
+  deleteDraft(id: string): Promise<void>
   /**
    * Löscht alle Entwürfe, die älter als `maxAgeMs` sind, und gibt ihre
    * Anzahl zurück. Die Frist ist bewusst ein Parameter, keine Konstante

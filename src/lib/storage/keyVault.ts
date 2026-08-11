@@ -32,7 +32,16 @@ import {
  *    wird nach Untätigkeit gelöscht.
  */
 
-export type ProviderId = 'gemini' | 'openai' | 'anthropic'
+/**
+ * Die drei fest verdrahteten Anbieter (siehe `docs/spec.md`). Einzige Quelle
+ * dieser Liste: `ProviderId` und `isProviderId` leiten sich beide von ihr
+ * ab, damit Typ und Laufzeitprüfung nicht auseinanderlaufen können — sonst
+ * bräuchte jede weitere Stelle, die Anbieter kennt (z. B. die
+ * Sicherungsdatei in `indexeddb.ts`), ihre eigene Kopie der drei Werte.
+ */
+export const PROVIDER_IDS = ['gemini', 'openai', 'anthropic'] as const
+
+export type ProviderId = (typeof PROVIDER_IDS)[number]
 
 /**
  * Eigene Datenbank statt eines gemeinsamen Speichers: der Name ist für
@@ -282,8 +291,9 @@ async function withStore<T>(mode: IDBTransactionMode, run: (store: IDBObjectStor
   }
 }
 
-function isProviderId(value: unknown): value is ProviderId {
-  return value === 'gemini' || value === 'openai' || value === 'anthropic'
+/** Exportiert, damit `indexeddb.ts` beim Prüfen der Sicherungsdatei dieselbe Liste verwendet statt einer eigenen Kopie (siehe `PROVIDER_IDS`). */
+export function isProviderId(value: unknown): value is ProviderId {
+  return (PROVIDER_IDS as readonly unknown[]).includes(value)
 }
 
 /**

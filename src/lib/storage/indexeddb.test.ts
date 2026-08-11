@@ -82,6 +82,27 @@ function makeArrayBuffer(bytes: number[]): ArrayBuffer {
   return buffer
 }
 
+/**
+ * Deterministisch, aber nicht periodisch innerhalb der Puffergröße
+ * (Xorshift32) — anders als etwa `i % 256` deckt das jedes Byte 0–255 ab,
+ * ohne mit der 32-KiB-Blockgröße von `arrayBufferToBase64` phasengleich zu
+ * sein. So bleibt ein Fehler genau an einer Blockgrenze sichtbar, statt
+ * durch ein sich wiederholendes Muster zufällig verdeckt zu werden.
+ */
+function pseudoRandomBytes(length: number, seed: number): Uint8Array<ArrayBuffer> {
+  const bytes = new Uint8Array(length)
+  let state = seed >>> 0
+  for (let index = 0; index < length; index += 1) {
+    state ^= state << 13
+    state >>>= 0
+    state ^= state >>> 17
+    state ^= state << 5
+    state >>>= 0
+    bytes[index] = state & 0xff
+  }
+  return bytes
+}
+
 function makeDraft(overrides: Partial<Draft> = {}): Draft {
   return {
     id: 'entwurf-1',
@@ -220,6 +241,46 @@ describe('saveDraft / loadDraft', () => {
   })
 })
 
+describe('deleteDraft', () => {
+  it('löscht genau den angegebenen Entwurf und lässt die anderen unangetastet', async () => {
+    const adapter = createIndexedDbAdapter()
+    await adapter.saveDraft(makeDraft({ id: 'a', text: 'Entwurf A' }))
+    await adapter.saveDraft(makeDraft({ id: 'b', text: 'Entwurf B' }))
+    await adapter.saveDraft(makeDraft({ id: 'c', text: 'Entwurf C' }))
+
+    await adapter.deleteDraft('b')
+
+    expect(await adapter.loadDraft('b')).toBeNull()
+    expect((await adapter.loadDraft('a'))?.text).toBe('Entwurf A')
+    expect((await adapter.loadDraft('c'))?.text).toBe('Entwurf C')
+    expect(await readRawStore(DRAFTS_STORE)).toHaveLength(2)
+  })
+
+  it('lässt die Bewerbungsliste unangetastet', async () => {
+    const adapter = createIndexedDbAdapter()
+    const application = await adapter.addApplication({ company: 'Muster AG', position: 'A', date: '2026-01-01' })
+    await adapter.saveDraft(makeDraft())
+
+    await adapter.deleteDraft('entwurf-1')
+
+    expect(await adapter.listApplications()).toEqual([application])
+  })
+
+  it('löst bei einer unbekannten Kennung nicht — derselbe Aufruf darf gefahrlos wiederholt werden', async () => {
+    // Der erwartete Aufrufer (Aufgabe 15) ruft dies unmittelbar nach einem
+    // erfolgreichen Export auf; ein zweiter, redundanter Aufruf (etwa aus
+    // einem zweiten Tab) soll nicht anders enden als der erste.
+    const adapter = createIndexedDbAdapter()
+    await adapter.saveDraft(makeDraft())
+
+    await expect(adapter.deleteDraft('unbekannt')).resolves.toBeUndefined()
+    await adapter.deleteDraft('entwurf-1')
+    await expect(adapter.deleteDraft('entwurf-1')).resolves.toBeUndefined()
+
+    expect(await adapter.loadDraft('entwurf-1')).toBeNull()
+  })
+})
+
 describe('purgeExpiredDrafts', () => {
   it('löscht nur Entwürfe, die älter als die Frist sind, und zählt korrekt', async () => {
     vi.useFakeTimers({ toFake: ['Date'] })
@@ -340,6 +401,28 @@ describe('exportAll / importAll', () => {
     expect(await adapter.getSettings()).toEqual(settings)
   })
 
+  it('rundet ein großes docxBase über mehrere Base64-Blöcke verlustfrei (arrayBufferToBase64 chunkt in 32-KiB-Schritten)', async () => {
+    const adapter = createIndexedDbAdapter()
+    // 98 441 Byte: drei volle 32-KiB-Blöcke plus ein unvollständiger vierter
+    // (98 441 = 3 × 32 768 + 137) — genau der Fall, den die Blockbildung in
+    // arrayBufferToBase64/base64ToArrayBuffer beherrschen muss und den ein
+    // einzelner kleiner Testpuffer (ein Schleifendurchlauf) nicht prüft.
+    const bytes = pseudoRandomBytes(98_441, 0x5eed)
+    const draft = makeDraft({ id: 'grosser-entwurf', docxBase: bytes.buffer })
+
+    await adapter.saveDraft(draft)
+    const blob = await adapter.exportAll()
+    const file = new File([blob], 'grosse-sicherung.json', { type: 'application/json' })
+
+    await adapter.clearAll()
+    await adapter.importAll(file)
+
+    const restored = await adapter.loadDraft('grosser-entwurf')
+    expect(restored).not.toBeNull()
+    expect(restored!.docxBase.byteLength).toBe(bytes.length)
+    expect(new Uint8Array(restored!.docxBase)).toEqual(bytes)
+  })
+
   it('ersetzt den Bestand bei importAll, statt ihn zusammenzuführen', async () => {
     const adapter = createIndexedDbAdapter()
     await adapter.addApplication({ company: 'Wird gesichert', position: 'A', date: '2026-01-01' })
@@ -397,6 +480,33 @@ describe('exportAll / importAll', () => {
       { type: 'application/json' },
     )
     await expect(adapter.importAll(datei)).rejects.toThrow()
+  })
+
+  it('weist eine Sicherungsdatei mit ungültigem Base64 in docxBase zurück, bevor irgendetwas geschrieben wird', async () => {
+    const adapter = createIndexedDbAdapter()
+    await adapter.addApplication({ company: 'Bleibt erhalten', position: 'A', date: '2026-01-01' })
+    await adapter.saveDraft(makeDraft({ id: 'bleibt-auch-erhalten' }))
+
+    const datei = new File(
+      [
+        JSON.stringify({
+          formatVersion: EXPORT_FORMAT_VERSION,
+          applications: [],
+          drafts: [{ id: 'x', text: 'Text', savedAt: Date.now(), docxBase: '!!!kein-gueltiges-base64!!!' }],
+          settings: DEFAULT_SETTINGS,
+        }),
+      ],
+      'ungueltiges-base64.json',
+      { type: 'application/json' },
+    )
+
+    await expect(adapter.importAll(datei)).rejects.toThrow()
+
+    // Die Prüfung lief vollständig, bevor die Transaktion überhaupt
+    // eröffnet wurde — der vorherige Bestand ist unangetastet, nicht nur
+    // per Transaktions-Rollback wiederhergestellt.
+    expect(await adapter.listApplications()).toHaveLength(1)
+    expect(await adapter.loadDraft('bleibt-auch-erhalten')).not.toBeNull()
   })
 })
 

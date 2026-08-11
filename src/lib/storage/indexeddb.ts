@@ -1,5 +1,5 @@
 import type { Application, Draft, Settings, StorageAdapter, TruthMode } from './adapter'
-import type { ProviderId } from './keyVault'
+import { isProviderId } from './keyVault'
 
 /**
  * Die IndexedDB-Umsetzung von `StorageAdapter` (siehe `adapter.ts`) — heute
@@ -41,10 +41,6 @@ export const DEFAULT_SETTINGS: Settings = {
  */
 export const EXPORT_FORMAT_VERSION = 1
 
-function isProviderId(value: unknown): value is ProviderId {
-  return value === 'gemini' || value === 'openai' || value === 'anthropic'
-}
-
 function isTruthMode(value: unknown): value is TruthMode {
   return value === 'strict' || value === 'bridge' || value === 'free'
 }
@@ -68,6 +64,24 @@ interface ExportedDraft {
   docxBase: string
 }
 
+/**
+ * Prüft, ob `value` sich mit `atob()` decodieren lässt — dieselbe Funktion,
+ * die `base64ToArrayBuffer` beim tatsächlichen Import verwendet. Ohne diese
+ * Prüfung würde ein unstimmiges `docxBase` erst beim Schreiben auffallen,
+ * innerhalb der Transaktion in `importAll` — die Transaktion würde zwar
+ * automatisch zurückgerollt, aber die Zusicherung „vollständig geprüft, bevor
+ * geschrieben wird" (siehe `parseExportPayload`) wäre für dieses Feld nicht
+ * eingehalten.
+ */
+function isWellFormedBase64(value: string): boolean {
+  try {
+    atob(value)
+    return true
+  } catch {
+    return false
+  }
+}
+
 function isExportedDraft(value: unknown): value is ExportedDraft {
   if (typeof value !== 'object' || value === null) return false
   const candidate = value as Partial<ExportedDraft>
@@ -75,7 +89,8 @@ function isExportedDraft(value: unknown): value is ExportedDraft {
     typeof candidate.id === 'string' &&
     typeof candidate.text === 'string' &&
     typeof candidate.savedAt === 'number' &&
-    typeof candidate.docxBase === 'string'
+    typeof candidate.docxBase === 'string' &&
+    isWellFormedBase64(candidate.docxBase)
   )
 }
 
@@ -305,6 +320,15 @@ async function loadDraft(id: string): Promise<Draft | null> {
   return draft ?? null
 }
 
+async function deleteDraft(id: string): Promise<void> {
+  // IDBObjectStore.delete() selbst löst schon nicht, wenn der Schlüssel
+  // fehlt — das reicht hier unverändert durch (siehe Begründung in
+  // adapter.ts).
+  await withTransaction([DRAFTS_STORE], 'readwrite', async (tx) => {
+    await promisifyRequest(tx.objectStore(DRAFTS_STORE).delete(id))
+  })
+}
+
 async function purgeExpiredDrafts(maxAgeMs: number): Promise<number> {
   const now = Date.now()
   return withTransaction([DRAFTS_STORE], 'readwrite', async (tx) => {
@@ -405,6 +429,7 @@ export function createIndexedDbAdapter(): StorageAdapter {
     findDuplicate,
     saveDraft,
     loadDraft,
+    deleteDraft,
     purgeExpiredDrafts,
     getSettings,
     saveSettings,
