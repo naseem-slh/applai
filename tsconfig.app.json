@@ -22,13 +22,20 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true,
 
-    /* vite/client für import.meta.env-Typen. Testfunktionen (describe/it/
-       expect) werden bewusst explizit aus 'vitest' importiert statt global
-       aktiviert; die jest-dom-Matcher-Typen kommen automatisch mit dem
-       Seiteneffekt-Import in src/setupTests.ts. 'node' ausschließlich für
-       Tests, die Fixtures von der Festplatte laden (z. B. parse.test.ts via
-       node:fs/promises) — Vitest läuft in Node, nie im gebauten Browser-Code. */
-    "types": ["vite/client", "node"],
+    /* vite/client für import.meta.env-Typen. Bewusst KEIN 'node': diese
+       Restriktion ist die Typ-Ebenen-Absicherung von G1 (kein Server/
+       Backend) — jede versehentliche Nutzung von process/Buffer/require/
+       __dirname im Produktionscode unter src/ soll tsc --strict
+       fehlschlagen lassen. Testdateien (die z. B. Fixtures per
+       node:fs/promises laden) sind unten per "exclude" aus diesem Projekt
+       herausgenommen und laufen stattdessen unter tsconfig.test.json mit
+       eigenem, bewusst laxerem "types" — ein einzelner
+       `/// <reference types="node" />` in einer Testdatei würde NICHT
+       reichen, weil Ambient-Typen programweit gelten, nicht dateiweise:
+       In einem gemeinsamen Programm mit den Produktionsdateien würde er
+       'process' & Co. überall sichtbar machen, nicht nur in der Testdatei
+       selbst. */
+    "types": ["vite/client"],
 
     /* Pfad-Alias */
     "baseUrl": ".",
@@ -36,5 +43,6 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src"]
+  "include": ["src"],
+  "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx", "src/setupTests.ts"]
 }

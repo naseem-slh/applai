@@ -80,13 +80,14 @@ function writeDocx(fileName, files) {
   console.log(`geschrieben: ${fileName}`)
 }
 
-// --- Fixture 1: einfaches Anschreiben (Fließtext, Tabulator, Zeilenumbruch) ---
+// --- Fixture 1: einfaches Anschreiben (Fließtext, Tabulator, Zeilenumbruch, leerer Absatz) ---
 {
   const body = [
     '    <w:p><w:r><w:t>Sehr geehrte Damen und Herren,</w:t></w:r></w:p>',
     '    <w:p><w:r><w:t xml:space="preserve">ich bewerbe mich hiermit um die ausgeschriebene Stelle. </w:t></w:r><w:r><w:t>Meine Motivation ist hoch.</w:t></w:r></w:p>',
     '    <w:p><w:r><w:t>Anrede:</w:t><w:tab/><w:t>Herr</w:t><w:br/><w:t>Zeile zwei</w:t></w:r></w:p>',
     '    <w:p><w:r><w:t>Mit freundlichen Grüßen</w:t></w:r></w:p>',
+    '    <w:p/>',
   ].join('\n')
 
   writeDocx('anschreiben.docx', {
@@ -96,12 +97,13 @@ function writeDocx(fileName, files) {
   })
 }
 
-// --- Fixture 2: fett gesetzter Teilsatz (mehrere w:r-Läufe in einem Absatz) ---
+// --- Fixture 2: fett gesetzter Teilsatz + formatierungsreiner Lauf ohne w:t ---
 {
   const body = [
     '    <w:p>',
     '      <w:r><w:t xml:space="preserve">Ich bin ein </w:t></w:r>',
     '      <w:r><w:rPr><w:b/></w:rPr><w:t>hoch motivierter</w:t></w:r>',
+    '      <w:r><w:rPr><w:i/></w:rPr></w:r>',
     '      <w:r><w:t xml:space="preserve"> Bewerber mit einschlägiger Erfahrung.</w:t></w:r>',
     '    </w:p>',
   ].join('\n')

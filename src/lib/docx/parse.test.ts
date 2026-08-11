@@ -1,3 +1,10 @@
+// Diese Datei lädt Fixtures per node:fs/promises von der Platte und läuft
+// deshalb unter tsconfig.test.json (eigenes TS-Projekt mit 'node' in
+// "types"), nicht unter tsconfig.app.json — so bleibt die G1-Absicherung
+// (kein Node-API-Zugriff aus src/-Produktionscode) für den Rest von src/
+// scharf: Ambient-Node-Typen gelten programweit, ein einzelner
+// `/// <reference types="node" />` hier würde sie auch in parse.ts
+// sichtbar machen, wenn beide Dateien im selben TS-Projekt lägen.
 import { readFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -9,6 +16,8 @@ import { parseDocx } from './parse'
 // CLAUDE.md), erzeugt durch tests/fixtures/build-fixtures.mjs.
 const FIXTURES_DIR = join(dirname(fileURLToPath(import.meta.url)), '../../../tests/fixtures')
 
+const ALL_FIXTURES = ['anschreiben.docx', 'anschreiben-fett.docx', 'anschreiben-kopf-fuss.docx']
+
 async function loadFixture(fileName: string) {
   const buffer = await readFile(join(FIXTURES_DIR, fileName))
   // Node liefert einen Buffer; parseDocx erwartet einen echten ArrayBuffer.
@@ -17,16 +26,17 @@ async function loadFixture(fileName: string) {
 }
 
 describe('parseDocx', () => {
-  it('liest ein einfaches Anschreiben mit Absätzen, Tabulator und Zeilenumbruch', async () => {
+  it('liest ein einfaches Anschreiben mit Absätzen, Tabulator, Zeilenumbruch und einem leeren Absatz', async () => {
     const result = await loadFixture('anschreiben.docx')
 
-    expect(result.paragraphs).toHaveLength(4)
+    expect(result.paragraphs).toHaveLength(5)
     expect(result.text).toBe(
       [
         'Sehr geehrte Damen und Herren,',
         'ich bewerbe mich hiermit um die ausgeschriebene Stelle. Meine Motivation ist hoch.',
         'Anrede:\tHerr\nZeile zwei',
         'Mit freundlichen Grüßen',
+        '',
       ].join('\n'),
     )
 
@@ -54,13 +64,26 @@ describe('parseDocx', () => {
     expect(thirdParagraph.runs[0]?.text).toBe(thirdParagraph.text)
   })
 
-  it('liefert für jeden Run einen korrekten node-Verweis auf das <w:r>-Element', async () => {
+  it('bildet einen leeren Absatz (Leerzeile ohne w:r) als start === end ohne Läufe ab', async () => {
+    const result = await loadFixture('anschreiben.docx')
+    const emptyParagraph = result.paragraphs.at(-1)
+
+    expect(emptyParagraph).toBeDefined()
+    expect(emptyParagraph!.text).toBe('')
+    expect(emptyParagraph!.runs).toHaveLength(0)
+    // Vertrag aus model.ts: end ist exklusiv, für einen leeren Absatz fällt
+    // start also mit end zusammen. Aufgabe 3 muss so einen Bereich beim
+    // Ersetzen als "leer, aber vorhanden" behandeln können.
+    expect(emptyParagraph!.start).toBe(emptyParagraph!.end)
+  })
+
+  it('liefert für jeden Run einen korrekten node-Verweis auf das <w:r>-Element und überspringt einen formatierungsreinen Lauf ohne w:t', async () => {
     const result = await loadFixture('anschreiben-fett.docx')
     expect(result.paragraphs).toHaveLength(1)
 
     const [paragraph] = result.paragraphs
     expect(paragraph).toBeDefined()
-    expect(paragraph!.runs).toHaveLength(3)
+    expect(paragraph!.runs).toHaveLength(4)
     expect(paragraph!.text).toBe(paragraph!.runs.map((run) => run.text).join(''))
     expect(paragraph!.text).toBe('Ich bin ein hoch motivierter Bewerber mit einschlägiger Erfahrung.')
 
@@ -74,6 +97,21 @@ describe('parseDocx', () => {
     // Run-Offsets sind relativ zum Absatztext, nicht zum Dokumenttext.
     expect(boldRun?.start).toBe('Ich bin ein '.length)
     expect(boldRun?.end).toBe(boldRun!.start + 'hoch motivierter'.length)
+
+    // Dritter Lauf trägt nur Formatierung (w:rPr/w:i), aber kein w:t — er
+    // muss als real vorhandener Run mit leerem Text erscheinen (start ===
+    // end), ohne selbst zum Absatztext beizutragen und ohne die Offsets
+    // des nachfolgenden Laufs zu verschieben.
+    const formattingOnlyRun = paragraph!.runs[2]
+    expect(formattingOnlyRun?.text).toBe('')
+    expect(formattingOnlyRun?.start).toBe(formattingOnlyRun?.end)
+    expect(formattingOnlyRun?.node.getElementsByTagName('w:i')).toHaveLength(1)
+
+    const trailingRun = paragraph!.runs[3]
+    expect(trailingRun?.text).toBe(' Bewerber mit einschlägiger Erfahrung.')
+    // Der leere Lauf davor darf die Offsets nicht verschieben: der
+    // nachfolgende Lauf beginnt exakt dort, wo der fette Lauf endet.
+    expect(trailingRun?.start).toBe(boldRun!.end)
   })
 
   it('parst nur word/document.xml — Kopf- und Fußzeilentext tauchen nicht in text auf, das Archiv bleibt aber vollständig erhalten', async () => {
@@ -104,5 +142,16 @@ describe('parseDocx', () => {
     })
 
     await expect(parseDocx(invalidZip.buffer as ArrayBuffer)).rejects.toThrow('word/document.xml')
+  })
+
+  it('hält für jeden Lauf in jedem Absatz aller Fixtures den Run-Offset-Vertrag ein', async () => {
+    for (const fileName of ALL_FIXTURES) {
+      const result = await loadFixture(fileName)
+      for (const paragraph of result.paragraphs) {
+        for (const run of paragraph.runs) {
+          expect(paragraph.text.slice(run.start, run.end)).toBe(run.text)
+        }
+      }
+    }
   })
 })
