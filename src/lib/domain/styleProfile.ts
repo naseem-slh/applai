@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import type { LlmProvider } from '../ai/provider'
-import { ModelResponseError, parseModelJson } from '../ai/modelJson'
+import { ModelResponseError, parseModelJson, truncateForError } from '../ai/modelJson'
 import { buildStyleProfilePrompt } from '../ai/prompts/styleProfile'
 import { detectLanguage } from './language'
 
@@ -80,6 +80,26 @@ export interface StyleProfile {
 //   verschmolzen werden, wenn die Zahl 1–2-stellig ist (z. B. "Ich war Platz
 //   2. Das hat mich überrascht." → "2." wird als Ordinalzahl maskiert, beide
 //   Sätze zählen als einer). Seltener Fall in einem Anschreiben, aber real.
+// - **Fix-Runde 1 (Review-Fund, siehe task-10-report.md): eine Abkürzung, die
+//   selbst am Satzende steht, wird ebenfalls fälschlich mit dem Folgesatz
+//   verschmolzen.** `maskNonTerminalPeriods` maskiert den Punkt jeder
+//   gelisteten Abkürzung UNBEDINGT, unabhängig davon, ob dieser Punkt
+//   zufällig auch das echte Satzende ist – z. B. "Ich habe Rechnungen,
+//   Angebote, Reports usw. Danach ging ich nach Hause." hat nach deutscher
+//   Typografie KEINEN zweiten Punkt (der Abkürzungspunkt IST der Satzpunkt),
+//   wird hier aber als ein einziger, zu langer "Satz" gezählt statt als zwei.
+//   Bewusst NICHT durch eine Großschreibungs-Heuristik ("nächstes Wort nach
+//   dem Punkt ist großgeschrieben, also echtes Satzende") behoben: Im
+//   Deutschen wird das nächste Wort so gut wie IMMER großgeschrieben – bei
+//   "Dr. Meier" (echte Fortsetzung, "Meier" ist ein großgeschriebenes
+//   Substantiv/Eigenname) genauso wie bei "usw. Danach" (echtes Satzende,
+//   "Danach" ist satzanfangsbedingt großgeschrieben). Diese Heuristik
+//   unterscheidet die beiden Fälle also NICHT zuverlässig und hätte nur den
+//   Anschein einer Lösung erzeugt, ohne echten Erkenntnisgewinn – deshalb
+//   bewusst nicht eingebaut, stattdessen hier dokumentiert und mit einem
+//   eigenen Regressionstest ("verschmilzt zwei echte Sätze, wenn eine
+//   Abkürzung selbst das Satzende ist") festgehalten, damit sich das
+//   Verhalten nicht unbemerkt ändert.
 // - Die feste Abkürzungsliste ist nicht vollständig — eine unbekannte
 //   Abkürzung ("ggf.a." o. Ä.) wird wie ein normales Satzende behandelt.
 // - Anführungszeichen/Klammern nach dem Satzendezeichen ("Ich schaffe das!")
@@ -172,23 +192,60 @@ export function computeSentenceLength(text: string): number {
 // "Ihre", "Ihnen", …) ist deshalb ein starkes Signal – ABER: am Satzanfang
 // wird JEDES Wort großgeschrieben, unabhängig von seiner Bedeutung. Ein
 // großgeschriebener Treffer am Satzanfang ist deshalb zweideutig (könnte die
-// 3. Person "Sie"/"Ihre" sein, nur zufällig am Satzanfang) und wird bewusst
-// NICHT gezählt – weder für noch gegen die Höflichkeitsanrede. Nur ein
+// 3. Person "Sie"/"Ihre" sein, nur zufällig am Satzanfang). Nur ein
 // großgeschriebener Treffer MITTEN im Satz ist ein eindeutiger Beleg für die
-// Höflichkeitsanrede.
+// Höflichkeitsanrede ("sichere" Zählung, `formalHits` unten).
 //
 // "du"/"dich"/"dir"/"dein…" sind nie mit einem anderen, bedeutungsähnlichen
 // Wort verwechselbar (kein Homonym-Problem wie bei "sie") – hier zählt jede
 // Fundstelle unabhängig von Groß-/Kleinschreibung und Satzposition.
 //
-// ENTSCHEIDUNG bei Gleichstand (inkl. 0:0): 'none' – ein Anschreiben, das
-// weder eindeutig "Sie" noch eindeutig "du" verwendet (oder beides exakt
-// gleich oft, ein Anzeichen für einen gemischten/fehlerhaften Text), spricht
-// die Leserin/den Leser nicht konsistent direkt an. 'none' ist hier die
-// ehrliche Antwort (siehe Auftrag), keine Notlösung.
+// **Fix-Runde 1 (Review-Fund, siehe task-10-report.md): satzanfangsbedingte
+// Großschreibung darf die einzige verfügbare Evidenz nicht komplett
+// verwerfen.** Ein Anschreiben wie "Ihre Anzeige hat mich begeistert. Ihr
+// Unternehmen ist mir positiv aufgefallen. Ihre Referenzen zeigen Qualität."
+// besteht ausschließlich aus satzanfangsbedingt großgeschriebenen Treffern
+// und lieferte vor diesem Fix `'none'` – falsch, das ist eindeutig ein
+// "Sie"-Brief, nur zufällig mit jedem Treffer am Satzanfang. Deshalb jetzt
+// EIN zusätzlicher Fallback-Mechanismus, aber differenziert nach Wortart:
+//
+// - Das bloße Pronomen "sie" (Nominativ/Akkusativ) bleibt am Satzanfang
+//   IMMER vollständig ausgeschlossen, auch als Fallback: "sie" ist die
+//   häufigste 3.-Person-Subjekt-Konstruktion im Deutschen überhaupt ("Die
+//   Firma wurde X gegründet. Sie tut Y.") – hier bliebe die Zweideutigkeit
+//   zu groß, ein Fallback würde genau die im Auftrag beschriebene Falle
+//   ("Sie beschäftigt heute …", bezogen auf die Firma) reaktivieren.
+// - Die Possessivformen "ihr"/"ihre"/"ihrem"/"ihren"/"ihrer" sind an sich
+//   ebenso zweideutig, tragen aber – anders als das bloße Pronomen – zu
+//   einer FALLBACK-Zählung (`formalFallbackHits`) bei: nur verwendet, wenn
+//   es überhaupt KEINE sichere Evidenz gibt (weder `formalHits` noch
+//   `informalHits` > 0). Das deckt genau den Fall oben ab, ohne den
+//   satzanfangsbedingten "sie"-Fall zu verändern.
+// - "Ihnen" (Dativ) zählt dagegen IMMER sicher, unabhängig von der Position
+//   – als Dativ-Pronomen eröffnet es im Deutschen so gut wie nie einen Satz
+//   in der 3. Person ("Ihnen wurde geholfen" ist eine seltene, meist selbst
+//   schon gehobene/förmliche Konstruktion); die Zweideutigkeit ist hier
+//   deutlich schwächer als bei "sie"/"Ihr"/"Ihre" am Satzanfang.
+//
+// TIE-BREAK-REIHENFOLGE: zuerst sichere Treffer (`formalHits`/
+// `informalHits`) – gewinnt einer von beiden, entscheidet er, ein
+// informeller sicherer Treffer schlägt also IMMER einen unsicheren
+// Fallback-Treffer. Erst wenn beide sicheren Zählungen 0 sind, entscheidet
+// `formalFallbackHits` (> 0 → `'sie'`, sonst weiterhin `'none'`).
+//
+// ENTSCHEIDUNG bei Gleichstand sicherer Treffer (inkl. 0:0 vor Fallback):
+// 'none' – ein Anschreiben, das weder eindeutig "Sie" noch eindeutig "du"
+// verwendet (oder beides exakt gleich oft, ein Anzeichen für einen
+// gemischten/fehlerhaften Text), spricht die Leserin/den Leser nicht
+// konsistent direkt an. 'none' ist hier die ehrliche Antwort (siehe
+// Auftrag), keine Notlösung.
 // ---------------------------------------------------------------------------
 
 const FORMAL_ADDRESS_WORDS: ReadonlySet<string> = new Set(['sie', 'ihnen', 'ihr', 'ihre', 'ihrem', 'ihren', 'ihrer'])
+/** Zählt unabhängig von der Satzposition immer sicher, siehe Kommentarblock oben. */
+const POSITION_INDEPENDENT_FORMAL_WORDS: ReadonlySet<string> = new Set(['ihnen'])
+/** Tragen am Satzanfang NUR zur Fallback-Zählung bei (nie zu `formalHits`), siehe oben. */
+const FALLBACK_ELIGIBLE_FORMAL_WORDS: ReadonlySet<string> = new Set(['ihr', 'ihre', 'ihrem', 'ihren', 'ihrer'])
 const INFORMAL_ADDRESS_WORDS: ReadonlySet<string> = new Set([
   'du', 'dich', 'dir', 'dein', 'deine', 'deinem', 'deinen', 'deiner', 'deines',
 ])
@@ -222,6 +279,7 @@ function isCapitalized(word: string): boolean {
 export function detectAddress(text: string): Address {
   let formalHits = 0
   let informalHits = 0
+  let formalFallbackHits = 0
 
   const wordRe = /\p{L}+/gu
   let match: RegExpExecArray | null
@@ -234,14 +292,28 @@ export function detectAddress(text: string): Address {
       continue
     }
 
-    if (FORMAL_ADDRESS_WORDS.has(lower) && isCapitalized(word) && !isSentenceInitial(text, match.index)) {
+    if (!FORMAL_ADDRESS_WORDS.has(lower) || !isCapitalized(word)) continue
+
+    if (POSITION_INDEPENDENT_FORMAL_WORDS.has(lower)) {
       formalHits++
+      continue
     }
+
+    if (!isSentenceInitial(text, match.index)) {
+      formalHits++
+    } else if (FALLBACK_ELIGIBLE_FORMAL_WORDS.has(lower)) {
+      formalFallbackHits++
+    }
+    // Bloßes "sie" am Satzanfang: weder formalHits noch formalFallbackHits
+    // (siehe Kommentarblock oben) – trägt bewusst zu nichts bei.
   }
 
-  if (formalHits === 0 && informalHits === 0) return 'none'
-  if (formalHits === informalHits) return 'none'
-  return formalHits > informalHits ? 'sie' : 'du'
+  if (formalHits > 0 || informalHits > 0) {
+    if (formalHits === informalHits) return 'none'
+    return formalHits > informalHits ? 'sie' : 'du'
+  }
+
+  return formalFallbackHits > 0 ? 'sie' : 'none'
 }
 
 // ---------------------------------------------------------------------------
@@ -258,13 +330,6 @@ const STYLE_PROFILE_LABEL = 'Stilprofil-Analyse'
 
 function normalizeWhitespace(text: string): string {
   return text.replace(/\s+/g, ' ').trim()
-}
-
-const SAMPLE_SNIPPET_LIMIT = 300
-
-function truncateSample(text: string): string {
-  const trimmed = text.trim()
-  return trimmed.length <= SAMPLE_SNIPPET_LIMIT ? trimmed : `${trimmed.slice(0, SAMPLE_SNIPPET_LIMIT)}…`
 }
 
 /**
@@ -286,7 +351,7 @@ function assertSampleIsVerbatim(sample: string, letterText: string, label: strin
   if (normalizedSample === '' || !normalizedLetter.includes(normalizedSample)) {
     throw new ModelResponseError(
       label,
-      `${label}: "sample" steht nicht wörtlich im Originalanschreiben – die KI darf keine Beispielsätze erfinden oder umformulieren (G10). Gelieferter Text (gekürzt): "${truncateSample(sample)}"`,
+      `${label}: "sample" steht nicht wörtlich im Originalanschreiben – die KI darf keine Beispielsätze erfinden oder umformulieren (G10). Gelieferter Text (gekürzt): "${truncateForError(sample)}"`,
     )
   }
 }

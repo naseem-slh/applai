@@ -77,6 +77,41 @@ describe('computeSentenceLength', () => {
     // von 28/8 = 3.5 vortäuschen – deutlich erkennbar falsch.
     expect(computeSentenceLength(ABBREVIATION_SENTENCE_FIXTURE)).toBe(9.3)
   })
+
+  // -------------------------------------------------------------------
+  // Fix-Runde 1 (Review-Fund): breitere Abdeckung über die Abkürzungsarten
+  // hinweg statt aller 35 Einträge einzeln – je ein Vertreter pro Form.
+  // -------------------------------------------------------------------
+
+  it('ignoriert eine mehrteilige Abkürzung mitten im Satz ("u. a.", eigener Fall neben "z. B.")', () => {
+    const text = 'Ich habe Erfahrung in der Buchhaltung, u. a. im Rechnungswesen. Das hat mir sehr geholfen.'
+    // 2 echte Sätze (10 + 5 Wörter) = 15 / 2 = 7.5
+    expect(computeSentenceLength(text)).toBe(7.5)
+  })
+
+  it('ignoriert eine einteilige Abkürzung vor einer Zahl mitten im Satz ("Tel.")', () => {
+    const text = 'Bei Rückfragen erreichen Sie mich unter Tel. 0170 1234567. Ich freue mich auf Ihre Rückmeldung.'
+    // 2 echte Sätze (7 + 6 Wörter) = 13 / 2 = 6.5
+    expect(computeSentenceLength(text)).toBe(6.5)
+  })
+
+  it('ignoriert eine einteilige Abkürzung mitten im Satz ("bzw.")', () => {
+    const text = 'Ich habe Erfahrung im Vertrieb bzw. im Kundenservice gesammelt. Beides bereitet mir Freude.'
+    // 2 echte Sätze (9 + 4 Wörter) = 13 / 2 = 6.5
+    expect(computeSentenceLength(text)).toBe(6.5)
+  })
+
+  it('verschmilzt zwei echte Sätze, wenn eine Abkürzung selbst das Satzende ist (bekannte, dokumentierte Grenze, siehe Kommentar an maskNonTerminalPeriods)', () => {
+    const text = 'Ich habe Rechnungen, Angebote, Reports usw. Danach ging ich nach Hause.'
+    // Richtig wären 2 Sätze (6 + 5 Wörter = 11 / 2 = 5.5) – nach deutscher
+    // Typografie steht nach "usw." KEIN zweiter Punkt, der Abkürzungspunkt
+    // IST hier das Satzende. `maskNonTerminalPeriods` maskiert ihn trotzdem
+    // unbedingt und verschmilzt beide Sätze zu einem: 11 Wörter / 1 "Satz"
+    // = 11.0. Bewusst nicht behoben (siehe Kommentar oben) – dieser Test
+    // hält das aktuelle, dokumentierte Verhalten fest, statt es unbemerkt
+    // driften zu lassen.
+    expect(computeSentenceLength(text)).toBe(11)
+  })
 })
 
 describe('detectAddress', () => {
@@ -109,6 +144,35 @@ describe('detectAddress', () => {
 
   it('liefert "none" für einen leeren Text', () => {
     expect(detectAddress('')).toBe('none')
+  })
+
+  // -------------------------------------------------------------------
+  // Fix-Runde 1 (Review-Fund): Fallback-Regel, wenn ALLE Treffer
+  // satzanfangsbedingt großgeschrieben sind – siehe Kommentarblock über
+  // detectAddress in styleProfile.ts.
+  // -------------------------------------------------------------------
+
+  it('erkennt "Sie" auch dann, wenn ausnahmslos alle Treffer satzanfangsbedingt großgeschrieben sind (Fallback-Regel)', () => {
+    const text =
+      'Ihre Anzeige hat mich begeistert. Ihr Unternehmen ist mir positiv aufgefallen. Ihre Referenzen zeigen Qualität.'
+    expect(detectAddress(text)).toBe('sie')
+  })
+
+  it('lässt einen sicheren "du"-Treffer gegen einen bloß satzanfangsbedingten "Ihre"-Fallback-Treffer gewinnen', () => {
+    const text = 'Ihre Anzeige hat mich begeistert. Kannst du mir mehr erzählen?'
+    expect(detectAddress(text)).toBe('du')
+  })
+
+  it('zählt ein satzanfangsbedingt großgeschriebenes "Ihnen" (Dativ) als sicheren Treffer, nicht nur als Fallback', () => {
+    // "Ihnen" eröffnet im Deutschen so gut wie nie einen Satz in der
+    // 3. Person – deutlich schwächere Zweideutigkeit als bei "sie"/"Ihr"/"Ihre".
+    const text = 'Ihnen möchte ich für die Gelegenheit danken, mich vorzustellen.'
+    expect(detectAddress(text)).toBe('sie')
+  })
+
+  it('erkennt "du" auch dann, wenn alle Treffer satzanfangsbedingt stehen (kein Zweideutigkeitsproblem bei "du"-Formen)', () => {
+    const text = 'Du hast sicher schon viel von uns gehört. Dein Team wartet schon auf dich.'
+    expect(detectAddress(text)).toBe('du')
   })
 })
 
@@ -270,20 +334,39 @@ describe('styleProfileToPromptFragment', () => {
     expect(fragment).toContain(SIE_VERBATIM_SAMPLE)
   })
 
-  it('ändert sich sichtbar, wenn sich formality ändert', () => {
+  it('ändert sich sichtbar, wenn sich formality ändert – inklusive der Wortwahl, nicht nur der Zahl', () => {
+    // Fix-Runde 1 (Review-Fund): die Implementierung variiert bei formality
+    // auch die beschreibende Formulierung (describeFormality) – genau die
+    // Wortwahl, die das Modell tatsächlich steuert, nicht nur die Zahl.
+    // "umgangssprachlichen"/"zurückhaltend" sind bewusst gewählt, weil sie
+    // NUR in der jeweiligen Formality-Beschreibung vorkommen – anders als
+    // "förmlich" (steckt bereits im festen Label "Förmlichkeit:" und in
+    // "verwendet die förmliche Anrede", unabhängig vom Wert) wäre ein
+    // Substring-Test darauf kein echter Beleg für die Wortwahländerung.
     const locker = styleProfileToPromptFragment({ ...baseProfile, formality: 10 })
     const foermlich = styleProfileToPromptFragment({ ...baseProfile, formality: 90 })
     expect(locker).not.toBe(foermlich)
     expect(locker).toContain('10')
     expect(foermlich).toContain('90')
+    expect(locker.toLowerCase()).toContain('umgangssprachlichen')
+    expect(foermlich.toLowerCase()).toContain('zurückhaltend')
+    expect(locker.toLowerCase()).not.toContain('zurückhaltend')
+    expect(foermlich.toLowerCase()).not.toContain('umgangssprachlichen')
   })
 
-  it('ändert sich sichtbar, wenn sich sentenceLength ändert', () => {
+  it('ändert sich sichtbar, wenn sich sentenceLength ändert – inklusive der Wortwahl, nicht nur der Zahl', () => {
+    // "prägnante"/"ausführliche" sind bewusst gewählt statt "kurze"/"lange":
+    // "kurze" steckt bereits unabhängig vom Wert im festen Trait
+    // "kurze Einleitungssätze" von baseProfile, wäre also kein echter Beleg.
     const kurz = styleProfileToPromptFragment({ ...baseProfile, sentenceLength: 6 })
     const lang = styleProfileToPromptFragment({ ...baseProfile, sentenceLength: 28 })
     expect(kurz).not.toBe(lang)
     expect(kurz).toContain('6')
     expect(lang).toContain('28')
+    expect(kurz.toLowerCase()).toContain('prägnante')
+    expect(lang.toLowerCase()).toContain('ausführliche')
+    expect(kurz.toLowerCase()).not.toContain('ausführliche')
+    expect(lang.toLowerCase()).not.toContain('prägnante')
   })
 
   it('ändert sich sichtbar, wenn sich address ändert', () => {

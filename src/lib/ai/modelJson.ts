@@ -55,7 +55,16 @@ export class ModelResponseError extends Error {
  */
 const RAW_SNIPPET_LIMIT = 300
 
-function truncateForError(raw: string): string {
+/**
+ * **Fix-Runde 1, Aufgabe 10** (siehe task-10-report.md): exportiert statt
+ * lokal, weil Aufgabe 10 (`assertSampleIsVerbatim` in `domain/styleProfile.ts`)
+ * denselben Kürzungsbedarf hat – ein Zitat aus einer Modellantwort, das in
+ * eine `ModelResponseError`-Meldung eingebettet wird, egal ob es sich um die
+ * komplette Rohantwort (hier) oder nur um ein einzelnes Feld wie "sample"
+ * (Aufgabe 10) handelt. Aufgaben 11/12 dürften denselben Bedarf haben.
+ * Verhalten unverändert (weiterhin fest 300 Zeichen, kein Parameter).
+ */
+export function truncateForError(raw: string): string {
   const trimmed = raw.trim()
   if (trimmed.length <= RAW_SNIPPET_LIMIT) return trimmed
   return `${trimmed.slice(0, RAW_SNIPPET_LIMIT)}…`

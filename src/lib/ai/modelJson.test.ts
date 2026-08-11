@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
-import { ModelResponseError, nullableFactString, parseModelJson } from './modelJson'
+import { ModelResponseError, nullableFactString, parseModelJson, truncateForError } from './modelJson'
 
 /**
  * Testschema, stellvertretend für `JobAdSchema` (Aufgabe 9) und die noch
@@ -143,3 +143,27 @@ describe('nullableFactString', () => {
   })
 })
 
+/**
+ * Fix-Runde 1, Aufgabe 10 (siehe task-10-report.md): `truncateForError`
+ * wurde exportiert, weil `domain/styleProfile.ts` (Aufgabe 10) denselben
+ * Kürzungsbedarf für "sample" hat wie diese Datei für die Rohantwort. Kurzer
+ * Schutz-Test, damit ein künftiger Umbau (Aufgabe 11/12) nicht unbemerkt das
+ * Verhalten ändert, auf das jetzt mehrere Module sich verlassen.
+ */
+describe('truncateForError', () => {
+  it('lässt einen kurzen Text unverändert', () => {
+    expect(truncateForError('Ein kurzer Text.')).toBe('Ein kurzer Text.')
+  })
+
+  it('trimmt Leerraum vor der Längenprüfung', () => {
+    expect(truncateForError('   Text mit Leerraum drumherum.   ')).toBe('Text mit Leerraum drumherum.')
+  })
+
+  it('kürzt einen Text über 300 Zeichen und hängt eine Ellipse an', () => {
+    const long = 'a'.repeat(400)
+    const result = truncateForError(long)
+    expect(result.length).toBe(301)
+    expect(result.endsWith('…')).toBe(true)
+    expect(result.startsWith('a'.repeat(300))).toBe(true)
+  })
+})
