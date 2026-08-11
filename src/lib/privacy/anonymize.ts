@@ -34,8 +34,12 @@
  *   würde die lose Telefon-Vorschriften-Regex (die u. a. mit "0" beginnende
  *   Ziffernfolgen sucht) das Datum fälschlich als Rufnummer lesen.
  * - Der erkannte Name kann nicht innerhalb einer bereits als E-Mail
- *   erkannten Fundstelle nochmals zuschlagen (z. B. "mustermann" im
- *   Lokalteil von "max.mustermann@beispiel.de") — E-Mail hat Vorrang.
+ *   erkannten Fundstelle nochmals zuschlagen — relevant z. B., wenn
+ *   `hints.name` (anders als die Kopfbereich-Erkennung, die immer eine
+ *   2-4-Wort-Phrase liefert) nur aus einem einzelnen Wort besteht, etwa nur
+ *   dem Nachnamen "Mustermann", und genau dieses Wort auch im Lokalteil
+ *   einer E-Mail-Adresse vorkommt (z. B. "Mustermann@beispiel.de") —
+ *   E-Mail hat Vorrang.
  *
  * Nicht-Geburtsdaten (jedes TT.MM.JJJJ-/DD/MM/YYYY-förmige Datum OHNE
  * Geburtsdatums-Label in der Nähe) werden ebenfalls als Kandidat erzeugt,
@@ -247,11 +251,18 @@ function findAddressCandidates(text: string): Candidate[] {
 // 9 Ziffern), aber hoch genug, um einen bloßen Jahresbereich wie
 // "2019 - 2021" (dessen Ziffernrest ab der ersten "0" nur 7 Ziffern liefert,
 // siehe Test) sicher auszuschließen.
+//
+// TEL_MAX_DIGITS = 14 deckt die in deutschen Briefköpfen/Impressen übliche
+// Schreibweise "+49 (0)<Vorwahl> <Nummer>" ab (z. B. "+49 (0)621 12345678"
+// = 2 + 1 + 3 + 8 = 14 Ziffern) — mit 13 wäre genau diese Form knapp
+// verworfen worden (Fund aus Review-Runde 1, siehe Bericht). Eine IBAN
+// (i. d. R. > 14 Ziffern nach Buchstabenpräfix) und ein reiner Jahresbereich
+// (deutlich unter 9 Ziffern, siehe oben) bleiben davon unberührt.
 // ---------------------------------------------------------------------------
 
 const TEL_CANDIDATE_RE = /(?:\+\d{1,3}|\(0\d{1,5}\)|0)[\d \t./()-]{2,}\d/g
 const TEL_MIN_DIGITS = 9
-const TEL_MAX_DIGITS = 13
+const TEL_MAX_DIGITS = 14
 
 function findPhoneCandidates(text: string): Candidate[] {
   const results: Candidate[] = []
@@ -292,15 +303,62 @@ function findPhoneCandidates(text: string): Candidate[] {
 // `\p{L}`/`\p{N}` (nicht das ASCII-beschränkte `\w`/`\b`), damit ein Name
 // mit Umlaut oder ß korrekt als eigenständiges Wort erkannt wird — z. B.
 // darf "Wagner" nicht in "Wagnerstraße" hineingreifen.
+//
+// LABEL-ZEILEN ("Name: Max Mustermann"): tabellarische Lebensläufe (aus
+// `.docx`/PDF, siehe Aufgabe 2-4) legen den Kopfbereich oft als
+// "Persönliche Daten"-Tabelle an, die zeilenweise als "Label: Wert"
+// extrahiert wird — allen voran "Name: Max Mustermann". Eine solche Zeile
+// besteht NICHT nur aus 2-4 namensförmigen Wörtern (das Label "Name:"
+// scheitert an NAME_WORD_RE wegen des Doppelpunkts), fällt also durch
+// `isNameShapedLine` — ohne Gegenmaßnahme bliebe der Name dann im GESAMTEN
+// Dokument unerkannt (Fund aus Review-Runde 1, siehe Bericht: ein echtes
+// Datenleck, nicht nur ein verpasster Kopfzeilen-Fund). Deshalb prüft
+// `extractLabeledName` als Rückfalloption zusätzlich, ob eine Zeile mit
+// dem Label "Name" (case-insensitiv) plus Doppelpunkt beginnt und danach
+// eine namensförmige 2-4-Wort-Phrase folgt — dann wird NUR der Namensteil
+// (ohne "Name:") als erkannter Name verwendet.
+//
+// REIHENFOLGE INNERHALB DES KOPFBEREICHS — Label-Zeile hat Vorrang vor
+// bloßer Zeilenform: `detectHeadName` durchsucht den Kopfbereich zweimal.
+// Zuerst NUR nach einer "Name: …"-Label-Zeile; erst wenn keine existiert,
+// zählt die erste bloß namensförmige Zeile. Grund (beim Schreiben des
+// Tests für obigen Fund selbst entdeckt, nicht Teil der ursprünglichen
+// Meldung, aber derselbe Fehlermechanismus): eine Abschnittsüberschrift wie
+// "Persönliche Daten" ist selbst schon zwei großgeschriebene Wörter und
+// damit äußerlich namensförmig — stünde sie VOR der eigentlichen
+// "Name: …"-Zeile und würde "erste passende Zeile gewinnt" ohne
+// Label-Vorrang gelten, würde die Überschrift fälschlich als Name gelesen
+// und die echte "Name: …"-Zeile nie erreicht. Ein explizites Label ist ein
+// eindeutigeres Signal als eine zufällig namensförmige Zeile und gewinnt
+// deshalb unabhängig von der Position im Fenster.
+//
+// Bewusst eng gefasst: erkannt wird ausschließlich das Label "Name" (exakt
+// dieses Wort, gefolgt von einem Doppelpunkt) — NICHT "Vorname:"/
+// "Nachname:" getrennt (liefert je nur ein Wort, scheitert an der
+// 2-4-Wort-Regel) und NICHT zusammengesetzte Label wie "Vollständiger
+// Name:". Das ist eine bewusste, dokumentierte Lücke (kein Rätselraten
+// über beliebige Label-Varianten), kein Versehen — siehe Restrisiken im
+// Bericht.
 // ---------------------------------------------------------------------------
 
 const HEAD_LINE_COUNT = 8
 const NAME_WORD_RE = /^\p{Lu}[\p{L}'-]*$/u
+const NAME_LABEL_RE = /^name\s*:\s*(.+)$/iu
 
 function isNameShapedLine(line: string): boolean {
   const words = line.split(/[ \t]+/).filter((w) => w.length > 0)
   if (words.length < 2 || words.length > 4) return false
   return words.every((w) => NAME_WORD_RE.test(w))
+}
+
+// Liefert den Namensteil einer "Name: …"-Label-Zeile, sofern vorhanden und
+// selbst namensförmig — sonst `undefined`. Prüft NUR das Label, nicht die
+// bloße Zeilenform (siehe `isNameShapedLine` dafür).
+function extractLabeledName(line: string): string | undefined {
+  const labelMatch = NAME_LABEL_RE.exec(line)
+  if (!labelMatch) return undefined
+  const value = labelMatch[1]!.trim()
+  return isNameShapedLine(value) ? value : undefined
 }
 
 function detectHeadName(text: string): string | undefined {
@@ -309,6 +367,16 @@ function detectHeadName(text: string): string | undefined {
     .map((l) => l.trim())
     .filter((l) => l.length > 0)
     .slice(0, HEAD_LINE_COUNT)
+
+  // Erster Durchlauf: explizite "Name: …"-Label-Zeile hat Vorrang (siehe
+  // Begründung oben), unabhängig davon, an welcher Position im Fenster sie
+  // steht.
+  for (const line of lines) {
+    const labeled = extractLabeledName(line)
+    if (labeled) return labeled
+  }
+
+  // Zweiter Durchlauf (Rückfall): erste bloß namensförmige Zeile.
   return lines.find((line) => isNameShapedLine(line))
 }
 

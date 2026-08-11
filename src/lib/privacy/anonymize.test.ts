@@ -283,12 +283,24 @@ describe('anonymize/deanonymize', () => {
       ['(030) 12 34 56', '(030) 12 34 56'],
       ['0170-1234567', '0170-1234567'],
       ['0170.123.45.67', '0170.123.45.67'],
+      // Übliche Briefkopf-/Impressum-Schreibweise "+49 (0)<Vorwahl> <Nummer>"
+      // — 2+1+3+8 = 14 Ziffern, Grenzfall von TEL_MAX_DIGITS (Fund aus
+      // Review-Runde 1: mit der vorherigen Obergrenze 13 wäre genau diese
+      // Form verworfen worden).
+      ['+49 (0)621 12345678', '+49 (0)621 12345678'],
     ])('erkennt die Form %s', (_label, phone) => {
       const text = `Max Mustermann\nTelefon: ${phone}\nBitte melden.`
       const { text: anonymized, map } = anonymize(text)
       expect(anonymized).toContain('[TEL]')
       expect(anonymized).not.toContain(phone)
       expect(deanonymize(anonymized, map)).toBe(text)
+    })
+
+    it('eine Ziffernfolge knapp oberhalb der neuen Obergrenze (15 Ziffern) wird weiterhin nicht als Telefonnummer erkannt', () => {
+      const text = 'Max Mustermann\nReferenz: 012345678901234\n'
+      const { text: anonymized } = anonymize(text)
+      expect(anonymized).toContain('012345678901234')
+      expect(anonymized).not.toContain('[TEL]')
     })
   })
 
@@ -384,6 +396,63 @@ describe('anonymize/deanonymize', () => {
       const { text: anonymized, map } = anonymize(text)
       expect(anonymized).toContain('[NAME]')
       expect(map['[NAME]']).toBe('Erika Musterfrau')
+    })
+
+    it('ein einwortiger hints.name kollidiert nicht mit einer bereits erkannten E-Mail-Adresse (E-Mail hat Vorrang)', () => {
+      // Belegt die korrigierte Beispiel-Begründung im Doc-Kommentar: nur ein
+      // EINWORTIGER hints.name (anders als die stets 2-4-wortige
+      // Kopfbereich-Erkennung) kann überhaupt innerhalb einer E-Mail-Adresse
+      // (die keine Leerzeichen enthalten kann) als Ganzwort matchen.
+      const text = 'Kontakt: Mustermann@beispiel.de'
+      const { text: anonymized, map } = anonymize(text, { name: 'Mustermann' })
+      expect(anonymized).toBe('Kontakt: [EMAIL]')
+      expect(map['[EMAIL]']).toBe('Mustermann@beispiel.de')
+      expect(Object.keys(map)).not.toContain('[NAME]')
+      expect(deanonymize(anonymized, map)).toBe(text)
+    })
+  })
+
+  describe('Name aus Label-Zeile ("Name: …") — tabellarischer Lebenslauf-Kopf', () => {
+    // Kritischer Fund aus Review-Runde 1: eine "Persönliche Daten"-Tabelle
+    // wird aus .docx/PDF zeilenweise als "Label: Wert" extrahiert. Ohne
+    // Rückfalloption fällt "Name: Max Mustermann" durch die
+    // Kopfbereich-Erkennung (der Doppelpunkt verletzt NAME_WORD_RE) und der
+    // Name bliebe im GESAMTEN Dokument unerkannt — echtes Datenleck.
+    it('erkennt den Namen aus "Name: Max Mustermann" als erster Kopfzeile und ersetzt ihn überall im Dokument', () => {
+      const text = [
+        'Persönliche Daten',
+        'Name: Max Mustermann',
+        'Geburtsdatum: 03.05.1990',
+        'Adresse: Musterstraße 12, 12345 Musterstadt',
+        '',
+        'Sehr geehrte Damen und Herren,',
+        'mein Name ist Max Mustermann und ich bewerbe mich hiermit.',
+        '',
+        'Mit freundlichen Grüßen',
+        'Max Mustermann',
+      ].join('\n')
+
+      const { text: anonymized, map } = anonymize(text)
+
+      expect(map['[NAME]']).toBe('Max Mustermann')
+      expect(anonymized).not.toContain('Mustermann')
+      expect(anonymized).toContain('Name: [NAME]')
+      const occurrences = anonymized.split('[NAME]').length - 1
+      expect(occurrences).toBe(3)
+      expect(deanonymize(anonymized, map)).toBe(text)
+    })
+
+    it('erkennt "Name:" case-insensitiv und mit zusätzlichem Leerraum nach dem Doppelpunkt', () => {
+      const text = 'NAME:   Erika Musterfrau\nMit freundlichen Grüßen\nErika Musterfrau'
+      const { map } = anonymize(text)
+      expect(map['[NAME]']).toBe('Erika Musterfrau')
+    })
+
+    it('ein einzelnes Wort nach "Name:" (z. B. nur Vorname) löst die Rückfalloption nicht aus', () => {
+      const text = 'Name: Max\n\nMit freundlichen Grüßen'
+      const { text: anonymized, map } = anonymize(text)
+      expect(anonymized).toBe(text)
+      expect(map).toEqual({})
     })
   })
 
