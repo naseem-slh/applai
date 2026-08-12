@@ -74,3 +74,52 @@ describe('filterModels', () => {
     ])
   })
 })
+
+/**
+ * Der Bestand, wie AI Studio ihn unter „Textausgabemodelle" führt (Stand
+ * August 2026, aus der Konsole eines kostenlosen Tarifs übernommen). Die
+ * Kennungen sind die üblichen Namen der Anzeigenamen; geprüft wird die
+ * **Regel**, nicht die Schreibweise einzelner Kennungen.
+ *
+ * Der Sinn dieses Blocks: Die Regel ist eine Heuristik über fremde Namen und
+ * lag schon zweimal daneben. Ein Testfall am echten Bestand ist das
+ * Einzige, was sie ehrlich hält.
+ */
+describe('filterModels am tatsächlichen Bestand', () => {
+  const TEXT_OUT = [
+    'gemini-2.0-flash',
+    'gemini-2.0-flash-lite',
+    'gemini-2.5-flash',
+    'gemini-2.5-flash-lite',
+    'gemini-2.5-pro',
+    'gemini-3-flash',
+    'gemini-3.1-pro',
+    'gemini-3.1-flash-lite',
+    'gemini-3.5-flash',
+    'gemini-3.5-flash-lite',
+    'gemini-3.6-flash',
+  ].map(choice)
+
+  it('lässt jedes Textausgabemodell durch, sobald der Tarif Pro hergibt', () => {
+    expect(filterModels(TEXT_OUT, { includePro: true })).toHaveLength(TEXT_OUT.length)
+  })
+
+  // Nachgemessen am Konto des Nutzers: Pro-Modelle stehen im kostenlosen
+  // Tarif auf null Anfragen am Tag. Sie anzubieten hieße, ein Modell in die
+  // Liste zu stellen, das zuverlässig scheitert.
+  it('nimmt im kostenlosen Tarif genau die Pro-Modelle heraus', () => {
+    const shown = filterModels(TEXT_OUT, { includePro: false }).map((entry) => entry.id)
+
+    expect(shown).not.toContain('gemini-2.5-pro')
+    expect(shown).not.toContain('gemini-3.1-pro')
+    expect(shown).toHaveLength(TEXT_OUT.length - 2)
+  })
+
+  it('behält die Lite-Modelle, die im kostenlosen Tarif die größten Kontingente haben', () => {
+    const shown = filterModels(TEXT_OUT, { includePro: false }).map((entry) => entry.id)
+
+    expect(shown).toContain('gemini-3.1-flash-lite')
+    expect(shown).toContain('gemini-3.5-flash-lite')
+  })
+})
+
