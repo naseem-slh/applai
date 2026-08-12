@@ -161,15 +161,71 @@ Tailwinds Zahlenskala trifft die Abstandstoken genau: `2` = 0.5rem (`xs`),
 `3` = 0.75rem (`sm`), `4` = 1rem (`md`), `6` = 1.5rem (`lg`), `8` = 2rem
 (`xl`), `12` = 3rem (`xxl`). Die Primitive nutzen deshalb `p-4`, `gap-3`,
 `px-6` statt `p-[var(--space-md)]` — gleicher Wert, lesbarere Klasse.
-**Nur diese sechs Stufen** kommen vor; `p-5` oder `gap-7` fallen aus der Skala
-und gehören nicht in die Oberfläche.
 
-Höhen von Bedienelementen liegen auf demselben Raster: `sm` = 2rem (`h-8`),
-`md` = 2.5rem (`h-10`), `lg` = 3rem (`h-12`).
+**Diese sechs Stufen sind die Skala des Aufbaus.** Jeder Abstand *zwischen*
+Elementen und *um* sie herum kommt daraus. `p-5` oder `gap-7` fallen aus der
+Skala und gehören nicht in die Oberfläche.
+
+**Im Inneren eines Bedienelements gilt eine zweite, kurze Reihe: `0.5`
+(2 px), `1` (4 px) und `1.5` (6 px).** Das weicht die Skala nicht auf,
+sondern ist ihr Gegenstück: ein Schalter ist 24 px hoch, ein Tooltip eine
+Zeile kurz — der kleinste Schritt der Aufbau-Skala (8 px) sprengt beides.
+Wollte man ihn erzwingen, käme ein 40 px hoher Schalter heraus, und der
+sähe aus wie ein Eingabefeld. Wo die Feinmaße heute vorkommen:
+
+| Ort | Wert | Wofür |
+|---|---|---|
+| `Switch` | `p-0.5` | 2 px zwischen Kontur und Knauf; mehr, und der Knauf fiele unter 16 px |
+| `Slider` | `h-1.5` | 6 px Schienenhöhe; höher liest sie sich als Fortschrittsbalken |
+| `Select` (Viewport) | `p-1` | 4 px, damit der innen liegende Fokusring eines Eintrags nicht am Rand der Liste klebt |
+| `Select` (Gruppenüberschrift) | `py-1.5` | 6 px, damit die Überschrift dichter sitzt als die Einträge darunter |
+| `Select` (Trennlinie) | `my-1` | 4 px beidseits einer 1-px-Linie |
+| `Tooltip` | `px-2 py-1` | 8/4 px — ein Hinweis von einer Zeile, kein Kasten |
+
+**Die Grenze ist scharf: ein Feinmaß beschreibt das Innenleben genau eines
+Bedienelements.** Der Abstand zwischen einer Beschriftung und ihrem Feld,
+zwischen zwei Karten, zwischen den Knöpfen einer Fußzeile ist Aufbau und
+nimmt die sechs Stufen — auch dann, wenn es „nur ein bisschen enger" sein
+soll. Ein `gap-1` in einer Ansicht heißt fast immer, dass der falsche
+Behälter gewählt wurde.
+
+Nicht unter die Abstandsskala fallen **feste Maße** — Breiten und
+Kantenlängen, die aus der Geometrie eines Elements folgen (`size-4` für
+eine Glyphe, `w-72` für das Popover, `max-w-lg` für den Dialog, `max-w-64`
+für den Tooltip). Ebenso ein Innenabstand, der Platz für ein anderes
+Element freihalten muss: die Dialogüberschrift trägt `pr-10`, weil der
+Schließknopf 40 px breit ist. Sie folgt dessen Größe, nicht der Skala, und
+sagt das im Kommentar.
+
+### Höhen von Bedienelementen
+
+Was in einer Textzeile steht und angefasst wird, liegt auf dem
+Aufbau-Raster: `sm` = 2rem (`h-8`), `md` = 2.5rem (`h-10`), `lg` = 3rem
+(`h-12`). Knopf und Auswahlauslöser nutzen genau diese drei; `size-10` am
+Sinnbildknopf ist dasselbe Maß quadratisch.
+
+Daneben steht **eine** weitere Höhe, und die ist Absicht: der Schalter ist
+1.5rem (`h-6`, 24 px) hoch und 44 px breit. Seine Bauform lebt davon,
+flacher zu sein als die Felder um ihn herum; auf 40 px gebracht wäre er als
+Schalter nicht mehr zu erkennen. 24 px erreichen zugleich gerade die
+Mindestzielgröße aus WCAG 2.5.8 (24 × 24), die Breite liegt weit darüber.
+Aus 24 px Höhe, 1 px Kontur und `p-0.5` bleiben 18 px für den Knauf
+(`size-4.5`) und 20 px Weg (`translate-x-5`).
+
+Der Regler hat gar keine Zeilenhöhe: er ist eine 6 px hohe Schiene
+(`h-1.5`) mit einem 20 px großen Griff (`size-5`) und darunter seiner
+Beschriftungszeile. Der Griff ist damit das kleinste Ziel der Oberfläche —
+vertretbar, weil die Schiene den Treffer mitnimmt und jede Stufe zusätzlich
+mit der Tastatur erreichbar ist.
+
+**Damit ist die Liste vollständig**: 24 px (Schalter), 32/40/48 px (Knöpfe,
+Auswahl). Eine weitere Höhe ist eine Entscheidung und gehört hierher, nicht
+in eine einzelne Ansicht.
 
 ### Höhenstaffelung
 
-Genau drei Ebenen, mehr nicht:
+Genau drei Ebenen, mehr nicht — zwei davon brauchen einen Schatten, die
+Grundfläche kommt ohne aus. `design.css` und `Card.tsx` zählen genauso:
 
 1. **Fläche** — die Seite selbst (`surface`), ohne Schatten.
 2. **`raised`** — Karten, die sich abheben sollen: `surface-raised`, 1 px
@@ -196,6 +252,21 @@ Modi mindestens 5,3:1.
 Ausnahme: in Listen, die ihren Inhalt beschneiden (Auswahlliste), liegt der
 Ring innen (`-outline-offset-2`).
 
+Der Ring ist die **Vorgabe**, nicht das Opt-in: eine Grundregel im
+`base`-Layer gibt ihn allem, was der Browser von sich aus fokussierbar
+macht (`a[href]`, `button`, `input`, `select`, `textarea`, `summary`,
+`[tabindex]` außer `-1`). Wer die Klasse `focus-ring` vergisst, bekommt
+trotzdem denselben Ring statt des Browser-Rings — und kein Prüfwerkzeug
+hätte das gemeldet, weil axe die Fokusdarstellung nicht bewertet. Die Regel
+steht in `:where(…)` und damit auf Spezifität null: jede Klasse am Element
+gewinnt weiterhin, auch `focus-ring-inset` und `focus:outline-none`.
+`[tabindex="-1"]` ist ausgenommen, weil Radix genau das an die Flächen
+setzt, die es beim Öffnen selbst fokussiert (Dialog- und Popover-Inhalt,
+Auswahlliste) — ein Ring um eine ganze offene Liste wäre irreführend. Die
+Klasse `focus-ring` bleibt trotzdem an den Primitiven: sie macht am
+Element sichtbar, dass der Ring dazugehört, und trägt ihn auch dorthin, wo
+kein natürlich fokussierbares Element sitzt.
+
 ### Bewegung
 
 120 ms für Zustandswechsel, 180 ms für das Einblenden einer Überlagerung,
@@ -204,6 +275,53 @@ Ring innen (`-outline-offset-2`).
 Verschiebung um 1 px, keine Animation. Wer im Betriebssystem reduzierte
 Bewegung eingestellt hat, bekommt dieselben Zustände ohne Übergang — die Regel
 steht zentral in `design.css`, die Primitive müssen sie nicht einzeln beachten.
+
+**Ausnahme `data-motion-essential`.** Die zentrale Regel klemmt Dauer *und*
+Wiederholungszahl ein. Das ist für schmückende Bewegung richtig und für
+Bewegung mit Aufgabe falsch: ein Wartezeiger, der nach einer Umdrehung
+stehenbleibt, meldet „abgestürzt" statt „läuft noch". Wer eine dauerhafte
+Anzeige baut — ab Aufgabe 14 die „Antwort wird erzeugt"-Anzeige — setzt das
+Attribut `data-motion-essential` an das animierte Element und ist damit von
+der Klammer ausgenommen. Der Preis: die Anzeige beachtet die Einstellung
+dann selbst. Im reduzierten Modus heißt das langsames Auf- und Abblenden
+statt schnellem Kreisen, nichts Blitzendes, kein Wandern über den
+Bildschirm.
+
+### Der Regler und seine Stufen
+
+Der `Slider` bekommt keine Zahlenspanne, sondern eine Liste benannter
+Stufen (`steps`, mindestens zwei — der Typ verlangt es). In Aufgabe 14
+steuern zwei davon die Formulierung des Auftrags an das Modell (*förmlich ↔
+locker*, *kurz ↔ ausführlich*); es sind ausdrücklich **keine**
+Modelltemperaturen, dieser Parameter ist bei allen drei Anbietern tot.
+
+Wie die Stufen aussehen, entscheidet das Primitiv — nicht die Ansicht:
+
+```
+├──────●─────────┤
+förmlich  neutral  locker
+```
+
+Unter der Schiene steht eine Zeile aus drei Feldern: links die erste Stufe,
+rechts die letzte, in der Mitte hervorgehoben die aktuelle. Die Enden sagen,
+wofür die Achse steht; die Mitte sagt, wo man ist. Nur die Enden zu zeigen
+reichte nicht — bei fünf Stufen ist an der Griffposition nicht abzulesen, ob
+„eher förmlich" oder „neutral" gewählt ist. Steht der Griff an einem Ende,
+erscheint dessen Name zweimal (klein außen, hervorgehoben in der Mitte);
+das liest sich als Bestätigung.
+
+Ohne Teilstriche auf der Schiene: sie müssten zugleich auf der gefüllten
+(Akzent) und auf der leeren Hälfte (`surface-alt`) erkennbar sein, was mit
+einer Farbe nicht geht, und sie trügen nichts bei, was nicht schon im Namen
+der Stufe steht. Dass die Skala stuft, zeigt das Einrasten des Griffs.
+
+Die Beschriftungszeile ist `aria-hidden`: dieselbe Auskunft steht als
+`aria-valuetext` am Griff, sonst käme sie im Lesemodus doppelt. **Eine
+Ansicht baut keine eigene Beschriftung daneben** — sie gibt dem Regler nur
+seinen Namen (`aria-label` oder `aria-labelledby`, übersetzt) und die
+Stufennamen. Die Enden stehen in `--color-muted` und gehören damit auf
+`surface` oder `surface-raised`, nicht in eine Karte mit `variant="subtle"`
+(siehe Kontrast).
 
 ### Benennung der Varianten
 

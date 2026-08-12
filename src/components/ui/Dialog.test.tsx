@@ -41,12 +41,23 @@ describe('Dialog', () => {
   })
 
   it('beschriftet den Schließknopf aus i18next statt aus fest verdrahtetem Text', () => {
+    // Zuerst der Schlüssel selbst: fehlte er, gäbe i18next schlicht
+    // 'ui.dialog.close' zurück — ein Vergleich gegen dieselbe Abfrage wäre
+    // dann auf beiden Seiten gleich falsch und der Test bliebe grün.
+    // Deshalb die Existenz und beide Literale ausdrücklich (G8).
+    expect(i18n.exists('ui.dialog.close')).toBe(true)
+    expect(i18n.getFixedT('de')('ui.dialog.close')).toBe('Schließen')
+    expect(i18n.getFixedT('en')('ui.dialog.close')).toBe('Close')
+
     render(<Beispiel />)
     fireEvent.click(screen.getByRole('button', { name: 'Entwurf verwerfen' }))
 
+    // Und der Knopf trägt wirklich die Übersetzung der aktiven Sprache,
+    // nicht einen fest verdrahteten Text.
     const expected = i18n.getFixedT(i18n.resolvedLanguage ?? 'de')(
       'ui.dialog.close',
     )
+    expect(expected).not.toBe('ui.dialog.close')
     expect(screen.getByRole('button', { name: expected })).toBeInTheDocument()
   })
 

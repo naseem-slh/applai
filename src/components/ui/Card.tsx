@@ -4,8 +4,10 @@ import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from '@/lib/utils'
 
 // Karte — abgegrenzter Bereich auf der Papierfläche. Die Höhenstaffelung
-// kennt genau zwei Stufen: `raised` hebt eine Karte hervor, `overlay`
-// (Dialog, Popover) liegt darüber. Alles andere bleibt flach.
+// kennt drei Ebenen (siehe DESIGN.md), von denen zwei einen Schatten
+// tragen: `raised` hebt eine Karte hervor, `overlay` (Dialog, Popover)
+// liegt darüber. Die flache Grundfläche bleibt ohne Schatten — und damit
+// alles, was hier nicht `raised` ist.
 const cardVariants = cva('rounded-lg border border-[var(--color-border)]', {
   variants: {
     variant: {

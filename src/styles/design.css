@@ -181,11 +181,13 @@
   --btn-danger-bg-hover: #932e24;
   --btn-danger-fg: #f7f4ef;
 
-  /* Höhenstaffelung — genau zwei Stufen: `raised` für Karten, `overlay`
-     für Dialog, Popover, Auswahlliste und Tooltip. Warm getönt statt
-     reinem Schwarz, damit der Schatten zur Papierfläche passt. In der
-     dunklen Variante kommt eine Lichtkante oben dazu: ein Schlagschatten
-     auf dunklem Grund ist nicht zu sehen, die Kante trägt die Höhe. */
+  /* Höhenstaffelung — drei Ebenen (siehe DESIGN.md), von denen zwei einen
+     Schatten brauchen: die flache Grundfläche kommt ohne aus, `raised`
+     hebt eine Karte heraus, `overlay` liegt unter Dialog, Popover,
+     Auswahlliste und Tooltip. Warm getönt statt reinem Schwarz, damit der
+     Schatten zur Papierfläche passt. In der dunklen Variante kommt eine
+     Lichtkante oben dazu: ein Schlagschatten auf dunklem Grund ist nicht
+     zu sehen, die Kante trägt die Höhe. */
   --shadow-raised: 0 1px 2px rgb(46 42 36 / 0.05), 0 2px 8px rgb(46 42 36 / 0.06);
   --shadow-overlay:
     0 4px 12px rgb(46 42 36 / 0.08), 0 16px 32px rgb(46 42 36 / 0.14);
@@ -297,14 +299,56 @@
   }
 }
 
+/* Grundregel: der Ring ist die Vorgabe, nicht die Ausnahme. Was der
+   Browser von sich aus fokussierbar macht, bekommt ihn auch ohne die
+   Utility-Klasse — sonst fällt jedes in 13b–15 vergessene Element auf den
+   Ring des Browsers zurück, und darauf weist kein Werkzeug hin (axe prüft
+   Fokusdarstellung nicht).
+
+   Zwei Einschränkungen machen die Regel ungefährlich:
+
+   - `:where()` setzt die Spezifität auf null, und der base-Layer läuft vor
+     den Utilities. Jede Klasse am Element gewinnt also weiterhin — auch
+     `focus-ring-inset` mit seinem negativen Versatz und `focus:outline-none`
+     am Dialog.
+   - `[tabindex="-1"]` ist ausgenommen. Genau das setzt Radix an die
+     Flächen, die es beim Öffnen selbst fokussiert (Dialog- und
+     Popover-Inhalt über FocusScope, Inhalt und Einträge der
+     Auswahlliste). Ein Ring um eine ganze offene Liste wäre irreführend —
+     den Fokus zeigen die Elemente darin. */
+@layer base {
+  :where(
+    a[href],
+    button,
+    input,
+    select,
+    textarea,
+    summary,
+    [contenteditable='true'],
+    [tabindex]:not([tabindex='-1'])
+  ):focus-visible {
+    outline: var(--focus-ring-width) solid var(--focus-ring-color);
+    outline-offset: var(--focus-ring-offset);
+  }
+}
+
 /* Wer reduzierte Bewegung eingestellt hat, bekommt dieselben Zustände ohne
    Übergang. Zentral statt in jedem Primitiv einzeln. 1 ms statt 0, damit
    `animationend` weiterhin feuert — Radix hängt das Aushängen einer
-   Überlagerung an dieses Ereignis. */
+   Überlagerung an dieses Ereignis.
+
+   Ausgenommen ist, was `data-motion-essential` trägt. Die Klammer oben
+   passt auf schmückende Bewegung, nicht auf Bewegung mit Aufgabe: ein
+   Wartezeiger, der nach einer Umdrehung stehenbleibt (iteration-count 1)
+   oder in 1 ms durchrast, meldet „abgestürzt" statt „läuft noch". Solche
+   Anzeigen — ab Aufgabe 14 die „Antwort wird erzeugt"-Anzeige — setzen das
+   Attribut und bleiben dann selbst dafür verantwortlich, im reduzierten
+   Modus ruhig zu sein: ein langsames Auf- und Abblenden, kein schnelles
+   Kreisen, nichts Blitzendes. */
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
+  *:not([data-motion-essential]),
+  *:not([data-motion-essential])::before,
+  *:not([data-motion-essential])::after {
     animation-duration: 1ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 1ms !important;
