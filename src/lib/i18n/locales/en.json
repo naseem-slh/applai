@@ -216,6 +216,50 @@
     },
     "continue": "Continue to the workspace"
   },
+  "editor": {
+    "intro": "Use the mouse to select the passage you want to adapt. You can type anywhere in the text; formatting stays exactly as it is in your Word file.",
+    "introNarrow": "On narrow screens the cover letter is read only. Selecting individual passages needs a wider screen; choosing the whole document still works here.",
+    "loading": "Reading the cover letter.",
+    "undo": "Undo",
+    "backToStart": "Back to the start page",
+    "noLetter": {
+      "heading": "The workspace needs a cover letter.",
+      "body": "This first stage works on the cover letter, the CV follows later. Please add a cover letter on the start page."
+    },
+    "failed": {
+      "heading": "The cover letter could not be read.",
+      "body": "The file may be damaged. Please add it again on the start page."
+    },
+    "document": {
+      "heading": "Cover letter"
+    },
+    "selection": {
+      "wholeDocument": "Whole document",
+      "currentParagraph": "Current paragraph",
+      "clear": "Clear selection",
+      "none": "Nothing selected. Drag the mouse across the passage you want to change.",
+      "narrow": "Fine selection is switched off on this screen. You can still choose the whole document.",
+      "summary": "{{chars}} characters selected.",
+      "preview": "“{{text}}”"
+    },
+    "retained": {
+      "heading": "Your selection reaches across fixed content.",
+      "entry": "Paragraph {{number}}: {{reason}}",
+      "reason": {
+        "sectionBreak": "a section break carrying page margins, header and footer",
+        "tableCell": "the last line of a table cell, an address block for instance",
+        "embeddedContent": "embedded content, the signature image for instance"
+      },
+      "body": "Applai never deletes such paragraphs, they keep their place. If the new text turns out shorter than the selected one, the text before it moves up and the fixed content ends up somewhere else in the letter. Make the selection smaller if that is not what you want. The layout of your Word file stays untouched either way."
+    },
+    "draft": {
+      "idle": "The draft is saved every 20 seconds.",
+      "saving": "Saving the draft.",
+      "savedJustNow": "Draft saved just now.",
+      "saved": "Draft saved {{when}}.",
+      "failed": "The draft could not be saved. Your changes exist in this view only."
+    }
+  },
   "settings": {
     "storageUnavailable": "Your browser is not releasing its storage right now. Changes made here apply to this session only.",
     "saveFailed": "The change could not be saved and has been undone. Please try again.",

@@ -395,6 +395,35 @@ hervorgehobene Karten untereinander wären sechsmal „das hier ist wichtig".
 Damit hat `Card` weiterhin keine Unterteile; die Kopfstruktur steckt in
 `SectionCard`, nicht in `Card` selbst.
 
+### Die Dokumentfläche
+
+Seit Aufgabe 14a gibt es die Ansicht, um die sich alles dreht. Was sie
+festlegt, gilt für ihre Anbauten (14b, 14c) und für den Export (15):
+
+- **Das Blatt ist die Spalte.** Werkzeugleiste, Abschnittsüberschrift und
+  Karte stehen in einer `max-w-[72ch]` breiten Spalte an der linken Kante
+  der Seite. Der Text darin liest sich mit `line-height: 1.7` wie ein
+  gedrucktes Dokument (siehe Leitgedanken); mehr Breite ginge auf Kosten der
+  Lesbarkeit, weniger sähe nicht mehr nach einem Brief aus.
+- **Die Werkzeugleiste klebt oben** (`sticky top-0`) und bekommt **keinen**
+  z-Index. Ein klebendes Element ist positioniert und liegt damit von selbst
+  über dem Fließtext darunter; die drei Ebenen der Höhenstaffelung bleiben
+  wie sie sind, `z-50` bleibt den Überlagerungen vorbehalten.
+- **`lang` gehört an den Text, nicht an die Anwendung.** Der Brief kann in
+  einer anderen Sprache stehen als die Oberfläche. Die Dokumentfläche trägt
+  die deterministisch erkannte Sprache (`detectLanguage`), damit die
+  Rechtschreibprüfung und die Vorlesesoftware sie richtig behandeln.
+- **Ein Absatz, den eine Markierung an seinem Platz festhalten würde**,
+  bekommt eine Kontur in `--color-warning`. Die Kontur liegt an jedem Absatz
+  an, nur farblos, damit sich beim Hervorheben kein Zeichen verschiebt. Die
+  Farbe trägt die Bedeutung nie allein: Der Hinweis in der Leiste nennt
+  Absatz und Grund im Text (`--color-warning` ist keine Textfarbe, siehe
+  Kontrast).
+- **Das Modell gewinnt.** Was auf der Fläche steht, ist die Ansicht eines
+  `DocxDocument`. Weicht der DOM davon ab, wird er zurückgeschrieben — auch
+  wenn dabei der Schreibcursor springt. Eine Ansicht, die etwas anderes
+  zeigt als das, was exportiert wird, wäre der schlimmere Fehler.
+
 ### Kontrast
 
 Zwei Regeln, die aus den Messwerten der Palette folgen und leicht zu übersehen

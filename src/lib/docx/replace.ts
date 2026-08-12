@@ -92,6 +92,81 @@ export function replaceRange(docx: DocxDocument, range: Range, newText: string):
 }
 
 /**
+ * Warum ein Absatz beim Ersetzen **nie** entfernt wird (siehe
+ * {@link mayBeRemoved}). Die drei Gründe sind für die Oberfläche
+ * unterscheidbar, weil sie verschiedene Dinge im Dokument bezeichnen und
+ * der Nutzer wissen soll, was ihm im Weg steht.
+ */
+export type RetainedParagraphReason = 'sectionBreak' | 'tableCell' | 'embeddedContent'
+
+/** Ein Absatz, der seinen Platz behält, obwohl der Bereich ihn überdeckt. */
+export interface RetainedParagraph {
+  /** Index im Dokument (`Paragraph.index`). */
+  index: number
+  /** Stelle innerhalb der betroffenen Absätze; 0 ist der erste. */
+  position: number
+  reason: RetainedParagraphReason
+}
+
+/**
+ * Was `replaceRange` mit diesem Bereich täte, ohne ihn auszuführen.
+ *
+ * Gebraucht wird das von der Arbeitsfläche (Aufgabe 14): Sie muss den
+ * Nutzer **vor** dem Ersetzen darauf hinweisen, dass ein nicht entfernbarer
+ * Absatz seinen Platz behält, während der Ersatztext die vorderen Absätze
+ * füllt — die Unterschriftsgrafik kann dadurch sichtbar verrutschen. Das
+ * ist der bewusste Tausch gegen Datenverlust aus Aufgabe 3; sichtbar
+ * gemacht wird er dort, wo die Markierung entsteht.
+ */
+export interface RangeInspection {
+  /** Indizes der Absätze, die der Bereich überdeckt (Dokumentreihenfolge). */
+  affected: number[]
+  /** Davon die, die nie entfernt werden. */
+  retained: RetainedParagraph[]
+  /**
+   * Kann sich die Reihenfolge von Text und festem Inhalt sichtbar ändern?
+   *
+   * `true`, sobald ein nicht entfernbarer Absatz **nicht** der erste
+   * betroffene ist. Nur dann kann er leer zurückbleiben: Der erste
+   * betroffene Absatz bekommt immer ein Segment des Ersatztextes (`split`
+   * liefert mindestens eines), jeder weitere nur dann, wenn der Ersatztext
+   * genügend Zeilen hat. Bleibt er ohne Segment und darf nicht entfernt
+   * werden, steht er danach als Leerzeile hinter dem zusammengerückten
+   * Text — die Grafik wandert.
+   *
+   * Bewusst „kann", nicht „wird": Wie viele Zeilen der Ersatztext hat,
+   * steht erst fest, wenn er vorliegt. Wer die Frage genauer beantworten
+   * will, ruft diese Funktion mit dem fertigen Text noch einmal auf und
+   * vergleicht `newText.split('\n').length` mit `affected.length`.
+   */
+  mayShiftContent: boolean
+}
+
+/**
+ * Vorschau auf `replaceRange`, ohne das Dokument anzufassen. Prüft den
+ * Bereich nach denselben Regeln (gleiche Fehler bei ungültigen Offsets).
+ */
+export function inspectRange(docx: DocxDocument, range: Range): RangeInspection {
+  assertValidRange(range, docx.text.length)
+
+  const affected = findAffectedParagraphs(docx.paragraphs, range)
+  const retained: RetainedParagraph[] = []
+
+  affected.forEach((paragraph, position) => {
+    const reason = retainedReason(paragraph.node)
+    if (reason !== null) {
+      retained.push({ index: paragraph.index, position, reason })
+    }
+  })
+
+  return {
+    affected: affected.map((paragraph) => paragraph.index),
+    retained,
+    mayShiftContent: retained.some((entry) => entry.position > 0),
+  }
+}
+
+/**
  * Die Absätze, auf die sich der Bereich auswirkt.
  *
  * Ein Absatz zählt dazu, wenn der Bereich mindestens ein Zeichen von ihm
@@ -347,11 +422,20 @@ function childTextLength(node: Node): number {
  * Leerzeile, während die Gegenrichtung die Bewerbung zerstört.
  */
 function mayBeRemoved(paragraphNode: Element): boolean {
-  return (
-    !carriesSectionBreak(paragraphNode) &&
-    !isLastParagraphInTableCell(paragraphNode) &&
-    containsOnlyTextAndFormatting(paragraphNode)
-  )
+  return retainedReason(paragraphNode) === null
+}
+
+/**
+ * Derselbe Beschluss wie {@link mayBeRemoved}, nur mit Begründung — damit
+ * die Oberfläche benennen kann, was im Weg steht, ohne die Regel ein
+ * zweites Mal zu formulieren. Es gibt genau diese eine Fassung; `mayBeRemoved`
+ * liest sie nur aus.
+ */
+function retainedReason(paragraphNode: Element): RetainedParagraphReason | null {
+  if (carriesSectionBreak(paragraphNode)) return 'sectionBreak'
+  if (isLastParagraphInTableCell(paragraphNode)) return 'tableCell'
+  if (!containsOnlyTextAndFormatting(paragraphNode)) return 'embeddedContent'
+  return null
 }
 
 // Trägt der Absatz einen Abschnittswechsel (Seitenränder, Kopf-/Fußzeilen

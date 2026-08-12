@@ -8,7 +8,7 @@ import { zipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
 import type { DocxDocument, Run } from './model'
 import { parseDocx } from './parse'
-import { replaceRange } from './replace'
+import { inspectRange, replaceRange } from './replace'
 import { serializeDocx } from './serialize'
 
 const FIXTURES_DIR = join(dirname(fileURLToPath(import.meta.url)), '../../../tests/fixtures')
@@ -545,5 +545,83 @@ describe('replaceRange', () => {
     expect(() => replaceRange(original, { from: 0.5, to: 3 }, 'x')).toThrow(/Ungültiger Bereich/)
     // Der gültige Randfall darf nicht mitgefangen werden.
     expect(() => replaceRange(original, { from: 0, to: original.text.length }, 'x')).not.toThrow()
+  })
+})
+
+describe('inspectRange', () => {
+  // Weitergabe aus Aufgabe 3: Die Oberfläche muss den bewussten Tausch
+  // gegen Datenverlust sichtbar machen, statt ihn geschehen zu lassen.
+  // Dafür braucht sie eine Vorschau auf das, was `replaceRange` täte.
+
+  it('nennt jeden betroffenen Absatz in Dokumentreihenfolge', async () => {
+    const original = await loadFixture('anschreiben.docx')
+
+    expect(inspectRange(original, { from: 0, to: original.text.length }).affected).toEqual([
+      0, 1, 2, 3,
+    ])
+  })
+
+  it('meldet ohne festen Inhalt nichts Festgehaltenes', async () => {
+    const original = await loadFixture('anschreiben.docx')
+
+    const inspection = inspectRange(original, { from: 0, to: original.text.length })
+
+    expect(inspection.retained).toEqual([])
+    expect(inspection.mayShiftContent).toBe(false)
+  })
+
+  it('unterscheidet Bild, Tabellenzelle und Abschnittswechsel', async () => {
+    // „Alpha\n\nZelle\nVor\nGamma": Absatz 1 trägt nur ein Bild, Absatz 2
+    // ist der letzte in einer Tabellenzelle, Absatz 3 trägt ein Textfeld.
+    const original = await loadFixture('anschreiben-sonderfaelle.docx')
+    const withSectionBreak = await parseDocx(
+      buildDocx(
+        '<w:p><w:r><w:t>Alpha</w:t></w:r></w:p>' +
+          '<w:p><w:pPr><w:sectPr/></w:pPr><w:r><w:t>Beta</w:t></w:r></w:p>',
+      ),
+    )
+
+    expect(inspectRange(original, { from: 0, to: original.text.length }).retained).toEqual([
+      { index: 1, position: 1, reason: 'embeddedContent' },
+      { index: 2, position: 2, reason: 'tableCell' },
+      { index: 3, position: 3, reason: 'embeddedContent' },
+    ])
+    expect(
+      inspectRange(withSectionBreak, { from: 0, to: withSectionBreak.text.length }).retained,
+    ).toEqual([{ index: 1, position: 1, reason: 'sectionBreak' }])
+  })
+
+  it('meldet eine mögliche Verschiebung nur, wenn der feste Absatz nicht der erste betroffene ist', async () => {
+    const original = await loadFixture('anschreiben-sonderfaelle.docx')
+
+    // Von „Alpha" bis in die Tabellenzelle: der Bildabsatz liegt dazwischen.
+    expect(inspectRange(original, { from: 2, to: 9 }).mayShiftContent).toBe(true)
+    // Nur innerhalb der Tabellenzelle: Der erste betroffene Absatz bekommt
+    // immer ein Segment und bleibt deshalb, wo er ist.
+    expect(inspectRange(original, { from: 7, to: 12 }).mayShiftContent).toBe(false)
+  })
+
+  it('sagt die Wirkung von replaceRange richtig voraus', async () => {
+    const original = await loadFixture('anschreiben-sonderfaelle.docx')
+    const range = { from: 2, to: 9 }
+    const inspection = inspectRange(original, range)
+
+    // Ein einzeiliger Ersatztext für drei betroffene Absätze: Genau die
+    // gemeldeten Absätze müssen danach noch da sein, obwohl sie keinen Text
+    // mehr bekommen haben.
+    const result = replaceRange(original, range, 'X')
+
+    expect(inspection.retained.map((entry) => entry.index)).toEqual([1, 2])
+    expect(result.text).toBe('AlX\n\nlle\nVor\nGamma')
+    expect(result.paragraphs).toHaveLength(original.paragraphs.length)
+  })
+
+  it('prüft den Bereich nach denselben Regeln wie replaceRange', async () => {
+    const original = await loadFixture('anschreiben.docx')
+
+    expect(() => inspectRange(original, { from: 10, to: 3 })).toThrow(/Ungültiger Bereich/)
+    expect(() => inspectRange(original, { from: 0, to: original.text.length + 1 })).toThrow(
+      /Ungültiger Bereich/,
+    )
   })
 })

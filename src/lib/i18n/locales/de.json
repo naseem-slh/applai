@@ -216,6 +216,50 @@
     },
     "continue": "Weiter zur Arbeitsfläche"
   },
+  "editor": {
+    "intro": "Markieren Sie mit der Maus die Textstelle, die angepasst werden soll. Tippen können Sie überall im Text; Formatierungen bleiben so, wie sie in Ihrer Word-Datei stehen.",
+    "introNarrow": "Auf schmalen Bildschirmen wird das Anschreiben nur gelesen. Für das Markieren einzelner Stellen brauchen Sie einen breiteren Bildschirm; das ganze Dokument lässt sich hier trotzdem wählen.",
+    "loading": "Das Anschreiben wird gelesen.",
+    "undo": "Rückgängig",
+    "backToStart": "Zurück zur Einstiegsseite",
+    "noLetter": {
+      "heading": "Für die Arbeitsfläche fehlt das Anschreiben.",
+      "body": "Im ersten Bauabschnitt wird das Anschreiben bearbeitet, der Lebenslauf folgt später. Legen Sie auf der Einstiegsseite ein Anschreiben ab."
+    },
+    "failed": {
+      "heading": "Das Anschreiben konnte nicht gelesen werden.",
+      "body": "Die Datei ist möglicherweise beschädigt. Bitte legen Sie sie auf der Einstiegsseite noch einmal ab."
+    },
+    "document": {
+      "heading": "Anschreiben"
+    },
+    "selection": {
+      "wholeDocument": "Ganzes Dokument",
+      "currentParagraph": "Aktueller Absatz",
+      "clear": "Markierung aufheben",
+      "none": "Nichts markiert. Ziehen Sie mit der Maus über die Stelle, die geändert werden soll.",
+      "narrow": "Die Feinmarkierung ist auf diesem Bildschirm abgeschaltet. Wählbar ist das ganze Dokument.",
+      "summary": "{{chars}} Zeichen markiert.",
+      "preview": "„{{text}}“"
+    },
+    "retained": {
+      "heading": "Ihre Markierung reicht über festen Inhalt hinweg.",
+      "entry": "Absatz {{number}}: {{reason}}",
+      "reason": {
+        "sectionBreak": "ein Abschnittswechsel, der Seitenränder sowie Kopf- und Fußzeile trägt",
+        "tableCell": "die letzte Zeile einer Tabellenzelle, zum Beispiel ein Adressblock",
+        "embeddedContent": "eingebetteter Inhalt, zum Beispiel die Unterschriftsgrafik"
+      },
+      "body": "Applai löscht solche Absätze nie, sie behalten ihren Platz. Fällt der neue Text kürzer aus als der markierte, rückt der Text davor zusammen und der feste Inhalt steht danach an einer anderen Stelle im Brief. Verkleinern Sie die Markierung, wenn das nicht passieren soll. Das Layout Ihrer Word-Datei bleibt in jedem Fall unangetastet."
+    },
+    "draft": {
+      "idle": "Der Zwischenstand wird alle 20 Sekunden gesichert.",
+      "saving": "Zwischenstand wird gesichert.",
+      "savedJustNow": "Zwischenstand gerade gesichert.",
+      "saved": "Zwischenstand gesichert {{when}}.",
+      "failed": "Der Zwischenstand konnte nicht gesichert werden. Ihre Änderungen stehen nur in dieser Ansicht."
+    }
+  },
   "settings": {
     "storageUnavailable": "Der Browser gibt seinen Speicher gerade nicht frei. Änderungen hier gelten nur für diese Sitzung.",
     "saveFailed": "Die Änderung ließ sich nicht speichern und wurde zurückgenommen. Bitte versuchen Sie es erneut.",
