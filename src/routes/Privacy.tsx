@@ -38,7 +38,11 @@ export default function Privacy() {
   return (
     <div className="w-full px-5 py-8 sm:px-8">
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
-        <h1 className="text-[length:var(--text-display-size)] leading-[var(--text-display-leading)] font-semibold tracking-[var(--text-display-tracking)] text-[var(--color-ink-strong)]">
+        {/* Seitentitel in Überschrift-, nicht in Display-Größe: Die
+            Kopfzeile ist mit 58px bewusst niedrig, und ein Titel von 44px
+            darunter kippt das Verhältnis. Display bleibt dem einen Fall
+            vorbehalten, in dem eine Seite nur aus einer Aussage besteht. */}
+        <h1 className="text-[length:var(--text-heading-size)] leading-[var(--text-heading-leading)] font-semibold text-[var(--color-ink-strong)]">
           {t('privacy.heading')}
         </h1>
 
