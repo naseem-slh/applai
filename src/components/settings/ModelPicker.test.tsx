@@ -28,7 +28,7 @@ function setup(overrides: Partial<ModelPickerProps> = {}) {
   const props: ModelPickerProps = {
     provider: provider(),
     apiKey: 'test-key',
-    value: undefined,
+    chain: [],
     onChange: vi.fn(),
     fieldId: 'modell',
     paidKey: false,
@@ -53,25 +53,59 @@ describe('ModelPicker', () => {
     expect(screen.getByText(hint)).toBeInTheDocument()
   })
 
-  it('übernimmt eine von Hand eingetragene Kennung', () => {
-    const props = setup()
+  it('hängt eine von Hand eingetragene Kennung an die Kette', () => {
+    const props = setup({ chain: ['gemini-3.6-flash'] })
 
     fireEvent.change(screen.getByLabelText(t('settings.model.label'), { exact: false }), {
       target: { value: 'gemini-2.5-flash' },
     })
+    fireEvent.click(screen.getByRole('button', { name: t('settings.model.add') }))
 
-    expect(props.onChange).toHaveBeenCalledWith('gemini-2.5-flash')
+    expect(props.onChange).toHaveBeenCalledWith(['gemini-3.6-flash', 'gemini-2.5-flash'])
   })
 
-  // Ein leeres Feld heißt „nimm die Voreinstellung", nicht „Modell ohne Namen".
-  it('macht aus einem geleerten Feld die Voreinstellung', () => {
-    const props = setup({ value: 'gemini-2.5-flash' })
+  it('nimmt ein leeres Feld nicht auf', () => {
+    const props = setup()
 
     fireEvent.change(screen.getByLabelText(t('settings.model.label'), { exact: false }), {
       target: { value: '   ' },
     })
+    fireEvent.click(screen.getByRole('button', { name: t('settings.model.add') }))
 
-    expect(props.onChange).toHaveBeenCalledWith(undefined)
+    expect(props.onChange).not.toHaveBeenCalled()
+  })
+
+  // Ein zweites Mal dasselbe Modell brächte nichts: Es scheitert genauso.
+  it('nimmt ein Modell nicht zweimal auf', () => {
+    const props = setup({ chain: ['gemini-2.5-flash'] })
+
+    fireEvent.change(screen.getByLabelText(t('settings.model.label'), { exact: false }), {
+      target: { value: 'gemini-2.5-flash' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: t('settings.model.add') }))
+
+    expect(props.onChange).not.toHaveBeenCalled()
+  })
+
+  it('verschiebt ein Modell in der Reihenfolge nach vorn', () => {
+    const props = setup({ chain: ['erst', 'zweit'] })
+
+    fireEvent.click(screen.getAllByRole('button', { name: t('settings.model.moveUp') })[1]!)
+
+    expect(props.onChange).toHaveBeenCalledWith(['zweit', 'erst'])
+  })
+
+  it('nimmt ein Modell wieder aus der Kette', () => {
+    const props = setup({ chain: ['erst', 'zweit'] })
+
+    fireEvent.click(screen.getAllByRole('button', { name: t('settings.model.removeEntry') })[0]!)
+
+    expect(props.onChange).toHaveBeenCalledWith(['zweit'])
+  })
+
+  it('sagt, dass ohne Wahl die Voreinstellung gilt', () => {
+    setup()
+    expect(screen.getByText(t('settings.model.empty'))).toBeInTheDocument()
   })
 
   // Die Liste kostet eine Anfrage. Sie darf erst auf Druck hinausgehen.
@@ -103,11 +137,27 @@ describe('ModelPicker', () => {
   })
 
   it('setzt auf die Voreinstellung zurück', () => {
-    const props = setup({ value: 'gemini-2.5-flash' })
+    const props = setup({ chain: ['gemini-2.5-flash'] })
 
     fireEvent.click(screen.getByRole('button', { name: t('settings.model.reset') }))
 
-    expect(props.onChange).toHaveBeenCalledWith(undefined)
+    expect(props.onChange).toHaveBeenCalledWith([])
+  })
+
+  it('fügt ein Modell aus der geladenen Liste zur Kette hinzu', async () => {
+    const props = setup()
+    fireEvent.click(screen.getByRole('button', { name: t('settings.model.load') }))
+    await waitFor(() =>
+      expect(screen.getByText(t('settings.model.loaded', { count: 2 }))).toBeInTheDocument(),
+    )
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: t('settings.model.addLabel', { model: 'Gemini 2.5 Flash' }),
+      }),
+    )
+
+    expect(props.onChange).toHaveBeenCalledWith(['gemini-2.5-flash'])
   })
 
   it('zeigt einen fehlgeschlagenen Abruf als Fehler statt still zu bleiben', async () => {

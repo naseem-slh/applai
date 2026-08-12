@@ -532,7 +532,14 @@
       "current": "Default: {{model}}",
       "needsKey": "The key must be unlocked to load the list.",
       "showAll": "Show all models",
-      "filtered": "Only models that output text. On the free tier without Pro models, which it usually does not include."
+      "filtered": "Only models that output text. On the free tier without Pro models, which it usually does not include.",
+      "chainHint": "Applai tries the models in this order. When the first one runs out, the next takes over.",
+      "empty": "None chosen. Applai uses the provider's default.",
+      "entry": "{{position}}. {{model}}",
+      "add": "Add",
+      "addLabel": "Add {{model}}",
+      "moveUp": "Move up",
+      "removeEntry": "Remove from the chain"
     }
   },
   "vault": {

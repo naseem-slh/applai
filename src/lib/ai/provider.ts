@@ -1,6 +1,7 @@
 import type { ProviderId } from '../storage/keyVault'
 import { createAnthropicProvider } from './anthropic'
 import { realSleep, type Sleep } from './errors'
+import { withModelFallback } from './fallback'
 import { createGeminiProvider } from './gemini'
 import { createOpenAiProvider } from './openai'
 
@@ -116,22 +117,27 @@ export const PROVIDERS: Record<ProviderId, LlmProvider> = {
 }
 
 /**
- * Ein Anbieter mit einem gewählten Modell — oder mit seinem
- * voreingestellten, wenn keines gewählt ist.
+ * Ein Anbieter mit der gewählten Modellkette — oder mit seinem
+ * voreingestellten Modell, wenn keine gewählt ist.
  *
- * **Warum das nötig ist.** Die kostenlosen Tarife unterscheiden sich je
- * Modell erheblich, bis hin zu „für dieses Modell gar kein Freikontingent".
- * Ein fest verdrahtetes Modell macht die Anwendung dann unbenutzbar, ohne
- * dass der Nutzer etwas dagegen tun könnte. Die Auswahl gehört ihm.
+ * **Warum die Auswahl dem Nutzer gehört.** Die kostenlosen Tarife
+ * unterscheiden sich je Modell erheblich, bis hin zu „für dieses Modell gar
+ * kein Freikontingent". Ein fest verdrahtetes Modell macht die Anwendung
+ * dann unbenutzbar, ohne dass jemand etwas dagegen tun könnte.
  *
- * Ein leerer oder nur aus Leerraum bestehender Wert gilt als „nicht
- * gewählt": So kann ein versehentlich geleertes Eingabefeld die Anwendung
- * nicht lahmlegen.
+ * **Warum eine Kette und nicht ein Modell.** Die Kontingente zählen je
+ * Modell. Ist das erste erschöpft, führt das zweite die Arbeit weiter, statt
+ * den Nutzer bis zum nächsten Tag stehen zu lassen (siehe `fallback.ts`,
+ * auch dazu, bei welchen Fehlern **nicht** weitergegangen wird).
+ *
+ * Leere Einträge fallen weg, und eine leere Kette gilt als „nicht gewählt":
+ * So kann ein versehentlich geleertes Eingabefeld die Anwendung nicht
+ * lahmlegen.
  */
-export function providerFor(id: ProviderId, model?: string): LlmProvider {
-  const chosen = model?.trim()
-  if (chosen === undefined || chosen === '') return PROVIDERS[id]
-  return FACTORIES[id](realSleep, chosen)
+export function providerFor(id: ProviderId, models?: readonly string[]): LlmProvider {
+  const chain = (models ?? []).map((model) => model.trim()).filter((model) => model !== '')
+  if (chain.length === 0) return PROVIDERS[id]
+  return withModelFallback(chain.map((model) => FACTORIES[id](realSleep, model)))
 }
 
 const FACTORIES: Record<ProviderId, (sleep: Sleep, model: string) => LlmProvider> = {

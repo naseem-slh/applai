@@ -16,7 +16,7 @@ import { SectionCard } from '@/components/ui/SectionCard'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select'
 import { Switch } from '@/components/ui/Switch'
 import { ModelPicker } from '@/components/settings/ModelPicker'
-import { PROVIDERS, providerFor } from '@/lib/ai/provider'
+import { PROVIDERS } from '@/lib/ai/provider'
 import { SUPPORTED_LANGUAGES } from '@/lib/i18n/i18n'
 import type { Settings as StoredSettings, TruthMode } from '@/lib/storage/adapter'
 import { cn } from '@/lib/utils'
@@ -333,12 +333,12 @@ export default function SettingsRoute() {
           >
             <ModelPicker
               fieldId={`${prefix}-model-field`}
-              provider={providerFor(providerFromVault, settings.models?.[providerFromVault])}
+              provider={PROVIDERS[providerFromVault]}
               apiKey={keyVault.vault?.getKey() ?? null}
               paidKey={settings.paidKey === true}
-              value={settings.models?.[providerFromVault]}
-              onChange={(model) =>
-                void change({ models: { ...settings.models, [providerFromVault]: model } })
+              chain={settings.modelChain?.[providerFromVault] ?? []}
+              onChange={(chain) =>
+                void change({ modelChain: { ...settings.modelChain, [providerFromVault]: chain } })
               }
             />
           </SectionCard>

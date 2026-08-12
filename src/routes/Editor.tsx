@@ -175,10 +175,10 @@ function EditorWorkspace({ session }: { session: StartSession }) {
   // Das Modell kommt aus den Einstellungen, der Anbieter aus dem Tresor.
   // `useMemo`, weil `providerFor` bei jedem Aufruf ein neues Objekt baut und
   // die Auswertung an der Identität des Anbieters hängt.
-  const chosenModel = settings.models?.[vaultProvider ?? 'gemini']
+  const chosenChain = settings.modelChain?.[vaultProvider ?? 'gemini']
   const provider = useMemo(
-    () => (vaultProvider === null ? null : providerFor(vaultProvider, chosenModel)),
-    [vaultProvider, chosenModel],
+    () => (vaultProvider === null ? null : providerFor(vaultProvider, chosenChain)),
+    [vaultProvider, chosenChain],
   )
 
   const privacy = useMemo(

@@ -5,50 +5,47 @@ import { isAbortError } from '@/components/app/aiErrorKey'
 import { Button } from '@/components/ui/Button'
 import { FIELD_HINT_CLASS, FIELD_LABEL_CLASS } from '@/components/ui/Field'
 import { Input } from '@/components/ui/Input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select'
 import { filterModels } from '@/lib/ai/modelFilter'
 import type { LlmProvider, ModelChoice } from '@/lib/ai/provider'
 
 /**
- * Welches Modell Applai anfragt.
+ * Welche Modelle Applai anfragt, in welcher Reihenfolge.
  *
- * **Warum die Auswahl dem Nutzer gehört.** Die kostenlosen Tarife decken
- * nicht jedes Modell ab, und für manche ist das Freikontingent null. Ein
- * fest verdrahtetes Modell macht die Anwendung dann unbenutzbar, ohne dass
- * jemand etwas dagegen tun könnte.
+ * **Warum eine Reihenfolge und nicht ein Modell.** Die kostenlosen
+ * Kontingente zählen je Modell. Ist das erste erschöpft, führt das zweite
+ * die Arbeit weiter, statt den Nutzer bis zum nächsten Tag stehen zu lassen.
+ * Gewechselt wird auf das Signal des Anbieters hin (HTTP 429), nicht auf
+ * eine Vorhersage — den Verbrauch gibt Google an einen API-Schlüssel nicht
+ * heraus (siehe `lib/ai/fallback.ts`).
  *
- * **Die Liste kostet eine Anfrage und wird deshalb nur auf Knopfdruck
- * geholt.** Sie beim Öffnen der Einstellungen zu laden, hieße Kontingent
- * auszugeben, weil jemand die Sprache umstellen wollte.
+ * **Die Liste kostet eine Anfrage und wird nur auf Knopfdruck geholt.** Sie
+ * beim Öffnen der Einstellungen zu laden, hieße Kontingent auszugeben, weil
+ * jemand die Sprache umstellen wollte.
  *
  * **Was die Liste nicht sagt.** Ob ein Modell im kostenlosen Tarif enthalten
- * ist — nachgesehen in der Modellreferenz, das Modell-Objekt trägt kein Feld
- * zu Tarif, Kontingent oder Preis. Der Hinweistext sagt das ausdrücklich,
- * statt eine Gewissheit vorzutäuschen. Ein Eingabefeld steht immer daneben:
- * Wer die Kennung kennt, ist nie auf die Liste angewiesen.
+ * ist — das Modell-Objekt der API trägt kein Feld zu Tarif, Kontingent oder
+ * Preis. Gezeigt werden deshalb nur Modelle, die Text ausgeben, und im
+ * kostenlosen Tarif ohne Pro; das ist eine Heuristik über Namen und
+ * jederzeit abschaltbar (siehe `lib/ai/modelFilter.ts`).
  */
 
 export interface ModelPickerProps {
-  /** Der Anbieter aus dem Tresor, mit dem heute gültigen Modell. */
+  /** Der Anbieter mit seinem **voreingestellten** Modell und der Modellliste. */
   provider: LlmProvider
   /** `null`, solange der Tresor gesperrt ist. Dann lässt sich nichts laden. */
   apiKey: string | null
-  /** Das gewählte Modell, `undefined` für die Voreinstellung des Anbieters. */
-  value: string | undefined
-  onChange: (model: string | undefined) => void
-  /** Kennung der Beschriftung des Eingabefelds. */
+  /** Die gewählte Reihenfolge. Leer heißt: Voreinstellung des Anbieters. */
+  chain: readonly string[]
+  onChange: (chain: string[]) => void
   fieldId: string
-  /**
-   * Wird der Schlüssel abgerechnet? Beim kostenlosen Tarif bleiben
-   * Pro-Modelle aus der Liste (siehe `modelFilter.ts`).
-   */
+  /** Beim kostenlosen Tarif bleiben Pro-Modelle aus der Liste. */
   paidKey: boolean
 }
 
 export function ModelPicker({
   provider,
   apiKey,
-  value,
+  chain,
   onChange,
   fieldId,
   paidKey,
@@ -57,6 +54,7 @@ export function ModelPicker({
   const [choices, setChoices] = useState<ModelChoice[] | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<unknown>(null)
+  const [draft, setDraft] = useState('')
   // Der Notausgang aus der Heuristik: Sie beurteilt fremde Namen und wird
   // eines Tages danebenliegen. Dann darf sie nicht das Modell verstecken,
   // das gerade gebraucht wird.
@@ -79,23 +77,74 @@ export function ModelPicker({
     }
   }
 
+  /** Doppelte Einträge bringen nichts: Das zweite Mal scheitert genauso. */
+  function add(model: string): void {
+    const trimmed = model.trim()
+    if (trimmed === '' || chain.includes(trimmed)) return
+    onChange([...chain, trimmed])
+    setDraft('')
+  }
+
+  function moveUp(index: number): void {
+    if (index === 0) return
+    const next = [...chain]
+    const moved = next[index]
+    const above = next[index - 1]
+    if (moved === undefined || above === undefined) return
+    next[index - 1] = moved
+    next[index] = above
+    onChange(next)
+  }
+
   return (
     <div className="flex flex-col gap-3">
       <p className={FIELD_HINT_CLASS}>{t('settings.model.hint')}</p>
+      <p className={FIELD_HINT_CLASS}>{t('settings.model.chainHint')}</p>
 
-      {/* Ohne diese Beschriftung hätte das Feld keinen zugänglichen Namen:
-          Die Überschrift der Karte benennt den Abschnitt, nicht das
-          Bedienelement darin. */}
+      {chain.length === 0 ? (
+        <p className={FIELD_HINT_CLASS}>{t('settings.model.empty')}</p>
+      ) : (
+        <ol className="flex flex-col gap-2">
+          {chain.map((model, index) => (
+            <li key={model} className="flex flex-wrap items-center gap-2">
+              <span className="text-[length:var(--text-body-sm-size)] text-[var(--color-ink)]">
+                {t('settings.model.entry', { position: index + 1, model })}
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={index === 0}
+                onClick={() => moveUp(index)}
+              >
+                {t('settings.model.moveUp')}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onChange(chain.filter((entry) => entry !== model))}
+              >
+                {t('settings.model.removeEntry')}
+              </Button>
+            </li>
+          ))}
+        </ol>
+      )}
+      <p className={FIELD_HINT_CLASS}>{t('settings.model.current', { model: provider.model })}</p>
+
       <label htmlFor={fieldId} className={FIELD_LABEL_CLASS}>
         {t('settings.model.label')}
       </label>
-      <Input
-        id={fieldId}
-        value={value ?? ''}
-        placeholder={provider.model}
-        onChange={(event) => onChange(emptyToUndefined(event.target.value))}
-      />
-      <p className={FIELD_HINT_CLASS}>{t('settings.model.current', { model: provider.model })}</p>
+      <div className="flex flex-wrap items-center gap-2">
+        <Input
+          id={fieldId}
+          value={draft}
+          placeholder={provider.model}
+          onChange={(event) => setDraft(event.target.value)}
+        />
+        <Button variant="secondary" size="sm" onClick={() => add(draft)}>
+          {t('settings.model.add')}
+        </Button>
+      </div>
 
       <div className="flex flex-wrap items-center gap-3">
         {load !== undefined && (
@@ -108,8 +157,8 @@ export function ModelPicker({
             {loading ? t('settings.model.loading') : t('settings.model.load')}
           </Button>
         )}
-        {value !== undefined && (
-          <Button variant="ghost" size="sm" onClick={() => onChange(undefined)}>
+        {chain.length > 0 && (
+          <Button variant="ghost" size="sm" onClick={() => onChange([])}>
             {t('settings.model.reset')}
           </Button>
         )}
@@ -126,18 +175,24 @@ export function ModelPicker({
             {t('settings.model.loaded', { count: shown.length })}
           </p>
           <p className={FIELD_HINT_CLASS}>{t('settings.model.filtered')}</p>
-          <Select value={value ?? provider.model} onValueChange={(next) => onChange(next)}>
-            <SelectTrigger aria-label={t('settings.model.choose')}>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {shown.map((choice) => (
-                <SelectItem key={choice.id} value={choice.id}>
+          <ul className="flex flex-wrap gap-2">
+            {shown.map((choice) => (
+              <li key={choice.id}>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={chain.includes(choice.id)}
+                  onClick={() => add(choice.id)}
+                  // Der Modellname muss im zugänglichen Namen stehen: Ein
+                  // bloßes „Modell hinzufügen" klänge bei jedem Knopf gleich
+                  // und wäre für eine Vorlesesoftware nicht zu unterscheiden.
+                  aria-label={t('settings.model.addLabel', { model: choice.label })}
+                >
                   {choice.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+                </Button>
+              </li>
+            ))}
+          </ul>
           <Button
             variant="ghost"
             size="sm"
@@ -151,9 +206,4 @@ export function ModelPicker({
       )}
     </div>
   )
-}
-
-/** Ein leeres Feld heißt „Voreinstellung", nicht „Modell mit leerem Namen". */
-function emptyToUndefined(value: string): string | undefined {
-  return value.trim() === '' ? undefined : value
 }

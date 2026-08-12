@@ -102,14 +102,24 @@ export type TruthMode = 'strict' | 'bridge' | 'free'
 export interface Settings {
   provider: ProviderId
   /**
-   * Das gewählte Modell je Anbieter. Fehlt ein Eintrag, gilt das
-   * voreingestellte Modell der Anbieterdatei.
+   * Vorgänger von {@link Settings.modelChain}: genau ein Modell je Anbieter.
+   * Wird beim Lesen in eine einelementige Kette übernommen und danach nicht
+   * mehr geschrieben. Steht hier, damit eine bereits getroffene Wahl nicht
+   * stillschweigend verschwindet.
    *
-   * Je Anbieter und nicht ein einzelner Wert, weil ein Wechsel des Anbieters
-   * sonst ein Modell mitschleppte, das es dort nicht gibt. Optional, damit
-   * ein vor dieser Einstellung gespeicherter Datensatz weiter gilt.
+   * @deprecated Zugunsten von `modelChain`.
    */
   models?: Partial<Record<ProviderId, string>>
+  /**
+   * Die Modellkette je Anbieter, in der Reihenfolge, in der sie versucht
+   * wird. Leer oder fehlend heißt: das voreingestellte Modell.
+   *
+   * Eine Kette statt eines Modells, weil die kostenlosen Kontingente je
+   * Modell zählen: Ist das erste erschöpft, kann das zweite die Arbeit
+   * weiterführen, statt den Nutzer bis zum nächsten Tag stehen zu lassen
+   * (siehe `lib/ai/fallback.ts`).
+   */
+  modelChain?: Partial<Record<ProviderId, string[]>>
   /**
    * Ob der hinterlegte Schlüssel abgerechnet wird — die Antwort, die der
    * Nutzer beim Einrichten gegeben hat.

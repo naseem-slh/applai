@@ -8,7 +8,7 @@ import type {
   StorageAdapter,
   TruthMode,
 } from './adapter'
-import { isProviderId } from './keyVault'
+import { isProviderId, type ProviderId } from './keyVault'
 
 /**
  * Die IndexedDB-Umsetzung von `StorageAdapter` (siehe `adapter.ts`) — heute
@@ -130,12 +130,22 @@ function isModelSelection(value: unknown): boolean {
   return Object.entries(value).every(([key, model]) => isProviderId(key) && typeof model === 'string')
 }
 
+function isModelChain(value: unknown): boolean {
+  if (value === undefined) return true
+  if (typeof value !== 'object' || value === null) return false
+  return Object.entries(value).every(
+    ([key, chain]) =>
+      isProviderId(key) && Array.isArray(chain) && chain.every((entry) => typeof entry === 'string'),
+  )
+}
+
 function isSettings(value: unknown): value is Settings {
   if (typeof value !== 'object' || value === null) return false
   const candidate = value as Partial<Settings>
   return (
     (candidate.paidKey === undefined || typeof candidate.paidKey === 'boolean') &&
     isModelSelection(candidate.models) &&
+    isModelChain(candidate.modelChain) &&
     isProviderId(candidate.provider) &&
     (candidate.uiLanguage === 'de' || candidate.uiLanguage === 'en') &&
     typeof candidate.anonymize === 'boolean' &&
@@ -475,7 +485,25 @@ async function getSettings(): Promise<Settings> {
   const stored = await withTransaction([SETTINGS_STORE], 'readonly', (tx) =>
     promisifyRequest<Settings | undefined>(tx.objectStore(SETTINGS_STORE).get(SETTINGS_KEY)),
   )
-  return stored ?? { ...DEFAULT_SETTINGS }
+  return stored === undefined ? { ...DEFAULT_SETTINGS } : withMigratedModels(stored)
+}
+
+/**
+ * Übernimmt eine früher gespeicherte Einzelwahl (`models`) in die
+ * Modellkette. Genau eine Stelle, an der das geschieht — der Rest der
+ * Anwendung sieht nur `modelChain`.
+ */
+function withMigratedModels(stored: Settings): Settings {
+  const legacy = stored.models
+  if (legacy === undefined || stored.modelChain !== undefined) return stored
+
+  const migrated: Partial<Record<ProviderId, string[]>> = {}
+  for (const [provider, model] of Object.entries(legacy)) {
+    if (isProviderId(provider) && typeof model === 'string' && model.trim() !== '') {
+      migrated[provider] = [model]
+    }
+  }
+  return { ...stored, modelChain: migrated }
 }
 
 /**

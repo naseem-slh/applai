@@ -532,7 +532,14 @@
       "current": "Voreingestellt: {{model}}",
       "needsKey": "Zum Laden der Liste muss der Schlüssel entsperrt sein.",
       "showAll": "Alle Modelle anzeigen",
-      "filtered": "Nur Modelle, die Text ausgeben. Beim kostenlosen Tarif ohne Pro-Modelle, die dort meist nicht enthalten sind."
+      "filtered": "Nur Modelle, die Text ausgeben. Beim kostenlosen Tarif ohne Pro-Modelle, die dort meist nicht enthalten sind.",
+      "chainHint": "Applai versucht die Modelle in dieser Reihenfolge. Ist das Kontingent des ersten erschöpft, übernimmt das nächste.",
+      "empty": "Keines gewählt. Applai nimmt die Voreinstellung des Anbieters.",
+      "entry": "{{position}}. {{model}}",
+      "add": "Hinzufügen",
+      "addLabel": "{{model}} hinzufügen",
+      "moveUp": "Nach oben",
+      "removeEntry": "Aus der Kette nehmen"
     }
   },
   "vault": {

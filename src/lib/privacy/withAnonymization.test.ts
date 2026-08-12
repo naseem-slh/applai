@@ -243,6 +243,7 @@ Max Mustermann`
     const provider: LlmProvider = {
       id: 'gemini',
       label: 'Stub',
+      model: 'test-modell',
       endpoint: 'https://example.invalid',
       generate: (req) => {
         gesehen = req.user
