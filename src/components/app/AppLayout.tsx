@@ -105,8 +105,10 @@ export function AppLayout() {
   const { session } = useApp()
   const { pathname } = useLocation()
 
-  const ownsHeight = pathname === '/'
-  const needsFrame = pathname === '/editor'
+  // Einstiegsseite und Arbeitsfläche regeln ihre Höhe selbst: Beide sind
+  // Spaltenaufbauten, in denen die Bereiche für sich blättern, während die
+  // Seite als Ganzes stehen bleibt. Alles Übrige ist fortlaufender Text.
+  const ownsHeight = pathname === '/' || pathname === '/editor'
 
   return (
     <div className="flex min-h-[100dvh] flex-col lg:h-[100dvh] lg:overflow-hidden">
@@ -177,11 +179,6 @@ export function AppLayout() {
         className={cn(
           'flex min-h-0 flex-1 flex-col',
           ownsHeight ? '' : 'overflow-y-auto',
-          // Die Arbeitsfläche ist die einzige Ansicht, die noch keinen
-          // eigenen Rahmen mitbringt; sie wird gerade an anderer Stelle
-          // umgebaut. Bis dahin bekommt sie ihn hier. Diese Zeile fällt
-          // weg, sobald sie auf den neuen Aufbau umgestellt ist.
-          needsFrame && 'mx-auto w-full max-w-5xl px-4 py-8',
         )}
       >
         <Outlet />

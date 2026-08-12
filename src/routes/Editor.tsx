@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, Navigate } from 'react-router-dom'
 import { aiErrorKey, VaultLockedError } from '@/components/app/aiErrorKey'
@@ -52,6 +52,7 @@ import { rewriteSelection, type Variant } from '@/lib/domain/rewrite'
 import type { StyleProfile } from '@/lib/domain/styleProfile'
 import { replaceRange, type Range as TextRange } from '@/lib/docx/replace'
 import type { TruthMode } from '@/lib/storage/adapter'
+import { cn } from '@/lib/utils'
 
 /**
  * Die Arbeitsfläche: das Anschreiben als Dokument, die freie Markierung und
@@ -561,9 +562,18 @@ function EditorWorkspace({ session }: { session: StartSession }) {
   )
 
   const heading = (
-    <h1 className="text-[length:var(--text-display-size)] leading-[var(--text-display-leading)] font-semibold tracking-[var(--text-display-tracking)] text-[var(--color-ink-strong)]">
+    <h1 className="text-[length:var(--text-heading-size)] leading-[var(--text-heading-leading)] font-semibold text-[var(--color-ink-strong)]">
       {t('routes.editor.heading')}
     </h1>
+  )
+
+  /** Rahmen für die Zustände, die keine Arbeitsfläche sind (kein Brief,
+   *  Fehler, Ladevorgang). Sie sind Lesestoff, keine Werkbank, und stehen
+   *  deshalb in einer ruhigen Spalte statt im Dreispalter darunter. */
+  const state = (children: ReactNode) => (
+    <div className="min-h-0 flex-1 overflow-y-auto px-5 py-8 sm:px-8">
+      <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">{children}</div>
+    </div>
   )
 
   const backToStart = (
@@ -577,213 +587,255 @@ function EditorWorkspace({ session }: { session: StartSession }) {
   // „Reihenfolge"). Das ist ein echter Zustand des Produkts, kein
   // nachgebauter Leerzustand.
   if (letter === null) {
-    return (
-      <div className="flex flex-col gap-6">
+    return state(
+      <>
         {heading}
         <Card variant="subtle" padding="lg" className="flex max-w-[65ch] flex-col gap-3">
           <p className="font-medium text-[var(--color-ink)]">{t('editor.noLetter.heading')}</p>
           <p className="text-[var(--color-ink)]">{t('editor.noLetter.body')}</p>
           {backToStart}
         </Card>
-      </div>
+      </>,
     )
   }
 
   if (failed) {
-    return (
-      <div className="flex flex-col gap-6">
+    return state(
+      <>
         {heading}
         <Card variant="subtle" padding="lg" className="flex max-w-[65ch] flex-col gap-3">
           <p className="font-medium text-[var(--color-error)]">{t('editor.failed.heading')}</p>
           <p className="text-[var(--color-ink)]">{t('editor.failed.body')}</p>
           {backToStart}
         </Card>
-      </div>
+      </>,
     )
   }
 
   if (loading || docx === null) {
-    return (
-      <div className="flex flex-col gap-6">
+    return state(
+      <>
         {heading}
         <p role="status" className={FIELD_HINT_CLASS}>
           {t('editor.loading')}
         </p>
-      </div>
+      </>,
     )
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      {heading}
-      <p className="max-w-[65ch]">{precise ? t('editor.intro') : t('editor.introTouch')}</p>
+    <div className="flex min-h-0 flex-1 flex-col">
+      {/* Den Titel trägt der Schrittreiter in der Kopfzeile bereits sichtbar.
+          Hier bleibt er für Vorlesesoftware stehen, damit die Ansicht eine
+          Ebene-1-Überschrift behält, ohne sie zweimal zu zeigen. */}
+      <h1 className="sr-only">{t('routes.editor.heading')}</h1>
 
-      {/* Zwei Spalten, sobald Platz ist: der Brief links, die ruhige Spalte
-          rechts. Auf schmalen Fenstern stehen die Bereiche **unter** dem
-          Brief — sie sind Beiwerk, und der Brief ist die Arbeit. Deshalb
-          stehen sie auch im Aufbau danach: Wer mit der Tastatur oder einer
-          Vorlesesoftware arbeitet, kommt zuerst an das Dokument. */}
-      <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,72ch)_20rem] lg:items-start">
-      {/* Die Spalte ist so breit wie das Blatt darin: Werkzeugleiste,
-          Überschrift und Dokument stehen auf derselben Kante wie die
-          Überschrift der Seite, und der Blick bleibt beim Brief. */}
-      <section aria-labelledby={headingId} className="flex w-full max-w-[72ch] flex-col gap-4">
-        <h2
-          id={headingId}
-          className="text-[length:var(--text-heading-size)] leading-[var(--text-heading-leading)] font-semibold text-[var(--color-ink-strong)]"
+      {/* Drei Spalten über die volle Fensterbreite: links, was die Anzeige
+          verlangt und was vorgemerkt ist, in der Mitte der Brief, rechts die
+          Stellschrauben und die Ausgabe.
+
+          **Die Reihenfolge im Aufbau ist eine andere als die im Bild.** Der
+          Brief steht im HTML zuerst, damit Tastatur und Vorlesesoftware
+          zuerst an das Dokument kommen; die Spalten werden erst über
+          `col-start` an ihren Platz gesetzt. Das war schon vorher so.
+
+          Bis `xl` liegen beide Spalten zusammen rechts, weil ein Brief
+          zwischen zwei Spalten sonst zu schmal würde. `xl:contents` löst den
+          Sammelbehälter dann auf, und seine beiden Bereiche werden selbst zu
+          Rasterfeldern — so steht jeder Bereich genau einmal im Aufbau statt
+          zweimal für zwei Fensterbreiten.
+
+          `grid-rows-[minmax(0,1fr)]`: Ohne das wächst die Rasterzeile mit
+          ihrem Inhalt, und der Rahmen mit `lg:overflow-hidden` schneidet ab,
+          ohne dass man an den Rest kommt. */}
+      <div
+        className={cn(
+          'grid min-h-0 flex-1 grid-cols-1',
+          'lg:grid-cols-[minmax(0,1fr)_20rem] lg:grid-rows-[minmax(0,1fr)]',
+          'xl:grid-cols-[17rem_minmax(0,1fr)_20rem]',
+        )}
+      >
+        <section
+          aria-labelledby={headingId}
+          className="flex min-h-0 flex-col lg:col-start-1 lg:row-start-1 xl:col-start-2"
         >
-          {t('editor.document.heading')}
-        </h2>
+          <h2 id={headingId} className="sr-only">
+            {t('editor.document.heading')}
+          </h2>
 
-        {/* Die Leiste bleibt beim Blättern stehen. Ohne eigenen z-Index: Ein
-            klebendes Element ist positioniert und liegt damit von selbst
-            über dem Fließtext darunter (DESIGN.md vergibt z-Indizes nur an
-            Überlagerungen). */}
-        <div className="sticky top-0 flex flex-col gap-3 border-b border-[var(--color-border)] bg-[var(--color-surface)] py-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <Button variant="ghost" size="sm" disabled={!canUndo} onClick={undo}>
-              {t('editor.undo')}
-            </Button>
-            <DraftStatus state={draft} />
-          </div>
+          {/* Die Leiste steht fest über dem Blatt, statt mitzublättern: Der
+              Bereich darunter blättert für sich, also braucht sie kein
+              `sticky` mehr. */}
+          <div className="flex flex-none flex-col gap-2 border-b border-[var(--color-border)] bg-[var(--color-surface-raised)] px-4 py-2.5 lg:px-6">
+            {/* `items-start`, damit Rückgängig und Sicherungsstand auf der
+                Höhe der Knopfreihe stehen und nicht auf der Höhe des
+                Hinweises, den die Markierungsleiste darunter setzt. */}
+            <div className="flex items-start gap-3">
+              <div className="min-w-0 flex-1">
+                <SelectionLayer
+                  selection={selection}
+                  fineSelection={precise}
+                  caretParagraph={caretParagraph}
+                  onSelectWholeDocument={() => select(wholeDocumentRange(docx))}
+                  onSelectParagraph={(index) => {
+                    const range = paragraphRange(docx, index)
+                    if (range !== null) select(range)
+                  }}
+                  onClear={clear}
+                  markAction={markAction}
+                  actions={
+                    <VariantPopover
+                      selection={selection}
+                      rewrite={rewrite}
+                      ready={analysis.status === 'ready'}
+                      onApply={applyVariant}
+                    />
+                  }
+                />
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <Button variant="ghost" size="sm" disabled={!canUndo} onClick={undo}>
+                  {t('editor.undo')}
+                </Button>
+                <DraftStatus state={draft} />
+              </div>
+            </div>
 
-          <SelectionLayer
-            selection={selection}
-            fineSelection={precise}
-            caretParagraph={caretParagraph}
-            onSelectWholeDocument={() => select(wholeDocumentRange(docx))}
-            onSelectParagraph={(index) => {
-              const range = paragraphRange(docx, index)
-              if (range !== null) select(range)
-            }}
-            onClear={clear}
-            markAction={markAction}
-            actions={
-              <VariantPopover
-                selection={selection}
-                rewrite={rewrite}
-                ready={analysis.status === 'ready'}
-                onApply={applyVariant}
-              />
-            }
-          />
-
-          {/* Der Wahrheitsmodus steht unter der Markierungsleiste, nicht in
-              ihr: Er gilt für die ganze Sitzung, nicht für diese eine
-              Markierung. */}
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <TruthModeSwitch value={settings.truthMode} onChange={changeTruthMode} />
             <AnalysisStatus analysis={analysis} hasKey={apiKey !== null} />
           </div>
+
+          {/* Der Bereich, der das Blatt trägt. Er blättert für sich; die
+              Seite als Ganzes steht still. */}
+          <div className="flex min-h-0 flex-1 flex-col items-center gap-5 px-4 py-6 lg:overflow-y-auto lg:px-8">
+            {/* `data-print-document`: Beim Drucken bleibt genau diese Karte
+                stehen, alles andere wird ausgeblendet (siehe
+                `lib/export/print.css`). Die Markierung sitzt an der Karte und
+                nicht an der Fläche darin, damit der Rand des Blattes mitgeht. */}
+            <Card
+              variant="raised"
+              padding="none"
+              data-print-document
+              className="w-full max-w-[72ch]"
+            >
+              <DocumentView
+                rootRef={rootRef}
+                paragraphs={docx.paragraphs}
+                // Auch mit dem Finger: Die Checkliste nimmt auf schmalen
+                // Geräten nur die **Feinmarkierung** weg, nicht das Tippen.
+                editable
+                labelledBy={headingId}
+                // Die Sprache des Briefs, deterministisch erkannt (Aufgabe 9,
+                // kein Modellaufruf). Sie entscheidet, in welcher Sprache der
+                // Browser die Rechtschreibung prüft und eine Vorlesesoftware
+                // den Text ausspricht.
+                language={detectLanguage(docx.text)}
+                // Nur die Absätze, die die Leiste auch benennt (`position > 0`,
+                // siehe `SelectionLayer`). Eine Kontur ohne ein Wort dazu wäre
+                // eine Bedeutung, die allein an der Farbe hinge.
+                retainedParagraphs={
+                  selection?.inspection.retained
+                    .filter((entry) => entry.position > 0)
+                    .map((entry) => entry.index) ?? []
+                }
+                // Absätze mit einer unbestätigten unbelegten Aussage (freier
+                // Modus). Der Wortlaut steht in `ClaimGuard` darunter.
+                claimParagraphs={claims.pendingParagraphs}
+                // Fremdfirmen-Treffer bekommen dieselbe Behandlung wie die
+                // unbelegten Aussagen (siehe `foreignCompanies.ts`).
+                foreignParagraphs={foreign.paragraphs}
+                onParagraphInput={handleParagraphInput}
+                // `rounded-lg` statt der Vorgabe `rounded-md`: Der Fokusring
+                // folgt dem Radius seines Elements und soll dem Blatt folgen,
+                // nicht daneben liegen.
+                className="rounded-lg px-6 py-8 md:px-10 md:py-12"
+              />
+            </Card>
+
+            {/* Die unbelegten Aussagen stehen unter dem Blatt, nicht in einer
+                Spalte: Sie gehören zu diesem Brief und zu keiner Stellschraube. */}
+            <div className="w-full max-w-[72ch]">
+              <ClaimGuard
+                claims={claims.located}
+                onConfirm={claims.confirm}
+                headingId={claimsHeadingId}
+              />
+            </div>
+          </div>
+        </section>
+
+        {/* Sammelbehälter der beiden Spalten, siehe `xl:contents` oben. */}
+        <div
+          className={cn(
+            'flex min-h-0 flex-col border-[var(--color-border)]',
+            'lg:col-start-2 lg:row-start-1 lg:overflow-y-auto lg:border-l',
+            'xl:contents',
+          )}
+        >
+          <aside
+            aria-label={t('editor.sidePanel.reference')}
+            className={cn(
+              'flex flex-col gap-3 border-t border-[var(--color-border)] p-4 lg:border-t-0',
+              'xl:col-start-1 xl:row-start-1 xl:min-h-0 xl:overflow-y-auto xl:border-r',
+            )}
+          >
+            {analysis.jobAd !== null && (
+              <GapList requirements={analysis.jobAd.requirements} gaps={gaps} defaultOpen={wide} />
+            )}
+            <MarkPanel
+              marks={marks}
+              unresolved={markHandle.unresolved}
+              restore={markHandle.restore}
+              activeId={activeMarkId}
+              onSelect={selectMark}
+              onToggleDone={markHandle.setDone}
+              onRemove={markHandle.remove}
+              onClearAll={markHandle.clearAll}
+              onDismiss={markHandle.dismiss}
+              defaultOpen={wide}
+            />
+          </aside>
+
+          <aside
+            aria-label={t('editor.sidePanel.label')}
+            className={cn(
+              'flex flex-col gap-3 border-t border-[var(--color-border)] p-4',
+              'xl:col-start-3 xl:row-start-1 xl:min-h-0 xl:overflow-y-auto xl:border-t-0 xl:border-l',
+            )}
+          >
+            {/* Der Wahrheitsmodus stand bisher unter der Markierungsleiste.
+                Er gilt für die ganze Sitzung und nicht für diese eine
+                Markierung, gehört also zu den Stellschrauben. */}
+            <TruthModeSwitch value={settings.truthMode} onChange={changeTruthMode} />
+            {letterhead !== null && (
+              <LetterheadPanel
+                letterhead={letterhead}
+                onChange={setLetterhead}
+                onInsert={insertAtSelection}
+                foreign={foreign}
+                defaultOpen={wide}
+              />
+            )}
+            {style !== null && sliders !== null && (
+              <StyleProfilePanel
+                style={style}
+                onChange={setStyle}
+                sliders={sliders}
+                onSlidersChange={setSliders}
+                defaultOpen={wide}
+              />
+            )}
+            {/* Die Ausgabe sitzt am Fuß der Spalte: Sie ist das Ende der
+                Arbeit und soll nicht zwischen den Stellschrauben stehen. */}
+            <div className="mt-auto pt-3">
+              <ExportBar
+                document={docx}
+                company={jobAd?.company ?? null}
+                blocked={claims.exportBlocked}
+                onExported={handleExported}
+              />
+            </div>
+          </aside>
         </div>
-
-        {/* `data-print-document`: Beim Drucken bleibt genau diese Karte
-            stehen, alles andere wird ausgeblendet (siehe
-            `lib/export/print.css`). Die Markierung sitzt an der Karte und
-            nicht an der Fläche darin, damit der Rand des Blattes mitgeht. */}
-        <Card variant="raised" padding="none" data-print-document>
-          <DocumentView
-            rootRef={rootRef}
-            paragraphs={docx.paragraphs}
-            // Auch mit dem Finger: Die Checkliste nimmt auf schmalen
-            // Geräten nur die **Feinmarkierung** weg, nicht das Tippen. Ein
-            // Anschreiben, das sich unterwegs nicht einmal an einer Stelle
-            // berichtigen ließe, wäre weniger wert als eine ungenaue
-            // Einfügestelle; die Absatzfolge schützt ohnehin die Prüfung in
-            // `DocumentView`, nicht die Gerätefrage.
-            editable
-            labelledBy={headingId}
-            // Die Sprache des Briefs, deterministisch erkannt (Aufgabe 9,
-            // kein Modellaufruf). Sie entscheidet, in welcher Sprache der
-            // Browser die Rechtschreibung prüft und eine Vorlesesoftware
-            // den Text ausspricht — ohne sie liest ein englisch
-            // eingestellter Browser ein deutsches Anschreiben englisch vor
-            // und unterstreicht jedes Wort rot.
-            language={detectLanguage(docx.text)}
-            // Nur die Absätze, die die Leiste auch benennt (`position > 0`,
-            // siehe `SelectionLayer`). Eine Kontur ohne ein Wort dazu wäre
-            // eine Bedeutung, die allein an der Farbe hinge — genau das,
-            // was `DESIGN.md` verbietet.
-            retainedParagraphs={
-              selection?.inspection.retained
-                .filter((entry) => entry.position > 0)
-                .map((entry) => entry.index) ?? []
-            }
-            // Absätze mit einer unbestätigten unbelegten Aussage (freier
-            // Modus). Der Wortlaut steht in `ClaimGuard` darunter — die
-            // Kontur allein wäre eine Bedeutung, die nur an der Farbe hinge.
-            claimParagraphs={claims.pendingParagraphs}
-            // Fremdfirmen-Treffer bekommen dieselbe Behandlung wie die
-            // unbelegten Aussagen: der Absatz eine Kontur, der Name daneben
-            // im Briefkopf-Bereich. Beide Male aus demselben Grund keine
-            // Auszeichnung im Absatztext (siehe `foreignCompanies.ts`).
-            foreignParagraphs={foreign.paragraphs}
-            onParagraphInput={handleParagraphInput}
-            // `rounded-lg` statt der Vorgabe `rounded-md`: Der Fokusring
-            // folgt dem Radius seines Elements und soll dem Blatt folgen,
-            // nicht daneben liegen.
-            className="rounded-lg px-6 py-8 md:px-10 md:py-12"
-          />
-        </Card>
-
-        <ClaimGuard
-          claims={claims.located}
-          onConfirm={claims.confirm}
-          headingId={claimsHeadingId}
-        />
-
-        <ExportBar
-          document={docx}
-          company={jobAd?.company ?? null}
-          blocked={claims.exportBlocked}
-          onExported={handleExported}
-        />
-      </section>
-
-      {/* Die ruhige Spalte. Sie klebt auf breiten Fenstern mit, damit sie
-          beim Blättern durch einen langen Brief nicht davonläuft. */}
-      <aside
-        aria-label={t('editor.sidePanel.label')}
-        className="flex flex-col gap-4 lg:sticky lg:top-0 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto"
-      >
-        {letterhead !== null && (
-          <LetterheadPanel
-            letterhead={letterhead}
-            onChange={setLetterhead}
-            onInsert={insertAtSelection}
-            foreign={foreign}
-            defaultOpen={wide}
-          />
-        )}
-        <MarkPanel
-          marks={marks}
-          unresolved={markHandle.unresolved}
-          restore={markHandle.restore}
-          activeId={activeMarkId}
-          onSelect={selectMark}
-          onToggleDone={markHandle.setDone}
-          onRemove={markHandle.remove}
-          onClearAll={markHandle.clearAll}
-          onDismiss={markHandle.dismiss}
-          defaultOpen={wide}
-        />
-        {analysis.jobAd !== null && (
-          <GapList
-            requirements={analysis.jobAd.requirements}
-            gaps={gaps}
-            defaultOpen={wide}
-          />
-        )}
-        {style !== null && sliders !== null && (
-          <StyleProfilePanel
-            style={style}
-            onChange={setStyle}
-            sliders={sliders}
-            onSlidersChange={setSliders}
-            defaultOpen={wide}
-          />
-        )}
-      </aside>
       </div>
 
       {adLanguage !== null && (

@@ -421,7 +421,8 @@
       }
     },
     "sidePanel": {
-      "label": "Letterhead, requirements and writing style"
+      "label": "Letterhead, requirements and writing style",
+      "reference": "Requirements and marked passages"
     },
     "export": {
       "heading": "Done? Then send it on its way",

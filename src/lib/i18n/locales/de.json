@@ -421,7 +421,8 @@
       }
     },
     "sidePanel": {
-      "label": "Briefkopf, Anforderungen und Schreibstil"
+      "label": "Briefkopf, Anforderungen und Schreibstil",
+      "reference": "Anforderungen und Vormerkungen"
     },
     "export": {
       "heading": "Fertig? Dann hinaus damit",
