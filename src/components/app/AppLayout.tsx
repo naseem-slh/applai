@@ -26,7 +26,7 @@ import { cn } from '@/lib/utils'
  */
 
 const LINK_CLASS =
-  'focus-ring rounded-md px-3 py-2 text-[length:var(--text-body-sm-size)] ' +
+  'focus-ring rounded-md px-1.5 py-2 text-[12.5px] md:px-3 md:text-[length:var(--text-body-sm-size)] ' +
   'text-[var(--color-muted)] transition-colors ' +
   'hover:bg-[var(--color-accent-soft)] hover:text-[var(--color-accent-text)]'
 
@@ -60,17 +60,26 @@ function StepTab({
       >
         {step}
       </span>
-      {/* Auf schmalen Geräten trägt nur der aktuelle Schritt seinen Namen.
-          Drei nackte Ziffern wären ein Rätsel, eine volle Beschriftung je
-          Reiter passt dort aber nicht nebeneinander. */}
-      <span className={cn('truncate', active ? 'inline' : 'hidden sm:inline')}>
-        {label}
-      </span>
+      {/* Unter `md` tragen beide Schritte nur ihre Ziffer: Zusammen mit
+          Datenschutz und Einstellungen passen zwei ausgeschriebene Namen
+          dort nicht nebeneinander, und eine waagerecht rollende Kopfzeile
+          sieht kaputt aus. Welcher Schritt der aktuelle ist, sagt die
+          gefüllte Ziffer; **was** er ist, sagen die Überschriften der Seite
+          darunter. Der Umschaltpunkt liegt bei `md` und nicht bei `sm`:
+          Bei 640px kämen die Namen zurück, ohne dass der Platz dafür da
+          wäre, und die Kopfzeile liefe über (nachgemessen: 755 auf 640).
+
+          `sr-only` statt `hidden`: Die Ziffer ist `aria-hidden`, weil sie
+          ohne den Namen nichts aussagt. Verschwände der Name zusätzlich aus
+          dem Baum, hätte der Verweis überhaupt keinen — axe meldet das als
+          `link-name`, und eine Vorlesesoftware liest „Link" und sonst
+          nichts. So bleibt der Name lesbar und nimmt keinen Platz. */}
+      <span className="truncate sr-only md:not-sr-only md:inline">{label}</span>
     </>
   )
 
   const shared =
-    'focus-ring flex items-center gap-2.5 rounded-md px-3 py-2 ' +
+    'focus-ring flex items-center gap-2.5 rounded-md px-2 py-2 md:px-3 ' +
     'text-[length:var(--text-body-sm-size)] font-medium transition-colors'
 
   if (disabled) {
@@ -117,7 +126,7 @@ export function AppLayout() {
           bleibt jeder Knopf erreichbar, statt abgeschnitten zu werden. */}
       <header
         className={cn(
-          'flex h-[58px] shrink-0 items-center gap-4 px-5',
+          'flex h-[58px] shrink-0 items-center gap-1.5 px-2 md:gap-4 md:px-5',
           'border-b border-[var(--color-border)] bg-[var(--color-surface-raised)]',
           'overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
         )}
@@ -132,7 +141,10 @@ export function AppLayout() {
           >
             A
           </span>
-          <span className="hidden sm:inline">{t('app.name')}</span>
+          {/* Ebenfalls `sr-only` statt `hidden`, aus demselben Grund: Die
+              Marke „A" davor ist `aria-hidden`, also trüge der Verweis auf
+              die Einstiegsseite sonst gar keinen Namen. */}
+          <span className="sr-only md:not-sr-only md:inline">{t('app.name')}</span>
         </Link>
 
         <nav aria-label={t('nav.label')} className="shrink-0">
