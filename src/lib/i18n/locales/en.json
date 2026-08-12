@@ -397,6 +397,18 @@
     },
     "sidePanel": {
       "label": "Letterhead, requirements and writing style"
+    },
+    "export": {
+      "heading": "Done? Then send it on its way",
+      "docx": "Download Word file",
+      "pdf": "Print as PDF",
+      "copy": "Copy text",
+      "pdfHint": "In the print dialog, choose \"Save as PDF\". Only the letter is printed, without any controls.",
+      "working": "Creating the Word file.",
+      "docxDone": "The Word file has been created. The application is now in your list and the draft has been deleted.",
+      "docxFailed": "The Word file could not be created.",
+      "copyDone": "The text is in your clipboard.",
+      "copyFailed": "The text could not be copied. The browser denied access to the clipboard."
     }
   },
   "settings": {

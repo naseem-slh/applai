@@ -397,6 +397,18 @@
     },
     "sidePanel": {
       "label": "Briefkopf, Anforderungen und Schreibstil"
+    },
+    "export": {
+      "heading": "Fertig? Dann hinaus damit",
+      "docx": "Word-Datei herunterladen",
+      "pdf": "Als PDF drucken",
+      "copy": "Text kopieren",
+      "pdfHint": "Beim Drucken im Dialog „Als PDF sichern\" wählen. Gedruckt wird nur der Brief, ohne Bedienelemente.",
+      "working": "Die Word-Datei wird erzeugt.",
+      "docxDone": "Die Word-Datei wurde erzeugt. Die Bewerbung steht jetzt in Ihrer Liste, der Zwischenstand ist gelöscht.",
+      "docxFailed": "Die Word-Datei konnte nicht erzeugt werden.",
+      "copyDone": "Der Text liegt in der Zwischenablage.",
+      "copyFailed": "Der Text konnte nicht kopiert werden. Der Browser hat den Zugriff auf die Zwischenablage abgelehnt."
     }
   },
   "settings": {

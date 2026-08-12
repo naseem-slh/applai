@@ -6,6 +6,7 @@ import { LETTER_DRAFT_ID, useApp, type StartSession } from '@/components/app/app
 import { ClaimGuard } from '@/components/editor/ClaimGuard'
 import { DocumentView } from '@/components/editor/DocumentView'
 import { DraftStatus } from '@/components/editor/DraftStatus'
+import { ExportBar } from '@/components/editor/ExportBar'
 import { GapList } from '@/components/editor/GapList'
 import { LanguagePrompt } from '@/components/editor/LanguagePrompt'
 import { LetterheadPanel } from '@/components/editor/LetterheadPanel'
@@ -38,6 +39,7 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { FIELD_HINT_CLASS } from '@/components/ui/Field'
 import { PROVIDERS, withSignal } from '@/lib/ai/provider'
+import { isoDate } from '@/lib/export/docx'
 import { parseDocx } from '@/lib/docx/parse'
 import { detectLanguage } from '@/lib/domain/language'
 import { suggestLetterhead, type Letterhead } from '@/lib/domain/letterhead'
@@ -360,6 +362,28 @@ function EditorWorkspace({ session }: { session: StartSession }) {
     [docx, selection, commit, clear],
   )
 
+  /**
+   * Nach dem Word-Export: Bewerbung eintragen und den Zwischenstand löschen
+   * (`docs/spec.md`: „gelöscht nach Export oder nach 7 Tagen"). Nur der
+   * Word-Download löst das aus — warum, steht in `ExportBar`.
+   *
+   * Beide Schritte werden **einzeln** versucht und beide Fehler
+   * verschluckt: Der Brief ist zu diesem Zeitpunkt bereits erzeugt, und ein
+   * gescheiterter Listeneintrag darf ihn nicht als Fehlschlag erscheinen
+   * lassen. Ein nicht gelöschter Entwurf läuft ohnehin nach sieben Tagen ab
+   * (`purgeExpiredDrafts`).
+   */
+  const handleExported = useCallback(() => {
+    void storage
+      .addApplication({
+        company: jobAd?.company ?? '',
+        position: jobAd?.position ?? '',
+        date: isoDate(new Date()),
+      })
+      .catch(() => {})
+    void storage.deleteDraft(LETTER_DRAFT_ID).catch(() => {})
+  }, [storage, jobAd])
+
   const changeTruthMode = useCallback(
     (next: TruthMode) => {
       // Scheitert das Speichern, bleibt der bisherige Modus stehen (siehe
@@ -544,7 +568,11 @@ function EditorWorkspace({ session }: { session: StartSession }) {
           </div>
         </div>
 
-        <Card variant="raised" padding="none">
+        {/* `data-print-document`: Beim Drucken bleibt genau diese Karte
+            stehen, alles andere wird ausgeblendet (siehe
+            `lib/export/print.css`). Die Markierung sitzt an der Karte und
+            nicht an der Fläche darin, damit der Rand des Blattes mitgeht. */}
+        <Card variant="raised" padding="none" data-print-document>
           <DocumentView
             rootRef={rootRef}
             paragraphs={docx.paragraphs}
@@ -593,6 +621,13 @@ function EditorWorkspace({ session }: { session: StartSession }) {
           claims={claims.located}
           onConfirm={claims.confirm}
           headingId={claimsHeadingId}
+        />
+
+        <ExportBar
+          document={docx}
+          company={jobAd?.company ?? null}
+          blocked={claims.exportBlocked}
+          onExported={handleExported}
         />
       </section>
 

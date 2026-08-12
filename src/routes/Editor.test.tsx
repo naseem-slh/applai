@@ -901,3 +901,92 @@ describe('Editor — Seitenspalte und Sprache (14c)', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 })
+
+describe('Editor — Export (15)', () => {
+  function stubDownload() {
+    vi.stubGlobal('URL', {
+      ...URL,
+      createObjectURL: vi.fn(() => 'blob:test'),
+      revokeObjectURL: vi.fn(),
+    })
+    return vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+  }
+
+  it('trägt nach dem Word-Export die Bewerbung ein und löscht den Zwischenstand', async () => {
+    const click = stubDownload()
+    stubFetch()
+    const storage = createFakeStorage({
+      drafts: new Map([
+        ['letter', { id: 'letter', docxBase: new ArrayBuffer(8), text: 'x', savedAt: 1 }],
+      ]),
+    })
+    setup({ vault: unlockedVault(), storage })
+    await documentSurface()
+    await waitFor(() =>
+      expect(screen.queryByText(t('editor.analysis.loading'))).not.toBeInTheDocument(),
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: t('editor.export.docx') }))
+
+    await waitFor(() => expect(click).toHaveBeenCalled())
+    await waitFor(() => expect(storage.state.applications).toHaveLength(1))
+    expect(storage.state.applications[0]).toMatchObject({
+      company: 'Musterwerk Solutions',
+      position: 'Entwicklerin',
+    })
+    expect(storage.state.applications[0]!.date).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+    await waitFor(() => expect(storage.state.drafts.has('letter')).toBe(false))
+
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+  })
+
+  // G10, der ganze Weg: freier Modus, unbestätigte Aussage im Brief, und
+  // kein Weg führt hinaus.
+  it('sperrt den Export, solange eine unbelegte Aussage unbestätigt ist, und gibt ihn danach frei', async () => {
+    stubFetch({
+      variants: [
+        {
+          text: 'Ich spreche fließend Finnisch.',
+          unbackedClaims: ['spreche fließend Finnisch'],
+        },
+        { text: VARIANT_TEXTS[1]!, unbackedClaims: [] },
+        { text: VARIANT_TEXTS[2]!, unbackedClaims: [] },
+      ],
+    })
+    setup({ vault: unlockedVault(), settings: { truthMode: 'free' } })
+    await documentSurface()
+
+    caretIn(1, 3)
+    fireEvent.click(screen.getByRole('button', { name: t('editor.selection.currentParagraph') }))
+    await openVariants()
+    await screen.findByText('Ich spreche fließend Finnisch.')
+    fireEvent.click(screen.getAllByRole('button', { name: t('editor.variants.apply') })[0]!)
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: t('editor.export.docx') })).toBeDisabled(),
+    )
+    expect(screen.getByRole('button', { name: t('editor.export.pdf') })).toBeDisabled()
+    expect(screen.getByRole('button', { name: t('editor.export.copy') })).toBeDisabled()
+
+    fireEvent.click(screen.getByRole('button', { name: t('editor.claims.confirm') }))
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: t('editor.export.docx') })).toBeEnabled(),
+    )
+  })
+
+  it('markiert genau das Blatt für den Druck, nicht die ganze Seite', async () => {
+    stubFetch()
+    const { container } = setup({ vault: unlockedVault() })
+    await documentSurface()
+
+    const marked = container.querySelectorAll('[data-print-document]')
+    expect(marked).toHaveLength(1)
+    expect(marked[0]!.querySelector(`[${PARAGRAPH_INDEX_ATTRIBUTE}]`)).not.toBeNull()
+    // Die Werkzeugleiste gehört nicht dazu.
+    expect(
+      marked[0]!.contains(screen.getByRole('button', { name: t('editor.selection.wholeDocument') })),
+    ).toBe(false)
+  })
+})
