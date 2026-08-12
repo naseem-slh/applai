@@ -18,6 +18,11 @@
       "heading": "Settings"
     }
   },
+  "ui": {
+    "dialog": {
+      "close": "Close"
+    }
+  },
   "ai": {
     "errors": {
       "invalid_key": "The API key is invalid or has expired. Please check it in Settings.",

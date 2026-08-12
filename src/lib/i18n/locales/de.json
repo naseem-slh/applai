@@ -18,6 +18,11 @@
       "heading": "Einstellungen"
     }
   },
+  "ui": {
+    "dialog": {
+      "close": "Schließen"
+    }
+  },
   "ai": {
     "errors": {
       "invalid_key": "Der API-Schlüssel ist ungültig oder abgelaufen. Bitte in den Einstellungen prüfen.",

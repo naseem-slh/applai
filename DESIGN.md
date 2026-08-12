@@ -17,6 +17,10 @@ colors:
   error: "#B23A2E"
   warning: "#B8752B"
   info: "#3E6259"
+  surface-hover: "#EBE5DA"
+  accent-soft: "#E4EBE8"
+  control-border: "#8D8170"
+  overlay: "rgb(23 20 15 / 0.45)"
 typography:
   display:
     fontFamily: "Inter Variable, sans-serif"
@@ -66,6 +70,22 @@ spacing:
   lg: "1.5rem"
   xl: "2rem"
   xxl: "3rem"
+elevation:
+  raised: "0 1px 2px rgb(46 42 36 / 0.05), 0 2px 8px rgb(46 42 36 / 0.06)"
+  overlay: "0 4px 12px rgb(46 42 36 / 0.08), 0 16px 32px rgb(46 42 36 / 0.14)"
+focus:
+  color: "var(--color-accent)"
+  width: "2px"
+  offset: "2px"
+motion:
+  duration: "120ms"
+  duration-overlay: "180ms"
+  easing: "cubic-bezier(0, 0, 0.2, 1)"
+components:
+  button:
+    primary-bg-hover: "var(--color-accent-dark)"
+    danger-bg-hover: "#932E24"
+    danger-fg: "#F7F4EF"
 ---
 
 # Applai — Design-Token
@@ -74,6 +94,14 @@ Diese Datei ist die verbindliche Quelle für Farb-, Typografie-, Radius- und
 Abstandswerte. Die YAML-Kopfzeile oben ist maschinenlesbar; `src/styles/design.css`
 spiegelt dieselben Werte als CSS-Variablen. Ändert sich ein Wert, wird er an
 **beiden** Stellen angepasst.
+
+Die Kopfzeile führt die **hellen** Werte. Die dunkle Entsprechung steht
+ausschließlich in `src/styles/design.css`, und zwar an zwei Stellen (Systemwahl
+und ausdrückliche Nutzerwahl). Jedes neue Farb- oder Schattentoken braucht
+deshalb drei Einträge: hell in der Kopfzeile und in `:root`, dunkel in beiden
+Dunkelblöcken. Tokens, die nur ein anderes Token weiterreichen (etwa
+`focus.color` → `--color-accent`), folgen dessen dunkler Fassung von selbst und
+brauchen keinen eigenen Eintrag.
 
 ## Leitgedanken
 
@@ -104,8 +132,106 @@ Laufzeit-Ressourcen von fremden Hosts): **Inter Variable**, Lateinisch-Subset
 SIL Open Font License 1.1. Eine einzelne Schriftfamilie für Fließtext und
 Überschriften hält die App ruhig und reduziert die Zahl der Ladevorgänge.
 
-## Nicht Teil dieser Aufgabe
+## Komponenten-Token und die Regeln der Oberfläche
 
-Komponenten-spezifische Token (Button-Varianten, Karten-Schatten usw.)
-entstehen erst mit den Radix/CVA-Primitiven in Aufgabe 13 — hier werden nur
-die Grundwerte gelegt, aus denen sie sich ableiten.
+Mit Aufgabe 13a sind die acht Primitive unter `src/components/ui/` entstanden:
+Button, Card, Dialog, Popover, Select, Switch, Slider, Tooltip. Was sie an
+Regeln festlegen, gilt für jede Ansicht, die darauf aufbaut.
+
+### Wie Token verbraucht werden
+
+In der Oberfläche steht ein Token immer als `var()` in einer Tailwind-Klasse:
+`bg-[var(--color-accent)]`, `text-[var(--color-muted)]`,
+`shadow-[var(--shadow-raised)]`. Das ist ausführlicher als ein `bg-accent`,
+aber es hat einen Grund: die Farb- und Schattentoken stehen in `:root` und
+nicht in `@theme`. Tailwind liest den Wert eines `@theme`-Tokens beim Erzeugen
+der Utility-Klasse aus und schreibt ihn direkt hinein — die dunkle Variante
+könnte ihn danach nicht mehr überstimmen. Über `var()` bleibt die Umschaltung
+erhalten. In `@theme` gehört nur, was Tailwind selbst so benennt und was keine
+dunkle Fassung braucht: `--font-sans`, `--radius-{sm,md,lg}`,
+`--default-transition-*` und die `--animate-*`.
+
+Zusammengesetzte Klassen laufen immer durch `cn()` aus `src/lib/utils.ts`.
+Damit gewinnt eine von außen übergebene Klasse gegen die Variante, statt sich
+mit ihr zu überlagern.
+
+### Abstände in der Praxis
+
+Tailwinds Zahlenskala trifft die Abstandstoken genau: `2` = 0.5rem (`xs`),
+`3` = 0.75rem (`sm`), `4` = 1rem (`md`), `6` = 1.5rem (`lg`), `8` = 2rem
+(`xl`), `12` = 3rem (`xxl`). Die Primitive nutzen deshalb `p-4`, `gap-3`,
+`px-6` statt `p-[var(--space-md)]` — gleicher Wert, lesbarere Klasse.
+**Nur diese sechs Stufen** kommen vor; `p-5` oder `gap-7` fallen aus der Skala
+und gehören nicht in die Oberfläche.
+
+Höhen von Bedienelementen liegen auf demselben Raster: `sm` = 2rem (`h-8`),
+`md` = 2.5rem (`h-10`), `lg` = 3rem (`h-12`).
+
+### Höhenstaffelung
+
+Genau drei Ebenen, mehr nicht:
+
+1. **Fläche** — die Seite selbst (`surface`), ohne Schatten.
+2. **`raised`** — Karten, die sich abheben sollen: `surface-raised`, 1 px
+   Kontur, `--shadow-raised`.
+3. **`overlay`** — Dialog, Popover, Auswahlliste, Tooltip: dieselbe Fläche,
+   dieselbe Kontur, `--shadow-overlay`. Alle liegen auf `z-50`; darüber hinaus
+   vergibt die Anwendung keine z-Indizes.
+
+Karten ohne Hervorhebung bleiben flach und werden allein durch ihre Kontur
+abgegrenzt. Im dunklen Modus trägt nicht der Schlagschatten die Höhe, sondern
+eine Lichtkante oben (`inset 0 1px 0 …`) — ein Schatten auf dunklem Grund ist
+nicht zu sehen.
+
+### Fokus
+
+Ein einziger Ring für das ganze Programm, als Utility `focus-ring` in
+`design.css`: 2 px in der Akzentfarbe, 2 px Versatz, nur bei `:focus-visible`.
+`outline` statt `box-shadow`, damit der Ring den Radius des Elements von selbst
+übernimmt und von überlaufenden Containern nicht beschnitten wird. Der Versatz
+legt ihn auf die Fläche hinter dem Element — deshalb bleibt er auch auf einem
+gefüllten Akzentknopf sichtbar. Der Akzent erreicht gegen jede Fläche in beiden
+Modi mindestens 5,3:1.
+
+Ausnahme: in Listen, die ihren Inhalt beschneiden (Auswahlliste), liegt der
+Ring innen (`-outline-offset-2`).
+
+### Bewegung
+
+120 ms für Zustandswechsel, 180 ms für das Einblenden einer Überlagerung,
+120 ms für ihr Ausblenden, immer `ease-out`. Bewegt werden nur `opacity`,
+`transform` und Farben. Der Druckpunkt eines Knopfes ist eine sofortige
+Verschiebung um 1 px, keine Animation. Wer im Betriebssystem reduzierte
+Bewegung eingestellt hat, bekommt dieselben Zustände ohne Übergang — die Regel
+steht zentral in `design.css`, die Primitive müssen sie nicht einzeln beachten.
+
+### Benennung der Varianten
+
+`variant` beschreibt den Ton, `size` die Größe, `padding` den Innenabstand.
+Knopf: `primary` (gefüllter Akzent, höchstens einer pro Ansicht), `secondary`
+(Kontur, Standard), `ghost` (erst unter dem Zeiger eine Fläche), `danger`.
+Karte: `default`, `raised`, `subtle`.
+
+### Kontrast
+
+Zwei Regeln, die aus den Messwerten der Palette folgen und leicht zu übersehen
+sind:
+
+- **`--color-muted` nur auf `surface` und `surface-raised`.** Auf
+  `surface-alt` (4,46:1) und `surface-hover` (4,26:1) verfehlt es 4,5:1.
+  Anfassbare Flächen tragen deshalb `--color-ink`, und die Auswahlliste
+  wechselt unter dem Zeiger ihre Kontur statt ihrer Fläche.
+- **`--color-control-border` statt `--color-border` an Bedienelementen.**
+  `--color-border` ist eine Trennlinie (1,27:1) und reicht nicht, wo die Kontur
+  das Element überhaupt erst erkennbar macht (WCAG 1.4.11 verlangt 3:1).
+
+Ein Zustand hängt nie allein an der Farbe: der Schalter verschiebt seinen
+Knauf, die Auswahlliste setzt einen Haken, der gesperrte Knopf trägt
+`disabled`.
+
+### Sinnbilder
+
+Es gibt keine Sinnbild-Bibliothek (G2, G9). Die drei benötigten Glyphen
+(Schließen, Aufklapp-Winkel, Haken) stehen als kurzes Inline-SVG in der
+Komponente, die sie braucht, jeweils `aria-hidden`. Wer ein viertes braucht,
+legt es genauso an, statt ein Paket aufzunehmen.
