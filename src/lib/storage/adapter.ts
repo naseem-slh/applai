@@ -39,6 +39,41 @@ export interface Draft {
 }
 
 /**
+ * Eine vorgemerkte Stelle in ihrer speicherbaren Form.
+ *
+ * `text` ist der Wortlaut zum Zeitpunkt des Vormerkens und dient
+ * ausschließlich als **Suchanker**, um die Stelle in einem später
+ * überarbeiteten Anschreiben wiederzufinden — nicht als wiederverwendbarer
+ * Textbaustein. `before` und `after` lösen mehrdeutige Treffer auf, wenn
+ * derselbe Wortlaut mehrfach im Brief steht.
+ *
+ * Ankertexte sind Briefinhalt und liegen deshalb wie Entwürfe in IndexedDB,
+ * nie in `localStorage` (G5).
+ */
+export interface MarkAnchor {
+  text: string
+  before: string
+  after: string
+  from: number
+  to: number
+}
+
+/**
+ * Alle vorgemerkten Stellen zu **einem** Anschreiben.
+ *
+ * `id` ist der Fingerabdruck des Anschreibens (SHA-256 seines normalisierten
+ * Textes, siehe `components/editor/marks.ts`), nicht eine vom Nutzer
+ * vergebene Kennung: Die Stellen werden ohne Zutun gemerkt und beim nächsten
+ * Öffnen desselben Briefes selbsttätig wiederhergestellt.
+ */
+export interface MarkSet {
+  id: string
+  anchors: MarkAnchor[]
+  /** Zeitpunkt des letzten Speicherns, `Date.now()`-Millisekunden. */
+  savedAt: number
+}
+
+/**
  * Wahrheitsgrenze beim Formulieren. Hier definiert, weil `Settings` sie
  * braucht; in Aufgabe 11 (Textvarianten) wiederverwendet.
  */
