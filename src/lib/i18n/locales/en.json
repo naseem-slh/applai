@@ -245,6 +245,29 @@
       "summary": "{{chars}} characters selected.",
       "preview": "“{{text}}”"
     },
+    "marks": {
+      "heading": "Marked passages",
+      "count_one": "1 passage",
+      "count_other": "{{count}} passages",
+      "none": "Nothing marked yet. Select a passage and choose “Mark passage”.",
+      "add": "Mark passage",
+      "release": "Remove mark",
+      "replaces": "Replaces marked passage {{number}}.",
+      "progress": "{{done}} of {{total}} done",
+      "entry": "{{number}}. “{{text}}”",
+      "select": "Select this passage",
+      "done": "Done",
+      "remove": "Remove mark",
+      "clearAll": "Remove all",
+      "next": "Next open passage",
+      "restored": "Restored {{restored}} of {{total}} marked passages.",
+      "restoredOther": "Carried over from an earlier letter: {{restored}} of {{total}} passages found again.",
+      "unresolved": {
+        "heading": "Not found again",
+        "body": "These passages are no longer in the letter as they were. Mark them again if you need them.",
+        "dismiss": "Discard"
+      }
+    },
     "retained": {
       "heading": "Your selection reaches across fixed content.",
       "entry": "Paragraph {{number}}: {{reason}}",

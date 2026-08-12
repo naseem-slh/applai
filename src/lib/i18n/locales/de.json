@@ -245,6 +245,29 @@
       "summary": "{{chars}} Zeichen markiert.",
       "preview": "„{{text}}“"
     },
+    "marks": {
+      "heading": "Vorgemerkte Stellen",
+      "count_one": "1 Stelle",
+      "count_other": "{{count}} Stellen",
+      "none": "Noch nichts vorgemerkt. Markieren Sie eine Textstelle und wählen Sie „Stelle vormerken“.",
+      "add": "Stelle vormerken",
+      "release": "Vormerkung aufheben",
+      "replaces": "Ersetzt Vormerkung {{number}}.",
+      "progress": "{{done}} von {{total}} erledigt",
+      "entry": "{{number}}. „{{text}}“",
+      "select": "Diese Stelle markieren",
+      "done": "Erledigt",
+      "remove": "Vormerkung entfernen",
+      "clearAll": "Alle entfernen",
+      "next": "Nächste offene Stelle",
+      "restored": "{{restored}} von {{total}} Stellen wiederhergestellt.",
+      "restoredOther": "Aus einem früheren Anschreiben übernommen: {{restored}} von {{total}} Stellen wiedergefunden.",
+      "unresolved": {
+        "heading": "Nicht wiedergefunden",
+        "body": "Diese Stellen stehen so nicht mehr im Brief. Merken Sie sie neu vor, wenn Sie sie brauchen.",
+        "dismiss": "Verwerfen"
+      }
+    },
     "retained": {
       "heading": "Ihre Markierung reicht über festen Inhalt hinweg.",
       "entry": "Absatz {{number}}: {{reason}}",
