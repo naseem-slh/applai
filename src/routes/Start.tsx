@@ -67,9 +67,24 @@ const EMPTY_SLOT: SlotState = { document: null, busy: false, error: null }
 
 const DRAFT_ID: Record<Slot, string> = { letter: LETTER_DRAFT_ID, cv: CV_DRAFT_ID }
 
-/** Ein Datum lesbar machen, ohne bei einem unerwarteten Format zu scheitern. */
+/** Ein reines Kalenderdatum ohne Uhrzeit, das Format von `Application.date`. */
+const CALENDAR_DATE = /^\d{4}-\d{2}-\d{2}$/
+
+/**
+ * Ein Datum lesbar machen, ohne bei einem unerwarteten Format zu scheitern.
+ *
+ * „2026-05-04" liest `new Date` nach der Sprachnorm als **UTC**-Mitternacht;
+ * `toLocaleDateString` rechnet danach in die Ortszeit zurück und zeigt
+ * westlich von Greenwich den Vortag. Dieselbe Zeichenkette mit angehängter
+ * Uhrzeit, aber ohne Zeitzone, gilt dagegen als Ortszeit, und der Tag bleibt
+ * der, der dasteht. Zeitstempel in Millisekunden (`Draft.savedAt`) sind
+ * davon nicht betroffen, sie tragen ihren Zeitpunkt schon eindeutig.
+ */
 function formatDate(value: string | number, language: string): string {
-  const date = new Date(value)
+  const date =
+    typeof value === 'string' && CALENDAR_DATE.test(value)
+      ? new Date(`${value}T00:00:00`)
+      : new Date(value)
   if (Number.isNaN(date.getTime())) return String(value)
   return date.toLocaleDateString(language, { year: 'numeric', month: 'long', day: 'numeric' })
 }
@@ -91,14 +106,16 @@ export default function Start({ loaders = DEFAULT_LOADERS }: StartProps) {
   const privacy = usePrivacyNotice(keyVault.status)
   const fieldPrefix = useId()
 
+  // `session` ist `null`, solange diese Seite noch nichts übergeben hat.
+  // Beim Zurückkommen von der Arbeitsfläche steht der Stand wieder da.
   const [slots, setSlots] = useState<Record<Slot, SlotState>>(() => ({
-    letter: { ...EMPTY_SLOT, document: session.letter },
-    cv: { ...EMPTY_SLOT, document: session.cv },
+    letter: { ...EMPTY_SLOT, document: session?.letter ?? null },
+    cv: { ...EMPTY_SLOT, document: session?.cv ?? null },
   }))
-  const [jobAdText, setJobAdText] = useState(session.jobAdText)
+  const [jobAdText, setJobAdText] = useState(session?.jobAdText ?? '')
   const [jobAdBusy, setJobAdBusy] = useState(false)
   const [jobAdError, setJobAdError] = useState<DocumentLoadReason | null>(null)
-  const [userName, setUserName] = useState(session.userName)
+  const [userName, setUserName] = useState(session?.userName ?? '')
   const [nameFromDocument, setNameFromDocument] = useState(false)
   const [applications, setApplications] = useState<Application[]>([])
   const jobAdPdfRef = useRef<HTMLInputElement | null>(null)

@@ -1,6 +1,7 @@
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import { AppLayout } from './components/app/AppLayout'
 import { AppProvider } from './components/app/AppProvider'
+import { RequireSession } from './components/app/RequireSession'
 import Start from './routes/Start'
 import Editor from './routes/Editor'
 import Settings from './routes/Settings'
@@ -15,7 +16,17 @@ const router = createBrowserRouter([
     element: <AppLayout />,
     children: [
       { path: '/', element: <Start /> },
-      { path: '/editor', element: <Editor /> },
+      {
+        // Die Arbeitsfläche ist die einzige Ansicht, die einen Übergabestand
+        // braucht. Ohne ihn geht es zurück auf die Einstiegsseite, statt sie
+        // sich einen ausdenken zu lassen (siehe RequireSession).
+        path: '/editor',
+        element: (
+          <RequireSession>
+            <Editor />
+          </RequireSession>
+        ),
+      },
       { path: '/settings', element: <Settings /> },
     ],
   },

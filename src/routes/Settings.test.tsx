@@ -121,7 +121,7 @@ describe('Settings — Anbieter und Schlüssel', () => {
 })
 
 describe('Settings — Sicherung', () => {
-  it('lädt eine Sicherungsdatei mit sprechendem Namen herunter und gibt ihre Objekt-URL frei', async () => {
+  it('lädt eine Sicherungsdatei mit sprechendem Namen herunter und gibt ihre Objekt-URL erst danach frei', async () => {
     const createObjectURL = vi.fn(() => 'blob:applai/test')
     const revokeObjectURL = vi.fn()
     vi.stubGlobal('URL', { ...URL, createObjectURL, revokeObjectURL })
@@ -129,10 +129,19 @@ describe('Settings — Sicherung', () => {
     // „navigation to another Document". Der Ersatz ist zugleich die
     // Stelle, an der der Dateiname prüfbar wird.
     const downloads: { href: string; download: string }[] = []
+    // Ein aus dem Klick heraus eingereihter Mikrotask läuft, wenn die
+    // laufende Aufgabe fertig ist, aber bevor die nächste beginnt. Wer die
+    // Objekt-URL unmittelbar nach `click()` freigibt, ist zu diesem
+    // Zeitpunkt damit durch; wer sie aufschiebt, noch nicht. Genau daran
+    // hängt der Download: Er beginnt erst nach der laufenden Aufgabe.
+    let revokedBeforeNextTask: boolean | null = null
     const click = vi
       .spyOn(HTMLAnchorElement.prototype, 'click')
       .mockImplementation(function (this: HTMLAnchorElement) {
         downloads.push({ href: this.href, download: this.download })
+        queueMicrotask(() => {
+          revokedBeforeNextTask = revokeObjectURL.mock.calls.length > 0
+        })
       })
 
     const storage = createFakeStorage()
@@ -145,9 +154,14 @@ describe('Settings — Sicherung', () => {
     expect(downloads).toHaveLength(1)
     expect(downloads[0]!.href).toBe('blob:applai/test')
     expect(downloads[0]!.download).toMatch(/^applai-sicherung-\d{4}-\d{2}-\d{2}\.json$/)
-    // Ohne Freigabe hielte die Objekt-URL den Blob bis zum Verlassen der
-    // Seite im Speicher.
-    expect(revokeObjectURL).toHaveBeenCalledWith('blob:applai/test')
+    // Freigegeben wird die Objekt-URL, sonst hielte sie den Blob bis zum
+    // Verlassen der Seite im Speicher.
+    await waitFor(() => expect(revokeObjectURL).toHaveBeenCalledWith('blob:applai/test'))
+    // Der Kern dieses Tests: aber nicht in derselben Aufgabe wie der Klick.
+    // Der Download beginnt asynchron; eine Freigabe davor bricht ihn in
+    // mehreren Browsern stillschweigend ab, und die Oberfläche meldete
+    // Erfolg, während keine Datei ankäme.
+    expect(revokedBeforeNextTask).toBe(false)
     expect(screen.getByText(t('settings.backup.done.export'))).toBeInTheDocument()
 
     click.mockRestore()

@@ -275,7 +275,7 @@
         "import": "Die Datei ließ sich nicht einspielen. Sie ist entweder beschädigt, keine Applai-Sicherung oder aus einer neueren Fassung. Der bisherige Bestand ist unverändert."
       },
       "done": {
-        "export": "Die Sicherung wurde heruntergeladen.",
+        "export": "Die Sicherungsdatei wurde erstellt. Ihr Browser legt sie dort ab, wo er Downloads speichert.",
         "import": "Die Sicherung wurde eingespielt."
       }
     },

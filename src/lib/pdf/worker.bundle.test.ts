@@ -10,12 +10,14 @@
 // vitest.config.ts) — ein Bundler-Lauf ist reiner Node-Code, jsdom bringt
 // hier nur unnötigen Overhead.
 //
-// Aktuell importiert noch keine echte Oberfläche `src/lib/pdf/worker.ts`
-// (Aufgabe 13 steht dafür noch aus) — `npm run build`s reales App-Bundle
-// erreicht die Datei deshalb nicht, und ein Bundler-Fehler über den
-// `?url`-Import des Workers bliebe unbemerkt, bis er live in Produktion als
-// CSP-Verstoß auffiele. Dieser Test schließt genau diese Lücke, indem er
-// `worker.ts` selbst als eigenständigen Rollup-Eingabepunkt bündelt.
+// Seit Aufgabe 13c erreicht das reale App-Bundle die Datei: Die
+// Einstiegsseite lädt im PDF-Zweig `extract.ts` nach, und das zieht
+// `worker.ts` mit. Der Nachweis dafür ist aber der Build von Hand
+// (task-13c-report.md, Abschnitt 5) und nichts, was `npm test` prüft. Dieser
+// Test tut das, ohne die ganze Anwendung zu bündeln: Er nimmt `worker.ts`
+// selbst als eigenständigen Rollup-Eingabepunkt. Ohne ihn bliebe ein
+// Bundler-Fehler über den `?url`-Import unbemerkt, bis er live in Produktion
+// als CSP-Verstoß auffiele.
 import { fileURLToPath } from 'node:url'
 import { build, type Rollup } from 'vite'
 import { describe, expect, it } from 'vitest'

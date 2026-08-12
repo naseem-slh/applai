@@ -323,6 +323,28 @@ describe('Start — Bewerbungsliste und Doppelbewerbung', () => {
     expect(screen.getByRole('alert').textContent).toContain('Nordwerk Systeme')
   })
 
+  it('zeigt das Datum eines Eintrags auch westlich von Greenwich als den Tag, der gespeichert ist', async () => {
+    // `Application.date` ist ein reines Kalenderdatum. `new Date('2026-05-04')`
+    // liest es als UTC-Mitternacht; ohne die Behandlung in `formatDate`
+    // zeigte `toLocaleDateString` hier den 3. Mai.
+    vi.stubEnv('TZ', 'America/Los_Angeles')
+    const storage = createFakeStorage({
+      applications: [
+        { id: '1', company: 'Nordwerk Systeme', position: 'Entwicklerin', date: '2026-05-04' },
+      ],
+    })
+    setup({ storage })
+
+    const expected = new Date(2026, 4, 4).toLocaleDateString(i18n.resolvedLanguage ?? 'de', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    })
+    expect(await screen.findByText(expected)).toBeInTheDocument()
+
+    vi.unstubAllEnvs()
+  })
+
   it('sagt bei leerer Liste, wann ein Eintrag entsteht', async () => {
     setup()
 

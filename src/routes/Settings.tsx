@@ -90,9 +90,15 @@ export default function SettingsRoute() {
       // unterscheidbar bleiben.
       anchor.download = `applai-sicherung-${new Date().toISOString().slice(0, 10)}.json`
       anchor.click()
-      // Ohne Freigabe hielte die Objekt-URL den Blob bis zum Verlassen der
+      // Freigeben ja, aber erst im nächsten Durchlauf der Ereignisschleife.
+      // Der Download beginnt asynchron; wird die Objekt-URL noch in derselben
+      // Aufgabe freigegeben, brechen ihn mehrere Browser stillschweigend ab.
+      // Ohne Freigabe wiederum hielte sie den Blob bis zum Verlassen der
       // Seite im Speicher.
-      URL.revokeObjectURL(url)
+      setTimeout(() => URL.revokeObjectURL(url), 0)
+      // „Erstellt", nicht „heruntergeladen": Ob der Browser die Datei
+      // wirklich abgelegt hat, erfährt diese Seite nicht — ein `<a download>`
+      // meldet weder Erfolg noch Abbruch zurück.
       setBackupDone('export')
     } catch {
       setBackupError('export')

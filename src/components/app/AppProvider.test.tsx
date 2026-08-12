@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import i18n from '@/lib/i18n/i18n'
 import { DEFAULT_SETTINGS } from '@/lib/storage/indexeddb'
@@ -9,7 +10,8 @@ import { createFakeStorage, createFakeVault, type FakeStorage } from './appConte
 
 /** Zeigt die Werte, um die es geht, damit der Test sie ablesen kann. */
 function Probe() {
-  const { settings, storageReady, storageUnavailable, updateSettings } = useApp()
+  const { storage, settings, storageReady, storageUnavailable, updateSettings, reloadSettings } =
+    useApp()
   return (
     <div>
       <span data-testid="language">{settings.uiLanguage}</span>
@@ -18,6 +20,18 @@ function Probe() {
       <span data-testid="unavailable">{String(storageUnavailable)}</span>
       <button type="button" onClick={() => void updateSettings({ theme: 'dark' }).catch(() => {})}>
         dunkel
+      </button>
+      <button
+        type="button"
+        onClick={() =>
+          void (async () => {
+            // Genau die Reihenfolge aus „Alle Daten löschen" (Settings.tsx).
+            await storage.clearAll()
+            await reloadSettings()
+          })()
+        }
+      >
+        alles löschen
       </button>
     </div>
   )
@@ -66,6 +80,27 @@ describe('AppProvider — Sprache (Übergabe 3)', () => {
 
     await waitFor(() => expect(screen.getByTestId('language')).toHaveTextContent('de'))
     expect(storage.hasSettings).toHaveBeenCalled()
+  })
+
+  it('behält die gewählte Sprache über „Alle Daten löschen" hinweg', async () => {
+    // Nach `clearAll` meldet `hasSettings()` wieder `false`. Ohne diese
+    // Zusicherung stünde die Oberfläche im englischen Browser sofort auf
+    // Englisch, obwohl der Nutzer gerade Deutsch liest. Gelöscht werden
+    // Daten, nicht die Sprache; über ein Neuladen hinaus überlebt die Wahl
+    // nicht, dafür bräuchte es einen gespeicherten Datensatz.
+    const storage = createFakeStorage({ settings: stored({ uiLanguage: 'de' }) })
+    const user = userEvent.setup()
+
+    renderProvider(storage)
+    await waitFor(() => expect(screen.getByTestId('language')).toHaveTextContent('de'))
+
+    await user.click(screen.getByRole('button', { name: 'alles löschen' }))
+
+    await waitFor(() => expect(storage.state.settings).toBeNull())
+    expect(screen.getByTestId('language')).toHaveTextContent('de')
+    expect(document.documentElement.lang).toBe('de')
+    // Kein vorsorgliches Zurückschreiben: Der Speicher bleibt leer.
+    expect(storage.saveSettings).not.toHaveBeenCalled()
   })
 
   it('schreibt beim ersten Start nichts in den Speicher', async () => {

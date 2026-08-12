@@ -275,7 +275,7 @@
         "import": "The file could not be restored. It is damaged, not an Applai backup, or from a newer version. What you had is unchanged."
       },
       "done": {
-        "export": "The backup has been downloaded.",
+        "export": "The backup file has been created. Your browser saves it wherever it keeps downloads.",
         "import": "The backup has been restored."
       }
     },

@@ -4,7 +4,7 @@ import type { Application, Draft, Settings, StorageAdapter } from '@/lib/storage
 import { DEFAULT_SETTINGS } from '@/lib/storage/indexeddb'
 import type { KeyVault } from '@/lib/storage/keyVault'
 import type { KeyVaultHandle, KeyVaultStatus } from '@/components/onboarding/useKeyVault'
-import { AppContext, EMPTY_SESSION, type AppContextValue, type StartSession } from './appContext'
+import { AppContext, type AppContextValue, type StartSession } from './appContext'
 
 /**
  * Testdoppel für Speicher, Tresor und Anwendungskontext.
@@ -87,6 +87,16 @@ export function createFakeVault(overrides: Partial<KeyVault> = {}): KeyVault {
   }
 }
 
+/**
+ * Grundwerte, damit ein Test eine Sitzung stückweise angeben kann
+ * (`session: { letter: … }`). Bewusst **nur hier**: In der Anwendung gibt es
+ * keinen leeren Übergabestand, weil ein `StartSession` mit leerem `userName`
+ * genau der Zustand wäre, den Übergabe 1 verbietet (siehe `appContext.ts`).
+ * Wer im Test gar keine Sitzung angibt, bekommt `null` — den Normalfall vor
+ * dem ersten Weitergehen.
+ */
+const BLANK_SESSION: StartSession = { letter: null, cv: null, jobAdText: '', userName: '' }
+
 export interface HarnessOptions {
   storage?: FakeStorage
   vault?: KeyVault
@@ -133,7 +143,7 @@ export function createHarness(options: HarnessOptions = {}): Harness {
     settings: { ...DEFAULT_SETTINGS, ...options.settings },
     updateSettings: options.updateSettings ?? vi.fn(() => Promise.resolve()),
     reloadSettings: options.reloadSettings ?? vi.fn(() => Promise.resolve()),
-    session: { ...EMPTY_SESSION, ...options.session },
+    session: options.session === undefined ? null : { ...BLANK_SESSION, ...options.session },
     setSession: options.setSession ?? vi.fn(),
     storageReady: options.storageReady ?? true,
     storageUnavailable: options.storageUnavailable ?? false,

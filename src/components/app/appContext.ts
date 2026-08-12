@@ -54,25 +54,29 @@ export interface LoadedDocument {
 /**
  * Was die Einstiegsseite an die Arbeitsfläche übergibt.
  *
- * `userName` ist **nie leer** — das ist Übergabe 1 aus Aufgabe 11 und der
- * Grund, warum die Einstiegsseite überhaupt nach dem Namen fragt: Ein
- * `null` an `withAnonymization` lässt `resolveNameHint` den ersten
- * namensförmigen Feldtreffer nehmen, und das kann eine Firmierung sein.
- * Die Arbeitsfläche reicht diesen Wert unverändert an
- * `AnonymizationSettings.userName` weiter.
+ * Es gibt diesen Datensatz **nur vollständig**: Er entsteht in
+ * `Start.handleContinue`, und der Weiter-Knopf ist gesperrt, solange
+ * `userName` leer ist. Solange die Einstiegsseite nichts übergeben hat,
+ * steht im Kontext `null` und nicht etwa ein leerer Stand.
+ *
+ * Das ist Übergabe 1 aus Aufgabe 11, und es ist bewusst der Typ, der sie
+ * hält, nicht ein Kommentar: Ein leeres `userName` läuft in
+ * `withAnonymization` **genau wie `null`** durch `resolveNameHint`, das dann
+ * den ersten namensförmigen Feldtreffer nimmt. Das kann eine Firmierung
+ * sein, und der Klarname des Bewerbers ginge unersetzt an den Anbieter. Ein
+ * `StartSession` mit leerem Namen darf deshalb gar nicht erst hinschreibbar
+ * sein.
+ *
+ * Die Arbeitsfläche reicht `userName` unverändert an
+ * `AnonymizationSettings.userName` weiter. Sie erreicht ihn nur unter
+ * `RequireSession` (siehe `App.tsx`) und bekommt damit nie eine Sitzung, die
+ * es nicht gibt.
  */
 export interface StartSession {
   letter: LoadedDocument | null
   cv: LoadedDocument | null
   jobAdText: string
   userName: string
-}
-
-export const EMPTY_SESSION: StartSession = {
-  letter: null,
-  cv: null,
-  jobAdText: '',
-  userName: '',
 }
 
 /**
@@ -99,7 +103,8 @@ export interface AppContextValue {
   updateSettings: (patch: Partial<Settings>) => Promise<void>
   /** Nach `importAll` oder `clearAll`: Einstellungen neu einlesen und anwenden. */
   reloadSettings: () => Promise<void>
-  session: StartSession
+  /** Der Übergabestand der Einstiegsseite, `null`, solange sie nichts übergeben hat. */
+  session: StartSession | null
   setSession: (next: StartSession) => void
   /**
    * `true`, sobald die Einstellungen gelesen und abgelaufene Entwürfe

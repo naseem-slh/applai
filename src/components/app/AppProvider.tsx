@@ -7,7 +7,6 @@ import { useKeyVault } from '@/components/onboarding/useKeyVault'
 import {
   AppContext,
   DRAFT_MAX_AGE_MS,
-  EMPTY_SESSION,
   type AppContextValue,
   type StartSession,
 } from './appContext'
@@ -78,7 +77,10 @@ export function AppProvider({ children, storage, createVault = createKeyVault }:
     uiLanguage: detectBrowserLanguage(),
   }))
   const [storageUnavailable, setStorageUnavailable] = useState(false)
-  const [session, setSession] = useState<StartSession>(EMPTY_SESSION)
+  // `null`, bis die Einstiegsseite etwas übergibt. Es gibt keinen leeren
+  // Übergabestand: Ein `StartSession` mit leerem `userName` wäre genau der
+  // Zustand, den Übergabe 1 verbietet (siehe `appContext.ts`).
+  const [session, setSession] = useState<StartSession | null>(null)
 
   // Der jeweils gültige Stand für `updateSettings`. Ohne Ref müsste
   // `settings` in der Abhängigkeitsliste stehen, und der Rückruf bekäme bei
@@ -89,10 +91,19 @@ export function AppProvider({ children, storage, createVault = createKeyVault }:
   const readSettings = useCallback(async (): Promise<void> => {
     try {
       const [stored, exists] = await Promise.all([adapter.getSettings(), adapter.hasSettings()])
-      // Wurde nie etwas gespeichert, gilt die Browsersprache. Danach nie
-      // wieder: Eine ausdrückliche Wahl darf nicht bei jedem Neuladen
-      // überschrieben werden (siehe `hasSettings` in adapter.ts).
-      const resolved: Settings = exists ? stored : { ...stored, uiLanguage: detectBrowserLanguage() }
+      // Wurde nie etwas gespeichert, bleibt die Sprache stehen, die gerade
+      // gilt. Beim ersten Start ist das die Browsersprache, denn genau damit
+      // ist der Anfangsstand vorbelegt (Übergabe 3) — nach „Alle Daten
+      // löschen" ist es die zuletzt gewählte. Gelöscht werden Daten, nicht
+      // die Sprache, in der jemand gerade liest; ein Sprung ins Englische
+      // mitten in der Sitzung wäre für den Nutzer ein zweiter, unverlangter
+      // Effekt des Knopfes. Über das Neuladen hinaus überlebt sie nicht, und
+      // das ist richtig: Dafür bräuchte es einen gespeicherten Datensatz.
+      // Eine ausdrücklich gespeicherte Wahl gewinnt ohnehin immer (siehe
+      // `hasSettings` in adapter.ts).
+      const resolved: Settings = exists
+        ? stored
+        : { ...stored, uiLanguage: current.current.uiLanguage }
       current.current = resolved
       setSettings(resolved)
       applySettings(resolved)
