@@ -330,6 +330,46 @@ Knopf: `primary` (gefüllter Akzent, höchstens einer pro Ansicht), `secondary`
 (Kontur, Standard), `ghost` (erst unter dem Zeiger eine Fläche), `danger`.
 Karte: `default`, `raised`, `subtle`.
 
+### Markennamen und Übersetzung
+
+`LlmProvider.label` (`Google Gemini`, `OpenAI`, `Anthropic`) ist ein
+fest verdrahteter Markenname und **läuft nicht durch i18next**. Das ist die
+Regel für die ganze Oberfläche: Ein Eigenname heißt in beiden Sprachen
+gleich; ihn zu übersetzen hieße, denselben Wert an zwei weiteren Stellen zu
+pflegen und eine Übersetzung einzuladen, wo keine hingehört
+(„Anthropisch"). G8 gilt für Text, der sich mit der Sprache ändert — ein
+Markenname tut das nicht.
+
+Steht der Name **in** einem Satz, wird der Satz übersetzt und der Name als
+Wert eingesetzt: `t('onboarding.key.guideHeading', { provider:
+PROVIDERS[id].label })`. Nie umgekehrt, also nie ein Satzstück im
+Anbieterregister.
+
+Dieselbe Regel gilt für die auswärtigen Adressen der Anbieter: Sie stehen in
+`src/components/onboarding/providerLinks.ts`, nicht in den
+Übersetzungsdateien. Eine Adresse ist kein Text, und ein toter Verweis in
+einer JSON-Datei fiele niemandem auf.
+
+### Eingabefelder
+
+Es gibt (noch) kein `Input`-Primitiv. Die Felder der Schlüsseleinrichtung
+sind in `KeySetup.tsx` als eine Klassenkonstante abgelegt und tragen genau
+die Gestalt des Auswahlauslösers: `h-10`, `rounded-md`,
+`--color-control-border`, `--color-surface-raised`, `px-3`, `text-sm`,
+`focus-ring`, unter dem Zeiger eine Kontur in der Akzentfarbe. Ein
+fehlerhaftes Feld bekommt zusätzlich `aria-invalid` und eine Kontur in
+`--color-error` — die Farbe trägt den Zustand nie allein, die Meldung
+darunter tut es.
+
+**Sobald eine zweite Ansicht ein Textfeld braucht, wird daraus ein neuntes
+Primitiv** (`src/components/ui/Input.tsx`). Vorher nicht: eine Komponente,
+die es nur einmal gibt, ist keine.
+
+Beschriftung steht über dem Feld, Hinweis und Fehler darunter, verbunden
+über `aria-describedby`; ein Platzhalter ersetzt nie die Beschriftung. Nach
+einem abgelehnten Absenden springt der Fokus auf das erste beanstandete
+Feld.
+
 ### Kontrast
 
 Zwei Regeln, die aus den Messwerten der Palette folgen und leicht zu übersehen

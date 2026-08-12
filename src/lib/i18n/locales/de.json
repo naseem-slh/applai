@@ -23,6 +23,110 @@
       "close": "Schließen"
     }
   },
+  "onboarding": {
+    "privacy": {
+      "heading": "Bevor es losgeht",
+      "intro": "Applai läuft vollständig in Ihrem Browser. Es gibt keinen Server, kein Konto und keine Anmeldung. Vier Dinge sollten Sie trotzdem wissen.",
+      "provider": {
+        "title": "Ihre Texte gehen an den KI-Anbieter, den Sie wählen.",
+        "body": "Anschreiben und Stellenausschreibung werden aus Ihrem Browser direkt an Google, OpenAI oder Anthropic gesendet, je nachdem, wen Sie wählen. Ohne diesen Schritt gibt es keine Formulierungsvorschläge. Name, Anschrift, Geburtsdatum, Telefonnummer und E-Mail-Adresse ersetzt Applai vorher durch Platzhalter; der übrige Text geht unverändert."
+      },
+      "training": {
+        "title": "Im kostenlosen Gemini-Tarif nutzt Google Ihre Texte zum Training.",
+        "body": "Google verwendet Eingaben und Antworten des kostenlosen Tarifs, um seine Produkte und Modelle weiterzuentwickeln, und Menschen bei Google können sie dabei lesen. Für den kostenpflichtigen Tarif sagt Google das Gegenteil zu; OpenAI und Anthropic geben dasselbe für ihre Schnittstellen an."
+      },
+      "draft": {
+        "title": "Ein Zwischenstand bleibt in Ihrem Browser.",
+        "body": "Damit nichts verloren geht, legt Applai den Bearbeitungsstand in der Datenbank Ihres Browsers ab, zusammen mit der Bewerbungsliste und Ihren Einstellungen. Das Gerät verlässt davon nichts. Entwürfe werden nach dem Export gelöscht, spätestens nach sieben Tagen."
+      },
+      "delete": {
+        "title": "„Alle Daten löschen“ ist jederzeit erreichbar.",
+        "body": "In den Einstellungen entfernt ein Knopf Bewerbungsliste, Entwürfe, Einstellungen und den hinterlegten API-Schlüssel in einem Zug. Danach ist auf diesem Gerät nichts mehr von Applai übrig."
+      },
+      "accept": "Verstanden, weiter"
+    },
+    "key": {
+      "heading": "API-Schlüssel einrichten",
+      "intro": "Applai hat kein eigenes Konto und keinen Server. Die KI-Anfragen laufen über Ihren eigenen Zugang bei einem der drei Anbieter. Der Schlüssel dafür bleibt verschlüsselt in Ihrem Browser.",
+      "providerLabel": "Anbieter",
+      "guideHeading": "So bekommen Sie einen Schlüssel bei {{provider}}",
+      "guideLink": "Schlüsselseite von {{provider}} öffnen",
+      "guide": {
+        "gemini": {
+          "step1": "Bei Google AI Studio mit einem Google-Konto anmelden.",
+          "step2": "„Get API key“ öffnen und einen neuen Schlüssel erzeugen.",
+          "step3": "Den Schlüssel kopieren. Er beginnt mit „AIza“.",
+          "step4": "Ihn unten einfügen. Für den kostenlosen Tarif ist keine Zahlungsart nötig."
+        },
+        "openai": {
+          "step1": "Bei der OpenAI-Plattform anmelden und eine Zahlungsart hinterlegen. Einen kostenlosen Tarif gibt es dort nicht.",
+          "step2": "Unter „API keys“ auf „Create new secret key“ klicken.",
+          "step3": "Den Schlüssel sofort kopieren. Er beginnt mit „sk-“ und wird nur ein einziges Mal angezeigt.",
+          "step4": "Ihn unten einfügen."
+        },
+        "anthropic": {
+          "step1": "In der Claude Console anmelden und Guthaben aufladen. Einen kostenlosen Tarif gibt es dort nicht.",
+          "step2": "Unter „Settings“ → „API keys“ auf „Create key“ klicken.",
+          "step3": "Den Schlüssel sofort kopieren. Er beginnt mit „sk-ant-“ und wird nur ein einziges Mal angezeigt.",
+          "step4": "Ihn unten einfügen."
+        }
+      },
+      "apiKeyLabel": "API-Schlüssel",
+      "apiKeyHint": "Wird verschlüsselt in Ihrem Browser abgelegt und ausschließlich für Anfragen an {{provider}} benutzt.",
+      "billingLabel": "Wird über diesen Schlüssel abgerechnet?",
+      "billingHint": "Ein Google-Schlüssel sieht mit und ohne aktivierte Abrechnung gleich aus. Applai kann das nicht erkennen und muss deshalb fragen: Sobald abgerechnet wird, ist ein Passwort Pflicht.",
+      "billingPlaceholder": "Bitte wählen",
+      "billingFree": "Nein, nur der kostenlose Tarif",
+      "billingPaid": "Ja, für dieses Projekt ist die Abrechnung aktiv",
+      "passphraseHeading": "Passwort für diesen Schlüssel",
+      "passphraseWhyPaid": "Über diesen Schlüssel wird abgerechnet. Er wird deshalb mit einem Passwort verschlüsselt, das nur Sie kennen. Ohne Passwort läge das Material zum Entschlüsseln neben dem Schlüssel im Browser.",
+      "passphraseFieldHint": "Mindestens {{min}} Zeichen, kein einzelnes wiederholtes Zeichen, kein Ausschnitt aus dem API-Schlüssel.",
+      "passphraseWhyLength": "Mindestens {{min}} Zeichen. Der Grund ist konkret: Wer den verschlüsselten Eintrag aus dem Browser kopiert, kann danach in Ruhe Passwörter durchprobieren, so schnell seine Grafikkarte es hergibt. Niemand sperrt ihn nach zehn Fehlversuchen aus. Ein kurzes Passwort fällt dabei in Stunden, ein langes braucht Jahre. Vier zufällige Wörter hintereinander sind leichter zu merken als eine kurze Folge aus Sonderzeichen und deutlich schwerer zu raten.",
+      "passphraseLimits": "Applai prüft nur die Länge und zwei offensichtlich wertlose Fälle. Ob Ihr Passwort schwer zu erraten ist, kann es nicht beurteilen.",
+      "passphraseNoReset": "Das Passwort wird nirgends gespeichert und lässt sich nicht zurücksetzen. Wenn Sie es vergessen, müssen Sie den API-Schlüssel neu hinterlegen.",
+      "passphraseLabel": "Passwort",
+      "passphraseConfirmLabel": "Passwort wiederholen",
+      "submit": "Schlüssel speichern",
+      "submitting": "Wird gespeichert …",
+      "saved": "Der Schlüssel ist gespeichert.",
+      "errors": {
+        "emptyKey": "Bitte fügen Sie einen API-Schlüssel ein.",
+        "controlCharacters": "Der API-Schlüssel enthält Zeilenumbrüche oder andere Steuerzeichen. Bitte fügen Sie ihn ohne Umbrüche ein.",
+        "billingUnanswered": "Bitte beantworten Sie, ob über diesen Schlüssel abgerechnet wird.",
+        "passphraseRequired": "Für einen kostenpflichtigen Schlüssel ist ein Passwort Pflicht.",
+        "passphraseTooShort": "Das Passwort muss mindestens {{min}} Zeichen lang sein.",
+        "passphraseRepeated": "Das Passwort besteht aus einem einzigen wiederholten Zeichen. Bitte verwenden Sie verschiedene Zeichen.",
+        "passphraseInKey": "Das Passwort darf kein Teil des API-Schlüssels sein. Bitte wählen Sie ein eigenständiges Passwort.",
+        "passphraseMismatch": "Die beiden Passwörter stimmen nicht überein.",
+        "insecureOrigin": "Applai braucht eine sichere Verbindung (HTTPS), um den Schlüssel verschlüsselt abzulegen. Über eine unverschlüsselte Verbindung stellt der Browser die dafür nötigen Funktionen nicht bereit.",
+        "storage": "Der Schlüssel konnte nicht gespeichert werden. Bitte versuchen Sie es erneut."
+      },
+      "corrupted": {
+        "heading": "Der gespeicherte Schlüssel ist unlesbar",
+        "body": "Der Eintrag im Browser-Speicher entspricht nicht mehr dem erwarteten Aufbau und lässt sich nicht entschlüsseln. Löschen Sie ihn und hinterlegen Sie den Schlüssel danach neu.",
+        "action": "Gespeicherten Schlüssel löschen"
+      }
+    },
+    "paidHints": {
+      "heading": "Wenn über den Schlüssel abgerechnet wird",
+      "intro": "Der Schlüssel liegt verschlüsselt in Ihrem Browser. Trotzdem gilt: Wer ihn in die Hände bekommt, kann auf Ihre Rechnung Anfragen stellen. Diese Einstellungen beim Anbieter begrenzen den Schaden.",
+      "docsLink": "Anleitung: {{topic}}",
+      "limit": {
+        "title": "Ausgabenlimit setzen",
+        "gemini": "Ein Budget in der Google Cloud Console warnt nur. Es stoppt weder die Nutzung noch die Abrechnung, sondern verschickt eine E-Mail, sobald eine Schwelle überschritten ist. Setzen Sie es trotzdem, damit Sie es früh merken, aber verlassen Sie sich nicht darauf.",
+        "openai": "OpenAI unterscheidet zwei Dinge: Ein Ausgabenalarm schickt nur eine Nachricht und lässt die Anfragen weiterlaufen. Erst die Einstellung „Enforce a hard limit“ beantwortet weitere Anfragen mit einem Fehler, sobald der Monatsbetrag erreicht ist.",
+        "anthropic": "In der Claude Console lässt sich je Arbeitsbereich („Workspace“) ein monatliches Ausgabenlimit setzen. Für den Standard-Arbeitsbereich geht das nicht. Legen Sie also einen eigenen an und erzeugen Sie den Schlüssel darin."
+      },
+      "dedicated": {
+        "title": "Einen eigenen Schlüssel nur für Applai",
+        "body": "Legen Sie einen Schlüssel an, den Sie nirgendwo sonst verwenden. Dann sehen Sie in der Abrechnung, was auf Applai entfällt, und können ihn im Verdachtsfall einzeln zurückziehen, ohne Ihre übrigen Anwendungen zu unterbrechen."
+      },
+      "scope": {
+        "title": "Den Schlüssel nur für die Gemini-API freigeben",
+        "body": "In den Zugangsdaten der Google Cloud lässt sich festlegen, welche APIs ein Schlüssel überhaupt ansprechen darf. Auf die Gemini-API beschränkt, kann ein abhandengekommener Schlüssel keine anderen kostenpflichtigen Google-Dienste desselben Projekts benutzen. Schlüssel aus Google AI Studio sind von sich aus so beschränkt, ein in der Cloud Console angelegter Schlüssel ist es nicht."
+      }
+    }
+  },
   "ai": {
     "errors": {
       "invalid_key": "Der API-Schlüssel ist ungültig oder abgelaufen. Bitte in den Einstellungen prüfen.",

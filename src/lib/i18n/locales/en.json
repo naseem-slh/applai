@@ -23,6 +23,110 @@
       "close": "Close"
     }
   },
+  "onboarding": {
+    "privacy": {
+      "heading": "Before you start",
+      "intro": "Applai runs entirely in your browser. There is no server, no account and no sign-in. Four things you should know before you start.",
+      "provider": {
+        "title": "Your text goes to the AI provider you choose.",
+        "body": "Your cover letter and the job ad are sent from your browser straight to Google, OpenAI or Anthropic, depending on which one you pick. Without that step there are no suggestions. Applai replaces name, address, date of birth, phone number and email address with placeholders beforehand; the rest of the text goes as it is."
+      },
+      "training": {
+        "title": "On the free Gemini tier, Google uses your text for training.",
+        "body": "Google uses input and output from the free tier to develop its products and models, and people at Google may read it while doing so. For the paid tier Google states the opposite; OpenAI and Anthropic state the same for their APIs."
+      },
+      "draft": {
+        "title": "A working copy stays in your browser.",
+        "body": "So that nothing is lost, Applai keeps your work in progress in your browser's database, along with the application list and your settings. None of it leaves the device. Drafts are deleted after export, and after seven days at the latest."
+      },
+      "delete": {
+        "title": "“Delete all data” is available at any time.",
+        "body": "One button in the settings removes the application list, the drafts, the settings and the stored API key in one go. After that nothing of Applai is left on this device."
+      },
+      "accept": "Understood, continue"
+    },
+    "key": {
+      "heading": "Set up your API key",
+      "intro": "Applai has no account and no server of its own. The AI requests run through your own account with one of the three providers. The key for that stays encrypted in your browser.",
+      "providerLabel": "Provider",
+      "guideHeading": "How to get a key from {{provider}}",
+      "guideLink": "Open the key page at {{provider}}",
+      "guide": {
+        "gemini": {
+          "step1": "Sign in to Google AI Studio with a Google account.",
+          "step2": "Open “Get API key” and create a new key.",
+          "step3": "Copy the key. It starts with “AIza”.",
+          "step4": "Paste it below. The free tier needs no payment method."
+        },
+        "openai": {
+          "step1": "Sign in to the OpenAI platform and add a payment method. There is no free tier.",
+          "step2": "Under “API keys”, click “Create new secret key”.",
+          "step3": "Copy the key straight away. It starts with “sk-” and is shown only once.",
+          "step4": "Paste it below."
+        },
+        "anthropic": {
+          "step1": "Sign in to the Claude Console and add credit. There is no free tier.",
+          "step2": "Under “Settings” → “API keys”, click “Create key”.",
+          "step3": "Copy the key straight away. It starts with “sk-ant-” and is shown only once.",
+          "step4": "Paste it below."
+        }
+      },
+      "apiKeyLabel": "API key",
+      "apiKeyHint": "Stored encrypted in your browser and used only for requests to {{provider}}.",
+      "billingLabel": "Is this key billed?",
+      "billingHint": "A Google key looks the same whether or not billing is switched on. Applai cannot tell and therefore has to ask: as soon as a key is billed, a password is required.",
+      "billingPlaceholder": "Please choose",
+      "billingFree": "No, free tier only",
+      "billingPaid": "Yes, billing is active for this project",
+      "passphraseHeading": "Password for this key",
+      "passphraseWhyPaid": "This key is billed. It is therefore encrypted with a password only you know. Without one, the material needed to decrypt it would sit next to the key in the browser.",
+      "passphraseFieldHint": "At least {{min}} characters, not a single repeated character, not a slice of the API key.",
+      "passphraseWhyLength": "At least {{min}} characters. The reason is concrete: anyone who copies the encrypted entry out of the browser can then try passwords at leisure, as fast as their graphics card allows. Nobody locks them out after ten failed attempts. A short password falls within hours, a long one takes years. Four random words in a row are easier to remember than a short string of special characters, and much harder to guess.",
+      "passphraseLimits": "Applai only checks the length and two obviously worthless cases. It cannot judge whether your password is actually hard to guess.",
+      "passphraseNoReset": "The password is stored nowhere and cannot be reset. If you forget it, you have to enter the API key again.",
+      "passphraseLabel": "Password",
+      "passphraseConfirmLabel": "Repeat password",
+      "submit": "Save key",
+      "submitting": "Saving …",
+      "saved": "The key has been saved.",
+      "errors": {
+        "emptyKey": "Please paste an API key.",
+        "controlCharacters": "The API key contains line breaks or other control characters. Please paste it without line breaks.",
+        "billingUnanswered": "Please answer whether this key is billed.",
+        "passphraseRequired": "A password is required for a billed key.",
+        "passphraseTooShort": "The password must be at least {{min}} characters long.",
+        "passphraseRepeated": "The password consists of a single repeated character. Please use different characters.",
+        "passphraseInKey": "The password must not be part of the API key. Please choose a separate password.",
+        "passphraseMismatch": "The two passwords do not match.",
+        "insecureOrigin": "Applai needs a secure connection (HTTPS) to store the key encrypted. Over an unencrypted connection the browser does not provide the functions required for that.",
+        "storage": "The key could not be saved. Please try again."
+      },
+      "corrupted": {
+        "heading": "The stored key cannot be read",
+        "body": "The entry in the browser storage no longer matches the expected structure and cannot be decrypted. Delete it and enter the key again afterwards.",
+        "action": "Delete the stored key"
+      }
+    },
+    "paidHints": {
+      "heading": "If this key is billed",
+      "intro": "The key is stored encrypted in your browser. Even so: anyone who gets hold of it can make requests at your expense. These settings at the provider limit the damage.",
+      "docsLink": "How to: {{topic}}",
+      "limit": {
+        "title": "Set a spending limit",
+        "gemini": "A budget in the Google Cloud console only warns. It stops neither the usage nor the billing; it sends an email once a threshold is passed. Set it anyway so you notice early, but do not rely on it.",
+        "openai": "OpenAI distinguishes two things: a spend alert only sends a message and lets the requests carry on. Only the “Enforce a hard limit” setting answers further requests with an error once the monthly amount is reached.",
+        "anthropic": "In the Claude Console a monthly spending limit can be set per workspace. That is not possible for the default workspace, so create one of your own and generate the key inside it."
+      },
+      "dedicated": {
+        "title": "A separate key used only for Applai",
+        "body": "Create a key you use nowhere else. Then you can see in the invoice what Applai accounts for, and you can revoke it on its own if you suspect anything, without interrupting your other applications."
+      },
+      "scope": {
+        "title": "Allow the key for the Gemini API only",
+        "body": "The Google Cloud credentials let you decide which APIs a key may address at all. Restricted to the Gemini API, a key that goes astray cannot use any other billable Google service in the same project. Keys from Google AI Studio are restricted like this by default; a key created in the Cloud console is not."
+      }
+    }
+  },
   "ai": {
     "errors": {
       "invalid_key": "The API key is invalid or has expired. Please check it in Settings.",

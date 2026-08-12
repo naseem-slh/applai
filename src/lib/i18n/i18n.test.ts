@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest'
+import de from './locales/de.json'
+import en from './locales/en.json'
 import i18n from './i18n'
+
+/** Alle Blattpfade eines Übersetzungsbaums, z. B. `onboarding.key.submit`. */
+function leafPaths(value: unknown, prefix = ''): string[] {
+  if (typeof value !== 'object' || value === null) return [prefix]
+  return Object.entries(value).flatMap(([key, child]) =>
+    leafPaths(child, prefix === '' ? key : `${prefix}.${key}`),
+  )
+}
 
 describe('i18n', () => {
   it('löst einen bekannten Schlüssel auf Deutsch auf', () => {
@@ -10,6 +20,17 @@ describe('i18n', () => {
   it('löst denselben Schlüssel auf Englisch anders auf', () => {
     expect(i18n.getFixedT('en')('routes.editor.heading')).toBe('Workspace')
     expect(i18n.getFixedT('en')('nav.settings')).toBe('Settings')
+  })
+
+  // G8 hängt daran, dass beide Dateien denselben Umfang haben: Ein nur auf
+  // Deutsch angelegter Schlüssel fiele sonst erst der englischen Nutzerin
+  // auf, und zwar als roher Schlüsselname in der Oberfläche.
+  it('führt in beiden Sprachen genau dieselben Schlüssel', () => {
+    const german = leafPaths(de).sort()
+    const english = leafPaths(en).sort()
+
+    expect(german.length).toBeGreaterThan(50)
+    expect(english).toEqual(german)
   })
 
   // Handover an Aufgabe 13 (siehe src/lib/ai/errors.ts): eine Übersetzung
