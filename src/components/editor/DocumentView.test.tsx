@@ -23,6 +23,16 @@ const PARAGRAPHS = [
   paragraph(2, 63, ''),
 ]
 
+/** Eine Absatzfolge aus bloßen Texten, mit fortlaufenden Offsets. */
+function paragraphs(texts: string[]): Paragraph[] {
+  let offset = 0
+  return texts.map((text, index) => {
+    const start = offset
+    offset += text.length + 1
+    return paragraph(index, start, text)
+  })
+}
+
 function paragraphElement(index: number): HTMLElement {
   const element = document.querySelector<HTMLElement>(`[${PARAGRAPH_INDEX_ATTRIBUTE}="${index}"]`)
   if (element === null) throw new Error(`Absatz ${index} nicht gefunden`)
@@ -375,5 +385,65 @@ describe('DocumentView', () => {
 
     expect(paragraphElement(1).className).toContain('border-[var(--color-warning)]')
     expect(paragraphElement(0).className).toContain('border-transparent')
+  })
+
+  // Der Brief steht auf Seiten, und alles, was daran hängt — Offsets,
+  // Datenattribute, Eingaben — muss davon unberührt bleiben.
+  it('setzt die Absätze in Seitenkästen innerhalb einer einzigen Schreibfläche', () => {
+    render(
+      <DocumentView
+        paragraphs={paragraphs(['Erster Absatz', 'Zweiter Absatz'])}
+        editable
+        labelledBy="ueberschrift"
+        onParagraphInput={vi.fn()}
+      />,
+    )
+
+    const surface = screen.getByRole('textbox')
+    // Genau eine Schreibfläche: Chrome klemmt jede Markierung auf einen
+    // `contentEditable`-Bereich, zwei davon bräche das Markieren über
+    // Absatzgrenzen hinweg.
+    expect(surface.querySelectorAll('[contenteditable]')).toHaveLength(0)
+    expect(surface.querySelectorAll('[data-page]').length).toBeGreaterThan(0)
+    expect(surface.querySelectorAll(`[${PARAGRAPH_INDEX_ATTRIBUTE}]`)).toHaveLength(2)
+  })
+
+  it('faltet mehr als zwei Leerzeilen hintereinander zusammen, ohne sie zu entfernen', () => {
+    render(
+      <DocumentView
+        paragraphs={paragraphs(['Text', '', '', '', '', 'Mehr'])}
+        editable
+        labelledBy="ueberschrift"
+        onParagraphInput={vi.fn()}
+        collapseBlankRuns
+      />,
+    )
+
+    const boxes = Array.from(
+      screen.getByRole('textbox').querySelectorAll<HTMLElement>(`[${PARAGRAPH_INDEX_ATTRIBUTE}]`),
+    )
+    // Alle sechs stehen weiter im Baum — ihre Offsets hängen daran, und der
+    // Export braucht sie unverändert.
+    expect(boxes).toHaveLength(6)
+    expect(boxes[1]?.className).toContain('min-h-[1.7em]')
+    expect(boxes[2]?.className).toContain('min-h-[1.7em]')
+    expect(boxes[3]?.className).toContain('min-h-[0.4em]')
+    expect(boxes[4]?.className).toContain('min-h-[0.4em]')
+  })
+
+  it('faltet nichts zusammen, solange es nicht verlangt wird', () => {
+    render(
+      <DocumentView
+        paragraphs={paragraphs(['Text', '', '', '', 'Mehr'])}
+        editable
+        labelledBy="ueberschrift"
+        onParagraphInput={vi.fn()}
+      />,
+    )
+
+    const boxes = Array.from(
+      screen.getByRole('textbox').querySelectorAll<HTMLElement>(`[${PARAGRAPH_INDEX_ATTRIBUTE}]`),
+    )
+    expect(boxes.every((box) => box.className.includes('min-h-[1.7em]'))).toBe(true)
   })
 })

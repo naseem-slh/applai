@@ -1,6 +1,9 @@
 import {
+  useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
+  useState,
   type ClipboardEvent,
   type DragEvent,
   type KeyboardEvent,
@@ -8,7 +11,8 @@ import {
 } from 'react'
 import type { Paragraph } from '@/lib/docx/model'
 import { cn } from '@/lib/utils'
-import { paragraphOf } from './documentSelection'
+import { PARAGRAPH_INDEX_ATTRIBUTE, paragraphOf } from './documentSelection'
+import { collapsedEmptyParagraphs, splitIntoPages } from './pagination'
 import {
   insertPlainText,
   isBlockedInputType,
@@ -64,6 +68,23 @@ import {
  * Modellstand verglich — er hielt den DOM für abgewichen und setzte den
  * Absatz zurück. Der Cursor sprang dann mitten im Wort an den Absatzanfang.
  *
+ * **Seiten, aber eine Schreibfläche.** Der Brief wird auf A4-Seiten
+ * verteilt, und läuft er über, steht die nächste darunter. Die Seiten sind
+ * jedoch nur Kästen **innerhalb** dieses einen `contentEditable` — jede
+ * Seite als eigener Bearbeitungsbereich würde dieselbe Markierungsklemme
+ * auslösen, die oben beschrieben ist, nur eine Ebene höher.
+ *
+ * Getrennt wird ausschließlich **zwischen** Absätzen. Ein Absatz, der über
+ * zwei Seitenkästen verteilt wäre, wären zwei Elemente, und die
+ * Offset-Rechnung bräche. Ein Absatz, der allein höher ist als eine Seite,
+ * bekommt deshalb eine Seite, die mitwächst.
+ *
+ * Die Aufteilung entsteht aus **gemessenen** Höhen, nicht aus geschätzten
+ * Zeilen: Schriftgröße, Fensterbreite und Zeilenumbruch kennt nur der
+ * Browser. Gemessen wird im fertigen Seitenlayout, weil der Seitenrand die
+ * Textbreite ändert und damit die Höhen; der Lauf setzt sich, sobald sich
+ * die Aufteilung nicht mehr ändert.
+ *
  * **`white-space: pre-wrap`** ist keine Kosmetik. Tabulator und
  * Zeilenumbruch aus `w:tab`/`w:br` sind im Modell je ein Zeichen; nur wenn
  * sie im DOM auch je ein Zeichen sind, stimmt die Offset-Rechnung in
@@ -112,6 +133,15 @@ export interface DocumentViewProps {
    * auf die Fundstelle darin (siehe `foreignCompanies.ts`).
    */
   foreignParagraphs?: readonly number[]
+  /**
+   * Läufe von mehr als zwei leeren Zeilen in der Ansicht zusammenfalten.
+   *
+   * **Nur die Ansicht.** Die Absätze bleiben im Dokument, im DOM und im
+   * Export; sie werden lediglich flach dargestellt. Word-Dateien tragen oft
+   * lange Leerlaufstrecken, die auf dem Papier Sinn ergeben und auf dem
+   * Bildschirm nur Weg kosten.
+   */
+  collapseBlankRuns?: boolean
   /** Der neue Text genau eines Absatzes, sobald der Nutzer ihn geändert hat. */
   onParagraphInput: (index: number, text: string) => void
   /** Kennung der Überschrift, die diese Fläche benennt. */
@@ -133,6 +163,7 @@ export function DocumentView({
   retainedParagraphs = [],
   claimParagraphs = [],
   foreignParagraphs = [],
+  collapseBlankRuns = false,
   onParagraphInput,
   labelledBy,
   language,
@@ -214,9 +245,16 @@ export function DocumentView({
     reportChangedParagraph()
   }
 
+  const root = rootRef ?? ownRef
+  const pages = usePagination(root, paragraphs)
+  const collapsed = useMemo(
+    () => (collapseBlankRuns ? collapsedEmptyParagraphs(paragraphs) : new Set<number>()),
+    [collapseBlankRuns, paragraphs],
+  )
+
   return (
     <div
-      ref={rootRef ?? ownRef}
+      ref={root}
       // React verwaltet die Absätze, der Browser ihren Text. Das ist genau
       // die Aufteilung, vor der die Warnung schützen will, und sie ist hier
       // Absicht: Struktur von React, Zeichen vom Nutzer.
@@ -233,28 +271,127 @@ export function DocumentView({
       // Zusätzlich zu `insertFromDrop` (siehe `editableInput.ts`): Nicht
       // jeder Browser meldet ein Ablegen vorher als Eingabeart an.
       onDrop={editable ? (event: DragEvent<HTMLDivElement>) => event.preventDefault() : undefined}
-      className={cn('flex flex-col gap-4', editable && 'focus-ring rounded-md', className)}
+      className={cn('flex flex-col', editable && 'focus-ring rounded-md', className)}
     >
-      {paragraphs.map((paragraph) => (
-        <DocumentParagraph
-          key={paragraph.index}
-          paragraph={paragraph}
-          retained={retained.has(paragraph.index)}
-          flagged={flagged.has(paragraph.index)}
-        />
+      {pages.map((indices, page) => (
+        <div
+          key={page}
+          data-page={page + 1}
+          // **Mindest**höhe statt `aspect-ratio`. Ein Element mit
+          // Seitenverhältnis und bestimmter Breite nimmt als automatische
+          // Mindestgröße die übertragene Größe statt der Inhaltsgröße — es
+          // klemmt also auf genau eine Seitenhöhe, und der Text läuft
+          // heraus. Genau das war der gemeldete Fehler.
+          //
+          // `100cqw` braucht `@container` an derselben Stelle, sonst
+          // rechnet es gegen einen fremden Vorfahren.
+          //
+          // Kein `gap` zwischen den Seiten, sondern `mb`: Flex-Abstände
+          // zwischen Kindern eines `contentEditable` sind heikel, weil der
+          // Browser dort seinen Schreibcursor hineinsetzen können muss.
+          //
+          // Beim Drucken fällt all das weg (siehe `lib/export/print.css`) —
+          // sonst erzwänge jede Bildschirmseite ihre Höhe auf Papier und
+          // die echten Seitenumbrüche verrutschten.
+          className={cn(
+            '@container flex w-full flex-col gap-4 p-[9.5%]',
+            'min-h-[calc(100cqw*297/210)] rounded-lg',
+            'bg-[var(--color-surface-raised)] shadow-[var(--shadow-raised)]',
+            'mb-5 last:mb-0',
+          )}
+        >
+          {indices.map((index) => {
+            const paragraph = paragraphs[index]
+            if (paragraph === undefined) return null
+            return (
+              <DocumentParagraph
+                key={paragraph.index}
+                paragraph={paragraph}
+                retained={retained.has(paragraph.index)}
+                flagged={flagged.has(paragraph.index)}
+                collapsed={collapsed.has(paragraph.index)}
+              />
+            )
+          })}
+        </div>
       ))}
     </div>
   )
 }
 
+/**
+ * Die Absätze auf Seiten verteilt, gemessen am fertigen Layout.
+ *
+ * Der Lauf ist bewusst zweistufig: Zuerst steht alles auf einer Seite, dann
+ * wird gemessen und aufgeteilt, dann im Seitenlayout **erneut** gemessen —
+ * der Seitenrand ändert die Textbreite und damit die Höhen. Er setzt sich,
+ * sobald sich die Aufteilung nicht mehr ändert; verglichen wird deshalb vor
+ * jedem Setzen, sonst liefe der Effekt endlos.
+ *
+ * Ohne `ResizeObserver` (jsdom, siehe `setupTests.ts`) bleibt es bei einer
+ * Seite. Das ist kein Mangel: Die Aufteilung ist Darstellung, und alles,
+ * was daran hängt, ist ohne sie genauso richtig.
+ */
+function usePagination(
+  root: RefObject<HTMLDivElement | null>,
+  paragraphs: readonly Paragraph[],
+): number[][] {
+  const [pages, setPages] = useState<number[][]>(() => [paragraphs.map((_, index) => index)])
+  const [width, setWidth] = useState(0)
+
+  useEffect(() => {
+    const element = root.current
+    if (element === null || typeof ResizeObserver !== 'function') return
+    const observer = new ResizeObserver(([entry]) => {
+      setWidth(entry?.contentRect.width ?? 0)
+    })
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [root])
+
+  useLayoutEffect(() => {
+    const element = root.current
+    if (element === null) return
+
+    // Die Texthöhe einer Seite: A4-Verhältnis auf die Breite, abzüglich der
+    // beiden Ränder von je 9,5 % (2 cm auf 21 cm).
+    const pageHeight = width * (297 / 210 - 2 * 0.095)
+    const boxes = Array.from(element.querySelectorAll<HTMLElement>(`[${PARAGRAPH_INDEX_ATTRIBUTE}]`))
+    const heights = boxes.map((box) => box.offsetHeight + PARAGRAPH_GAP)
+
+    const next = splitIntoPages(heights, pageHeight)
+    setPages((current) => (samePages(current, next) ? current : next))
+  }, [root, paragraphs, width])
+
+  return pages
+}
+
+/** Der Abstand zwischen zwei Absätzen (`gap-4`), in die Höhe eingerechnet. */
+const PARAGRAPH_GAP = 16
+
+function samePages(a: number[][], b: number[][]): boolean {
+  return a.length === b.length && a.every((page, index) => sameNumbers(page, b[index] ?? []))
+}
+
+function sameNumbers(a: number[], b: number[]): boolean {
+  return a.length === b.length && a.every((value, index) => value === b[index])
+}
+
 interface DocumentParagraphProps {
+  /** Eine überzählige Leerzeile: flach dargestellt, aber weiter vorhanden. */
+  collapsed?: boolean
   paragraph: Paragraph
   retained: boolean
   /** Eine unbestätigte unbelegte Aussage oder ein fremder Firmenname. */
   flagged: boolean
 }
 
-function DocumentParagraph({ paragraph, retained, flagged }: DocumentParagraphProps) {
+function DocumentParagraph({
+  paragraph,
+  retained,
+  flagged,
+  collapsed = false,
+}: DocumentParagraphProps) {
   const ref = useRef<HTMLParagraphElement>(null)
 
   // Bewusst ohne Abhängigkeitsliste: Der Abgleich läuft nach **jedem**
@@ -276,7 +413,12 @@ function DocumentParagraph({ paragraph, retained, flagged }: DocumentParagraphPr
         // Eine leere Zeile im Brief bleibt eine leere Zeile: ohne
         // Mindesthöhe fiele der Absatz auf null zusammen und wäre weder
         // sichtbar noch anklickbar.
-        'min-h-[1.7em] border-l-2 pl-3 whitespace-pre-wrap',
+        'border-l-2 pl-3 whitespace-pre-wrap',
+        // Eine überzählige Leerzeile wird flach, aber nicht unsichtbar: Sie
+        // behält genug Höhe, um sie anzuklicken und den Schreibcursor
+        // hineinzusetzen. Aus dem DOM nehmen dürfte man sie nicht — ihre
+        // Offsets hängen daran, und der Export braucht sie unverändert.
+        collapsed ? 'min-h-[0.4em]' : 'min-h-[1.7em]',
         // Die Kontur liegt immer an, nur farblos: So verschiebt sich beim
         // Hervorheben kein Zeichen. Der beanstandete Absatz gewinnt, wenn
         // beides zusammentrifft — er hält den Export an oder nennt einen

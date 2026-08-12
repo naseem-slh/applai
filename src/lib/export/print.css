@@ -35,6 +35,23 @@
     visibility: hidden;
   }
 
+  /*
+   * Die Bildschirmseiten sind eine Darstellung, kein Papier. Auf dem Drucker
+   * bricht der Browser selbst um, nach den Maßen der echten Seite — bliebe
+   * die erzwungene Mindesthöhe stehen, drückte jede Bildschirmseite ihre
+   * rund 1270 px auf Papier, und die wirklichen Umbrüche verrutschten um
+   * ganze Seiten. Rahmen, Schatten und Abstand sind Bildschirmoptik und
+   * haben auf Papier ohnehin nichts verloren.
+   */
+  [data-page] {
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    border-radius: 0;
+    box-shadow: none;
+    break-inside: auto;
+  }
+
   [data-print-document],
   [data-print-document] * {
     visibility: visible;

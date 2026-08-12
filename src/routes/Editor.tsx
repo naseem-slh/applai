@@ -783,12 +783,11 @@ function EditorWorkspace({ session }: { session: StartSession }) {
                 In Prozent, nicht in rem, damit der Rand mitschrumpft, wenn
                 das Blatt schmaler wird, statt den Satzspiegel zu erdrücken.
                 Bei 900 px bleiben 722 px Text, rund 75 Zeichen je Zeile. */}
-            <Card
-              variant="raised"
-              padding="none"
-              data-print-document
-              className="aspect-[210/297] w-full max-w-[900px]"
-            >
+            {/* Nur noch Hülle und Druckmarke: Das Blatt selbst ist jede
+                einzelne Seite in `DocumentView`. Die feste Höhe aus
+                `aspect-[210/297]` ist weg — sie klemmte den Brief auf eine
+                Seitenhöhe, und alles darüber stand auf dem Hintergrund. */}
+            <div data-print-document className="w-full max-w-[900px]">
               <DocumentView
                 rootRef={rootRef}
                 paragraphs={docx.paragraphs}
@@ -819,9 +818,16 @@ function EditorWorkspace({ session }: { session: StartSession }) {
                 // `rounded-lg` statt der Vorgabe `rounded-md`: Der Fokusring
                 // folgt dem Radius seines Elements und soll dem Blatt folgen,
                 // nicht daneben liegen.
-                className="rounded-lg p-[9.5%]"
+                // Der Seitenrand sitzt jetzt an den Seiten selbst; hier
+                // bleibt nur der Fokusring, der dem Blatt folgen soll.
+                className="rounded-lg"
+                // Lange Leerlaufstrecken aus der Word-Datei ergeben auf
+                // Papier Sinn und kosten auf dem Bildschirm nur Weg. Das
+                // Dokument bleibt unangetastet, nur die Darstellung fällt
+                // zusammen.
+                collapseBlankRuns
               />
-            </Card>
+            </div>
 
             {/* Die unbelegten Aussagen stehen unter dem Blatt, nicht in einer
                 Spalte: Sie gehören zu diesem Brief und zu keiner Stellschraube. */}
