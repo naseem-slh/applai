@@ -353,6 +353,42 @@ Dieselbe Regel gilt für die auswärtigen Adressen der Anbieter: Sie stehen in
 Übersetzungsdateien. Eine Adresse ist kein Text, und ein toter Verweis in
 einer JSON-Datei fiele niemandem auf.
 
+### Prosa nennt die Handlung, nicht den Knopf
+
+Ein erklärender Satz zitiert **kein eigenes Bedienelement**. Er beschreibt,
+was geschieht, nicht wohin geklickt wird.
+
+Falsch, und genau so ist es passiert:
+
+> „Noch nichts vorgemerkt. Markieren Sie eine Textstelle und wählen Sie
+> „Stelle vormerken"."
+
+Richtig:
+
+> „Noch nichts vorgemerkt. Markieren Sie eine Textstelle im Brief, dann
+> steht sie hier."
+
+Der Grund ist nicht Geschmack. Der erste Satz wurde **unwahr**, als der
+Knopf „Stelle vormerken" wegfiel, und schickte den Nutzer nach etwas
+suchen, das es nicht mehr gibt. Der zweite kann durch den Wegfall eines
+Knopfes gar nicht unwahr werden, weil er keinen nennt — und er ist kürzer.
+
+**Warum das eine Schreibregel ist und kein Test.** Ein Wächter „jedes
+Zitat muss der Wert eines anderen Schlüssels sein" wurde erwogen und
+ausgezählt: 20 Zitate im Deutschen, davon **zwei** auf ein eigenes
+Bedienelement auflösbar und sechzehn Fremdbegriffe aus den Konsolen der
+Anbieter („Get API key", „API keys", „AIza", „sk-ant-"). Vier Fünftel
+wären Ausnahmen gewesen. Schlimmer: Im Englischen löst
+`onboarding.key.guide.anthropic.step2` das Zitat „Settings" zufällig auf
+`routes.settings.heading` auf, gemeint ist aber Anthropics Menüpunkt — der
+Wächter hätte dort grün gemeldet und danebengelegen. Ein Wächter, der
+zwei Fälle schützt, fünfzehn Ausnahmen verwaltet und einmal still irrt,
+kostet mehr, als er einbringt.
+
+Zitate um **fremde** Beschriftungen sind ausdrücklich richtig: Wer durch
+die Konsole eines Anbieters führt, muss dessen Wörter nennen. Die Regel
+gilt für die eigene Oberfläche.
+
 ### Eingabefelder
 
 Seit Aufgabe 13c gibt es sie als Primitive — die in 13b angekündigte zweite
