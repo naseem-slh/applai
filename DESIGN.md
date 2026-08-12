@@ -1,26 +1,29 @@
 ---
 name: Applai
-description: Reine Browser-App, die ein bestehendes Anschreiben an eine Stellenausschreibung anpasst — ruhig, dokumentzentriert, modern statt klinisch
+description: Reine Browser-App, die ein bestehendes Anschreiben an eine Stellenausschreibung anpasst. Ruhig, dokumentzentriert, modern statt klinisch
 colors:
-  surface: "#F7F4EF"
-  surface-alt: "#EFEAE2"
+  surface: "#F4FAFC"
+  surface-alt: "#E8F4FA"
   surface-raised: "#FFFFFF"
-  border: "#E1DACD"
-  ink: "#2E2A24"
-  ink-strong: "#17140F"
-  muted: "#75695C"
-  accent: "#3E6259"
-  accent-light: "#5A8377"
-  accent-dark: "#2A473F"
-  accent-contrast: "#F7F4EF"
-  success: "#3D7A4F"
-  error: "#B23A2E"
-  warning: "#B8752B"
-  info: "#3E6259"
-  surface-hover: "#EBE5DA"
-  accent-soft: "#E4EBE8"
-  control-border: "#8D8170"
-  overlay: "rgb(23 20 15 / 0.45)"
+  border: "#D9E8F0"
+  ink: "#03045E"
+  ink-strong: "#010229"
+  muted: "#4D5680"
+  accent: "#0077B6"
+  accent-light: "#00B4D8"
+  accent-dark: "#005C86"
+  accent-contrast: "#FFFFFF"
+  accent-text: "#00628F"
+  success: "#0D6E52"
+  error: "#B3261E"
+  warning: "#8A5200"
+  info: "#0077B6"
+  surface-hover: "#E2F2F8"
+  accent-soft: "#CAF0F8"
+  control-border: "#6F7D95"
+  overlay: "rgb(3 4 94 / 0.42)"
+  mark: "#FFE9A8"
+  mark-done: "#CDEBD6"
 typography:
   display:
     fontFamily: "Inter Variable, sans-serif"
@@ -71,8 +74,8 @@ spacing:
   xl: "2rem"
   xxl: "3rem"
 elevation:
-  raised: "0 1px 2px rgb(46 42 36 / 0.05), 0 2px 8px rgb(46 42 36 / 0.06)"
-  overlay: "0 4px 12px rgb(46 42 36 / 0.08), 0 16px 32px rgb(46 42 36 / 0.14)"
+  raised: "0 1px 2px rgb(3 4 94 / 0.06), 0 2px 8px rgb(3 4 94 / 0.06)"
+  overlay: "0 4px 12px rgb(3 4 94 / 0.08), 0 16px 32px rgb(3 4 94 / 0.14)"
 focus:
   color: "var(--color-accent)"
   width: "2px"
@@ -84,8 +87,8 @@ motion:
 components:
   button:
     primary-bg-hover: "var(--color-accent-dark)"
-    danger-bg-hover: "#932E24"
-    danger-fg: "#F7F4EF"
+    danger-bg-hover: "#8F1E17"
+    danger-fg: "#FFFFFF"
 ---
 
 # Applai — Design-Token
