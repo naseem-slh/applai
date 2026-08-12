@@ -39,5 +39,11 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src/**/*.test.ts", "src/**/*.test.tsx", "src/setupTests.ts"]
+  "include": [
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx",
+    "src/**/*.testutils.ts",
+    "src/**/*.testutils.tsx",
+    "src/setupTests.ts"
+  ]
 }

@@ -5,11 +5,12 @@
   "nav": {
     "start": "Start",
     "editor": "Editor",
-    "settings": "Settings"
+    "settings": "Settings",
+    "label": "Main navigation"
   },
   "routes": {
     "start": {
-      "heading": "Cover Letter and Job Ad"
+      "heading": "Prepare an application"
     },
     "editor": {
       "heading": "Workspace"
@@ -127,6 +128,14 @@
         "title": "Allow the key for the Gemini API only",
         "body": "The Google Cloud credentials let you decide which APIs a key may address at all. Restricted to the Gemini API, a key that goes astray cannot use any other billable Google service in the same project. Keys newly created in Google AI Studio are restricted like this by default; older keys and ones from the Cloud console are not."
       }
+    },
+    "unlock": {
+      "heading": "Unlock your key",
+      "intro": "You protected the stored key with a passphrase. Without it Applai cannot read the key and cannot send anything to the provider.",
+      "submit": "Unlock",
+      "submitting": "Unlocking …",
+      "wrong": "The key could not be decrypted with this passphrase. Please check what you typed.",
+      "forgotten": "The passphrase cannot be reset. If you have forgotten it, store a new key in the settings. Keep in mind that OpenAI and Anthropic show a key only once."
     }
   },
   "ai": {
@@ -138,6 +147,150 @@
       "network": "The request could not be sent. Please check your internet connection.",
       "blocked": "The provider blocked the response for safety reasons.",
       "unknown": "Unexpected error while calling the provider."
+    }
+  },
+  "start": {
+    "intro": "Drop in your cover letter, paste the job ad, and move on to the workspace. Everything stays in this browser until you ask for a passage to be rewritten.",
+    "storageUnavailable": "Your browser is not releasing its storage right now. You can keep working, but Applai will remember none of it: no draft, no settings, no application list. In private mode this is normal.",
+    "documents": {
+      "heading": "Your documents",
+      "rule": "Either one is enough. With both, the AI has more established facts to work from and has to leave less unsaid."
+    },
+    "files": {
+      "letter": "Cover letter",
+      "letterDescription": "Word file (.docx) or PDF. The layout of a Word file survives the export untouched.",
+      "cv": "CV",
+      "cvDescription": "Word file (.docx) or PDF. Used as a basis of facts; editing it is not part of this build stage.",
+      "choose": "Choose a file",
+      "replace": "Choose a different file",
+      "remove": "Remove",
+      "none": "No file chosen yet. You can drag one here.",
+      "reading": "Reading the file …",
+      "loaded": "Chosen: {{name}}",
+      "fromDraft": "the document you last worked on",
+      "errors": {
+        "unsupportedType": "Applai reads Word files (.docx) and PDF files. Any other format cannot be opened.",
+        "passwordProtected": "This PDF file is password protected. Please remove the protection and choose it again.",
+        "unreadable": "The file could not be read. It may be damaged, or it may not be a Word or PDF document despite its extension."
+      }
+    },
+    "pdf": {
+      "beta": "Read from a PDF. Converting it to Word is a beta feature: it restores paragraphs, headings and bullet points, but neither the original layout nor images or tables. Please read the result in the workspace before you use it.",
+      "multiColumn": "This PDF is laid out in several columns. The conversion reads it line by line across the full page width, so text from the left and the right column ends up interleaved. For this document a Word file is by far the better source."
+    },
+    "recent": {
+      "heading": "Last used",
+      "body": "This browser still holds a draft. You can carry on with it instead of looking for the file again. Drafts are deleted automatically after seven days.",
+      "letter": "Cover letter, saved on {{date}}",
+      "cv": "CV, saved on {{date}}",
+      "use": "Carry on with it",
+      "discard": "Discard"
+    },
+    "name": {
+      "label": "Your name",
+      "hint": "Applai replaces your name with a placeholder before every request. To do that it has to know what your name is. It will not guess.",
+      "detected": "Taken from the top of your document. Please check it: what gets detected is the first name-shaped line, and that can be a company name."
+    },
+    "jobAd": {
+      "heading": "Job ad",
+      "label": "Text of the ad",
+      "hint": "Paste the full text. The more of it is here, the more precise the list of requirements will be.",
+      "pdfLabel": "Or read it from a PDF file",
+      "pdfHint": "A link to the ad cannot be fetched: that would need a server to load the page for you, and Applai deliberately has none.",
+      "reading": "Reading the PDF …"
+    },
+    "applications": {
+      "heading": "Application list",
+      "empty": "No application recorded yet. An entry appears once you export a finished cover letter.",
+      "company": "Company",
+      "position": "Position",
+      "date": "Date",
+      "duplicate": "This ad mentions a company you have already applied to: {{entries}}. That may be a coincidence: the check compares company names and nothing else.",
+      "duplicateEntry": "{{company}}, {{position}} ({{date}})"
+    },
+    "missing": {
+      "heading": "Still missing:",
+      "document": "a cover letter or a CV",
+      "jobAd": "the text of the job ad",
+      "userName": "your name"
+    },
+    "continue": "Continue to the workspace"
+  },
+  "settings": {
+    "storageUnavailable": "Your browser is not releasing its storage right now. Changes made here apply to this session only.",
+    "saveFailed": "The change could not be saved and has been undone. Please try again.",
+    "appearance": {
+      "heading": "Appearance",
+      "hint": "Light is the default. “Match the system” follows your operating system setting.",
+      "label": "Display",
+      "options": {
+        "light": "Light",
+        "dark": "Dark",
+        "system": "Match the system"
+      }
+    },
+    "language": {
+      "heading": "Interface language",
+      "hint": "On first start Applai preselects your browser language. Your choice here applies from then on.",
+      "label": "Language",
+      "options": {
+        "de": "Deutsch",
+        "en": "English"
+      }
+    },
+    "anonymize": {
+      "heading": "Anonymisation",
+      "label": "Replace personal data before sending",
+      "hint": "Name, address, date of birth, phone number and email address are replaced with placeholders before any text goes to the provider, and swapped back in the answer.",
+      "off": "Without anonymisation your personal data goes to the chosen provider in the clear."
+    },
+    "truthMode": {
+      "heading": "Truth boundary",
+      "hint": "How far may a phrasing move away from what your documents actually establish?",
+      "label": "Boundary",
+      "options": {
+        "strict": "Strict",
+        "bridge": "Bridges",
+        "free": "Free"
+      },
+      "explanations": {
+        "strict": "Only what is in your documents gets rephrased. A required skill that is missing stays in the gap list instead of appearing in the text.",
+        "bridge": "Generalisations that your own statements cover are allowed as well, such as “experience with relational databases” where your CV says PostgreSQL. No new facts come into being.",
+        "free": "The AI may add what is not established. Such passages are marked in colour and have to be confirmed one by one; while any of them is unconfirmed, the export stays locked."
+      }
+    },
+    "key": {
+      "heading": "Provider and API key",
+      "currentProvider": "A key for {{provider}} is stored. The provider changes together with the key; you replace both below.",
+      "noProvider": "No key stored yet."
+    },
+    "backup": {
+      "heading": "Backup",
+      "hint": "Save the application list, drafts and settings as a file, and restore them on another device or after a deletion. The API key is not part of it. It stays in the browser where you entered it.",
+      "export": "Download a backup",
+      "import": "Restore a backup",
+      "importWarning": "Restoring replaces everything you have; nothing is merged.",
+      "errors": {
+        "export": "The backup could not be created. Please try again.",
+        "import": "The file could not be restored. It is damaged, not an Applai backup, or from a newer version. What you had is unchanged."
+      },
+      "done": {
+        "export": "The backup has been downloaded.",
+        "import": "The backup has been restored."
+      }
+    },
+    "delete": {
+      "heading": "Delete all data",
+      "body": "Removes the application list, drafts, settings and the stored API key from this device. Nothing of Applai is left afterwards. Your key at the provider stays alive. Revoke it there when you no longer need it.",
+      "action": "Delete all data",
+      "confirmTitle": "Really delete all data?",
+      "confirmBody": "The application list, drafts, settings and the stored API key will be removed. This cannot be undone; only a backup downloaded beforehand brings the list back.",
+      "confirm": "Yes, delete everything",
+      "cancel": "Cancel",
+      "done": "Everything has been deleted: application list, drafts, settings and the API key.",
+      "storageFailed": "The API key was deleted, but the application list, drafts and settings were not. Please reload the page and try again.",
+      "vaultFailed": "The application list, drafts and settings were deleted, but the stored API key was not. Please reload the page and try again.",
+      "bothFailed": "Nothing was deleted. Your browser is not releasing its storage right now. Please close other tabs with Applai, reload the page and try again."
     }
   }
 }

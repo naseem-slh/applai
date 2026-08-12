@@ -11,6 +11,15 @@ function leafPaths(value: unknown, prefix = ''): string[] {
   )
 }
 
+/** Wert zu einem Blattpfad, z. B. `onboarding.key.submit`. */
+function resolve(tree: unknown, path: string): string {
+  let node: unknown = tree
+  for (const key of path.split('.')) {
+    node = (node as Record<string, unknown>)[key]
+  }
+  return typeof node === 'string' ? node : ''
+}
+
 describe('i18n', () => {
   it('löst einen bekannten Schlüssel auf Deutsch auf', () => {
     expect(i18n.getFixedT('de')('app.name')).toBe('Applai')
@@ -31,6 +40,20 @@ describe('i18n', () => {
 
     expect(german.length).toBeGreaterThan(50)
     expect(english).toEqual(german)
+  })
+
+  // Regel seit Aufgabe 13b, ab hier maschinell gehalten: In sichtbarem Text
+  // steht kein Gedankenstrich. Er ist im Deutschen wie im Englischen fast
+  // immer durch Punkt, Komma, Doppelpunkt oder Klammern zu ersetzen, und er
+  // ist das auffälligste Merkmal maschinell erzeugter Prosa. Erlaubt bleibt
+  // der gewöhnliche Bindestrich.
+  it('führt in keinem sichtbaren Text einen Gedankenstrich', () => {
+    const offenders = [
+      ...leafPaths(de).map((path) => ({ language: 'de', path, value: resolve(de, path) })),
+      ...leafPaths(en).map((path) => ({ language: 'en', path, value: resolve(en, path) })),
+    ].filter((entry) => /[\u2013\u2014]/.test(entry.value))
+
+    expect(offenders).toEqual([])
   })
 
   // Handover an Aufgabe 13 (siehe src/lib/ai/errors.ts): eine Übersetzung

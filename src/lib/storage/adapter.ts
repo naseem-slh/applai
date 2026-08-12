@@ -94,6 +94,23 @@ export interface StorageAdapter {
    */
   purgeExpiredDrafts(maxAgeMs: number): Promise<number>
   getSettings(): Promise<Settings>
+  /**
+   * `true`, sobald einmal `saveSettings` (oder `importAll`) gelaufen ist —
+   * `false`, solange `getSettings()` nur die Vorgaben zurückgibt.
+   *
+   * Ergänzt in Aufgabe 13c, weil die Oberfläche die Frage sonst nicht
+   * beantworten kann: `getSettings()` liefert bei leerem Speicher
+   * `DEFAULT_SETTINGS` und ist damit von einem Datensatz, der zufällig
+   * dieselben Werte trägt, nicht zu unterscheiden. Genau darauf beruht aber
+   * die Vorauswahl der Oberflächensprache nach der Browsersprache: Die
+   * Speicherschicht liefert fest `'de'` (siehe `DEFAULT_SETTINGS`), die
+   * Vorauswahl gehört der Oberfläche. Ohne diese Auskunft müsste sie raten,
+   * und jede Heuristik („der Datensatz sieht aus wie die Vorgabe") würde
+   * eine ausdrückliche Wahl überschreiben: Wer in einem englischen Browser
+   * bewusst Deutsch einstellt, speichert genau `DEFAULT_SETTINGS` und
+   * bekäme bei jedem Neuladen wieder Englisch.
+   */
+  hasSettings(): Promise<boolean>
   saveSettings(s: Settings): Promise<void>
   /** Bewerbungsliste, Entwürfe und Einstellungen als eine verlustfreie Sicherungsdatei — die „Sicherung" aus `docs/spec.md`. */
   exportAll(): Promise<Blob>

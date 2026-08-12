@@ -352,23 +352,48 @@ einer JSON-Datei fiele niemandem auf.
 
 ### Eingabefelder
 
-Es gibt (noch) kein `Input`-Primitiv. Die Felder der Schlüsseleinrichtung
-sind in `KeySetup.tsx` als eine Klassenkonstante abgelegt und tragen genau
-die Gestalt des Auswahlauslösers: `h-10`, `rounded-md`,
-`--color-control-border`, `--color-surface-raised`, `px-3`, `text-sm`,
-`focus-ring`, unter dem Zeiger eine Kontur in der Akzentfarbe. Ein
-fehlerhaftes Feld bekommt zusätzlich `aria-invalid` und eine Kontur in
-`--color-error` — die Farbe trägt den Zustand nie allein, die Meldung
-darunter tut es.
+Seit Aufgabe 13c gibt es sie als Primitive — die in 13b angekündigte zweite
+Ansicht ist mit Einstiegsseite und Einstellungen gleich dreimal gekommen:
 
-**Sobald eine zweite Ansicht ein Textfeld braucht, wird daraus ein neuntes
-Primitiv** (`src/components/ui/Input.tsx`). Vorher nicht: eine Komponente,
-die es nur einmal gibt, ist keine.
+- **`Input` und `Textarea`** (`src/components/ui/Input.tsx`) tragen genau
+  die Gestalt des Auswahlauslösers: `h-10`, `rounded-md`,
+  `--color-control-border`, `--color-surface-raised`, `px-3`, `text-sm`,
+  `focus-ring`, unter dem Zeiger eine Kontur in der Akzentfarbe. Ein
+  fehlerhaftes Feld bekommt zusätzlich `aria-invalid` und eine Kontur in
+  `--color-error` — die Farbe trägt den Zustand nie allein, die Meldung
+  darunter tut es. Das mehrzeilige Feld fällt aus der Liste der
+  Steuerhöhen (es trägt einen Absatz, keine Zeile): `min-h-32`, `py-2`,
+  Zeilenhöhe des Fließtexts, `resize-y`. Es wächst **nicht** mit dem
+  Inhalt; eine eingefügte Stellenausschreibung schöbe sonst alles unter
+  sich aus dem Bild.
+- **`Field`** (`src/components/ui/Field.tsx`) ist die Hülle: Beschriftung
+  oben, Bedienelement in der Mitte, Fehler und Hinweis darunter — in dieser
+  Reihenfolge, sichtbar wie in `aria-describedby`. Der Fehler steht vor dem
+  Hinweis, damit die Vorlesesoftware zuerst sagt, was zu tun ist. Ein
+  Platzhalter ersetzt nie die Beschriftung. `labelledBy` schaltet auf
+  `aria-labelledby` um, für Bedienelemente, die ein `<label for>` nicht
+  benennt (der Auslöser der Auswahlliste ist ein `<button>`).
+- Die drei Textklassen `FIELD_LABEL_CLASS`, `FIELD_HINT_CLASS` und
+  `FIELD_ERROR_CLASS` werden aus `Field.tsx` **mitexportiert**. Das ist
+  Absicht: Dieselbe Beschriftungsklasse trägt auch die
+  Zwischenüberschrift eines Formulars, und derselbe Hinweiston steht auch
+  neben einem Bedienelement, das kein Feld ist. Zwei Kopien wären zwei
+  Gelegenheiten auseinanderzulaufen.
 
-Beschriftung steht über dem Feld, Hinweis und Fehler darunter, verbunden
-über `aria-describedby`; ein Platzhalter ersetzt nie die Beschriftung. Nach
-einem abgelehnten Absenden springt der Fokus auf das erste beanstandete
-Feld.
+Nach einem abgelehnten Absenden springt der Fokus auf das erste
+beanstandete Feld.
+
+### Abschnitte in Karten
+
+`SectionCard` (`src/components/ui/SectionCard.tsx`) ist Karte, `<section
+aria-labelledby>` und Überschrift in einem. Vorgabe ist die der
+Schlüsseleinrichtung, aus der sie stammt: `variant="raised"`,
+`padding="lg"`, `h2`. Die Einstellungen setzen `variant="default"` — sechs
+hervorgehobene Karten untereinander wären sechsmal „das hier ist wichtig".
+`headingLevel={3}` gibt es für einen Abschnitt innerhalb eines Abschnitts.
+
+Damit hat `Card` weiterhin keine Unterteile; die Kopfstruktur steckt in
+`SectionCard`, nicht in `Card` selbst.
 
 ### Kontrast
 
@@ -382,6 +407,14 @@ sind:
 - **`--color-control-border` statt `--color-border` an Bedienelementen.**
   `--color-border` ist eine Trennlinie (1,27:1) und reicht nicht, wo die Kontur
   das Element überhaupt erst erkennbar macht (WCAG 1.4.11 verlangt 3:1).
+- **`--color-warning` ist keine Textfarbe.** Im hellen Modus erreicht sie
+  3,41 auf `surface`, 3,12 auf `surface-alt` und 3,74 auf `surface-raised`,
+  verfehlt also überall 4,5:1 (im dunklen Modus wäre sie mit 7,0–8,0 in
+  Ordnung, aber eine Farbe, die nur in einem Modus trägt, ist keine).
+  Eine Warnung im Fließtext nimmt deshalb `--color-error` (4,96 bis 5,94
+  hell, 4,78 bis 5,41 dunkel) oder `--color-ink` mit `font-medium`. Als
+  Flächen- oder Konturfarbe bleibt `--color-warning` brauchbar, dort gilt
+  3:1.
 
 Ein Zustand hängt nie allein an der Farbe: der Schalter verschiebt seinen
 Knauf, die Auswahlliste setzt einen Haken, der gesperrte Knopf trägt

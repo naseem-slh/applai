@@ -351,6 +351,20 @@ async function getSettings(): Promise<Settings> {
   return stored ?? { ...DEFAULT_SETTINGS }
 }
 
+/**
+ * Ob überhaupt ein Einstellungs-Datensatz existiert (siehe `adapter.ts`).
+ * Bewusst getrennt von `getSettings()`, das weiterhin immer sinnvolle
+ * Vorgaben liefert — der Unterschied „nie gespeichert" gegenüber
+ * „gespeichert, sieht aber aus wie die Vorgabe" ist von außen sonst nicht
+ * zu sehen.
+ */
+async function hasSettings(): Promise<boolean> {
+  const stored = await withTransaction([SETTINGS_STORE], 'readonly', (tx) =>
+    promisifyRequest<Settings | undefined>(tx.objectStore(SETTINGS_STORE).get(SETTINGS_KEY)),
+  )
+  return stored !== undefined
+}
+
 async function saveSettings(settings: Settings): Promise<void> {
   await withTransaction([SETTINGS_STORE], 'readwrite', async (tx) => {
     await promisifyRequest(tx.objectStore(SETTINGS_STORE).put(settings, SETTINGS_KEY))
@@ -432,6 +446,7 @@ export function createIndexedDbAdapter(): StorageAdapter {
     deleteDraft,
     purgeExpiredDrafts,
     getSettings,
+    hasSettings,
     saveSettings,
     exportAll,
     importAll,

@@ -8,9 +8,16 @@ export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number]
 
 const FALLBACK_LANGUAGE: SupportedLanguage = 'de'
 
-// Vorauswahl aus navigator.language (z. B. "de-DE", "en-US" → "de"/"en").
-// Unbekannte Browsersprachen fallen auf Deutsch zurück (G8).
-function detectInitialLanguage(): SupportedLanguage {
+/**
+ * Vorauswahl aus navigator.language (z. B. "de-DE", "en-US" → "de"/"en").
+ * Unbekannte Browsersprachen fallen auf Deutsch zurück (G8).
+ *
+ * Exportiert seit Aufgabe 13c: Die Speicherschicht liefert für
+ * `Settings.uiLanguage` fest `'de'` (siehe `DEFAULT_SETTINGS`), die
+ * Vorauswahl nach der Browsersprache gehört der Oberfläche. Sie fragt
+ * hier — dieselbe Regel wie beim ersten Laden, nicht eine zweite daneben.
+ */
+export function detectBrowserLanguage(): SupportedLanguage {
   if (typeof navigator === 'undefined') return FALLBACK_LANGUAGE
   const primary = navigator.language?.slice(0, 2).toLowerCase()
   return (SUPPORTED_LANGUAGES as readonly string[]).includes(primary)
@@ -23,7 +30,7 @@ void i18n.use(initReactI18next).init({
     de: { translation: de },
     en: { translation: en },
   },
-  lng: detectInitialLanguage(),
+  lng: detectBrowserLanguage(),
   fallbackLng: FALLBACK_LANGUAGE,
   supportedLngs: SUPPORTED_LANGUAGES,
   interpolation: {

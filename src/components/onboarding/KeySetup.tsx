@@ -1,7 +1,10 @@
-import { useId, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode, type RefObject } from 'react'
+import { useId, useRef, useState, type ComponentProps, type FormEvent, type RefObject } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
+import { Field, FIELD_ERROR_CLASS, FIELD_HINT_CLASS, FIELD_LABEL_CLASS } from '@/components/ui/Field'
+import { Input } from '@/components/ui/Input'
+import { SectionCard } from '@/components/ui/SectionCard'
 import {
   Select,
   SelectContent,
@@ -42,29 +45,6 @@ import {
  *   sich nicht zurücksetzen, ein Tippfehler kostet sonst die Einrichtung.
  */
 
-/** Eingabefeld — dieselbe Gestalt wie der Auswahlauslöser (siehe Select.tsx). */
-const INPUT_CLASS = [
-  'focus-ring h-10 w-full rounded-md border border-[var(--color-control-border)]',
-  'bg-[var(--color-surface-raised)] px-3 text-sm text-[var(--color-ink)]',
-  'transition-colors hover:border-[var(--color-accent)]',
-  'aria-invalid:border-[var(--color-error)]',
-  'disabled:pointer-events-none disabled:opacity-50',
-].join(' ')
-
-/**
- * Feldbeschriftung — und dieselbe Klasse an den Zwischenüberschriften des
- * Formulars. Sie sollen die Abschnitte gliedern, nicht rufen: eine
- * Einrichtung, die aus lauter Überschriften besteht, wirkt dringlicher als
- * sie ist.
- */
-const LABEL_CLASS = 'font-medium text-[var(--color-ink)]'
-
-const HINT_CLASS =
-  'text-[length:var(--text-body-sm-size)] leading-[var(--text-body-sm-leading)] text-[var(--color-muted)]'
-
-const ERROR_CLASS =
-  'text-[length:var(--text-body-sm-size)] leading-[var(--text-body-sm-leading)] text-[var(--color-error)]'
-
 const GUIDE_STEPS = ['step1', 'step2', 'step3', 'step4'] as const
 
 /**
@@ -77,87 +57,27 @@ function webCryptoMissing(): boolean {
   return globalThis.crypto?.subtle === undefined
 }
 
-interface SetupCardProps {
-  headingId: string
-  heading: string
-  className?: string
-  children: ReactNode
-}
-
-/** Die gemeinsame Hülle der drei Zustände (Formular, unsichere Herkunft,
- *  beschädigter Datensatz): eine hervorgehobene Karte mit ihrer Überschrift. */
-function SetupCard({ headingId, heading, className, children }: SetupCardProps) {
-  return (
-    <Card asChild variant="raised" padding="lg" className={className}>
-      <section aria-labelledby={headingId}>
-        <h2
-          id={headingId}
-          className="text-[length:var(--text-heading-size)] leading-[var(--text-heading-leading)] font-semibold text-[var(--color-ink-strong)]"
-        >
-          {heading}
-        </h2>
-        {children}
-      </section>
-    </Card>
-  )
-}
-
-interface TextFieldProps {
-  id: string
-  label: string
-  hint?: ReactNode
-  error?: string
-  type: 'text' | 'password'
-  value: string
-  autoComplete: string
+interface SecretInputProps extends Omit<ComponentProps<typeof Input>, 'ref' | 'type'> {
   inputRef: RefObject<HTMLInputElement | null>
-  onChange: (value: string) => void
 }
 
-/** Beschriftung oben, darunter das Feld, darunter Fehler und Hinweis — mit
- *  den Verweisen, die eine Vorlesesoftware braucht. Ein Platzhalter ersetzt
- *  nie die Beschriftung. */
-function TextField({ id, label, hint, error, type, value, autoComplete, inputRef, onChange }: TextFieldProps) {
-  const hintId = `${id}-hint`
-  const errorId = `${id}-error`
-  // Der Fehler steht vorn — beim Fokussieren soll die Vorlesesoftware
-  // zuerst sagen, was zu tun ist, und danach die Regel wiederholen.
-  const describedBy = [error === undefined ? null : errorId, hint === undefined ? null : hintId]
-    .filter((entry): entry is string => entry !== null)
-    .join(' ')
-
+/**
+ * Ein Feld für den Schlüssel und für das Passwort. Immer `type="password"`
+ * — es gibt bewusst kein „Passwort anzeigen" (siehe Kopfkommentar) — und
+ * ohne jede Hilfe des Browsers: Ein API-Schlüssel gehört nicht in die
+ * Vervollständigung, in die Rechtschreibprüfung oder in die
+ * Großschreibkorrektur eines Mobilgeräts.
+ */
+function SecretInput({ inputRef, ...props }: SecretInputProps) {
   return (
-    <div className="flex flex-col gap-2">
-      <label htmlFor={id} className={LABEL_CLASS}>
-        {label}
-      </label>
-      <input
-        id={id}
-        ref={inputRef}
-        type={type}
-        value={value}
-        // Der Schlüssel und sein Passwort gehören nicht in die
-        // Vervollständigung des Browsers.
-        autoComplete={autoComplete}
-        spellCheck={false}
-        autoCorrect="off"
-        autoCapitalize="none"
-        aria-invalid={error !== undefined}
-        aria-describedby={describedBy === '' ? undefined : describedBy}
-        className={INPUT_CLASS}
-        onChange={(event: ChangeEvent<HTMLInputElement>) => onChange(event.target.value)}
-      />
-      {error !== undefined && (
-        <p id={errorId} className={ERROR_CLASS}>
-          {error}
-        </p>
-      )}
-      {hint !== undefined && (
-        <p id={hintId} className={HINT_CLASS}>
-          {hint}
-        </p>
-      )}
-    </div>
+    <Input
+      ref={inputRef}
+      type="password"
+      spellCheck={false}
+      autoCorrect="off"
+      autoCapitalize="none"
+      {...props}
+    />
   )
 }
 
@@ -179,9 +99,6 @@ export function KeySetup({ keyVault, onSaved, className }: KeySetupProps) {
   const headingId = `${fieldPrefix}-heading`
   const guideHeadingId = `${fieldPrefix}-guide`
   const passphraseHeadingId = `${fieldPrefix}-passphrase-heading`
-  const billingLabelId = `${fieldPrefix}-billing-label`
-  const billingHintId = `${fieldPrefix}-billing-hint`
-  const billingErrorId = `${fieldPrefix}-billing-error`
 
   const [provider, setProvider] = useState<ProviderId>('gemini')
   const [apiKey, setApiKey] = useState('')
@@ -303,24 +220,24 @@ export function KeySetup({ keyVault, onSaved, className }: KeySetupProps) {
   // löschen, obwohl nur die Adresszeile http statt https sagt.
   if (webCryptoMissing()) {
     return (
-      <SetupCard headingId={headingId} heading={t('onboarding.key.heading')} className={cardClassName}>
-        <p role="alert" className={cn('mt-3', ERROR_CLASS)}>
+      <SectionCard headingId={headingId} heading={t('onboarding.key.heading')} className={cardClassName}>
+        <p role="alert" className={cn('mt-3', FIELD_ERROR_CLASS)}>
           {t('onboarding.key.errors.insecureOrigin')}
         </p>
-      </SetupCard>
+      </SectionCard>
     )
   }
 
   if (keyVault.status === 'corrupted') {
     return (
-      <SetupCard
+      <SectionCard
         headingId={headingId}
         heading={t('onboarding.key.corrupted.heading')}
         className={cardClassName}
       >
         <p className="mt-3">{t('onboarding.key.corrupted.body')}</p>
         {saveError !== null && (
-          <p role="alert" className={cn('mt-3', ERROR_CLASS)}>
+          <p role="alert" className={cn('mt-3', FIELD_ERROR_CLASS)}>
             {t(`onboarding.key.errors.${saveError}`)}
           </p>
         )}
@@ -329,12 +246,12 @@ export function KeySetup({ keyVault, onSaved, className }: KeySetupProps) {
             {t('onboarding.key.corrupted.action')}
           </Button>
         </div>
-      </SetupCard>
+      </SectionCard>
     )
   }
 
   return (
-    <SetupCard headingId={headingId} heading={t('onboarding.key.heading')} className={cardClassName}>
+    <SectionCard headingId={headingId} heading={t('onboarding.key.heading')} className={cardClassName}>
       <p className="mt-3">{t('onboarding.key.intro')}</p>
 
       {/* Es liegt schon ein Schlüssel da (entsperrt oder passwortgeschützt).
@@ -350,28 +267,27 @@ export function KeySetup({ keyVault, onSaved, className }: KeySetupProps) {
       )}
 
       <form noValidate className="mt-6 flex flex-col gap-6" onSubmit={(event) => void handleSubmit(event)}>
-        <div className="flex flex-col gap-2">
-          {/* Kein <label for>: der Auslöser der Auswahlliste ist ein
-              <button>, den eine Beschriftung nicht benennen würde. */}
-          <span id={`${fieldPrefix}-provider-label`} className={LABEL_CLASS}>
-            {t('onboarding.key.providerLabel')}
-          </span>
-          <Select value={provider} onValueChange={handleProviderChange}>
-            <SelectTrigger aria-labelledby={`${fieldPrefix}-provider-label`}>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {PROVIDER_IDS.map((id) => (
-                <SelectItem key={id} value={id}>
-                  {PROVIDERS[id].label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        {/* `labelledBy`: der Auslöser der Auswahlliste ist ein <button>,
+            den ein <label for> nicht benennen würde. */}
+        <Field id={`${fieldPrefix}-provider`} label={t('onboarding.key.providerLabel')} labelledBy>
+          {({ id, ...aria }) => (
+            <Select value={provider} onValueChange={handleProviderChange}>
+              <SelectTrigger id={id} {...aria}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {PROVIDER_IDS.map((entry) => (
+                  <SelectItem key={entry} value={entry}>
+                    {PROVIDERS[entry].label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </Field>
 
         <section aria-labelledby={guideHeadingId}>
-          <h3 id={guideHeadingId} className={LABEL_CLASS}>
+          <h3 id={guideHeadingId} className={FIELD_LABEL_CLASS}>
             {t('onboarding.key.guideHeading', { provider: providerLabel })}
           </h3>
           <ol className="mt-2 list-decimal space-y-2 pl-6 text-[length:var(--text-body-sm-size)] leading-[var(--text-body-sm-leading)]">
@@ -388,30 +304,38 @@ export function KeySetup({ keyVault, onSaved, className }: KeySetupProps) {
             {t('onboarding.key.guideLink', { provider: providerLabel })}
           </a>
           {provider === 'gemini' && (
-            <p className={cn('mt-3', HINT_CLASS)}>{t('onboarding.key.legacyGeminiKey')}</p>
+            <p className={cn('mt-3', FIELD_HINT_CLASS)}>{t('onboarding.key.legacyGeminiKey')}</p>
           )}
         </section>
 
-        <TextField
+        <Field
           id={`${fieldPrefix}-api-key`}
           label={t('onboarding.key.apiKeyLabel')}
           hint={t('onboarding.key.apiKeyHint', { provider: providerLabel })}
           error={errorFor('apiKey')}
-          type="password"
-          value={apiKey}
-          autoComplete="off"
-          inputRef={apiKeyRef}
-          onChange={(next) => {
-            setApiKey(next)
-            setSaved(false)
-          }}
-        />
+        >
+          {(control) => (
+            <SecretInput
+              {...control}
+              value={apiKey}
+              autoComplete="off"
+              inputRef={apiKeyRef}
+              onChange={(event) => {
+                setApiKey(event.target.value)
+                setSaved(false)
+              }}
+            />
+          )}
+        </Field>
 
         {showBillingQuestion && (
-          <div className="flex flex-col gap-2">
-            <span id={billingLabelId} className={LABEL_CLASS}>
-              {t('onboarding.key.billingLabel')}
-            </span>
+          <Field
+            id={`${fieldPrefix}-billing`}
+            label={t('onboarding.key.billingLabel')}
+            hint={t('onboarding.key.billingHint')}
+            error={billingError}
+            labelledBy
+          >
             {/* Ohne Vorauswahl, und deshalb eine Auswahlliste statt eines
                 Schalters: Ein Schalter stünde von Anfang an auf „nein",
                 und diese Vermutung würde einen abgerechneten Schlüssel
@@ -422,77 +346,73 @@ export function KeySetup({ keyVault, onSaved, className }: KeySetupProps) {
                 Antwort nicht mehr zum eingegebenen Schlüssel gehört — ohne
                 die Auswahlliste neu einzuhängen und ihr dabei den Fokus zu
                 nehmen. */}
-            <Select
-              value={billingActive === null ? '' : billingActive ? 'paid' : 'free'}
-              onValueChange={(next) => {
-                setBillingAnswer({ forKey: apiKey.trim(), paid: next === 'paid' })
-                setSaved(false)
-              }}
-            >
-              <SelectTrigger
-                ref={billingRef}
-                aria-labelledby={billingLabelId}
-                aria-invalid={billingError !== undefined}
-                // Fehler zuerst, wie beim Textfeld.
-                aria-describedby={
-                  billingError === undefined ? billingHintId : `${billingErrorId} ${billingHintId}`
-                }
+            {({ id, ...aria }) => (
+              <Select
+                value={billingActive === null ? '' : billingActive ? 'paid' : 'free'}
+                onValueChange={(next) => {
+                  setBillingAnswer({ forKey: apiKey.trim(), paid: next === 'paid' })
+                  setSaved(false)
+                }}
               >
-                <SelectValue placeholder={t('onboarding.key.billingPlaceholder')} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="free">{t('onboarding.key.billingFree')}</SelectItem>
-                <SelectItem value="paid">{t('onboarding.key.billingPaid')}</SelectItem>
-              </SelectContent>
-            </Select>
-            {billingError !== undefined && (
-              <p id={billingErrorId} className={ERROR_CLASS}>
-                {billingError}
-              </p>
+                <SelectTrigger id={id} ref={billingRef} {...aria}>
+                  <SelectValue placeholder={t('onboarding.key.billingPlaceholder')} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="free">{t('onboarding.key.billingFree')}</SelectItem>
+                  <SelectItem value="paid">{t('onboarding.key.billingPaid')}</SelectItem>
+                </SelectContent>
+              </Select>
             )}
-            <p id={billingHintId} className={HINT_CLASS}>
-              {t('onboarding.key.billingHint')}
-            </p>
-          </div>
+          </Field>
         )}
 
         {passphraseRequired && (
           <section aria-labelledby={passphraseHeadingId} className="flex flex-col gap-4">
             <div>
-              <h3 id={passphraseHeadingId} className={LABEL_CLASS}>
+              <h3 id={passphraseHeadingId} className={FIELD_LABEL_CLASS}>
                 {t('onboarding.key.passphraseHeading')}
               </h3>
               <p className="mt-2 text-[length:var(--text-body-sm-size)] leading-[var(--text-body-sm-leading)]">
                 {t('onboarding.key.passphraseWhyPaid')}
               </p>
-              <p className={cn('mt-2', HINT_CLASS)}>
+              <p className={cn('mt-2', FIELD_HINT_CLASS)}>
                 {t('onboarding.key.passphraseWhyLength', { min: MIN_PASSPHRASE_LENGTH })}
               </p>
-              <p className={cn('mt-2', HINT_CLASS)}>{t('onboarding.key.passphraseLimits')}</p>
+              <p className={cn('mt-2', FIELD_HINT_CLASS)}>{t('onboarding.key.passphraseLimits')}</p>
             </div>
 
-            <TextField
+            <Field
               id={`${fieldPrefix}-passphrase`}
               label={t('onboarding.key.passphraseLabel')}
               hint={t('onboarding.key.passphraseFieldHint', { min: MIN_PASSPHRASE_LENGTH })}
               error={errorFor('passphrase')}
-              type="password"
-              value={passphrase}
-              autoComplete="new-password"
-              inputRef={passphraseRef}
-              onChange={setPassphrase}
-            />
-            <TextField
+            >
+              {(control) => (
+                <SecretInput
+                  {...control}
+                  value={passphrase}
+                  autoComplete="new-password"
+                  inputRef={passphraseRef}
+                  onChange={(event) => setPassphrase(event.target.value)}
+                />
+              )}
+            </Field>
+            <Field
               id={`${fieldPrefix}-passphrase-confirm`}
               label={t('onboarding.key.passphraseConfirmLabel')}
               hint={t('onboarding.key.passphraseNoReset')}
               error={errorFor('passphraseConfirm')}
-              type="password"
-              value={passphraseConfirm}
-              autoComplete="new-password"
-              inputRef={passphraseConfirmRef}
-              onChange={setPassphraseConfirm}
-            />
+            >
+              {(control) => (
+                <SecretInput
+                  {...control}
+                  value={passphraseConfirm}
+                  autoComplete="new-password"
+                  inputRef={passphraseConfirmRef}
+                  onChange={(event) => setPassphraseConfirm(event.target.value)}
+                />
+              )}
+            </Field>
           </section>
         )}
 
@@ -502,7 +422,7 @@ export function KeySetup({ keyVault, onSaved, className }: KeySetupProps) {
         {passphraseRequired && <PaidKeyHints provider={provider} />}
 
         {saveError !== null && (
-          <p role="alert" className={ERROR_CLASS}>
+          <p role="alert" className={FIELD_ERROR_CLASS}>
             {t(`onboarding.key.errors.${saveError}`)}
           </p>
         )}
@@ -528,6 +448,6 @@ export function KeySetup({ keyVault, onSaved, className }: KeySetupProps) {
           </Button>
         </div>
       </form>
-    </SetupCard>
+    </SectionCard>
   )
 }

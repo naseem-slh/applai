@@ -1,0 +1,152 @@
+import { useId, useRef, useState, type DragEvent } from 'react'
+import { useTranslation } from 'react-i18next'
+import { Button } from '@/components/ui/Button'
+import { FIELD_ERROR_CLASS, FIELD_HINT_CLASS, FIELD_LABEL_CLASS } from '@/components/ui/Field'
+import { cn } from '@/lib/utils'
+import type { LoadedDocument } from '@/components/app/appContext'
+
+/**
+ * Ein Ablegefeld für eine Unterlage: hineinziehen oder auswählen.
+ *
+ * Das eigentliche `<input type="file">` ist auf `hidden` gesetzt und wird
+ * von einem Knopf ausgelöst. Bewusst so und nicht über ein gestyltes
+ * `<label>`: Ein `display:none`-Feld ist nicht fokussierbar, ein Label auch
+ * nicht — ein Knopf ist es, und damit bleibt der Weg über die Tastatur
+ * derselbe wie der mit der Maus. Das Ziehen ist eine Zugabe für die Maus,
+ * kein eigener Bedienweg.
+ *
+ * Der Zustand steht als Text da, nicht nur als Farbe: „wird gelesen",
+ * der Dateiname, die Meldung. Das Umranden beim Darüberziehen ist die
+ * Zugabe, nicht die Auskunft.
+ */
+
+export interface FileDropProps {
+  /** Überschrift des Feldes, z. B. „Anschreiben". */
+  label: string
+  /** Ein Satz darunter: was hier hineingehört und ob es Pflicht ist. */
+  description: string
+  /** Wert für `accept` am Dateifeld, z. B. `.docx,.pdf`. */
+  accept: string
+  document: LoadedDocument | null
+  busy?: boolean
+  /** Übersetzte Meldung, wenn das Lesen gescheitert ist. */
+  error?: string
+  onSelect: (file: File) => void
+  onClear: () => void
+  className?: string
+}
+
+export function FileDrop({
+  label,
+  description,
+  accept,
+  document: loaded,
+  busy = false,
+  error,
+  onSelect,
+  onClear,
+  className,
+}: FileDropProps) {
+  const { t } = useTranslation()
+  const inputId = useId()
+  const labelId = `${inputId}-label`
+  const chooseId = `${inputId}-choose`
+  const removeId = `${inputId}-remove`
+  const inputRef = useRef<HTMLInputElement | null>(null)
+  const [dragging, setDragging] = useState(false)
+
+  function handleDrop(event: DragEvent<HTMLDivElement>): void {
+    event.preventDefault()
+    setDragging(false)
+    // `Array.from` statt `.item(0)`: Nur die erste Datei zählt, und die
+    // Umwandlung kommt auch mit dem einfacheren Datenträger zurecht, den
+    // ein Test mitbringt.
+    const [file] = Array.from(event.dataTransfer.files)
+    if (file !== undefined) onSelect(file)
+  }
+
+  return (
+    <div className={cn('flex flex-col gap-2', className)}>
+      <h3 id={labelId} className={FIELD_LABEL_CLASS}>
+        {label}
+      </h3>
+      <div
+        onDragOver={(event) => {
+          event.preventDefault()
+          setDragging(true)
+        }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={handleDrop}
+        className={cn(
+          'flex flex-col items-start gap-3 rounded-lg border border-dashed p-4 transition-colors',
+          dragging
+            ? 'border-[var(--color-accent)] bg-[var(--color-accent-soft)]'
+            : 'border-[var(--color-control-border)] bg-[var(--color-surface-raised)]',
+        )}
+      >
+        <p className={FIELD_HINT_CLASS}>{description}</p>
+
+        {/* Nicht fokussierbar, weil `hidden` es aus dem Baum nimmt — der
+            Knopf darunter ist der Bedienweg. */}
+        <input
+          ref={inputRef}
+          id={inputId}
+          type="file"
+          accept={accept}
+          hidden
+          onChange={(event) => {
+            const file = event.target.files?.item(0) ?? null
+            if (file !== null) onSelect(file)
+            // Zurücksetzen, damit dieselbe Datei nach einem „Entfernen"
+            // erneut gewählt werden kann — sonst löst `change` nicht aus.
+            event.target.value = ''
+          }}
+        />
+
+        {/* Beide Knöpfe stehen zweimal auf der Seite (Anschreiben und
+            Lebenslauf) und hießen sonst gleich. `aria-labelledby` mit einem
+            Verweis auf den Knopf selbst und danach auf die Überschrift
+            ergibt „Datei auswählen Anschreiben" — der sichtbare Text bleibt
+            dabei Teil des Namens (WCAG 2.5.3). */}
+        <div className="flex flex-wrap items-center gap-3">
+          <Button
+            id={chooseId}
+            variant="secondary"
+            size="sm"
+            disabled={busy}
+            aria-labelledby={`${chooseId} ${labelId}`}
+            onClick={() => inputRef.current?.click()}
+          >
+            {loaded === null ? t('start.files.choose') : t('start.files.replace')}
+          </Button>
+          {loaded !== null && (
+            <Button
+              id={removeId}
+              variant="ghost"
+              size="sm"
+              disabled={busy}
+              aria-labelledby={`${removeId} ${labelId}`}
+              onClick={onClear}
+            >
+              {t('start.files.remove')}
+            </Button>
+          )}
+        </div>
+
+        <p role="status" className="text-[length:var(--text-body-sm-size)]">
+          {busy
+            ? t('start.files.reading')
+            : loaded === null
+              ? t('start.files.none')
+              : t('start.files.loaded', { name: loaded.fileName ?? t('start.files.fromDraft') })}
+        </p>
+      </div>
+
+      {error !== undefined && (
+        <p role="alert" className={FIELD_ERROR_CLASS}>
+          {error}
+        </p>
+      )}
+    </div>
+  )
+}

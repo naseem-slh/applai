@@ -354,6 +354,46 @@ describe('getSettings / saveSettings', () => {
   })
 })
 
+describe('hasSettings', () => {
+  it('meldet vor dem ersten Speichern false und danach true', async () => {
+    const adapter = createIndexedDbAdapter()
+
+    expect(await adapter.hasSettings()).toBe(false)
+    await adapter.saveSettings({ ...DEFAULT_SETTINGS })
+    expect(await adapter.hasSettings()).toBe(true)
+  })
+
+  it('unterscheidet einen Datensatz mit den Vorgabewerten von gar keinem Datensatz', async () => {
+    // Genau darauf beruht die Sprachvorauswahl der Oberfläche: Wer im
+    // englischen Browser bewusst Deutsch einstellt, speichert exakt
+    // DEFAULT_SETTINGS — getSettings() allein könnte das nicht von einem
+    // leeren Speicher unterscheiden.
+    const adapter = createIndexedDbAdapter()
+    await adapter.saveSettings({ ...DEFAULT_SETTINGS })
+
+    expect(await adapter.getSettings()).toEqual(DEFAULT_SETTINGS)
+    expect(await adapter.hasSettings()).toBe(true)
+  })
+
+  it('meldet nach dem Löschen wieder false', async () => {
+    const adapter = createIndexedDbAdapter()
+    await adapter.saveSettings({ ...DEFAULT_SETTINGS, theme: 'dark' })
+
+    await adapter.clearAll()
+
+    expect(await adapter.hasSettings()).toBe(false)
+  })
+
+  it('meldet nach einem Import true', async () => {
+    const adapter = createIndexedDbAdapter()
+    const backup = await adapter.exportAll()
+
+    await adapter.importAll(new File([await backup.text()], 'sicherung.json', { type: 'application/json' }))
+
+    expect(await adapter.hasSettings()).toBe(true)
+  })
+})
+
 describe('exportAll / importAll', () => {
   it('exportiert eine Blob-Datei mit Versionsfeld', async () => {
     const adapter = createIndexedDbAdapter()

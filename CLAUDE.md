@@ -62,7 +62,10 @@ gegenstandslos.
 - **Tests liegen neben dem Code**, den sie prüfen (z. B.
   `src/lib/i18n/i18n.test.ts`), nicht in einem separaten `tests/`-Verzeichnis.
   `tests/fixtures/` ist ausschließlich für binäre Testdateien (`.docx`,
-  `.pdf`) reserviert.
+  `.pdf`) reserviert. Von mehreren Testdateien gemeinsam genutzte Attrappen
+  tragen die Endung `*.testutils.ts(x)` und liegen ebenfalls neben dem Code;
+  sie gehören wie die Tests zu `tsconfig.test.json`, nicht zum
+  Produktionsprojekt.
 - **CSP:** `public/_headers` ist die maßgebliche Policy (Cloudflare Pages).
   Der `<meta http-equiv>`-Tag in `index.html` wird nur beim produktiven Build
   eingefügt (siehe `vite.config.ts`), da der Dev-Server Inline-Skripte

@@ -5,11 +5,12 @@
   "nav": {
     "start": "Start",
     "editor": "Editor",
-    "settings": "Einstellungen"
+    "settings": "Einstellungen",
+    "label": "Hauptnavigation"
   },
   "routes": {
     "start": {
-      "heading": "Anschreiben und Stellenausschreibung"
+      "heading": "Bewerbung vorbereiten"
     },
     "editor": {
       "heading": "Arbeitsfläche"
@@ -127,6 +128,14 @@
         "title": "Den Schlüssel nur für die Gemini-API freigeben",
         "body": "In den Zugangsdaten der Google Cloud lässt sich festlegen, welche APIs ein Schlüssel überhaupt ansprechen darf. Auf die Gemini-API beschränkt, kann ein abhandengekommener Schlüssel keine anderen kostenpflichtigen Google-Dienste desselben Projekts benutzen. Neu in Google AI Studio erzeugte Schlüssel sind von sich aus so beschränkt; ältere Schlüssel und solche aus der Cloud Console sind es nicht."
       }
+    },
+    "unlock": {
+      "heading": "Schlüssel entsperren",
+      "intro": "Für den hinterlegten Schlüssel haben Sie ein Passwort vergeben. Ohne das Passwort kann Applai ihn nicht lesen und keine Anfrage an den Anbieter stellen.",
+      "submit": "Entsperren",
+      "submitting": "Wird entsperrt …",
+      "wrong": "Mit diesem Passwort ließ sich der Schlüssel nicht entschlüsseln. Bitte prüfen Sie die Eingabe.",
+      "forgotten": "Das Passwort lässt sich nicht zurücksetzen. Wenn Sie es vergessen haben, hinterlegen Sie in den Einstellungen einen neuen Schlüssel. Bedenken Sie dabei: OpenAI und Anthropic zeigen einen Schlüssel nur ein einziges Mal an."
     }
   },
   "ai": {
@@ -138,6 +147,150 @@
       "network": "Die Anfrage konnte nicht gesendet werden. Bitte die Internetverbindung prüfen.",
       "blocked": "Der Anbieter hat die Antwort aus Sicherheitsgründen blockiert.",
       "unknown": "Unerwarteter Fehler beim Aufruf des Anbieters."
+    }
+  },
+  "start": {
+    "intro": "Legen Sie Ihr Anschreiben ab, fügen Sie die Stellenausschreibung ein, und gehen Sie weiter zur Arbeitsfläche. Alles bleibt in diesem Browser, bis Sie eine Textstelle umschreiben lassen.",
+    "storageUnavailable": "Der Browser gibt seinen Speicher gerade nicht frei. Sie können weiterarbeiten, aber Applai merkt sich nichts davon: kein Zwischenstand, keine Einstellungen, keine Bewerbungsliste. Im privaten Modus ist das normal.",
+    "documents": {
+      "heading": "Unterlagen",
+      "rule": "Eines von beiden genügt. Liegen beide vor, hat die KI mehr belegte Fakten zur Verfügung und muss weniger offenlassen."
+    },
+    "files": {
+      "letter": "Anschreiben",
+      "letterDescription": "Word-Datei (.docx) oder PDF. Das Layout einer Word-Datei bleibt beim Export unverändert erhalten.",
+      "cv": "Lebenslauf",
+      "cvDescription": "Word-Datei (.docx) oder PDF. Dient als Faktenbasis; bearbeitet wird er in diesem Bauabschnitt noch nicht.",
+      "choose": "Datei auswählen",
+      "replace": "Andere Datei auswählen",
+      "remove": "Entfernen",
+      "none": "Noch keine Datei gewählt. Sie können eine hierher ziehen.",
+      "reading": "Datei wird gelesen …",
+      "loaded": "Gewählt: {{name}}",
+      "fromDraft": "zuletzt benutztes Dokument",
+      "errors": {
+        "unsupportedType": "Applai liest Word-Dateien (.docx) und PDF-Dateien. Ein anderes Format lässt sich nicht öffnen.",
+        "passwordProtected": "Diese PDF-Datei ist passwortgeschützt. Bitte entfernen Sie den Schutz und wählen Sie sie erneut.",
+        "unreadable": "Die Datei ließ sich nicht lesen. Möglicherweise ist sie beschädigt oder trotz ihrer Endung kein Word- oder PDF-Dokument."
+      }
+    },
+    "pdf": {
+      "beta": "Aus PDF gelesen. Die Umwandlung nach Word ist eine Beta-Funktion: Sie stellt Absätze, Überschriften und Stichpunkte wieder her, aber weder das ursprüngliche Layout noch Bilder oder Tabellen. Bitte lesen Sie das Ergebnis auf der Arbeitsfläche durch, bevor Sie es verwenden.",
+      "multiColumn": "Diese PDF-Datei ist mehrspaltig gesetzt. Die Umwandlung liest sie Zeile für Zeile über die ganze Seitenbreite. Text aus der linken und der rechten Spalte steht danach ineinander verschränkt. Für dieses Dokument ist eine Word-Datei die deutlich bessere Vorlage."
+    },
+    "recent": {
+      "heading": "Zuletzt benutzt",
+      "body": "Aus diesem Browser liegt noch ein Zwischenstand vor. Sie können damit weiterarbeiten, statt die Datei erneut zu suchen. Zwischenstände werden nach sieben Tagen von selbst gelöscht.",
+      "letter": "Anschreiben, gespeichert am {{date}}",
+      "cv": "Lebenslauf, gespeichert am {{date}}",
+      "use": "Weiterverwenden",
+      "discard": "Verwerfen"
+    },
+    "name": {
+      "label": "Ihr Name",
+      "hint": "Applai ersetzt Ihren Namen vor jeder Anfrage durch einen Platzhalter. Dafür muss es wissen, wie er lautet. Geraten wird er nicht.",
+      "detected": "Aus dem Kopfbereich Ihres Dokuments übernommen. Bitte prüfen Sie ihn: Erkannt wird die erste namensförmige Zeile, und das kann auch eine Firmierung sein."
+    },
+    "jobAd": {
+      "heading": "Stellenausschreibung",
+      "label": "Text der Anzeige",
+      "hint": "Fügen Sie den vollständigen Text ein. Je mehr davon dasteht, desto genauer fällt die Anforderungsliste aus.",
+      "pdfLabel": "Oder aus einer PDF-Datei einlesen",
+      "pdfHint": "Ein Link zur Anzeige lässt sich nicht abrufen: Dafür bräuchte Applai einen Server, der die Seite für Sie holt, und einen Server hat es bewusst nicht.",
+      "reading": "PDF wird gelesen …"
+    },
+    "applications": {
+      "heading": "Bewerbungsliste",
+      "empty": "Noch keine Bewerbung eingetragen. Ein Eintrag entsteht, sobald Sie ein fertiges Anschreiben exportieren.",
+      "company": "Firma",
+      "position": "Stelle",
+      "date": "Datum",
+      "duplicate": "In dieser Anzeige kommt eine Firma vor, bei der Sie sich schon beworben haben: {{entries}}. Das kann ein Zufall sein: Die Prüfung vergleicht nur Firmennamen.",
+      "duplicateEntry": "{{company}}, {{position}} ({{date}})"
+    },
+    "missing": {
+      "heading": "Dafür fehlt noch:",
+      "document": "ein Anschreiben oder ein Lebenslauf",
+      "jobAd": "der Text der Stellenausschreibung",
+      "userName": "Ihr Name"
+    },
+    "continue": "Weiter zur Arbeitsfläche"
+  },
+  "settings": {
+    "storageUnavailable": "Der Browser gibt seinen Speicher gerade nicht frei. Änderungen hier gelten nur für diese Sitzung.",
+    "saveFailed": "Die Änderung ließ sich nicht speichern und wurde zurückgenommen. Bitte versuchen Sie es erneut.",
+    "appearance": {
+      "heading": "Erscheinungsbild",
+      "hint": "Hell ist die Grundeinstellung. „Wie das System“ folgt der Einstellung Ihres Betriebssystems.",
+      "label": "Darstellung",
+      "options": {
+        "light": "Hell",
+        "dark": "Dunkel",
+        "system": "Wie das System"
+      }
+    },
+    "language": {
+      "heading": "Sprache der Oberfläche",
+      "hint": "Beim ersten Start wählt Applai die Sprache Ihres Browsers vor. Ihre Wahl hier gilt ab dann.",
+      "label": "Sprache",
+      "options": {
+        "de": "Deutsch",
+        "en": "English"
+      }
+    },
+    "anonymize": {
+      "heading": "Anonymisierung",
+      "label": "Persönliche Daten vor dem Senden ersetzen",
+      "hint": "Name, Anschrift, Geburtsdatum, Telefonnummer und E-Mail-Adresse werden durch Platzhalter ersetzt, bevor Text an den Anbieter geht, und in der Antwort wieder zurückgetauscht.",
+      "off": "Ohne Anonymisierung gehen Ihre persönlichen Daten im Klartext an den gewählten Anbieter."
+    },
+    "truthMode": {
+      "heading": "Wahrheitsgrenze",
+      "hint": "Wie weit darf sich eine Formulierung von dem entfernen, was in Ihren Unterlagen belegt ist?",
+      "label": "Grenze",
+      "options": {
+        "strict": "Streng",
+        "bridge": "Brücken",
+        "free": "Frei"
+      },
+      "explanations": {
+        "strict": "Es wird nur umformuliert, was in Ihren Unterlagen steht. Fehlt eine geforderte Fähigkeit, bleibt sie in der Lückenliste stehen, statt im Text aufzutauchen.",
+        "bridge": "Zusätzlich sind Verallgemeinerungen erlaubt, die durch Ihre Angaben gedeckt sind, etwa „Erfahrung mit relationalen Datenbanken“, wenn dort PostgreSQL steht. Neue Tatsachen entstehen dabei nicht.",
+        "free": "Die KI darf ergänzen, was nicht belegt ist. Solche Stellen werden farbig markiert und müssen einzeln bestätigt werden; solange eine unbestätigt ist, bleibt der Export gesperrt."
+      }
+    },
+    "key": {
+      "heading": "Anbieter und API-Schlüssel",
+      "currentProvider": "Hinterlegt ist ein Schlüssel für {{provider}}. Der Anbieter wechselt mit dem Schlüssel; beides zusammen wird unten ersetzt.",
+      "noProvider": "Es ist noch kein Schlüssel hinterlegt."
+    },
+    "backup": {
+      "heading": "Sicherung",
+      "hint": "Bewerbungsliste, Zwischenstände und Einstellungen als Datei sichern und auf einem anderen Gerät oder nach einer Löschung wieder einspielen. Der API-Schlüssel ist nicht dabei. Er bleibt in dem Browser, in dem Sie ihn hinterlegt haben.",
+      "export": "Sicherung herunterladen",
+      "import": "Sicherung einspielen",
+      "importWarning": "Einspielen ersetzt den vorhandenen Bestand vollständig; es wird nichts zusammengeführt.",
+      "errors": {
+        "export": "Die Sicherung ließ sich nicht erstellen. Bitte versuchen Sie es erneut.",
+        "import": "Die Datei ließ sich nicht einspielen. Sie ist entweder beschädigt, keine Applai-Sicherung oder aus einer neueren Fassung. Der bisherige Bestand ist unverändert."
+      },
+      "done": {
+        "export": "Die Sicherung wurde heruntergeladen.",
+        "import": "Die Sicherung wurde eingespielt."
+      }
+    },
+    "delete": {
+      "heading": "Alle Daten löschen",
+      "body": "Entfernt Bewerbungsliste, Zwischenstände, Einstellungen und den hinterlegten API-Schlüssel von diesem Gerät. Danach ist nichts mehr von Applai übrig. Ihr Schlüssel beim Anbieter bleibt bestehen. Den ziehen Sie dort zurück, wenn Sie ihn nicht mehr brauchen.",
+      "action": "Alle Daten löschen",
+      "confirmTitle": "Wirklich alle Daten löschen?",
+      "confirmBody": "Bewerbungsliste, Zwischenstände, Einstellungen und der hinterlegte API-Schlüssel werden entfernt. Das lässt sich nicht rückgängig machen; nur eine vorher heruntergeladene Sicherung bringt die Liste zurück.",
+      "confirm": "Ja, alles löschen",
+      "cancel": "Abbrechen",
+      "done": "Alle Daten wurden gelöscht: Bewerbungsliste, Zwischenstände, Einstellungen und der API-Schlüssel.",
+      "storageFailed": "Der API-Schlüssel wurde gelöscht, aber Bewerbungsliste, Zwischenstände und Einstellungen nicht. Bitte laden Sie die Seite neu und versuchen Sie es noch einmal.",
+      "vaultFailed": "Bewerbungsliste, Zwischenstände und Einstellungen wurden gelöscht, der hinterlegte API-Schlüssel jedoch nicht. Bitte laden Sie die Seite neu und versuchen Sie es noch einmal.",
+      "bothFailed": "Es wurde nichts gelöscht. Der Browser gibt seinen Speicher gerade nicht frei. Bitte schließen Sie andere Tabs mit Applai, laden Sie die Seite neu und versuchen Sie es erneut."
     }
   }
 }
