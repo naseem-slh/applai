@@ -69,6 +69,8 @@
  * sicher, nicht nur für die in der Aufgabenstellung genannten Beispiele.
  */
 
+import { findWholeWordOccurrences } from '../text/wholeWord'
+
 /** Platzhalter → Original. Task 11 trägt diese Map neben der KI-Antwort mit. */
 export interface PiiMap {
   [placeholder: string]: string
@@ -416,23 +418,20 @@ function matchAll(text: string, re: RegExp, category: Category): Candidate[] {
   return results
 }
 
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
-
-// Sucht `phrase` als Ganzwort/Ganzphrase (Grenzen über \p{L}/\p{N} statt
-// des ASCII-beschränkten \b, siehe Erklärung an der Name-Erkennung oben).
+// Sucht `phrase` als Ganzwort/Ganzphrase — Grenzprüfung, Escaping und die
+// eigentliche Suche stehen jetzt im abhängigkeitsfreien Blattmodul
+// `src/lib/text/wholeWord.ts` (Fix-Runde 1, Aufgabe 12: dieselbe Suche
+// wurde zuvor hier UND in `domain/letterhead.ts` wortgleich dupliziert;
+// siehe dort für die vollständige Begründung). Rein mechanische Umstellung
+// — Verhalten unverändert, `anonymize.test.ts` bleibt unangetastet grün.
 function findWholePhraseOccurrences(text: string, phrase: string, category: Category, caseInsensitive: boolean): Candidate[] {
-  const trimmed = phrase.trim()
-  if (!trimmed) return []
-  const pattern = `(?<![\\p{L}\\p{N}])${escapeRegExp(trimmed)}(?![\\p{L}\\p{N}])`
-  const re = new RegExp(pattern, caseInsensitive ? 'gui' : 'gu')
-  const results: Candidate[] = []
-  let m: RegExpExecArray | null
-  while ((m = re.exec(text))) {
-    results.push({ start: m.index, end: m.index + m[0].length, value: m[0], category, replace: true })
-  }
-  return results
+  return findWholeWordOccurrences(text, phrase, caseInsensitive).map((match) => ({
+    start: match.index,
+    end: match.index + match.length,
+    value: text.slice(match.index, match.index + match.length),
+    category,
+    replace: true,
+  }))
 }
 
 function overlaps(a: { start: number; end: number }, b: { start: number; end: number }): boolean {

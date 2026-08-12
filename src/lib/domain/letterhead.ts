@@ -1,4 +1,5 @@
 import type { JobAd } from './jobAd'
+import { findWholeWordOccurrences } from '../text/wholeWord'
 
 /**
  * Aufgabe 12 — Briefkopfvorschlag und Fremdfirmen-Warnung.
@@ -51,6 +52,18 @@ export interface Letterhead {
  * passiert hier. Eine dadurch mögliche Sprachmischung (Anzeige englisch,
  * `uiLanguage` deutsch) ist die bewusst kleinere Nebenwirkung gegenüber
  * einer erfundenen Anrede.
+ *
+ * **Die Fallentscheidung hängt bewusst an `jobAd.salutation`, nicht an
+ * `jobAd.contactPerson`** (`suggestLetterhead` unten: `jobAd.salutation ??
+ * SALUTATION_FALLBACK[...]`). `JobAdSchema` (Aufgabe 9) erzwingt nur EINE
+ * Richtung der Abhängigkeit zwischen beiden Feldern
+ * (`contactPerson === null ⇒ salutation === null`) – die Kombination
+ * `contactPerson: 'Dr. Weber', salutation: null` bleibt zulässig (z. B. ein
+ * Name ohne erkennbaren Titel, aus dem sich keine Anrede ableiten ließ).
+ * In genau diesem Fall greift hier ebenfalls der generische Fallback statt
+ * einer aus `contactPerson` erfundenen Anrede – dieselbe Begründung wie
+ * oben: Der Nutzer sieht eine ehrliche, generische Anrede statt einer
+ * geratenen, und kann sie vor Übernahme selbst ergänzen.
  */
 const SALUTATION_FALLBACK: Record<'de' | 'en', string> = {
   de: 'Sehr geehrte Damen und Herren',
@@ -150,38 +163,19 @@ export function suggestLetterhead(jobAd: JobAd, uiLanguage: 'de' | 'en', today: 
 // ---------------------------------------------------------------------------
 
 /**
- * Maskiert Regex-Sonderzeichen in einem wörtlich zu suchenden Firmennamen
- * ("S&P Global", "Müller + Partner GmbH") – ohne das würde z. B. "+" als
- * Quantifizierer statt als literales Zeichen gelesen, im schlimmsten Fall
- * (unbalancierte Klammern in einem Firmennamen) mit einem ungültigen
- * regulären Ausdruck statt eines falschen Treffers.
- */
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
-
-/**
  * Findet Vorkommen bekannter Firmennamen im Text (z. B. im bestehenden
  * Anschreiben) – der deterministische Abgleich, der den klassischen
  * Kopierfehler abfängt: eine frühere Bewerbung diente als Vorlage, und der
  * Name der früheren Firma blieb irgendwo stehen.
  *
- * **Kein Teilstring-Fehlalarm:** "Bosch" darf nicht innerhalb von
- * "Boschmann" treffen. Die Grenzprüfung `(?<![\p{L}\p{N}])…(?![\p{L}\p{N}])`
- * (Unicode-Buchstabe/-Ziffer statt des ASCII-beschränkten `\b`) ist
- * dasselbe Muster wie `findWholePhraseOccurrences` in
- * `privacy/anonymize.ts` – dort für Namen/E-Mail-Adressen, hier für
- * Firmennamen. Bewusst hier noch einmal lokal definiert statt von dort
- * importiert: Beide Funktionen lösen zwar dasselbe technische Problem
- * (Ganzwort-Treffer, keine Regex-Sonderzeichen), gehören aber zu
- * unterschiedlichen Zuständigkeiten (PII-Anonymisierung vs.
- * Fremdfirmen-Erkennung) – `escapeRegExp` dort ist zudem nicht exportiert.
- * Ein Import würde die beiden Module unnötig aneinanderkoppeln, für zwei
- * Zeilen Code.
- *
- * `gui`-Flags: `g` für alle Vorkommen, `u` für die Unicode-Eigenschaften in
- * der Grenzprüfung, `i` für Groß-/Kleinschreibungs-Unabhängigkeit ("Bosch"
- * findet auch "BOSCH"/"bosch").
+ * Die eigentliche Ganzwort-Suche (Unicode-Grenzprüfung statt des
+ * ASCII-beschränkten `\b`, Maskierung von Regex-Sonderzeichen) steht im
+ * abhängigkeitsfreien Blattmodul `src/lib/text/wholeWord.ts` — dasselbe
+ * Modul, das `privacy/anonymize.ts` für Namen/E-Mail-Adressen verwendet
+ * (Fix-Runde 1, Aufgabe 12: vorher hier UND dort wortgleich dupliziert,
+ * siehe `wholeWord.ts` für die vollständige Begründung der Zentralisierung
+ * und den Unicode-Regressionsfall, der `\b` von der hier genutzten Prüfung
+ * unterscheidet).
  *
  * `currentCompany` wird aus der Suchliste ausgeschlossen (getrimmt,
  * groß-/kleinschreibungs-unabhängig verglichen) – sie ist per Definition
@@ -213,10 +207,7 @@ export function findForeignCompanyNames(
     if (!trimmed) continue
     if (currentNormalized !== null && trimmed.toLowerCase() === currentNormalized) continue
 
-    const pattern = `(?<![\\p{L}\\p{N}])${escapeRegExp(trimmed)}(?![\\p{L}\\p{N}])`
-    const regex = new RegExp(pattern, 'gui')
-    let match: RegExpExecArray | null
-    while ((match = regex.exec(text))) {
+    for (const match of findWholeWordOccurrences(text, trimmed, true)) {
       results.push({ name: trimmed, index: match.index })
     }
   }

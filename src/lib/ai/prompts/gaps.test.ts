@@ -66,7 +66,13 @@ describe('buildGapsPrompt', () => {
 
   it('erzeugt bei leerer Anforderungsliste einen Nutzer-Prompt ohne Anforderungszeilen', () => {
     const { user } = buildGapsPrompt({ ...BASIS, requirements: [] })
-    expect(user).not.toContain('0.')
+    // Bewusst NICHT `.not.toContain('0.')` (Fix-Runde 1, Review-Fund): Das
+    // bestand nur zufällig, weil `BASIS.facts` kein "0." enthält — eine
+    // Faktenbasis mit z. B. "2020. Abschluss" hätte den Test grundlos rot
+    // gefärbt. Stattdessen gezielt gegen den Anforderungszeilen-Musterkopf
+    // geprüft (Zeilenanfang, Ziffer, Punkt, Leerzeichen — siehe
+    // `buildUserPrompt`, `${r.index}. [${r.kind}] ${r.text}`).
+    expect(user).not.toMatch(/^\d+\. /m)
     expect(user).toContain(BASIS.facts)
   })
 })

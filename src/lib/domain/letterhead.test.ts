@@ -50,6 +50,21 @@ describe('suggestLetterhead — Anrede (Checklisten-Fall)', () => {
     const brief = suggestLetterhead(JOB_AD_MIT_ANSPRECHPARTNER, 'de', HEUTE)
     expect(brief.salutation).toBe('Sehr geehrter Herr Dr. Weber')
   })
+
+  /**
+   * `JobAdSchema` (Aufgabe 9) erzwingt nur `contactPerson === null ⇒
+   * salutation === null` — nicht die Umkehrung. Ein bekannter
+   * Ansprechpartner OHNE ableitbare Anrede (`salutation: null`) ist also
+   * ein zulässiger Zustand, kein Widerspruch. Die Fallentscheidung hängt
+   * hier bewusst an `salutation`, nicht an `contactPerson` (siehe
+   * Doc-Kommentar in `letterhead.ts`) — der generische Fallback greift
+   * auch dann, statt eine Anrede aus dem bloßen Namen zu erfinden.
+   */
+  it('greift auf die generische Anrede zurück, wenn ein Ansprechpartner bekannt ist, aber keine Anrede ableitbar war', () => {
+    const jobAdOhneAnrede: JobAd = { ...JOB_AD_MIT_ANSPRECHPARTNER, salutation: null }
+    const brief = suggestLetterhead(jobAdOhneAnrede, 'de', HEUTE)
+    expect(brief.salutation).toBe('Sehr geehrte Damen und Herren')
+  })
 })
 
 describe('suggestLetterhead — Empfänger', () => {
@@ -177,5 +192,21 @@ describe('findForeignCompanyNames', () => {
     const text = 'Ich war bei Bosch tätig.'
     const treffer = findForeignCompanyNames(text, null, ['Bosch'])
     expect(treffer).toHaveLength(1)
+  })
+
+  /**
+   * Belegt, dass `findForeignCompanyNames` tatsächlich den gemeinsamen
+   * Ganzwort-Sucher aus `src/lib/text/wholeWord.ts` verwendet, statt einer
+   * eigenen (möglicherweise abweichenden) Grenzprüfung: Mit dem
+   * ASCII-beschränkten `\b` läge zwischen "o" und "Ö" fälschlich eine
+   * Wortgrenze, "Ökotech" träfe also fälschlich mitten in "BioÖkotech".
+   * Die ausführliche Begründung und weitere Fälle stehen bei
+   * `wholeWord.test.ts` — hier nur der Nachweis, dass die Eigenschaft durch
+   * die öffentliche Schnittstelle dieser Funktion sichtbar bleibt.
+   */
+  it('nutzt die gemeinsame Unicode-Grenzprüfung — kein Fehlalarm mitten in "BioÖkotech"', () => {
+    const text = 'Wir liefern an BioÖkotech GmbH.'
+    const treffer = findForeignCompanyNames(text, null, ['Ökotech'])
+    expect(treffer).toEqual([])
   })
 })
