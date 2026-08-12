@@ -146,40 +146,8 @@ describe('SelectionLayer', () => {
     expect(screen.getByRole('button', { name: 'Umformulieren' })).toBeInTheDocument()
   })
 
-  it('bietet das Vormerken an, sobald etwas markiert ist', () => {
-    const onToggle = vi.fn()
-    setup({ selection: selection(), markAction: { releases: false, replaces: [], onToggle } })
 
-    screen.getByRole('button', { name: t('editor.marks.add') }).click()
 
-    expect(onToggle).toHaveBeenCalledTimes(1)
-  })
 
-  it('nennt den Knopf „aufheben", wenn die Markierung deckungsgleich ist', () => {
-    setup({ selection: selection(), markAction: { releases: true, replaces: [], onToggle: vi.fn() } })
 
-    expect(screen.getByRole('button', { name: t('editor.marks.release') })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: t('editor.marks.add') })).not.toBeInTheDocument()
-  })
-
-  it('kündigt an, welche Vormerkung ersetzt würde', () => {
-    setup({ selection: selection(), markAction: { releases: false, replaces: [2], onToggle: vi.fn() } })
-
-    expect(screen.getByText(t('editor.marks.replaces', { number: 2 }))).toBeInTheDocument()
-  })
-
-  it('bietet das Vormerken nicht an, solange nur Leerraum markiert ist', () => {
-    setup({
-      selection: selection({ text: '   ', hasContent: false }),
-      markAction: { releases: false, replaces: [], onToggle: vi.fn() },
-    })
-
-    expect(screen.queryByRole('button', { name: t('editor.marks.add') })).not.toBeInTheDocument()
-  })
-
-  it('bietet das Vormerken nicht an, solange nichts markiert ist', () => {
-    setup({ markAction: { releases: false, replaces: [], onToggle: vi.fn() } })
-
-    expect(screen.queryByRole('button', { name: t('editor.marks.add') })).not.toBeInTheDocument()
-  })
 })

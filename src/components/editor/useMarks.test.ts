@@ -23,10 +23,15 @@ function anchorFor(needle: string, text = LETTER): MarkAnchor {
  * So prüft ein Test den Weg — vormerken, speichern, wiederherstellen — und
  * nicht eine nachgebaute Zustandsverwaltung.
  */
-function setup(storage: FakeStorage, letterText: string | null = LETTER, documentText = LETTER) {
+function setup(
+  storage: FakeStorage,
+  letterText: string | null = LETTER,
+  documentText = LETTER,
+  keep = true,
+) {
   return renderHook(() => {
     const [marks, setMarks] = useState<readonly Mark[]>([])
-    return { marks, handle: useMarks({ storage, letterText, documentText, marks, setMarks }) }
+    return { marks, handle: useMarks({ storage, letterText, documentText, marks, setMarks, keep }) }
   })
 }
 
@@ -220,5 +225,20 @@ describe('Rückfall auf ein früheres Anschreiben', () => {
 
     await waitFor(() => expect(result.current.marks).toHaveLength(1))
     expect(result.current.marks[0]?.anchor.text).toBe('ich bewerbe mich')
+  })
+
+  // „Nicht behalten" heißt nicht behalten: Ein liegengebliebener Satz käme
+  // beim nächsten Öffnen zurück, obwohl der Nutzer das abgewählt hat.
+  it('löscht den gemerkten Satz, sobald das Behalten abgewählt ist', async () => {
+    const storage = createFakeStorage()
+    await seedMarkSet(storage, [anchorFor('ich bewerbe mich')])
+
+    const { result } = setup(storage, LETTER, LETTER, false)
+    await waitFor(() => expect(result.current.handle.ready).toBe(true))
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(MARK_SAVE_DELAY_MS)
+    })
+
+    expect(await storage.loadMarkSet(await letterFingerprint(LETTER))).toBeNull()
   })
 })

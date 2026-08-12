@@ -38,11 +38,18 @@ function markEntry(page: Page, number: number) {
   return page.getByRole('button', { name: new RegExp(`^${number}\\.`) })
 }
 
-/** Den Absatz mit diesem Text markieren und vormerken. */
+/**
+ * Den Absatz mit diesem Text markieren. Das **ist** das Vormerken — einen
+ * eigenen Knopf dafür gibt es nicht.
+ */
 async function markParagraph(page: Page, contains: string): Promise<void> {
   await page.getByRole('paragraph').filter({ hasText: contains }).click()
   await page.getByRole('button', { name: t('editor.selection.currentParagraph') }).click()
-  await page.getByRole('button', { name: t('editor.marks.add') }).click()
+}
+
+/** Die Stellen für die nächste Bewerbung behalten. Standardmäßig aus. */
+async function keepMarks(page: Page): Promise<void> {
+  await page.getByRole('switch', { name: t('editor.marks.keep') }).click()
 }
 
 /**
@@ -100,6 +107,7 @@ test.describe('Vorgemerkte Stellen', () => {
 
     await markParagraph(page, 'ich bewerbe mich hiermit')
     await expect(page.getByText(t('editor.marks.progress', { done: 0, total: 1 }))).toBeVisible()
+    await keepMarks(page)
 
     // Das Ablegen ist bewusst verzögert (MARK_SAVE_DELAY_MS). Hier ist das
     // Warten auf die Uhr die Sache selbst und kein Behelf.

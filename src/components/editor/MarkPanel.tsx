@@ -1,5 +1,7 @@
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/Button'
+import { Switch } from '@/components/ui/Switch'
 import { FIELD_HINT_CLASS } from '@/components/ui/Field'
 import type { MarkAnchor } from '@/lib/storage/adapter'
 import { cn } from '@/lib/utils'
@@ -13,9 +15,15 @@ import type { MarksRestore } from './useMarks'
  *
  * **Eine Vormerkung wird nicht verbraucht.** Sie anzuklicken macht sie zur
  * laufenden Markierung, und eine übernommene Variante hakt sie nur ab —
- * beides lässt sie stehen. Aufgehoben wird sie über den Knopf hier oder
- * dadurch, dass dieselbe Stelle im Text noch einmal vorgemerkt wird (siehe
- * `toggleMark`).
+ * beides lässt sie stehen. Aufgehoben wird sie im Text (ein Klick hinein)
+ * oder hier über „Entfernen"; auf einem Gerät ohne Feinmarkierung ist diese
+ * Liste der einzige Weg.
+ *
+ * **Der Schalter ist die einzige Entscheidung, die hier getroffen wird.**
+ * Die Stellen tragen den Wortlaut des Briefes in sich; sie über die Sitzung
+ * hinaus aufzubewahren ist deshalb nichts, was ungefragt geschehen sollte.
+ * Steht er aus, wird nichts gespeichert und ein bereits gemerkter Satz
+ * gelöscht.
  *
  * **Die Nummern sind Positionen, keine Kennungen.** Sie zählen die Stellen
  * von oben nach unten durch; kommt eine dazwischen hinzu, rücken die
@@ -39,6 +47,9 @@ export interface MarkPanelProps {
   restore: MarksRestore | null
   /** Die Stelle, die gerade markiert ist. */
   activeId: string | null
+  /** Sollen die Stellen für die nächste Bewerbung erhalten bleiben? */
+  keep: boolean
+  onKeepChange: (keep: boolean) => void
   onSelect: (mark: Mark) => void
   onToggleDone: (id: string, done: boolean) => void
   onRemove: (id: string) => void
@@ -52,6 +63,8 @@ export function MarkPanel({
   unresolved,
   restore,
   activeId,
+  keep,
+  onKeepChange,
   onSelect,
   onToggleDone,
   onRemove,
@@ -60,6 +73,7 @@ export function MarkPanel({
   defaultOpen,
 }: MarkPanelProps) {
   const { t } = useTranslation()
+  const keepId = useId()
 
   const done = marks.filter((mark) => mark.done).length
   const nextOpen = marks.find((mark) => !mark.done) ?? null
@@ -71,6 +85,13 @@ export function MarkPanel({
       defaultOpen={defaultOpen}
     >
       <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between gap-3">
+          <span id={keepId} className={FIELD_HINT_CLASS}>
+            {t('editor.marks.keep')}
+          </span>
+          <Switch checked={keep} aria-labelledby={keepId} onCheckedChange={onKeepChange} />
+        </div>
+
         {/* Dauerhafte Zustandsauskunft, deshalb `role="status"`: Sie steht
             schon da, bevor der Nutzer etwas tut. */}
         <div role="status" className="flex flex-col gap-1">

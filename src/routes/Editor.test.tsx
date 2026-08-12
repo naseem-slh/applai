@@ -1000,11 +1000,13 @@ function markEntry(number: number): HTMLElement {
   return screen.getByRole('button', { name: new RegExp(`^${number}\\.`) })
 }
 
-/** Absatz markieren, wie es der Nutzer täte, und vormerken. */
+/**
+ * Einen Absatz markieren. Das **ist** das Vormerken — einen eigenen Knopf
+ * dafür gibt es nicht mehr.
+ */
 function markParagraph(index: number): void {
   caretIn(index, 3)
   fireEvent.click(screen.getByRole('button', { name: t('editor.selection.currentParagraph') }))
-  fireEvent.click(screen.getByRole('button', { name: t('editor.marks.add') }))
 }
 
 describe('Editor — vorgemerkte Stellen', () => {
@@ -1019,24 +1021,26 @@ describe('Editor — vorgemerkte Stellen', () => {
     expect(markEntry(1).textContent).toContain(paragraphText.slice(0, 20))
   })
 
-  it('hebt die Vormerkung auf, wenn dieselbe Stelle noch einmal vorgemerkt wird', async () => {
+  it('hebt die Vormerkung auf, wenn dieselbe Stelle noch einmal markiert wird', async () => {
     setup()
     await documentSurface()
     markParagraph(1)
 
-    fireEvent.click(screen.getByRole('button', { name: t('editor.marks.release') }))
+    markParagraph(1)
 
     expect(screen.getByText(t('editor.marks.none'))).toBeInTheDocument()
   })
 
-  it('kündigt an, welche Vormerkung eine überschneidende Markierung ersetzen würde', async () => {
+  // „Ganzes Dokument" ist bewusst ausgenommen: Es würde jede vorgemerkte
+  // Stelle durch eine einzige ersetzen, die den ganzen Brief überdeckt.
+  it('merkt bei „ganzes Dokument" nichts vor und lässt die Stellen stehen', async () => {
     setup()
     await documentSurface()
     markParagraph(1)
 
     fireEvent.click(screen.getByRole('button', { name: t('editor.selection.wholeDocument') }))
 
-    expect(screen.getByText(t('editor.marks.replaces', { number: 1 }))).toBeInTheDocument()
+    expect(screen.getByText(t('editor.marks.progress', { done: 0, total: 1 }))).toBeInTheDocument()
   })
 
   // Der Kernpunkt: Eine Textänderung davor darf die Vormerkung nicht
@@ -1089,7 +1093,8 @@ describe('Editor — vorgemerkte Stellen', () => {
 
   it('stellt die Vormerkungen beim nächsten Öffnen desselben Anschreibens wieder her', async () => {
     const storage = createFakeStorage()
-    const first = setup({ storage })
+    // Das Behalten ist eine Entscheidung des Nutzers und standardmäßig aus.
+    const first = setup({ storage, settings: { keepMarks: true } })
     await documentSurface()
     const paragraphText = paragraphElement(1).textContent ?? ''
     markParagraph(1)
@@ -1098,7 +1103,7 @@ describe('Editor — vorgemerkte Stellen', () => {
     await waitFor(() => expect(storage.state.markSets.size).toBe(1), { timeout: 3000 })
     first.unmount()
 
-    setup({ storage })
+    setup({ storage, settings: { keepMarks: true } })
     await documentSurface()
 
     await waitFor(() => expect(markEntry(1).textContent).toContain(paragraphText.slice(0, 20)))

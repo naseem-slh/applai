@@ -258,9 +258,6 @@
       "count_one": "1 passage",
       "count_other": "{{count}} passages",
       "none": "Nothing marked yet. Select a passage and choose “Mark passage”.",
-      "add": "Mark passage",
-      "release": "Unmark passage",
-      "replaces": "Replaces marked passage {{number}}.",
       "progress": "{{done}} of {{total}} done",
       "entry": "{{number}}. “{{text}}”",
       "select": "Select this passage",
@@ -274,7 +271,8 @@
         "heading": "Not found again",
         "body": "These passages are no longer in the letter as they were. Mark them again if you need them.",
         "dismiss": "Discard"
-      }
+      },
+      "keep": "Keep for the next application"
     },
     "retained": {
       "heading": "Your selection reaches across fixed content.",

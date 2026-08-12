@@ -88,10 +88,10 @@ const VIEWS: { name: string; open: (page: Page) => Promise<void> }[] = [
       await fillStartPage(page)
       await waitForAnalysis(page)
 
+      // Markieren ist Vormerken; einen eigenen Knopf gibt es nicht.
       for (const paragraph of ['ich bewerbe mich hiermit', 'Mit freundlichen Grüßen']) {
         await page.getByRole('paragraph').filter({ hasText: paragraph }).click()
         await page.getByRole('button', { name: t('editor.selection.currentParagraph') }).click()
-        await page.getByRole('button', { name: t('editor.marks.add') }).click()
       }
       // Auf schmalen Fenstern sind die Bereiche der Seitenspalte
       // zugeklappt. Zugeklappt ist die Merkliste weder für den Nutzer noch

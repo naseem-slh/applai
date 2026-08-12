@@ -21,6 +21,8 @@ function setup(overrides: Partial<MarkPanelProps> = {}) {
     unresolved: [],
     restore: null,
     activeId: null,
+    keep: false,
+    onKeepChange: vi.fn(),
     onSelect: vi.fn(),
     onToggleDone: vi.fn(),
     onRemove: vi.fn(),
@@ -149,5 +151,13 @@ describe('MarkPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: t('editor.marks.clearAll') }))
 
     expect(props.onClearAll).toHaveBeenCalled()
+  })
+
+  it('schaltet das Behalten für die nächste Bewerbung um', () => {
+    const props = setup({ keep: false })
+
+    fireEvent.click(screen.getByRole('switch', { name: t('editor.marks.keep') }))
+
+    expect(props.onKeepChange).toHaveBeenCalledWith(true)
   })
 })

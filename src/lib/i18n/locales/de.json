@@ -258,9 +258,6 @@
       "count_one": "1 Stelle",
       "count_other": "{{count}} Stellen",
       "none": "Noch nichts vorgemerkt. Markieren Sie eine Textstelle und wählen Sie „Stelle vormerken“.",
-      "add": "Stelle vormerken",
-      "release": "Vormerkung aufheben",
-      "replaces": "Ersetzt Vormerkung {{number}}.",
       "progress": "{{done}} von {{total}} erledigt",
       "entry": "{{number}}. „{{text}}“",
       "select": "Diese Stelle markieren",
@@ -274,7 +271,8 @@
         "heading": "Nicht wiedergefunden",
         "body": "Diese Stellen stehen so nicht mehr im Brief. Merken Sie sie neu vor, wenn Sie sie brauchen.",
         "dismiss": "Verwerfen"
-      }
+      },
+      "keep": "Für die nächste Bewerbung behalten"
     },
     "retained": {
       "heading": "Ihre Markierung reicht über festen Inhalt hinweg.",
