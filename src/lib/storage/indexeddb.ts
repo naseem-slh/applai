@@ -119,10 +119,22 @@ function isExportedDraft(value: unknown): value is ExportedDraft {
   )
 }
 
+/**
+ * `models` fehlt in jedem Datensatz, der vor der Modellauswahl gespeichert
+ * wurde. Das ist kein Mangel: Ohne Eintrag gilt das voreingestellte Modell.
+ * Steht etwas da, muss es die Form haben.
+ */
+function isModelSelection(value: unknown): boolean {
+  if (value === undefined) return true
+  if (typeof value !== 'object' || value === null) return false
+  return Object.entries(value).every(([key, model]) => isProviderId(key) && typeof model === 'string')
+}
+
 function isSettings(value: unknown): value is Settings {
   if (typeof value !== 'object' || value === null) return false
   const candidate = value as Partial<Settings>
   return (
+    isModelSelection(candidate.models) &&
     isProviderId(candidate.provider) &&
     (candidate.uiLanguage === 'de' || candidate.uiLanguage === 'en') &&
     typeof candidate.anonymize === 'boolean' &&

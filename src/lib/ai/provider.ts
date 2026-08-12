@@ -1,5 +1,6 @@
 import type { ProviderId } from '../storage/keyVault'
 import { createAnthropicProvider } from './anthropic'
+import { realSleep, type Sleep } from './errors'
 import { createGeminiProvider } from './gemini'
 import { createOpenAiProvider } from './openai'
 
@@ -11,6 +12,15 @@ import { createOpenAiProvider } from './openai'
  * verdrahtete Auswahl hinter einem gemeinsamen Adapter") hinter einer
  * einzigen Schnittstelle austauschbar.
  */
+/** Ein Modell zur Auswahl, so wie die Oberfläche es anzeigt. */
+export interface ModelChoice {
+  /** Die Kennung für den Aufruf, z. B. `gemini-2.5-flash`. */
+  id: string
+  /** Lesbarer Name des Anbieters. */
+  label: string
+  description?: string
+}
+
 export interface LlmRequest {
   system: string
   user: string
@@ -73,6 +83,22 @@ export interface LlmProvider {
    */
   model: string
   generate(req: LlmRequest, apiKey: string, signal?: AbortSignal): Promise<string>
+  /**
+   * Welche Modelle dieser Schlüssel aufrufen darf.
+   *
+   * Optional, weil es nicht jeder Anbieter anbietet — fehlt es, kommt in
+   * der Oberfläche kein Knopf zum Laden, und das Modell wird von Hand
+   * eingetragen.
+   *
+   * **Was die Liste nicht sagt:** ob ein Modell im kostenlosen Tarif
+   * enthalten ist. Nachgesehen in der Modellreferenz — das Modell-Objekt
+   * trägt Name, Beschreibung, Token-Grenzen und unterstützte Methoden, aber
+   * kein Feld zu Tarif, Kontingent oder Preis. Ein Modell kann hier stehen
+   * und trotzdem ein Freikontingent von null haben. Die Oberfläche sagt das
+   * ausdrücklich dazu, statt eine Gewissheit vorzutäuschen, die es nicht
+   * gibt.
+   */
+  listModels?: (apiKey: string, signal?: AbortSignal) => Promise<ModelChoice[]>
 }
 
 /**
@@ -87,6 +113,31 @@ export const PROVIDERS: Record<ProviderId, LlmProvider> = {
   gemini: createGeminiProvider(),
   openai: createOpenAiProvider(),
   anthropic: createAnthropicProvider(),
+}
+
+/**
+ * Ein Anbieter mit einem gewählten Modell — oder mit seinem
+ * voreingestellten, wenn keines gewählt ist.
+ *
+ * **Warum das nötig ist.** Die kostenlosen Tarife unterscheiden sich je
+ * Modell erheblich, bis hin zu „für dieses Modell gar kein Freikontingent".
+ * Ein fest verdrahtetes Modell macht die Anwendung dann unbenutzbar, ohne
+ * dass der Nutzer etwas dagegen tun könnte. Die Auswahl gehört ihm.
+ *
+ * Ein leerer oder nur aus Leerraum bestehender Wert gilt als „nicht
+ * gewählt": So kann ein versehentlich geleertes Eingabefeld die Anwendung
+ * nicht lahmlegen.
+ */
+export function providerFor(id: ProviderId, model?: string): LlmProvider {
+  const chosen = model?.trim()
+  if (chosen === undefined || chosen === '') return PROVIDERS[id]
+  return FACTORIES[id](realSleep, chosen)
+}
+
+const FACTORIES: Record<ProviderId, (sleep: Sleep, model: string) => LlmProvider> = {
+  gemini: createGeminiProvider,
+  openai: createOpenAiProvider,
+  anthropic: createAnthropicProvider,
 }
 
 /**
@@ -119,6 +170,7 @@ export function withSignal(provider: LlmProvider, signal: AbortSignal): LlmProvi
     label: provider.label,
     model: provider.model,
     endpoint: provider.endpoint,
+    listModels: provider.listModels,
     // Ein vom Aufrufer mitgegebenes Signal gewinnt — heute gibt es keinen
     // solchen Aufrufer, und ein stillschweigend verworfenes Signal wäre der
     // schlechtere Vorgabewert.

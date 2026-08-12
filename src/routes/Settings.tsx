@@ -15,7 +15,8 @@ import { Field, FIELD_ERROR_CLASS, FIELD_HINT_CLASS, FIELD_LABEL_CLASS } from '@
 import { SectionCard } from '@/components/ui/SectionCard'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select'
 import { Switch } from '@/components/ui/Switch'
-import { PROVIDERS } from '@/lib/ai/provider'
+import { ModelPicker } from '@/components/settings/ModelPicker'
+import { PROVIDERS, providerFor } from '@/lib/ai/provider'
 import { SUPPORTED_LANGUAGES } from '@/lib/i18n/i18n'
 import type { Settings as StoredSettings, TruthMode } from '@/lib/storage/adapter'
 import { cn } from '@/lib/utils'
@@ -323,6 +324,24 @@ export default function SettingsRoute() {
             onSaved={(provider) => void change({ provider })}
           />
         </section>
+
+        {providerFromVault !== null && (
+          <SectionCard
+            headingId={`${prefix}-model`}
+            heading={t('settings.model.heading')}
+            variant="default"
+          >
+            <ModelPicker
+              fieldId={`${prefix}-model-field`}
+              provider={providerFor(providerFromVault, settings.models?.[providerFromVault])}
+              apiKey={keyVault.vault?.getKey() ?? null}
+              value={settings.models?.[providerFromVault]}
+              onChange={(model) =>
+                void change({ models: { ...settings.models, [providerFromVault]: model } })
+              }
+            />
+          </SectionCard>
+        )}
 
         <SectionCard
           headingId={`${prefix}-backup`}

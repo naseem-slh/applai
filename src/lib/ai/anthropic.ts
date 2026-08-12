@@ -56,11 +56,12 @@ async function performAnthropicRequest(
   req: LlmRequest,
   apiKey: string,
   signal: AbortSignal | undefined,
+  model: string,
 ): Promise<string> {
   const url = `${ANTHROPIC_ENDPOINT}/v1/messages`
   const system = req.json ? `${req.system}\n\n${JSON_ONLY_INSTRUCTION}` : req.system
   const body = {
-    model: ANTHROPIC_MODEL,
+    model,
     max_tokens: req.maxTokens ?? DEFAULT_MAX_TOKENS,
     system,
     // Kein `temperature` (siehe `LlmRequest.temperature` in `provider.ts`,
@@ -148,13 +149,13 @@ async function readAnthropicErrorMessage(response: Response): Promise<string | u
   }
 }
 
-export function createAnthropicProvider(sleep: Sleep = realSleep): LlmProvider {
+export function createAnthropicProvider(sleep: Sleep = realSleep, model: string = ANTHROPIC_MODEL): LlmProvider {
   return {
     id: 'anthropic',
     label: 'Anthropic',
-    model: ANTHROPIC_MODEL,
+    model,
     endpoint: ANTHROPIC_ENDPOINT,
     generate: (req, apiKey, signal) =>
-      withSingleRateLimitRetry(() => performAnthropicRequest(req, apiKey, signal), sleep, signal),
+      withSingleRateLimitRetry(() => performAnthropicRequest(req, apiKey, signal, model), sleep, signal),
   }
 }

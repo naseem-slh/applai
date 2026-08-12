@@ -101,6 +101,15 @@ export type TruthMode = 'strict' | 'bridge' | 'free'
 /** Nutzereinstellungen. `getSettings()` liefert sinnvolle Vorgaben, bevor je etwas gespeichert wurde — siehe `indexeddb.ts`. */
 export interface Settings {
   provider: ProviderId
+  /**
+   * Das gewählte Modell je Anbieter. Fehlt ein Eintrag, gilt das
+   * voreingestellte Modell der Anbieterdatei.
+   *
+   * Je Anbieter und nicht ein einzelner Wert, weil ein Wechsel des Anbieters
+   * sonst ein Modell mitschleppte, das es dort nicht gibt. Optional, damit
+   * ein vor dieser Einstellung gespeicherter Datensatz weiter gilt.
+   */
+  models?: Partial<Record<ProviderId, string>>
   uiLanguage: 'de' | 'en'
   anonymize: boolean
   truthMode: TruthMode

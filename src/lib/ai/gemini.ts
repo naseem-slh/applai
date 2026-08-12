@@ -6,7 +6,7 @@ import {
   realSleep,
   withSingleRateLimitRetry,
 } from './errors'
-import type { LlmProvider, LlmRequest } from './provider'
+import type { LlmProvider, LlmRequest, ModelChoice } from './provider'
 
 /**
  * Modellwahl: aktuelles Flash-Modell — bestes Verhältnis aus Geschwindigkeit
@@ -45,8 +45,13 @@ interface GeminiErrorBody {
  */
 const BLOCKED_FINISH_REASONS = new Set(['SAFETY', 'RECITATION', 'BLOCKLIST', 'PROHIBITED_CONTENT', 'SPII'])
 
-async function performGeminiRequest(req: LlmRequest, apiKey: string, signal: AbortSignal | undefined): Promise<string> {
-  const url = `${GEMINI_ENDPOINT}/v1beta/models/${GEMINI_MODEL}:generateContent`
+async function performGeminiRequest(
+  req: LlmRequest,
+  apiKey: string,
+  signal: AbortSignal | undefined,
+  model: string,
+): Promise<string> {
+  const url = `${GEMINI_ENDPOINT}/v1beta/models/${model}:generateContent`
   const body = {
     contents: [{ role: 'user', parts: [{ text: req.user }] }],
     systemInstruction: { parts: [{ text: req.system }] },
@@ -167,13 +172,47 @@ async function readGeminiError(response: Response): Promise<{ code?: string; mes
   }
 }
 
-export function createGeminiProvider(sleep: Sleep = realSleep): LlmProvider {
+/**
+ * Die Modelle, die dieser Schlüssel aufrufen darf, gefiltert auf die, mit
+ * denen Applai etwas anfangen kann (`generateContent`).
+ *
+ * Kostet **eine** Anfrage und wird deshalb nur auf ausdrücklichen Wunsch
+ * ausgelöst, nicht beim Öffnen der Einstellungen.
+ *
+ * `name` kommt als `models/gemini-…` und wird auf die reine Kennung
+ * gekürzt: Genau die steht später in der Adresse des Aufrufs.
+ */
+async function listGeminiModels(apiKey: string, signal?: AbortSignal): Promise<ModelChoice[]> {
+  const response = await fetchOrNetworkError(
+    `${GEMINI_ENDPOINT}/v1beta/models`,
+    { method: 'GET', headers: { 'x-goog-api-key': apiKey }, signal },
+    'gemini',
+    'Modelle',
+  )
+  if (!response.ok) throw await buildGeminiError(response)
+
+  const body = (await response.json()) as {
+    models?: { name?: string; displayName?: string; description?: string; supportedGenerationMethods?: string[] }[]
+  }
+
+  return (body.models ?? [])
+    .filter((entry) => entry.supportedGenerationMethods?.includes('generateContent') === true)
+    .map((entry) => ({
+      id: (entry.name ?? '').replace(/^models\//, ''),
+      label: entry.displayName ?? (entry.name ?? '').replace(/^models\//, ''),
+      description: entry.description,
+    }))
+    .filter((choice) => choice.id !== '')
+}
+
+export function createGeminiProvider(sleep: Sleep = realSleep, model: string = GEMINI_MODEL): LlmProvider {
   return {
     id: 'gemini',
     label: 'Google Gemini',
-    model: GEMINI_MODEL,
+    model,
     endpoint: GEMINI_ENDPOINT,
     generate: (req, apiKey, signal) =>
-      withSingleRateLimitRetry(() => performGeminiRequest(req, apiKey, signal), sleep, signal),
+      withSingleRateLimitRetry(() => performGeminiRequest(req, apiKey, signal, model), sleep, signal),
+    listModels: listGeminiModels,
   }
 }

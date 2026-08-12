@@ -45,7 +45,7 @@ import { useWideViewport } from '@/components/editor/useWideViewport'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { FIELD_HINT_CLASS } from '@/components/ui/Field'
-import { PROVIDERS, withSignal } from '@/lib/ai/provider'
+import { providerFor, withSignal } from '@/lib/ai/provider'
 import { isoDate } from '@/lib/export/docx'
 import { parseDocx } from '@/lib/docx/parse'
 import { detectLanguage } from '@/lib/domain/language'
@@ -172,7 +172,14 @@ function EditorWorkspace({ session }: { session: StartSession }) {
   // Sicherungsdatei steht (siehe `Settings.tsx`).
   const vaultProvider = keyVault.vault?.getProvider() ?? null
   const apiKey = keyVault.vault?.getKey() ?? null
-  const provider = vaultProvider === null ? null : PROVIDERS[vaultProvider]
+  // Das Modell kommt aus den Einstellungen, der Anbieter aus dem Tresor.
+  // `useMemo`, weil `providerFor` bei jedem Aufruf ein neues Objekt baut und
+  // die Auswertung an der Identität des Anbieters hängt.
+  const chosenModel = settings.models?.[vaultProvider ?? 'gemini']
+  const provider = useMemo(
+    () => (vaultProvider === null ? null : providerFor(vaultProvider, chosenModel)),
+    [vaultProvider, chosenModel],
+  )
 
   const privacy = useMemo(
     () => ({ enabled: settings.anonymize, userName: session.userName }),

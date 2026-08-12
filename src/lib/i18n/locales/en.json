@@ -518,6 +518,19 @@
       "storageFailed": "The API key was deleted, but the application list, drafts and settings were not. Please reload the page and try again.",
       "vaultFailed": "The application list, drafts and settings were deleted, but the stored API key was not. Please reload the page and try again.",
       "bothFailed": "Nothing was deleted. Your browser is not releasing its storage right now. Please close other tabs with Applai, reload the page and try again."
+    },
+    "model": {
+      "heading": "Model",
+      "label": "Model identifier",
+      "hint": "Applai calls this model. The provider’s list does not say which models your free tier covers; it has no field for that. You can look it up in your provider’s console under “Rate limits”.",
+      "load": "Load models",
+      "loading": "Loading models",
+      "loaded_one": "1 model available",
+      "loaded_other": "{{count}} models available",
+      "choose": "Choose from the list",
+      "reset": "Use the default",
+      "current": "Default: {{model}}",
+      "needsKey": "The key must be unlocked to load the list."
     }
   },
   "vault": {
