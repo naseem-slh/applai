@@ -7,6 +7,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  createFakeStorage,
   createFakeVault,
   createHarness,
   type HarnessOptions,
@@ -70,6 +71,14 @@ function setup(options: HarnessOptions = {}) {
     { wrapper: harness.wrapper },
   )
   return { ...view, harness }
+}
+
+/**
+ * Die Dokumentfläche, über ihren Namen. Seit 14c stehen daneben die Felder
+ * der Seitenspalte; ein Zugriff nur über die Rolle träfe die auch.
+ */
+function documentSurface(): Promise<HTMLElement> {
+  return screen.findByRole('textbox', { name: t('editor.document.heading') })
 }
 
 function paragraphElement(index: number): HTMLElement {
@@ -148,6 +157,14 @@ const STYLE_REPLY = {
   sample: STYLE_SAMPLE,
 }
 
+const GAPS_REPLY = {
+  assessments: [{ index: 0, status: 'covered', evidence: 'Im Lebenslauf genannt' }],
+}
+
+/** Was der Übersetzungsschritt zurückgibt, wenn die Zielsprache abweicht. */
+const TRANSLATED_SELECTION =
+  'I am applying for the advertised position. My motivation is high.'
+
 const VARIANT_TEXTS = [
   'Ich bewerbe mich um die ausgeschriebene Stelle und bringe viel Freude mit.',
   'Auf die ausgeschriebene Stelle bewerbe ich mich mit Nachdruck.',
@@ -159,6 +176,8 @@ interface FetchStubOptions {
   variants?: { text: string; unbackedClaims: string[] }[]
   /** Antwort auf die Auswertung von Anzeige und Stilprofil unterdrücken. */
   failAnalysis?: boolean
+  /** Abweichende Felder der Anzeigen-Antwort. */
+  jobAd?: Partial<typeof JOB_AD_REPLY>
 }
 
 /**
@@ -182,11 +201,21 @@ function stubFetch(options: FetchStubOptions = {}) {
 
     if (system.startsWith('Du analysierst eine Stellenanzeige')) {
       if (options.failAnalysis) return Promise.resolve(mockFetchResponse(401, {}))
-      return Promise.resolve(geminiReply(JOB_AD_REPLY))
+      return Promise.resolve(geminiReply({ ...JOB_AD_REPLY, ...options.jobAd }))
     }
     if (system.startsWith('Du analysierst den Schreibstil')) {
       if (options.failAnalysis) return Promise.resolve(mockFetchResponse(401, {}))
       return Promise.resolve(geminiReply(STYLE_REPLY))
+    }
+    if (system.startsWith('Du prüfst')) {
+      return Promise.resolve(geminiReply(GAPS_REPLY))
+    }
+    if (system.startsWith('Du übersetzt')) {
+      // Bei abweichender Zielsprache läuft erst dieser Schritt, dann die
+      // Umformulierung (Aufgabe 11, zwei getrennte Aufrufe). Die Antwort
+      // muss ungefähr so lang sein wie die Auswahl, sonst gilt sie als
+      // „Kontext mitübersetzt".
+      return Promise.resolve(geminiReply({ translation: TRANSLATED_SELECTION }))
     }
     return Promise.resolve(geminiReply({ variants }))
   })
@@ -246,7 +275,7 @@ describe('Editor', () => {
   it('bringt kein eigenes <main> mit', async () => {
     const { container } = setup()
 
-    await screen.findByRole('textbox')
+    await documentSurface()
     expect(container.querySelectorAll('main')).toHaveLength(0)
     expect(
       screen.getByRole('heading', { level: 1, name: t('routes.editor.heading') }),
@@ -256,14 +285,14 @@ describe('Editor', () => {
   it('zeigt das Anschreiben als ein bearbeitbares Feld mit allen Absätzen', async () => {
     setup()
 
-    const box = await screen.findByRole('textbox')
+    const box = await documentSurface()
     expect(box.querySelectorAll(`[${PARAGRAPH_INDEX_ATTRIBUTE}]`)).toHaveLength(5)
     expect(paragraphElement(0)).toHaveTextContent('Sehr geehrte Damen und Herren,')
   })
 
   it('markiert auf Knopfdruck das ganze Dokument', async () => {
     setup()
-    await screen.findByRole('textbox')
+    await documentSurface()
 
     fireEvent.click(screen.getByRole('button', { name: t('editor.selection.wholeDocument') }))
 
@@ -274,7 +303,7 @@ describe('Editor', () => {
 
   it('markiert den Absatz, in dem der Cursor steht', async () => {
     setup()
-    await screen.findByRole('textbox')
+    await documentSurface()
 
     caretIn(1, 3)
     fireEvent.click(screen.getByRole('button', { name: t('editor.selection.currentParagraph') }))
@@ -288,7 +317,7 @@ describe('Editor', () => {
 
   it('übernimmt eine Eingabe ins Modell und macht sie mit Strg+Z rückgängig', async () => {
     setup()
-    await screen.findByRole('textbox')
+    await documentSurface()
     const original = paragraphElement(0).textContent
 
     type(0, 'Guten Tag,')
@@ -309,7 +338,7 @@ describe('Editor', () => {
 
   it('fasst zusammenhängendes Tippen in einem Absatz zu einem Schritt zusammen', async () => {
     setup()
-    await screen.findByRole('textbox')
+    await documentSurface()
     const original = paragraphElement(0).textContent
 
     type(0, 'Sehr geehrte Damen und Herren')
@@ -326,7 +355,7 @@ describe('Editor', () => {
 
   it('trennt Eingaben in verschiedenen Absätzen in eigene Schritte', async () => {
     setup()
-    await screen.findByRole('textbox')
+    await documentSurface()
     const first = paragraphElement(0).textContent
 
     type(0, 'Guten Tag,')
@@ -349,7 +378,7 @@ describe('Editor', () => {
 
   it('sperrt Rückgängig, solange nichts geändert wurde', async () => {
     setup()
-    await screen.findByRole('textbox')
+    await documentSurface()
 
     expect(screen.getByRole('button', { name: t('editor.undo') })).toBeDisabled()
   })
@@ -372,7 +401,9 @@ describe('Editor', () => {
     // Feinmarkierung weg; ein Brief, der sich unterwegs nicht einmal an
     // einer Stelle berichtigen ließe, wäre weniger wert als eine ungenaue
     // Einfügestelle.
-    expect(screen.getByRole('textbox')).toBeInTheDocument()
+    expect(
+      screen.getByRole('textbox', { name: t('editor.document.heading') }),
+    ).toBeInTheDocument()
     type(0, 'Guten Tag,')
     await waitFor(() => {
       expect(screen.getByRole('button', { name: t('editor.undo') })).toBeEnabled()
@@ -388,7 +419,7 @@ describe('Editor', () => {
         userName: 'Marlene Ostwald',
       },
     })
-    await screen.findByRole('textbox')
+    await documentSurface()
 
     fireEvent.click(screen.getByRole('button', { name: t('editor.selection.wholeDocument') }))
 
@@ -418,7 +449,7 @@ describe('Editor', () => {
         userName: 'Marlene Ostwald',
       },
     })
-    await screen.findByRole('textbox')
+    await documentSurface()
 
     // Absatz 3 („Zelle") ist der letzte einer Tabellenzelle und wird nie
     // entfernt — als einziger betroffener Absatz verrutscht dabei nichts.
@@ -434,7 +465,7 @@ describe('Editor', () => {
 
   it('sagt vor dem ersten Zwischenstand, dass alle 20 Sekunden gesichert wird', async () => {
     setup()
-    await screen.findByRole('textbox')
+    await documentSurface()
 
     expect(screen.getByText(t('editor.draft.idle'))).toBeInTheDocument()
   })
@@ -451,7 +482,7 @@ describe('Editor — Varianten (14b)', () => {
   it('fragt beim Betreten Anzeige und Stilprofil ab und gibt danach den Knopf frei', async () => {
     const { calls } = stubFetch()
     setup({ vault: unlockedVault() })
-    await screen.findByRole('textbox')
+    await documentSurface()
 
     await waitFor(() =>
       expect(screen.queryByText(t('editor.analysis.loading'))).not.toBeInTheDocument(),
@@ -474,7 +505,7 @@ describe('Editor — Varianten (14b)', () => {
       vi.fn(() => new Promise<Response>(() => {})),
     )
     setup({ vault: unlockedVault() })
-    await screen.findByRole('textbox')
+    await documentSurface()
 
     expect(screen.getByText(t('editor.analysis.loading'))).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: t('editor.selection.wholeDocument') }))
@@ -484,7 +515,7 @@ describe('Editor — Varianten (14b)', () => {
   it('fragt gar nicht, solange der Tresor gesperrt ist, und sagt warum', async () => {
     const { fetchMock } = stubFetch()
     setup({ status: 'locked' })
-    await screen.findByRole('textbox')
+    await documentSurface()
 
     expect(screen.getByText(t('vault.locked'))).toBeInTheDocument()
     expect(fetchMock).not.toHaveBeenCalled()
@@ -493,7 +524,7 @@ describe('Editor — Varianten (14b)', () => {
   it('meldet eine gescheiterte Auswertung übersetzt und versucht sie auf Wunsch erneut', async () => {
     stubFetch({ failAnalysis: true })
     setup({ vault: unlockedVault() })
-    await screen.findByRole('textbox')
+    await documentSurface()
 
     await waitFor(() =>
       expect(screen.getByRole('alert')).toHaveTextContent(t('ai.errors.invalid_key')),
@@ -511,7 +542,7 @@ describe('Editor — Varianten (14b)', () => {
   it('übernimmt eine Variante in den Dokumenttext und macht das mit Strg+Z rückgängig', async () => {
     stubFetch()
     setup({ vault: unlockedVault() })
-    await screen.findByRole('textbox')
+    await documentSurface()
     const original = paragraphElement(1).textContent
 
     caretIn(1, 3)
@@ -531,7 +562,7 @@ describe('Editor — Varianten (14b)', () => {
   it('schickt die Auswahl mit ihrem Kontext, aber ohne den Klarnamen an den Anbieter', async () => {
     const { calls } = stubFetch()
     setup({ vault: unlockedVault() })
-    await screen.findByRole('textbox')
+    await documentSurface()
 
     caretIn(1, 3)
     fireEvent.click(screen.getByRole('button', { name: t('editor.selection.currentParagraph') }))
@@ -559,7 +590,7 @@ describe('Editor — Varianten (14b)', () => {
       ],
     })
     setup({ vault: unlockedVault(), settings: { truthMode: 'free' } })
-    await screen.findByRole('textbox')
+    await documentSurface()
 
     caretIn(1, 3)
     fireEvent.click(screen.getByRole('button', { name: t('editor.selection.currentParagraph') }))
@@ -593,7 +624,7 @@ describe('Editor — Varianten (14b)', () => {
       ],
     })
     setup({ vault: unlockedVault(), settings: { truthMode: 'free' } })
-    await screen.findByRole('textbox')
+    await documentSurface()
 
     caretIn(1, 3)
     fireEvent.click(screen.getByRole('button', { name: t('editor.selection.currentParagraph') }))
@@ -619,7 +650,7 @@ describe('Editor — Varianten (14b)', () => {
     const { fetchMock } = stubFetch()
     const vault = unlockedVault()
     setup({ vault })
-    await screen.findByRole('textbox')
+    await documentSurface()
     await waitFor(() =>
       expect(screen.queryByText(t('editor.analysis.loading'))).not.toBeInTheDocument(),
     )
@@ -639,7 +670,7 @@ describe('Editor — Varianten (14b)', () => {
   it('schaltet den freien Modus erst nach ausdrücklicher Zustimmung ein', async () => {
     stubFetch()
     const { harness } = setup({ vault: unlockedVault() })
-    await screen.findByRole('textbox')
+    await documentSurface()
 
     fireEvent.pointerDown(screen.getByRole('combobox', { name: t('editor.truthMode.label') }), {
       button: 0,
@@ -654,5 +685,219 @@ describe('Editor — Varianten (14b)', () => {
     fireEvent.click(screen.getByRole('button', { name: t('editor.truthMode.free.confirmAction') }))
 
     expect(harness.updateSettings).toHaveBeenCalledWith({ truthMode: 'free' })
+  })
+})
+
+describe('Editor — Seitenspalte und Sprache (14c)', () => {
+  beforeEach(() => {
+    Element.prototype.hasPointerCapture ??= () => false
+    Element.prototype.setPointerCapture ??= () => {}
+    Element.prototype.releasePointerCapture ??= () => {}
+    Element.prototype.scrollIntoView ??= () => {}
+  })
+
+  /**
+   * Eine englische Stellenanzeige. Die Sprache kommt aus dem **Text**, nicht
+   * aus der Modellantwort: `analyzeJobAd` überschreibt das `language`-Feld
+   * der Antwort immer mit der deterministischen Erkennung (Aufgabe 9,
+   * „reproduzierbar schlägt Modellmeinung").
+   */
+  const ENGLISH_JOB_AD = [
+    'We are looking for a frontend engineer to join our platform team.',
+    'You will work with React and TypeScript and review the code of others.',
+    'A degree in computer science or equivalent experience is required.',
+  ].join('\n')
+
+  function englishAdSession(): HarnessOptions {
+    return {
+      session: {
+        letter: letterDocument(),
+        cv: null,
+        jobAdText: ENGLISH_JOB_AD,
+        userName: 'Marlene Ostwald',
+      },
+    }
+  }
+
+  /**
+   * Gewartet wird über den Text, nicht über eine Rolle: Steht die
+   * Sprach-Nachfrage offen, legt Radix `aria-hidden` über den Rest der
+   * Seite, und eine Abfrage nach der Rolle fände die Dokumentfläche dann
+   * nicht mehr — was richtig ist (sie ist hinter einem modalen Dialog auch
+   * nicht bedienbar), aber hier nur den Aufbau des Tests beträfe.
+   */
+  async function ready(options: Parameters<typeof stubFetch>[0] = {}, harness: HarnessOptions = {}) {
+    const stub = stubFetch(options)
+    const view = setup({ vault: unlockedVault(), ...harness })
+    await waitFor(() => expect(paragraphElement(0)).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.queryByText(t('editor.analysis.loading'))).not.toBeInTheDocument(),
+    )
+    return { ...view, ...stub }
+  }
+
+  it('füllt den Briefkopf aus der ausgewerteten Anzeige vor', async () => {
+    await ready()
+
+    expect(screen.getByLabelText(t('editor.letterhead.fields.recipient'))).toHaveValue(
+      'Musterwerk Solutions',
+    )
+    expect(screen.getByLabelText(t('editor.letterhead.fields.subject'))).toHaveValue(
+      'Bewerbung als Entwicklerin',
+    )
+    // Ohne Ansprechpartner die übliche Formel, keine erfundene Person.
+    expect(screen.getByLabelText(t('editor.letterhead.fields.salutation'))).toHaveValue(
+      'Sehr geehrte Damen und Herren',
+    )
+  })
+
+  it('setzt ein Briefkopf-Feld an der Markierung ein und macht das mit Strg+Z rückgängig', async () => {
+    await ready()
+    const original = paragraphElement(0).textContent
+
+    caretIn(0, 2)
+    fireEvent.click(screen.getByRole('button', { name: t('editor.selection.currentParagraph') }))
+
+    const insertButtons = screen.getAllByRole('button', { name: t('editor.letterhead.insert') })
+    fireEvent.click(insertButtons[3]!)
+
+    await waitFor(() =>
+      expect(paragraphElement(0).textContent).toBe('Sehr geehrte Damen und Herren'),
+    )
+
+    undoShortcut()
+
+    await waitFor(() => expect(paragraphElement(0).textContent).toBe(original))
+  })
+
+  it('sperrt das Einsetzen, solange nichts markiert ist', async () => {
+    await ready()
+
+    for (const button of screen.getAllByRole('button', { name: t('editor.letterhead.insert') })) {
+      expect(button).toBeDisabled()
+    }
+  })
+
+  it('zeigt die Anforderungen der Anzeige ohne weiteren Modellaufruf', async () => {
+    const { calls } = await ready()
+
+    expect(screen.getByText('Erfahrung mit TypeScript')).toBeInTheDocument()
+    expect(calls).toHaveLength(2)
+  })
+
+  it('holt den Abgleich erst auf Knopfdruck und nennt ihn dann eine Einschätzung', async () => {
+    const { calls } = await ready()
+
+    fireEvent.click(screen.getByRole('button', { name: t('editor.gaps.run') }))
+
+    expect(await screen.findByText(t('editor.gaps.status.covered'))).toBeInTheDocument()
+    expect(calls).toHaveLength(3)
+    expect(screen.getByText(t('editor.gaps.assessment'))).toBeInTheDocument()
+  })
+
+  it('übernimmt eine Korrektur am Stilprofil in den nächsten Auftrag an das Modell', async () => {
+    const { calls } = await ready()
+
+    fireEvent.change(screen.getByLabelText(t('editor.style.traitsLabel')), {
+      target: { value: 'schreibt ausschließlich in Fragen' },
+    })
+
+    caretIn(1, 3)
+    fireEvent.click(screen.getByRole('button', { name: t('editor.selection.currentParagraph') }))
+    await openVariants()
+    await screen.findByText(VARIANT_TEXTS[0]!)
+
+    const rewriteCall = calls.at(-1)!
+    expect(rewriteCall.user).toContain('schreibt ausschließlich in Fragen')
+    expect(rewriteCall.user).not.toContain('knappe Hauptsätze')
+  })
+
+  it('markiert einen Firmennamen aus einer früheren Bewerbung im Text', async () => {
+    const storage = createFakeStorage({
+      applications: [
+        { id: 'a1', company: 'Musterwerk Solutions', position: 'Entwicklerin', date: '2026-01-01' },
+        { id: 'a2', company: 'Herren', position: 'Irgendwas', date: '2026-02-01' },
+      ],
+    })
+    await ready({}, { storage })
+
+    // „Herren" steht im ersten Absatz des Anschreibens und gehört nicht zur
+    // aktuellen Anzeige; „Musterwerk Solutions" ist die aktuelle Firma und
+    // wird deshalb nicht gemeldet.
+    expect(
+      await screen.findByText(
+        t('editor.letterhead.foreign.entry', { name: 'Herren', number: 1 }),
+      ),
+    ).toBeInTheDocument()
+    expect(paragraphElement(0).className).toContain('border-[var(--color-error)]')
+  })
+
+  // docs/spec.md: „Zielsprache = Sprache der Anzeige. Nachfrage nur bei
+  // Abweichung." Der Regelfall ist die Übereinstimmung.
+  it('fragt nichts, wenn Anzeige und Anschreiben dieselbe Sprache haben', async () => {
+    await ready()
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('fragt bei abweichender Sprache und weist auf die Gepflogenheiten hin', async () => {
+    await ready({}, englishAdSession())
+
+    const dialog = await screen.findByRole('dialog')
+    expect(dialog).toHaveTextContent(t('editor.language.customs.heading'))
+  })
+
+  it('übersetzt erst, nachdem der Wechsel bestätigt wurde', async () => {
+    const { calls } = await ready({}, englishAdSession())
+
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: t('editor.language.switch', { language: t('editor.language.names.en') }),
+      }),
+    )
+
+    caretIn(1, 3)
+    fireEvent.click(screen.getByRole('button', { name: t('editor.selection.currentParagraph') }))
+    await openVariants()
+    await screen.findByText(VARIANT_TEXTS[0]!)
+
+    // Bei abweichender Zielsprache läuft erst ein Übersetzungsschritt
+    // (Aufgabe 11), dann die Umformulierung: zwei Aufrufe statt einem.
+    expect(calls).toHaveLength(4)
+  })
+
+  it('bleibt bei der Sprache des Briefes, wenn die Nachfrage abgelehnt wird', async () => {
+    const { calls } = await ready({}, englishAdSession())
+
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: t('editor.language.keep', { language: t('editor.language.names.de') }),
+      }),
+    )
+
+    caretIn(1, 3)
+    fireEvent.click(screen.getByRole('button', { name: t('editor.selection.currentParagraph') }))
+    await openVariants()
+    await screen.findByText(VARIANT_TEXTS[0]!)
+
+    expect(calls).toHaveLength(3)
+  })
+
+  it('fragt die Sprache nur einmal', async () => {
+    await ready({}, englishAdSession())
+
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: t('editor.language.keep', { language: t('editor.language.names.de') }),
+      }),
+    )
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+
+    type(0, 'Guten Tag,')
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: t('editor.undo') })).toBeEnabled(),
+    )
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 })

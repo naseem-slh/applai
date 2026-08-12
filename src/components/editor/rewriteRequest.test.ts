@@ -3,7 +3,14 @@ import type { DocxDocument, Paragraph } from '@/lib/docx/model'
 import type { JobAd } from '@/lib/domain/jobAd'
 import type { StyleProfile } from '@/lib/domain/styleProfile'
 import { createSelection } from './documentSelection'
-import { buildRewriteRequest, defaultSliders, factsFrom } from './rewriteRequest'
+import {
+  buildRewriteRequest,
+  defaultSliders,
+  factsFrom,
+  SLIDER_STEP_COUNT,
+  sliderStep,
+  stepToSlider,
+} from './rewriteRequest'
 
 function fakeDocument(texts: string[]): DocxDocument {
   const xml = new DOMParser().parseFromString(
@@ -41,6 +48,38 @@ const STYLE: StyleProfile = {
 describe('defaultSliders', () => {
   it('beginnt bei der gemessenen Förmlichkeit, damit „unverändert" ausdrückbar ist', () => {
     expect(defaultSliders(STYLE)).toEqual({ formality: 72, length: 50 })
+  })
+})
+
+// Die Übersetzung zwischen der Zahl, die Aufgabe 11 erwartet (0 bis 100),
+// und den benannten Stufen, die das Regler-Primitiv kennt (DESIGN.md).
+describe('sliderStep / stepToSlider', () => {
+  it('legt die Enden und die Mitte genau aufeinander', () => {
+    expect(sliderStep(0)).toBe(0)
+    expect(sliderStep(50)).toBe(2)
+    expect(sliderStep(100)).toBe(SLIDER_STEP_COUNT - 1)
+    expect(stepToSlider(0)).toBe(0)
+    expect(stepToSlider(2)).toBe(50)
+    expect(stepToSlider(SLIDER_STEP_COUNT - 1)).toBe(100)
+  })
+
+  it('rundet einen gemessenen Zwischenwert auf die nächste Stufe', () => {
+    expect(sliderStep(72)).toBe(3)
+    expect(sliderStep(60)).toBe(2)
+  })
+
+  it('bleibt in den Grenzen, egal was hereinkommt', () => {
+    expect(sliderStep(-40)).toBe(0)
+    expect(sliderStep(1000)).toBe(SLIDER_STEP_COUNT - 1)
+    expect(sliderStep(Number.NaN)).toBe(2)
+    expect(stepToSlider(-3)).toBe(0)
+    expect(stepToSlider(99)).toBe(100)
+  })
+
+  it('bildet jede Stufe verlustfrei auf sich selbst ab', () => {
+    for (let step = 0; step < SLIDER_STEP_COUNT; step++) {
+      expect(sliderStep(stepToSlider(step))).toBe(step)
+    }
   })
 })
 

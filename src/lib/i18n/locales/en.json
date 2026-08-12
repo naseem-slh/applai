@@ -302,6 +302,101 @@
     "analysis": {
       "loading": "Reading the job ad and your writing style.",
       "retry": "Try again"
+    },
+    "letterhead": {
+      "heading": "Letterhead",
+      "fields": {
+        "recipient": "Recipient",
+        "date": "Date",
+        "subject": "Subject",
+        "salutation": "Salutation"
+      },
+      "insert": "Insert",
+      "insertHint": "Inserting replaces the selected passage in the letter. Undo with Ctrl+Z.",
+      "insertHintNoSelection": "Select the passage in the letter you want replaced. A field can then be inserted there.",
+      "foreign": {
+        "badge_one": "1 other company",
+        "badge_other": "{{count}} other companies",
+        "heading_one": "The letter names another company.",
+        "heading_other": "The letter names other companies.",
+        "entry": "{{name}}, in paragraph {{number}}",
+        "body": "The name comes from an earlier application and does not belong to this job ad. The paragraphs concerned are highlighted in the letter."
+      }
+    },
+    "gaps": {
+      "heading": "Requirements",
+      "count_one": "1 item",
+      "count_other": "{{count}} items",
+      "none": "No individual requirements could be read out of this job ad.",
+      "kind": {
+        "skill": "Technical skill",
+        "experience": "Work experience",
+        "education": "Education",
+        "language": "Language",
+        "soft": "Personal quality"
+      },
+      "status": {
+        "covered": "Covered",
+        "partial": "Partly covered",
+        "missing": "Not covered"
+      },
+      "evidence": "The AI's assessment: {{evidence}}",
+      "run": "Compare with my documents",
+      "again": "Compare again",
+      "running": "Comparing",
+      "hint": "The comparison checks the requirements against your CV and cover letter. It costs one request to your provider.",
+      "assessment": "The verdict is the AI's assessment, not a quote from your documents. Please check it yourself."
+    },
+    "style": {
+      "heading": "Writing style",
+      "formalityLabel": "Formality",
+      "formalityHint": "Derived from your cover letter: {{measured}} out of 100.",
+      "formalitySteps": {
+        "0": "very casual",
+        "1": "fairly casual",
+        "2": "neutral",
+        "3": "fairly formal",
+        "4": "very formal"
+      },
+      "lengthLabel": "Length",
+      "lengthHint": "How expansive a reworded passage should be.",
+      "lengthSteps": {
+        "0": "much shorter",
+        "1": "a little shorter",
+        "2": "about the same",
+        "3": "a little longer",
+        "4": "much longer"
+      },
+      "traitsLabel": "Traits of your style",
+      "traitsHint": "One trait per line. Whatever stands here feeds into every rewording, so do correct it.",
+      "measured": {
+        "address": "How the letter addresses the reader",
+        "sentenceLength": "Measured sentence length",
+        "sample": "Sample sentence from your letter"
+      },
+      "address": {
+        "sie": "formal (Sie)",
+        "du": "informal (du)",
+        "none": "no direct address"
+      },
+      "sentenceLength": "{{words}} words per sentence"
+    },
+    "language": {
+      "heading": "Which language should the letter be in?",
+      "intro": "The job ad is in {{ad}}, your cover letter in {{letter}}. Reworded passages are translated first and adapted afterwards.",
+      "names": {
+        "de": "German",
+        "en": "English"
+      },
+      "keep": "Stay with {{language}}",
+      "switch": "Switch to {{language}}",
+      "customs": {
+        "heading": "Different conventions in English-speaking countries",
+        "body": "A photo, date of birth and postal address are unusual there and in some places lead to an application being screened out."
+      }
+    },
+    "sidePanel": {
+      "label": "Letterhead, requirements and writing style"
     }
   },
   "settings": {

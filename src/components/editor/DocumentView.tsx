@@ -104,6 +104,14 @@ export interface DocumentViewProps {
    * daneben in `ClaimGuard`.
    */
   claimParagraphs?: readonly number[]
+  /**
+   * Absätze, in denen der Name einer fremden Firma steht (Aufgabe 12,
+   * deterministisch, ohne KI). Dieselbe Kontur wie bei einer unbestätigten
+   * Aussage: Beides ist ein Fehler im Brief, den der Nutzer sehen und
+   * beheben soll, und beides zeigt aus demselben Grund auf den Absatz statt
+   * auf die Fundstelle darin (siehe `foreignCompanies.ts`).
+   */
+  foreignParagraphs?: readonly number[]
   /** Der neue Text genau eines Absatzes, sobald der Nutzer ihn geändert hat. */
   onParagraphInput: (index: number, text: string) => void
   /** Kennung der Überschrift, die diese Fläche benennt. */
@@ -124,6 +132,7 @@ export function DocumentView({
   editable,
   retainedParagraphs = [],
   claimParagraphs = [],
+  foreignParagraphs = [],
   onParagraphInput,
   labelledBy,
   language,
@@ -132,7 +141,7 @@ export function DocumentView({
 }: DocumentViewProps) {
   const ownRef = useRef<HTMLDivElement>(null)
   const retained = new Set(retainedParagraphs)
-  const claimed = new Set(claimParagraphs)
+  const flagged = new Set([...claimParagraphs, ...foreignParagraphs])
 
   function host(): HTMLDivElement | null {
     return rootRef?.current ?? ownRef.current
@@ -231,7 +240,7 @@ export function DocumentView({
           key={paragraph.index}
           paragraph={paragraph}
           retained={retained.has(paragraph.index)}
-          claimed={claimed.has(paragraph.index)}
+          flagged={flagged.has(paragraph.index)}
         />
       ))}
     </div>
@@ -241,10 +250,11 @@ export function DocumentView({
 interface DocumentParagraphProps {
   paragraph: Paragraph
   retained: boolean
-  claimed: boolean
+  /** Eine unbestätigte unbelegte Aussage oder ein fremder Firmenname. */
+  flagged: boolean
 }
 
-function DocumentParagraph({ paragraph, retained, claimed }: DocumentParagraphProps) {
+function DocumentParagraph({ paragraph, retained, flagged }: DocumentParagraphProps) {
   const ref = useRef<HTMLParagraphElement>(null)
 
   // Bewusst ohne Abhängigkeitsliste: Der Abgleich läuft nach **jedem**
@@ -268,10 +278,11 @@ function DocumentParagraph({ paragraph, retained, claimed }: DocumentParagraphPr
         // sichtbar noch anklickbar.
         'min-h-[1.7em] border-l-2 pl-3 whitespace-pre-wrap',
         // Die Kontur liegt immer an, nur farblos: So verschiebt sich beim
-        // Hervorheben kein Zeichen. Die unbelegte Aussage gewinnt, wenn
-        // beides zusammentrifft — sie hält den Export an, die
-        // Verschiebungswarnung nicht.
-        claimed
+        // Hervorheben kein Zeichen. Der beanstandete Absatz gewinnt, wenn
+        // beides zusammentrifft — er hält den Export an oder nennt einen
+        // falschen Firmennamen, die Verschiebungswarnung dagegen beschreibt
+        // nur eine Nebenwirkung.
+        flagged
           ? 'border-[var(--color-error)]'
           : retained
             ? 'border-[var(--color-warning)]'

@@ -302,6 +302,101 @@
     "analysis": {
       "loading": "Stellenanzeige und Schreibstil werden gelesen.",
       "retry": "Erneut versuchen"
+    },
+    "letterhead": {
+      "heading": "Briefkopf",
+      "fields": {
+        "recipient": "Empfänger",
+        "date": "Datum",
+        "subject": "Betreff",
+        "salutation": "Anrede"
+      },
+      "insert": "Einsetzen",
+      "insertHint": "Einsetzen ersetzt die markierte Stelle im Brief. Mit Strg+Z zurückzunehmen.",
+      "insertHintNoSelection": "Markieren Sie im Brief die Stelle, die ersetzt werden soll. Danach lässt sich ein Feld dort einsetzen.",
+      "foreign": {
+        "badge_one": "1 fremde Firma",
+        "badge_other": "{{count}} fremde Firmen",
+        "heading_one": "Im Brief steht der Name einer anderen Firma.",
+        "heading_other": "Im Brief stehen die Namen anderer Firmen.",
+        "entry": "{{name}}, in Absatz {{number}}",
+        "body": "Der Name stammt aus einer früheren Bewerbung und gehört nicht zu dieser Anzeige. Die betroffenen Absätze sind im Brief hervorgehoben."
+      }
+    },
+    "gaps": {
+      "heading": "Anforderungen",
+      "count_one": "1 Punkt",
+      "count_other": "{{count}} Punkte",
+      "none": "Aus dieser Anzeige ließen sich keine einzelnen Anforderungen herauslesen.",
+      "kind": {
+        "skill": "Fachliche Fähigkeit",
+        "experience": "Berufserfahrung",
+        "education": "Ausbildung",
+        "language": "Sprache",
+        "soft": "Persönliche Eigenschaft"
+      },
+      "status": {
+        "covered": "Gedeckt",
+        "partial": "Teilweise gedeckt",
+        "missing": "Nicht gedeckt"
+      },
+      "evidence": "Einschätzung der KI: {{evidence}}",
+      "run": "Mit meinen Unterlagen abgleichen",
+      "again": "Abgleich wiederholen",
+      "running": "Abgleich läuft",
+      "hint": "Der Abgleich vergleicht die Anforderungen mit Ihrem Lebenslauf und Ihrem Anschreiben. Er kostet eine Anfrage bei Ihrem Anbieter.",
+      "assessment": "Die Bewertung ist eine Einschätzung der KI, kein Zitat aus Ihren Unterlagen. Bitte selbst nachsehen."
+    },
+    "style": {
+      "heading": "Schreibstil",
+      "formalityLabel": "Förmlichkeit",
+      "formalityHint": "Aus Ihrem Anschreiben abgeleitet: {{measured}} von 100.",
+      "formalitySteps": {
+        "0": "sehr locker",
+        "1": "eher locker",
+        "2": "neutral",
+        "3": "eher förmlich",
+        "4": "sehr förmlich"
+      },
+      "lengthLabel": "Umfang",
+      "lengthHint": "Wie ausführlich eine umformulierte Stelle werden soll.",
+      "lengthSteps": {
+        "0": "deutlich kürzer",
+        "1": "etwas kürzer",
+        "2": "etwa gleich",
+        "3": "etwas länger",
+        "4": "deutlich länger"
+      },
+      "traitsLabel": "Merkmale Ihres Stils",
+      "traitsHint": "Ein Merkmal je Zeile. Was hier steht, geht in jede Umformulierung ein, also gerne berichtigen.",
+      "measured": {
+        "address": "Anredeform im Brief",
+        "sentenceLength": "Gemessene Satzlänge",
+        "sample": "Beispielsatz aus Ihrem Brief"
+      },
+      "address": {
+        "sie": "Sie",
+        "du": "du",
+        "none": "keine direkte Anrede"
+      },
+      "sentenceLength": "{{words}} Wörter je Satz"
+    },
+    "language": {
+      "heading": "In welcher Sprache soll der Brief stehen?",
+      "intro": "Die Stellenanzeige ist auf {{ad}}, Ihr Anschreiben auf {{letter}}. Umformulierte Stellen werden zuerst übersetzt und dann angepasst.",
+      "names": {
+        "de": "Deutsch",
+        "en": "Englisch"
+      },
+      "keep": "Bei {{language}} bleiben",
+      "switch": "Auf {{language}} wechseln",
+      "customs": {
+        "heading": "Andere Gepflogenheiten im englischsprachigen Raum",
+        "body": "Foto, Geburtsdatum und Anschrift sind dort unüblich und führen mancherorts dazu, dass eine Bewerbung aussortiert wird."
+      }
+    },
+    "sidePanel": {
+      "label": "Briefkopf, Anforderungen und Schreibstil"
     }
   },
   "settings": {

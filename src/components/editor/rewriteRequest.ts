@@ -44,6 +44,38 @@ export function defaultSliders(style: StyleProfile): RewriteSliders {
 }
 
 /**
+ * Wie viele Stufen die beiden Regler haben.
+ *
+ * `RewriteRequest.sliders` sind Zahlen von 0 bis 100, das Primitiv kennt
+ * dagegen **benannte Stufen** (DESIGN.md: „Der `Slider` bekommt keine
+ * Zahlenspanne, sondern eine Liste benannter Stufen … ein Wert wie ‚63' wäre
+ * dort ohne Bedeutung"). Fünf Stufen sind die Übersetzung dazwischen: zwei
+ * Enden, eine Mitte und je ein Zwischenschritt — genug, um „eher förmlich"
+ * von „förmlich" zu unterscheiden, und wenig genug, dass jede Stufe einen
+ * Namen tragen kann.
+ *
+ * Der gemessene Wert des Stilprofils liegt selten genau auf einer Stufe; er
+ * wird für die Anzeige auf die nächste gerundet ({@link sliderStep}). Der
+ * **gemessene** Wert bleibt davon unberührt: `defaultSliders` setzt ihn
+ * ungerundet, und erst wenn der Nutzer den Regler anfasst, tritt ein
+ * gerundeter Stufenwert an seine Stelle.
+ */
+export const SLIDER_STEP_COUNT = 5
+
+/** Reglerwert (0–100) → Stufe des Primitivs. */
+export function sliderStep(value: number): number {
+  if (!Number.isFinite(value)) return Math.floor(SLIDER_STEP_COUNT / 2)
+  const clamped = Math.min(100, Math.max(0, value))
+  return Math.round((clamped / 100) * (SLIDER_STEP_COUNT - 1))
+}
+
+/** Stufe des Primitivs → Reglerwert (0–100). */
+export function stepToSlider(step: number): number {
+  const clamped = Math.min(SLIDER_STEP_COUNT - 1, Math.max(0, Math.round(step)))
+  return Math.round((clamped / (SLIDER_STEP_COUNT - 1)) * 100)
+}
+
+/**
  * Die Faktenbasis: Lebenslauf und Anschreiben als ein Fließtext.
  *
  * Fehlt eines von beiden, bleibt es weg — die Einstiegsseite verlangt nur
