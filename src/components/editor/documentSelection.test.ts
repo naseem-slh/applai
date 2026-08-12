@@ -245,19 +245,35 @@ describe('rangeToDomRange', () => {
     // DOM und zurück muss denselben Bereich liefern. Ein Test an
     // ausgewählten Stellen hätte genau die Randfälle verfehlt, um die es
     // hier geht.
+    //
+    // Gesammelt statt Paar für Paar zugesichert: Das sind rund 11 000
+    // Durchläufe, und zwei `expect` je Durchlauf kosten ein Vielfaches der
+    // geprüften Rechnung selbst — der Test lief damit dicht an der
+    // Zeitgrenze und fiel auf einem ausgelasteten Rechner um. Die Aussage
+    // bleibt dieselbe, und die Meldung wird sogar genauer: Sie nennt jeden
+    // abweichenden Bereich, statt beim ersten abzubrechen.
+    const mismatches: string[] = []
     for (let from = 0; from <= docx.text.length; from += 1) {
       for (let to = from; to <= docx.text.length; to += 1) {
         const domRange = rangeToDomRange(root, { from, to })
-        expect(domRange).not.toBeNull()
+        if (domRange === null) {
+          mismatches.push(`${from}–${to} → kein DOM-Bereich`)
+          continue
+        }
         const points = selectPoints(
-          domRange!.startContainer,
-          domRange!.startOffset,
-          domRange!.endContainer,
-          domRange!.endOffset,
+          domRange.startContainer,
+          domRange.startOffset,
+          domRange.endContainer,
+          domRange.endOffset,
         )
-        expect(selectionToRange(root, points)).toEqual({ from, to })
+        const roundTrip = selectionToRange(root, points)
+        if (roundTrip === null || roundTrip.from !== from || roundTrip.to !== to) {
+          mismatches.push(`${from}–${to} → ${JSON.stringify(roundTrip)}`)
+        }
       }
     }
+
+    expect(mismatches).toEqual([])
   })
 
   it('markiert das ganze Dokument von seinem ersten bis zu seinem letzten Zeichen', async () => {
