@@ -20,7 +20,23 @@ describe('isTextOutputModel', () => {
     'gemini-2.5-flash-preview-tts',
     'gemini-live-2.5-flash-preview',
     'aqa',
+    // Auch innerhalb der Gemini-Familie: Diese tun etwas anderes, als Text
+    // zu schreiben.
+    'gemini-robotics-er-1.5-preview',
+    'gemini-2.5-computer-use-preview',
   ])('hält %s heraus, weil es keinen Text ausgibt', (id) => {
+    expect(isTextOutputModel(id)).toBe(false)
+  })
+
+  // Der Grund für die Umstellung auf eine erlaubte Familie: Diese Namen
+  // enthalten keinen der verbotenen Bestandteile und rutschten deshalb
+  // durch, obwohl AI Studio sie in eigenen Abschnitten führt.
+  it.each([
+    'gemma-3-27b-it',
+    'gemma-3n-e4b-it',
+    'learnlm-2.0-flash-experimental',
+    'nano-banana',
+  ])('hält %s heraus, weil es nicht zur Textfamilie gehört', (id) => {
     expect(isTextOutputModel(id)).toBe(false)
   })
 })

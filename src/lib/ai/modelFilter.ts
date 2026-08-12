@@ -17,6 +17,15 @@ import type { ModelChoice } from './provider'
  * genügt nicht, weil Sprachausgabe- und Bildmodelle dieselbe Methode
  * benutzen. Es bleibt der Name.
  *
+ * **Erlaubt statt verboten.** Die erste Fassung zählte auf, was
+ * *herausfällt* — und ließ damit alles durch, was anders heißt, als jemand
+ * vorhergesehen hat: offene Modelle, Lehrmodelle, Robotik, jedes künftige
+ * Sondermodell. Gezeigt wird deshalb nur, was zur Gemini-Textfamilie
+ * gehört. Das ist die engere und die ehrlichere Regel: Sie irrt sichtbar
+ * (ein Modell fehlt, „alle anzeigen" holt es) statt unsichtbar (ein
+ * unbrauchbares Modell steht in der Liste und antwortet später mit einem
+ * Fehler).
+ *
  * **Deshalb ist die Filterung immer abschaltbar.** Eine Heuristik über
  * fremde Namensgebung wird eines Tages danebenliegen — spätestens, wenn ein
  * Modell auftaucht, das niemand vorhergesehen hat. Sie darf dann nicht das
@@ -40,11 +49,23 @@ const NON_TEXT_MARKERS = [
   'tts',
   'audio',
   'live',
+  // Auch innerhalb der Gemini-Familie gibt es Modelle, die etwas anderes tun
+  // als Text zu schreiben.
+  'robotics',
+  'computer-use',
 ]
+
+/**
+ * Die Familie, die AI Studio unter „Text-out models" führt. Andere
+ * Modellreihen — Gemma, LearnLM, Robotik — sind dort eigene Abschnitte und
+ * gehören nicht in diese Auswahl.
+ */
+const TEXT_FAMILY_PREFIX = 'gemini-'
 
 /** Gibt dieses Modell Text aus? */
 export function isTextOutputModel(id: string): boolean {
   const name = id.toLowerCase()
+  if (!name.startsWith(TEXT_FAMILY_PREFIX)) return false
   return !NON_TEXT_MARKERS.some((marker) => name.includes(marker))
 }
 
