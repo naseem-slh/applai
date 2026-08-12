@@ -274,6 +274,118 @@ describe('KeySetup', () => {
     })
   })
 
+  it('nennt in der Anleitung beide Schlüsselformen und warnt Bestandsnutzer', async () => {
+    // Neue Schlüssel aus Google AI Studio beginnen mit „AQ.", nicht mehr mit
+    // „AIza". Wer Schritt 3 wörtlich befolgt, dürfte sonst glauben, er habe
+    // den falschen Schlüssel erzeugt — im Standardpfad des Standardanbieters.
+    for (const language of ['de', 'en'] as const) {
+      const step3 = i18n.getFixedT(language)('onboarding.key.guide.gemini.step3')
+      expect(step3).toContain('AQ.')
+      expect(step3).toContain('AIza')
+    }
+
+    const { user } = setup()
+    expect(screen.getByText(t('onboarding.key.legacyGeminiKey'))).toBeInTheDocument()
+    expect(t('onboarding.key.legacyGeminiKey')).toMatch(/2026/)
+
+    chooseProvider('OpenAI')
+    expect(screen.queryByText(t('onboarding.key.legacyGeminiKey'))).not.toBeInTheDocument()
+    await user.type(keyField(), OPENAI_KEY)
+  })
+
+  it('fragt erneut nach der Abrechnung, wenn ein anderer Schlüssel eingefügt wird', async () => {
+    // Der gefährliche Ablauf: kostenlosen Schlüssel mit „nein" beantworten,
+    // danach einen abgerechneten darüberkleben. Bliebe die Antwort stehen,
+    // läge ein abgerechneter Schlüssel ohne Passwort im Speicher — der Tresor
+    // kann das nicht abfangen, weil ein Google-Schlüssel für ihn unauffällig
+    // ist.
+    const { vault, user } = setup()
+
+    await user.type(keyField(), GEMINI_KEY)
+    answerBilling(t('onboarding.key.billingFree'))
+    const billing = screen.getByRole('combobox', { name: t('onboarding.key.billingLabel') })
+    expect(billing).not.toHaveAttribute('data-placeholder')
+
+    await user.type(keyField(), '-zweiter')
+
+    expect(billing).toHaveAttribute('data-placeholder')
+    submit()
+    expect(vault.save).not.toHaveBeenCalled()
+    expect(screen.getByText(t('onboarding.key.errors.billingUnanswered'))).toBeInTheDocument()
+  })
+
+  it('nimmt eine Abrechnungsantwort wieder an, sobald derselbe Schlüssel wieder dasteht', async () => {
+    const { vault, user } = setup()
+
+    await user.type(keyField(), GEMINI_KEY)
+    answerBilling(t('onboarding.key.billingFree'))
+    await user.type(keyField(), '-zweiter')
+    // Zurück auf genau denselben Schlüssel: Die Antwort galt ihm, sie gilt
+    // ihm weiter.
+    await user.clear(keyField())
+    await user.type(keyField(), GEMINI_KEY)
+
+    submit()
+    expect(await screen.findByText(t('onboarding.key.saved'))).toBeInTheDocument()
+    expect(vault.save).toHaveBeenCalledWith('gemini', GEMINI_KEY, {
+      passphrase: undefined,
+      treatAsPaid: false,
+    })
+  })
+
+  it('fragt erneut nach der Abrechnung, wenn der Anbieter gewechselt wird', async () => {
+    const { vault, user } = setup()
+
+    await user.type(keyField(), GEMINI_KEY)
+    answerBilling(t('onboarding.key.billingFree'))
+
+    chooseProvider('OpenAI')
+    chooseProvider('Google Gemini')
+
+    expect(
+      screen.getByRole('combobox', { name: t('onboarding.key.billingLabel') }),
+    ).toHaveAttribute('data-placeholder')
+    submit()
+    expect(vault.save).not.toHaveBeenCalled()
+    expect(screen.getByText(t('onboarding.key.errors.billingUnanswered'))).toBeInTheDocument()
+  })
+
+  it('sagt, dass ein vorhandener Schlüssel ersetzt wird — und sonst nichts', () => {
+    for (const status of ['locked', 'unlocked'] as const) {
+      const view = render(
+        <KeySetup keyVault={{ vault: makeVault(), status, refresh: vi.fn() }} />,
+      )
+      expect(screen.getByText(t('onboarding.key.replaceHint'))).toBeInTheDocument()
+      view.unmount()
+    }
+
+    setup({ status: 'empty' })
+    expect(screen.queryByText(t('onboarding.key.replaceHint'))).not.toBeInTheDocument()
+  })
+
+  it('lässt nicht absenden, solange initialize() noch läuft', () => {
+    // Sonst könnte das Speichern von der noch laufenden Entschlüsselung
+    // überholt werden: gespeichert der neue Schlüssel, im Arbeitsspeicher
+    // der alte.
+    setup({ status: 'loading' })
+
+    expect(screen.getByRole('button', { name: t('onboarding.key.submit') })).toBeDisabled()
+  })
+
+  it('behauptet beim unlesbaren Schlüssel keine Ursache, die es nicht kennen kann', () => {
+    // Derselbe Fehler kommt auch von einem blockierten Speicher (privater
+    // Modus, zweites Tab). Die angebotene Handlung ist zerstörend, also darf
+    // der Text die Ursache nicht als Tatsache setzen.
+    for (const language of ['de', 'en'] as const) {
+      const body = i18n.getFixedT(language)('onboarding.key.corrupted.body')
+      expect(body).toMatch(/privat|private/i)
+      expect(body).toMatch(/neu ?laden|Laden Sie die Seite|Reload/i)
+    }
+
+    setup({ status: 'corrupted' })
+    expect(screen.getByText(t('onboarding.key.corrupted.body'))).toBeInTheDocument()
+  })
+
   it('hält alle Zwischenüberschriften auf einer Ebene unter der Karte', async () => {
     const { user } = setup()
     await user.type(keyField(), OPENAI_KEY)

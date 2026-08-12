@@ -189,10 +189,11 @@ export interface KeyVault {
  * Erkennung auch beim „falschen“ Anbieter: Wer einen `sk-…`-Schlüssel in das
  * Gemini-Feld einfügt, soll trotzdem ein Passwort setzen müssen.
  *
- * Ein Google-Schlüssel (`AIza…`) sieht mit und ohne aktivierte Abrechnung
- * identisch aus. Hier wird deshalb `false` gemeldet und nichts erfunden —
- * die Oberfläche fragt den Nutzer und meldet das Ergebnis über
- * `SaveOptions.treatAsPaid`.
+ * Ein Google-Schlüssel sieht mit und ohne aktivierte Abrechnung identisch
+ * aus — das gilt für die heutige Form (`AQ.…`, in Google AI Studio erzeugt)
+ * genauso wie für die ältere (`AIza…`). Hier wird deshalb `false` gemeldet
+ * und nichts erfunden — die Oberfläche fragt den Nutzer und meldet das
+ * Ergebnis über `SaveOptions.treatAsPaid`.
  */
 export function isPaidKey(provider: ProviderId, key: string): boolean {
   if (provider === 'openai' || provider === 'anthropic') return true

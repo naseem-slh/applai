@@ -14,13 +14,19 @@ import { cn } from '@/lib/utils'
  * und keine Rückfrage. Der Dialog bleibt dem vorbehalten, wofür DESIGN.md
  * ihn vorsieht — Bestätigungen wie „Entwurf verwerfen".
  *
- * **Wann er erscheint, entscheidet die aufrufende Ansicht** (Aufgabe 13c),
- * nicht diese Komponente. Die vorgesehene Regel: anzeigen, solange
- * `useKeyVault().status === 'empty'` — also beim allerersten Start und
- * wieder nach „Alle Daten löschen". Das kommt ohne ein zusätzliches
- * „gelesen"-Kennzeichen aus, und genau das ist der Punkt: ein Kennzeichen,
- * das eine Datenlöschung überlebt, wäre falsch, und eines, das sie nicht
- * überlebt, wäre dasselbe wie diese Regel.
+ * **Wann er erscheint, sagt `usePrivacyNotice()`** — die Komponente selbst
+ * entscheidet es nicht. Aufgabe 13c hängt die beiden Enden zusammen:
+ *
+ * ```tsx
+ * const keyVault = useKeyVault()
+ * const privacy = usePrivacyNotice(keyVault.status)
+ * return privacy.visible
+ *   ? <PrivacyNotice onAccept={privacy.accept} />
+ *   : <KeySetup keyVault={keyVault} />
+ * ```
+ *
+ * Die Regel und ihre Begründung stehen dort, samt der Entscheidung gegen ein
+ * dauerhaft gespeichertes „gelesen"-Kennzeichen.
  *
  * Die Überschrift ist ein `h2`. Die `h1` der Seite gehört der Ansicht, die
  * diesen Abschnitt einbettet.

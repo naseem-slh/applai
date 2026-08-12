@@ -185,7 +185,15 @@ export function KeySetup({ keyVault, onSaved, className }: KeySetupProps) {
 
   const [provider, setProvider] = useState<ProviderId>('gemini')
   const [apiKey, setApiKey] = useState('')
-  const [billingActive, setBillingActive] = useState<boolean | null>(null)
+  // Die Abrechnungsantwort wird zusammen mit dem Schlüssel festgehalten, für
+  // den sie gegeben wurde. Sie gilt für genau diesen Schlüssel: Wer einen
+  // kostenlosen Schlüssel mit „nein" beantwortet und danach einen
+  // abgerechneten darüberklebt, muss erneut gefragt werden — sonst läge ein
+  // abgerechneter Schlüssel ohne Passwort im Speicher, und der Tresor kann
+  // das nicht abfangen, weil ein Google-Schlüssel für ihn unauffällig ist.
+  // Abgeleitet statt zurückgesetzt, damit kein Änderungsweg das Zurücksetzen
+  // vergessen kann.
+  const [billingAnswer, setBillingAnswer] = useState<{ forKey: string; paid: boolean } | null>(null)
   const [passphrase, setPassphrase] = useState('')
   const [passphraseConfirm, setPassphraseConfirm] = useState('')
   const [submitted, setSubmitted] = useState(false)
@@ -199,6 +207,8 @@ export function KeySetup({ keyVault, onSaved, className }: KeySetupProps) {
   const passphraseRef = useRef<HTMLInputElement | null>(null)
   const passphraseConfirmRef = useRef<HTMLInputElement | null>(null)
 
+  const billingActive =
+    billingAnswer !== null && billingAnswer.forKey === apiKey.trim() ? billingAnswer.paid : null
   const values: KeyFormValues = { provider, apiKey, billingActive, passphrase, passphraseConfirm }
   const providerLabel = PROVIDERS[provider].label
   const showBillingQuestion = needsBillingQuestion(provider, apiKey)
@@ -217,7 +227,7 @@ export function KeySetup({ keyVault, onSaved, className }: KeySetupProps) {
     setProvider(next)
     // Die Abrechnungsantwort gilt für genau einen Schlüssel bei genau einem
     // Anbieter; nach dem Wechsel wäre sie geraten.
-    setBillingActive(null)
+    setBillingAnswer(null)
     setSubmitted(false)
     setSaved(false)
     setSaveError(null)
@@ -327,6 +337,18 @@ export function KeySetup({ keyVault, onSaved, className }: KeySetupProps) {
     <SetupCard headingId={headingId} heading={t('onboarding.key.heading')} className={cardClassName}>
       <p className="mt-3">{t('onboarding.key.intro')}</p>
 
+      {/* Es liegt schon ein Schlüssel da (entsperrt oder passwortgeschützt).
+          Speichern ersetzt ihn — und bei OpenAI und Anthropic ist ein
+          Schlüssel nach dem Anlegen nie wieder einsehbar. Das gehört gesagt,
+          bevor jemand darüberschreibt. */}
+      {(keyVault.status === 'locked' || keyVault.status === 'unlocked') && (
+        <Card variant="subtle" padding="md" className="mt-4 text-[var(--color-ink)]">
+          <p className="text-[length:var(--text-body-sm-size)] leading-[var(--text-body-sm-leading)]">
+            {t('onboarding.key.replaceHint')}
+          </p>
+        </Card>
+      )}
+
       <form noValidate className="mt-6 flex flex-col gap-6" onSubmit={(event) => void handleSubmit(event)}>
         <div className="flex flex-col gap-2">
           {/* Kein <label for>: der Auslöser der Auswahlliste ist ein
@@ -365,6 +387,9 @@ export function KeySetup({ keyVault, onSaved, className }: KeySetupProps) {
           >
             {t('onboarding.key.guideLink', { provider: providerLabel })}
           </a>
+          {provider === 'gemini' && (
+            <p className={cn('mt-3', HINT_CLASS)}>{t('onboarding.key.legacyGeminiKey')}</p>
+          )}
         </section>
 
         <TextField
@@ -391,11 +416,16 @@ export function KeySetup({ keyVault, onSaved, className }: KeySetupProps) {
                 Schalters: Ein Schalter stünde von Anfang an auf „nein",
                 und diese Vermutung würde einen abgerechneten Schlüssel
                 ohne Passwort ablegen. Der Platzhalter zwingt zur Antwort. */}
+            {/* Vollständig gesteuert: Radix zeigt den Platzhalter bei einer
+                leeren Zeichenkette genauso wie bei `undefined`. Damit fällt
+                die Anzeige von selbst auf „Bitte wählen" zurück, sobald die
+                Antwort nicht mehr zum eingegebenen Schlüssel gehört — ohne
+                die Auswahlliste neu einzuhängen und ihr dabei den Fokus zu
+                nehmen. */}
             <Select
-              key={provider}
-              value={billingActive === null ? undefined : billingActive ? 'paid' : 'free'}
+              value={billingActive === null ? '' : billingActive ? 'paid' : 'free'}
               onValueChange={(next) => {
-                setBillingActive(next === 'paid')
+                setBillingAnswer({ forKey: apiKey.trim(), paid: next === 'paid' })
                 setSaved(false)
               }}
             >
@@ -483,7 +513,17 @@ export function KeySetup({ keyVault, onSaved, className }: KeySetupProps) {
         )}
 
         <div className="flex justify-end">
-          <Button type="submit" variant="primary" size="lg" disabled={saving || keyVault.vault === null}>
+          {/* Auch bei `loading` gesperrt: Der Tresor ist dann zwar schon da,
+              aber `initialize()` läuft noch. Ein Speichern in diesem Fenster
+              könnte von der noch laufenden Entschlüsselung überholt werden —
+              gespeichert wäre der neue Schlüssel, im Arbeitsspeicher der
+              alte. */}
+          <Button
+            type="submit"
+            variant="primary"
+            size="lg"
+            disabled={saving || keyVault.vault === null || keyVault.status === 'loading'}
+          >
             {saving ? t('onboarding.key.submitting') : t('onboarding.key.submit')}
           </Button>
         </div>

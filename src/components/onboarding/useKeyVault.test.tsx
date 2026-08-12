@@ -93,6 +93,35 @@ describe('useKeyVault', () => {
     })
   })
 
+  it('erzeugt den Tresor auch dann einmal, wenn die Fabrik bei jedem Rendern neu entsteht', async () => {
+    // Der beworbene Aufruf ist `useKeyVault(() => createKeyVault(frist))` —
+    // eine Pfeilfunktion mit neuer Identität je Rendern. Stünde sie in der
+    // Abhängigkeitsliste, liefe der Effekt endlos: Aufräumen und Neuaufbau
+    // lösen je ein Rendern aus, und jeder Durchlauf öffnete eine weitere
+    // IndexedDB-Verbindung.
+    const created: KeyVault[] = []
+    const { result, rerender } = renderHook(() =>
+      useKeyVault(() => {
+        const { vault } = stubVault()
+        created.push(vault)
+        return vault
+      }),
+    )
+
+    await waitFor(() => {
+      expect(result.current.status).toBe('empty')
+    })
+    rerender()
+    rerender()
+    await waitFor(() => {
+      expect(result.current.status).toBe('empty')
+    })
+
+    expect(created).toHaveLength(1)
+    expect(created[0].initialize).toHaveBeenCalledTimes(1)
+    expect(created[0].destroy).not.toHaveBeenCalled()
+  })
+
   it('gibt Zuhörer und Zeitgeber beim Abbau wieder frei', async () => {
     const { vault, create } = stubVault()
 

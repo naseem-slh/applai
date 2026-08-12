@@ -48,14 +48,16 @@
     "key": {
       "heading": "API-Schlüssel einrichten",
       "intro": "Applai hat kein eigenes Konto und keinen Server. Die KI-Anfragen laufen über Ihren eigenen Zugang bei einem der drei Anbieter. Der Schlüssel dafür bleibt verschlüsselt in Ihrem Browser.",
+      "replaceHint": "In diesem Browser liegt bereits ein Schlüssel. Speichern ersetzt ihn ohne weitere Rückfrage. OpenAI und Anthropic zeigen einen Schlüssel nur ein einziges Mal an; ein ersetzter lässt sich dort nicht zurückholen.",
       "providerLabel": "Anbieter",
       "guideHeading": "So bekommen Sie einen Schlüssel bei {{provider}}",
       "guideLink": "Schlüsselseite von {{provider}} öffnen",
+      "legacyGeminiKey": "Sie haben schon einen Schlüssel, der mit „AIza“ beginnt? Google nimmt diese Schlüssel ab September 2026 nicht mehr an. Erzeugen Sie in Google AI Studio rechtzeitig einen neuen; der kostenlose Tarif bleibt derselbe.",
       "guide": {
         "gemini": {
           "step1": "Bei Google AI Studio mit einem Google-Konto anmelden.",
           "step2": "„Get API key“ öffnen und einen neuen Schlüssel erzeugen.",
-          "step3": "Den Schlüssel kopieren. Er beginnt mit „AIza“.",
+          "step3": "Den Schlüssel kopieren. Neue Schlüssel beginnen mit „AQ.“, ältere mit „AIza“.",
           "step4": "Ihn unten einfügen. Für den kostenlosen Tarif ist keine Zahlungsart nötig."
         },
         "openai": {
@@ -102,8 +104,8 @@
         "storage": "Der Schlüssel konnte nicht gespeichert werden. Bitte versuchen Sie es erneut."
       },
       "corrupted": {
-        "heading": "Der gespeicherte Schlüssel ist unlesbar",
-        "body": "Der Eintrag im Browser-Speicher entspricht nicht mehr dem erwarteten Aufbau und lässt sich nicht entschlüsseln. Löschen Sie ihn und hinterlegen Sie den Schlüssel danach neu.",
+        "heading": "Der hinterlegte Schlüssel konnte nicht gelesen werden",
+        "body": "Woran es liegt, kann Applai nicht unterscheiden: Der Eintrag selbst kann beschädigt sein, der Browser kann den Speicher aber auch nur gerade nicht freigeben, etwa im privaten Modus oder während die Anwendung in einem zweiten Tab offen ist. Laden Sie die Seite zuerst neu und schließen Sie andere Tabs. Bleibt es dabei, hilft nur, den gespeicherten Schlüssel zu löschen und ihn danach neu zu hinterlegen.",
         "action": "Gespeicherten Schlüssel löschen"
       }
     },
@@ -123,7 +125,7 @@
       },
       "scope": {
         "title": "Den Schlüssel nur für die Gemini-API freigeben",
-        "body": "In den Zugangsdaten der Google Cloud lässt sich festlegen, welche APIs ein Schlüssel überhaupt ansprechen darf. Auf die Gemini-API beschränkt, kann ein abhandengekommener Schlüssel keine anderen kostenpflichtigen Google-Dienste desselben Projekts benutzen. Schlüssel aus Google AI Studio sind von sich aus so beschränkt, ein in der Cloud Console angelegter Schlüssel ist es nicht."
+        "body": "In den Zugangsdaten der Google Cloud lässt sich festlegen, welche APIs ein Schlüssel überhaupt ansprechen darf. Auf die Gemini-API beschränkt, kann ein abhandengekommener Schlüssel keine anderen kostenpflichtigen Google-Dienste desselben Projekts benutzen. Neu in Google AI Studio erzeugte Schlüssel sind von sich aus so beschränkt; ältere Schlüssel und solche aus der Cloud Console sind es nicht."
       }
     }
   },

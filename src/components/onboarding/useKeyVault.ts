@@ -56,9 +56,20 @@ export function useKeyVault(createVault: () => KeyVault = createKeyVault): KeyVa
   // bevor er fragt — sonst meldete er für einen ohne Passwort abgelegten
   // Schlüssel „gesperrt", weil die Entschlüsselung noch läuft.
   const initialized = useRef<Promise<void> | null>(null)
+  // Die Fabrik liegt in einem Ref, und der Aufbaueffekt läuft mit leerer
+  // Abhängigkeitsliste. Sonst wäre der naheliegendste Aufruf überhaupt —
+  // `useKeyVault(() => createKeyVault(fuenfMinuten))` — eine Endlosschleife:
+  // Die Pfeilfunktion bekommt bei jedem Rendern eine neue Identität, der
+  // Effekt räumte auf und baute neu auf, beides löst ein Rendern aus, und
+  // jeder Durchlauf öffnete zusätzlich eine IndexedDB-Verbindung. ESLint
+  // sieht das nicht, weil der Fehler an der Aufrufstelle entsteht. Eine
+  // Zusicherung, die der Code erzwingt, ist besser als eine, die der nächste
+  // Aufrufer einhalten muss.
+  const factory = useRef(createVault)
+  factory.current = createVault
 
   useEffect(() => {
-    const created = createVault()
+    const created = factory.current()
     const ready = created.initialize()
     // Der Fehler wird unten ausgewertet; dieser Haken verhindert nur, dass
     // die Ablehnung in der Zwischenzeit als unbehandelt gilt.
@@ -71,7 +82,10 @@ export function useKeyVault(createVault: () => KeyVault = createKeyVault): KeyVa
       setVault(null)
       setStatus('loading')
     }
-  }, [createVault])
+    // Absichtlich leer, und von ESLint auch so anerkannt: In der Liste
+    // stünde sonst nur `createVault`. Der Tresor entsteht genau einmal je
+    // Einhängung, unabhängig davon, wie der Aufrufer die Fabrik schreibt.
+  }, [])
 
   useEffect(() => {
     if (vault === null) return

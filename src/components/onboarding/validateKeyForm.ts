@@ -47,9 +47,10 @@ export interface KeyFormValues {
  * Muss die Abrechnungsfrage gestellt werden?
  *
  * Nur bei Google und nur, wenn der eingegebene Schlüssel nicht schon von
- * sich aus als kostenpflichtig erkennbar ist: Ein `AIza…`-Schlüssel sieht
- * mit und ohne aktivierte Abrechnung identisch aus, `isPaidKey` erfindet
- * dazu nichts (siehe `keyVault.ts`). Also fragt die Oberfläche.
+ * sich aus als kostenpflichtig erkennbar ist: Ein Google-Schlüssel sieht mit
+ * und ohne aktivierte Abrechnung identisch aus, in der heutigen Form
+ * (`AQ.…`) wie in der älteren (`AIza…`); `isPaidKey` erfindet dazu nichts
+ * (siehe `keyVault.ts`). Also fragt die Oberfläche.
  *
  * Absichtlich unabhängig davon, ob schon ein Schlüssel eingegeben wurde:
  * Die Frage steht damit von Anfang an da, statt beim ersten Zeichen

@@ -48,14 +48,16 @@
     "key": {
       "heading": "Set up your API key",
       "intro": "Applai has no account and no server of its own. The AI requests run through your own account with one of the three providers. The key for that stays encrypted in your browser.",
+      "replaceHint": "This browser already holds a key. Saving replaces it without a further prompt. OpenAI and Anthropic show a key only once, so a replaced one cannot be retrieved there.",
       "providerLabel": "Provider",
       "guideHeading": "How to get a key from {{provider}}",
       "guideLink": "Open the key page at {{provider}}",
+      "legacyGeminiKey": "Already have a key that starts with “AIza”? Google stops accepting those keys in September 2026. Create a new one in Google AI Studio in good time; the free tier stays the same.",
       "guide": {
         "gemini": {
           "step1": "Sign in to Google AI Studio with a Google account.",
           "step2": "Open “Get API key” and create a new key.",
-          "step3": "Copy the key. It starts with “AIza”.",
+          "step3": "Copy the key. New keys start with “AQ.”, older ones with “AIza”.",
           "step4": "Paste it below. The free tier needs no payment method."
         },
         "openai": {
@@ -102,8 +104,8 @@
         "storage": "The key could not be saved. Please try again."
       },
       "corrupted": {
-        "heading": "The stored key cannot be read",
-        "body": "The entry in the browser storage no longer matches the expected structure and cannot be decrypted. Delete it and enter the key again afterwards.",
+        "heading": "The stored key could not be read",
+        "body": "Applai cannot tell which of these it is: the entry itself may be damaged, or the browser may simply not be releasing the storage right now, for example in private mode or while the app is open in a second tab. Reload the page first and close other tabs. If it stays that way, the only way on is to delete the stored key and enter it again afterwards.",
         "action": "Delete the stored key"
       }
     },
@@ -123,7 +125,7 @@
       },
       "scope": {
         "title": "Allow the key for the Gemini API only",
-        "body": "The Google Cloud credentials let you decide which APIs a key may address at all. Restricted to the Gemini API, a key that goes astray cannot use any other billable Google service in the same project. Keys from Google AI Studio are restricted like this by default; a key created in the Cloud console is not."
+        "body": "The Google Cloud credentials let you decide which APIs a key may address at all. Restricted to the Gemini API, a key that goes astray cannot use any other billable Google service in the same project. Keys newly created in Google AI Studio are restricted like this by default; older keys and ones from the Cloud console are not."
       }
     }
   },
