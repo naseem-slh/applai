@@ -661,8 +661,8 @@ function EditorWorkspace({ session }: { session: StartSession }) {
       <div
         className={cn(
           'grid min-h-0 flex-1 grid-cols-1',
-          'lg:grid-cols-[minmax(0,1fr)_20rem] lg:grid-rows-[minmax(0,1fr)]',
-          'xl:grid-cols-[17rem_minmax(0,1fr)_20rem]',
+          'lg:grid-cols-[minmax(0,1fr)_21rem] lg:grid-rows-[minmax(0,1fr)]',
+          'xl:grid-cols-[19rem_minmax(0,1fr)_21rem]',
         )}
       >
         <section
@@ -735,11 +735,22 @@ function EditorWorkspace({ session }: { session: StartSession }) {
                 stehen, alles andere wird ausgeblendet (siehe
                 `lib/export/print.css`). Die Markierung sitzt an der Karte und
                 nicht an der Fläche darin, damit der Rand des Blattes mitgeht. */}
+            {/* Der Brief ist eine **Seite**, kein Textblock in einer Karte.
+                `max-w-[72ch]` war eine Zeilenlängenregel und hatte mit dem
+                Dokument nichts zu tun: In der Mitte blieben daneben rund
+                290 px leer, während die Seitenspalten Beschriftungen
+                abschnitten. Jetzt gilt das Seitenverhältnis von A4
+                (210:297) bei höchstens 900 px Breite, und der Innenabstand
+                ist der Seitenrand des Drucks: 2 cm auf 21 cm sind 9,5 %.
+
+                In Prozent, nicht in rem, damit der Rand mitschrumpft, wenn
+                das Blatt schmaler wird, statt den Satzspiegel zu erdrücken.
+                Bei 900 px bleiben 722 px Text, rund 75 Zeichen je Zeile. */}
             <Card
               variant="raised"
               padding="none"
               data-print-document
-              className="w-full max-w-[72ch]"
+              className="aspect-[210/297] w-full max-w-[900px]"
             >
               <DocumentView
                 rootRef={rootRef}
@@ -771,13 +782,13 @@ function EditorWorkspace({ session }: { session: StartSession }) {
                 // `rounded-lg` statt der Vorgabe `rounded-md`: Der Fokusring
                 // folgt dem Radius seines Elements und soll dem Blatt folgen,
                 // nicht daneben liegen.
-                className="rounded-lg px-6 py-8 md:px-10 md:py-12"
+                className="rounded-lg p-[9.5%]"
               />
             </Card>
 
             {/* Die unbelegten Aussagen stehen unter dem Blatt, nicht in einer
                 Spalte: Sie gehören zu diesem Brief und zu keiner Stellschraube. */}
-            <div className="w-full max-w-[72ch]">
+            <div className="w-full max-w-[900px]">
               <ClaimGuard
                 claims={claims.located}
                 onConfirm={claims.confirm}

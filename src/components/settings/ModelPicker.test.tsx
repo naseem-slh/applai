@@ -41,8 +41,16 @@ function setup(overrides: Partial<ModelPickerProps> = {}) {
 describe('ModelPicker', () => {
   it('nennt das voreingestellte Modell, solange nichts gewählt ist', () => {
     setup()
+    // Beides steht seit dem Aufräumen in einer Zeile statt in zweien:
+    // dass keines gewählt ist, und welches dann greift.
     expect(
-      screen.getByText(t('settings.model.current', { model: 'gemini-3.6-flash' })),
+      screen.getByText(
+        (_, element) =>
+          element?.tagName === 'P' &&
+          (element.textContent ?? '').includes(
+            t('settings.model.current', { model: 'gemini-3.6-flash' }),
+          ),
+      ),
     ).toBeInTheDocument()
   })
 
@@ -105,7 +113,13 @@ describe('ModelPicker', () => {
 
   it('sagt, dass ohne Wahl die Voreinstellung gilt', () => {
     setup()
-    expect(screen.getByText(t('settings.model.empty'))).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        (_, element) =>
+          element?.tagName === 'P' &&
+          (element.textContent ?? '').includes(t('settings.model.empty')),
+      ),
+    ).toBeInTheDocument()
   })
 
   // Die Liste kostet eine Anfrage. Sie darf erst auf Druck hinausgehen.

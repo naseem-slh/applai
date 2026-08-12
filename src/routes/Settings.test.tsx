@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 import {
@@ -28,8 +28,21 @@ function setup(options: HarnessOptions = {}) {
   return { ...view, ...harness, user: userEvent.setup() }
 }
 
-/** Einen Eintrag in einer Radix-Auswahlliste wählen. */
-function choose(triggerName: string, optionName: string): void {
+/**
+ * Einen Wert in einer Schalterreihe wählen.
+ *
+ * Seit dem Aufräumen sind Darstellung, Sprache und Wahrheitsgrenze keine
+ * Auswahllisten mehr, sondern Reihen aus sichtbaren Knöpfen (`Choice`).
+ * Radix gibt ihnen `role="group"` und den Feldern `role="radio"`.
+ */
+function choose(groupName: string, optionName: string): void {
+  const group = screen.getByRole('radiogroup', { name: groupName })
+  fireEvent.click(within(group).getByRole('radio', { name: optionName }))
+}
+
+/** Einen Eintrag in einer Radix-Auswahlliste wählen — die gibt es noch in
+ *  der Schlüsseleinrichtung, wo die Werte länger sind als eine Reihe trägt. */
+function chooseFromList(triggerName: string, optionName: string): void {
   fireEvent.pointerDown(screen.getByRole('combobox', { name: triggerName }), {
     button: 0,
     ctrlKey: false,
@@ -95,9 +108,10 @@ describe('Settings — Anbieter und Schlüssel', () => {
   it('nennt den Anbieter, zu dem der hinterlegte Schlüssel gehört', () => {
     setup({ vault: createFakeVault({ getProvider: vi.fn((): ProviderId => 'anthropic') }) })
 
-    expect(
-      screen.getByText(t('settings.key.currentProvider', { provider: 'Anthropic' })),
-    ).toBeInTheDocument()
+    // Der Name des Anbieters steht seit dem Aufräumen für sich, nicht mehr
+    // in einem Satz: „Anthropic" fett, „Schlüssel hinterlegt" leise daneben.
+    expect(screen.getByText('Anthropic')).toBeInTheDocument()
+    expect(screen.getByText(t('settings.key.currentProvider'))).toBeInTheDocument()
   })
 
   it('sagt es, wenn noch kein Schlüssel hinterlegt ist', () => {
@@ -113,7 +127,7 @@ describe('Settings — Anbieter und Schlüssel', () => {
     const { user, updateSettings } = setup({ status: 'empty', vault })
 
     await user.type(screen.getByLabelText(t('onboarding.key.apiKeyLabel')), 'AQ.BEISPIEL-kein-echter')
-    choose(t('onboarding.key.billingLabel'), t('onboarding.key.billingFree'))
+    chooseFromList(t('onboarding.key.billingLabel'), t('onboarding.key.billingFree'))
     await user.click(screen.getByRole('button', { name: t('onboarding.key.submit') }))
 
     await waitFor(() =>

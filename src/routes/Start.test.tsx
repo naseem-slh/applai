@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
@@ -54,11 +54,27 @@ function setup(options: HarnessOptions & { loaders?: DocumentLoaders } = {}) {
 
 /** Datei in ein Ablegefeld geben — über den Knopf, nicht über das versteckte Feld. */
 async function chooseFile(user: ReturnType<typeof userEvent.setup>, slot: 'letter' | 'cv', file: File) {
-  const group = screen.getByRole('heading', { name: t(`start.files.${slot}`) }).parentElement
-  if (group === null) throw new Error('Ablegefeld nicht gefunden')
+  // Über die benannte Gruppe, nicht über die Elternkette der Überschrift:
+  // Letzteres brach, sobald die Überschrift eine eigene Zeile bekam.
+  const group = screen.getByRole('group', { name: t(`start.files.${slot}`) })
   const input = group.querySelector('input[type="file"]')
   if (!(input instanceof HTMLInputElement)) throw new Error('Dateifeld nicht gefunden')
   await user.upload(input, file)
+}
+
+/**
+ * Die Bewerbungsliste öffnen. Sie liegt seit dem Aufräumen der
+ * Einstiegsseite hinter einem Verweis in der Fußleiste, nicht mehr im Fluss
+ * unter der Stellenausschreibung.
+ */
+async function openApplications(
+  user: ReturnType<typeof userEvent.setup>,
+  count: number,
+): Promise<HTMLElement> {
+  await user.click(
+    await screen.findByRole('button', { name: t('start.applications.open', { count }) }),
+  )
+  return screen.findByRole('dialog')
 }
 
 function docxFile(name = 'anschreiben.docx'): File {
@@ -171,8 +187,11 @@ describe('Start — Unterlagen', () => {
   it('nimmt eine hineingezogene Datei an', async () => {
     const { loaders } = setup()
 
-    const zone = screen.getByRole('heading', { name: t('start.files.letter') }).nextElementSibling
-    if (zone === null) throw new Error('Ablegefeld nicht gefunden')
+    // Die Ablegefläche ist der Kasten mit dem versteckten Dateifeld darin.
+    const zone = screen
+      .getByRole('group', { name: t('start.files.letter') })
+      .querySelector('input[type="file"]')?.parentElement
+    if (zone == null) throw new Error('Ablegefeld nicht gefunden')
     fireEvent.drop(zone, { dataTransfer: { files: [docxFile()] } })
 
     await screen.findByText(t('start.files.loaded', { name: 'anschreiben.docx' }))
@@ -312,7 +331,10 @@ describe('Start — Bewerbungsliste und Doppelbewerbung', () => {
     })
     const { user } = setup({ storage })
 
-    expect(await screen.findByText('Nordwerk Systeme')).toBeInTheDocument()
+    const list = await openApplications(user, 1)
+    expect(within(list).getByText('Nordwerk Systeme')).toBeInTheDocument()
+    await user.keyboard('{Escape}')
+
     expect(screen.queryByRole('alert')).toBeNull()
 
     await user.type(
@@ -333,22 +355,24 @@ describe('Start — Bewerbungsliste und Doppelbewerbung', () => {
         { id: '1', company: 'Nordwerk Systeme', position: 'Entwicklerin', date: '2026-05-04' },
       ],
     })
-    setup({ storage })
+    const { user } = setup({ storage })
 
     const expected = new Date(2026, 4, 4).toLocaleDateString(i18n.resolvedLanguage ?? 'de', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
     })
-    expect(await screen.findByText(expected)).toBeInTheDocument()
+    const list = await openApplications(user, 1)
+    expect(within(list).getByText(expected)).toBeInTheDocument()
 
     vi.unstubAllEnvs()
   })
 
   it('sagt bei leerer Liste, wann ein Eintrag entsteht', async () => {
-    setup()
+    const { user } = setup()
 
-    expect(await screen.findByText(t('start.applications.empty'))).toBeInTheDocument()
+    const list = await openApplications(user, 0)
+    expect(within(list).getByText(t('start.applications.empty'))).toBeInTheDocument()
   })
 })
 

@@ -161,18 +161,17 @@
     "intro": "Drop in your cover letter, paste the job ad, and move on to the workspace. Everything stays in this browser until you ask for a passage to be rewritten.",
     "storageUnavailable": "Your browser is not releasing its storage right now. You can keep working, but Applai will remember none of it: no draft, no settings, no application list. In private mode this is normal.",
     "documents": {
-      "heading": "Your documents",
-      "rule": "Either one is enough. With both, the AI has more established facts to work from and has to leave less unsaid."
+      "heading": "Your documents"
     },
     "files": {
       "letter": "Cover letter",
-      "letterDescription": "Word file (.docx) or PDF. The layout of a Word file survives the export untouched.",
+      "letterDescription": "DOCX keeps its layout on export.",
       "cv": "CV",
-      "cvDescription": "Word file (.docx) or PDF. Used as a basis of facts; editing it is not part of this build stage.",
-      "choose": "Choose a file",
-      "replace": "Choose a different file",
+      "cvDescription": "Used as a basis of facts, never edited.",
+      "choose": "Choose",
+      "replace": "Replace",
       "remove": "Remove",
-      "none": "No file chosen yet. You can drag one here.",
+      "none": "Drop a file here",
       "reading": "Reading the file …",
       "loaded": "Chosen: {{name}}",
       "fromDraft": "the document you last worked on",
@@ -180,7 +179,9 @@
         "unsupportedType": "Applai reads Word files (.docx) and PDF files. Any other format cannot be opened.",
         "passwordProtected": "This PDF file is password protected. Please remove the protection and choose it again.",
         "unreadable": "The file could not be read. It may be damaged, or it may not be a Word or PDF document despite its extension."
-      }
+      },
+      "formats": "DOCX or PDF",
+      "optional": "Optional"
     },
     "pdf": {
       "beta": "Read from a PDF. Converting it to Word is a beta feature: it restores paragraphs, headings and bullet points, but neither the original layout nor images or tables. Please read the result in the workspace before you use it.",
@@ -196,16 +197,17 @@
     },
     "name": {
       "label": "Your name",
-      "hint": "Applai replaces your name with a placeholder before every request. To do that it has to know what your name is. It will not guess.",
-      "detected": "Taken from the top of your document. Please check it: what gets detected is the first name-shaped line, and that can be a company name."
+      "hint": "Replaced by a placeholder before every request.",
+      "detected": "Taken from your document. Please check it, it may be a company name."
     },
     "jobAd": {
       "heading": "Job ad",
       "label": "Text of the ad",
-      "hint": "Paste the full text. The more of it is here, the more precise the list of requirements will be.",
-      "pdfLabel": "Or read it from a PDF file",
-      "pdfHint": "A link to the ad cannot be fetched: that would need a server to load the page for you, and Applai deliberately has none.",
-      "reading": "Reading the PDF …"
+      "hint": "The more complete, the more precise the list of requirements.",
+      "pdfLabel": "Read from a PDF",
+      "pdfHint": "A link could only be fetched by a server that loads the page for you. Applai deliberately has none.",
+      "reading": "Reading the PDF …",
+      "pdfWhy": "Why no link to the ad"
     },
     "applications": {
       "heading": "Application list",
@@ -214,7 +216,8 @@
       "position": "Position",
       "date": "Date",
       "duplicate": "This ad mentions a company you have already applied to: {{entries}}. That may be a coincidence: the check compares company names and nothing else.",
-      "duplicateEntry": "{{company}}, {{position}} ({{date}})"
+      "duplicateEntry": "{{company}}, {{position}} ({{date}})",
+      "open": "Applications ({{count}})"
     },
     "missing": {
       "heading": "Still missing:",
@@ -222,8 +225,7 @@
       "jobAd": "the text of the job ad",
       "userName": "your name"
     },
-    "continue": "Continue to the workspace",
-    "ready": "All set. On to the workspace."
+    "continue": "Continue to the workspace"
   },
   "editor": {
     "intro": "Use the mouse to select the passage you want to adapt. You can type anywhere in the text; the formatting and the paragraph order of your Word file stay as they are, which is why the Enter key does not start a new paragraph.",
@@ -432,23 +434,24 @@
     },
     "export": {
       "heading": "Done? Then send it on its way",
-      "docx": "Download Word file",
-      "pdf": "Print as PDF",
-      "copy": "Copy text",
-      "pdfHint": "In the print dialog, choose \"Save as PDF\". Only the letter is printed, without any controls.",
+      "docx": "Word file",
+      "pdf": "PDF",
+      "copy": "Text",
+      "pdfHint": "A PDF comes out of the print dialog.",
       "working": "Creating the Word file.",
       "docxDone": "The Word file has been created. The application is now in your list and the draft has been deleted.",
       "docxFailed": "The Word file could not be created.",
       "copyDone": "The text is in your clipboard.",
-      "copyFailed": "The text could not be copied. The browser denied access to the clipboard."
+      "copyFailed": "The text could not be copied. The browser denied access to the clipboard.",
+      "pdfTooltip": "Opens the print dialog. Choose “Save as PDF” there. Only the letter is printed, without any controls.",
+      "copyTooltip": "Puts the letter into the clipboard as plain text, for an online form for instance."
     }
   },
   "settings": {
     "storageUnavailable": "Your browser is not releasing its storage right now. Changes made here apply to this session only.",
     "saveFailed": "The change could not be saved and has been undone. Please try again.",
     "appearance": {
-      "heading": "Appearance",
-      "hint": "Light is the default. “Match the system” follows your operating system setting.",
+      "heading": "Interface",
       "label": "Display",
       "options": {
         "light": "Light",
@@ -457,8 +460,6 @@
       }
     },
     "language": {
-      "heading": "Interface language",
-      "hint": "On first start Applai preselects your browser language. Your choice here applies from then on.",
       "label": "Language",
       "options": {
         "de": "Deutsch",
@@ -466,34 +467,34 @@
       }
     },
     "anonymize": {
-      "heading": "Anonymisation",
-      "label": "Replace personal data before sending",
-      "hint": "Name, address, date of birth, phone number and email address are replaced with placeholders before any text goes to the provider, and swapped back in the answer.",
+      "heading": "Privacy",
+      "label": "Replace personal data",
+      "hint": "Name, address, date of birth, phone and email go to the provider as placeholders.",
       "off": "Without anonymisation your personal data goes to the chosen provider in the clear."
     },
     "truthMode": {
-      "heading": "Truth boundary",
-      "hint": "How far may a phrasing move away from what your documents actually establish?",
-      "label": "Boundary",
+      "label": "Truth boundary",
       "options": {
         "strict": "Strict",
         "bridge": "Bridges",
         "free": "Free"
       },
       "explanations": {
-        "strict": "Only what is in your documents gets rephrased. A required skill that is missing stays in the gap list instead of appearing in the text.",
-        "bridge": "Generalisations that your own statements cover are allowed as well, such as “experience with relational databases” where your CV says PostgreSQL. No new facts come into being.",
-        "free": "The AI may add what is not established. Such passages are marked in colour and have to be confirmed one by one; while any of them is unconfirmed, the export stays locked."
+        "strict": "Only rewrites what your documents say.",
+        "bridge": "Generalisations allowed, as long as your details back them up.",
+        "free": "Anything unbacked is highlighted, has to be confirmed one by one and blocks the export until then."
       }
     },
     "key": {
-      "heading": "Provider and API key",
-      "currentProvider": "A key for {{provider}} is stored. The provider changes together with the key; you replace both below.",
-      "noProvider": "No key stored yet."
+      "heading": "Provider and model",
+      "currentProvider": "Key stored",
+      "noProvider": "No key stored yet.",
+      "replace": "Replace key",
+      "cancelReplace": "Cancel"
     },
     "backup": {
       "heading": "Backup",
-      "hint": "Save the application list, drafts and settings as a file, and restore them on another device or after a deletion. The API key is not part of it. It stays in the browser where you entered it.",
+      "hint": "Application list, drafts and settings as a file. Without the API key.",
       "export": "Download a backup",
       "import": "Restore a backup",
       "importWarning": "Restoring replaces everything you have; nothing is merged.",
@@ -508,7 +509,7 @@
     },
     "delete": {
       "heading": "Delete all data",
-      "body": "Removes the application list, drafts, settings and the stored API key from this device. Nothing of Applai is left afterwards. Your key at the provider stays alive. Revoke it there when you no longer need it.",
+      "body": "Removes everything from this device, including the stored key.",
       "action": "Delete all data",
       "confirmTitle": "Really delete all data?",
       "confirmBody": "The application list, drafts, settings and the stored API key will be removed. This cannot be undone; only a backup downloaded beforehand brings the list back.",
@@ -517,12 +518,13 @@
       "done": "Everything has been deleted: application list, drafts, settings and the API key.",
       "storageFailed": "The API key was deleted, but the application list, drafts and settings were not. Please reload the page and try again.",
       "vaultFailed": "The application list, drafts and settings were deleted, but the stored API key was not. Please reload the page and try again.",
-      "bothFailed": "Nothing was deleted. Your browser is not releasing its storage right now. Please close other tabs with Applai, reload the page and try again."
+      "bothFailed": "Nothing was deleted. Your browser is not releasing its storage right now. Please close other tabs with Applai, reload the page and try again.",
+      "keyStays": "What happens to the key at the provider",
+      "keyStaysBody": "Nothing. It stays there. Revoke it at the provider once you no longer need it."
     },
     "model": {
-      "heading": "Model",
       "label": "Model identifier",
-      "hint": "Applai calls this model. The provider’s list does not say which models your free tier covers; it has no field for that. You can look it up in your provider’s console under “Rate limits”.",
+      "hint": "The provider list does not say what your plan covers; it holds no field for it. You can look it up in your provider console under “Rate limits”.",
       "load": "Load models",
       "loading": "Loading models",
       "loaded_one": "1 model available",
@@ -533,14 +535,15 @@
       "needsKey": "The key must be unlocked to load the list.",
       "showAll": "Show all models",
       "filtered": "Only models that output text. On the free tier without Pro models, which it usually does not include.",
-      "chainHint": "Applai tries the models in this order. When the first one runs out, the next takes over.",
+      "chainHint": "When one runs out, the next takes over.",
       "empty": "None chosen. Applai uses the provider's default.",
       "entry": "{{position}}. {{model}}",
       "add": "Add",
       "addLabel": "Add {{model}}",
       "moveUp": "Move up",
       "removeEntry": "Remove from the chain",
-      "addAll": "Add all in order"
+      "addAll": "Add all in order",
+      "why": "What does my plan cover"
     }
   },
   "vault": {

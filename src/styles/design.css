@@ -438,3 +438,54 @@ body {
   font-weight: var(--text-body-weight);
   line-height: var(--text-body-leading);
 }
+
+/* ---------------------------------------------------------------------------
+   Blättergriffe
+
+   Ohne diese Regeln zeichnet das Betriebssystem sie: im hellen Thema ein
+   fremdes Grau, im dunklen ein zu heller Balken, der die einzige Fläche der
+   Anwendung ist, die nicht mitschaltet. Sie werden deshalb aus `--color-muted`
+   abgeleitet und gehen mit beiden Themen mit, ohne eigene Farbwerte zu
+   brauchen.
+
+   Firefox versteht `scrollbar-width`/`scrollbar-color`, Chrome und Safari die
+   `::-webkit-`-Regeln. Wo beide gelten, gewinnt in Chrome das Standardpaar und
+   die feinere Zeichnung fiele aus — es wird dort deshalb zurückgestellt.
+
+   Der durchsichtige Rand mit `background-clip: content-box` macht aus dem
+   12 px breiten Griff eine 6 px schmale Pille mit Luft ringsum. Die Spur
+   bleibt unsichtbar: Ein Kanal in eigener Farbe zöge mehr Aufmerksamkeit auf
+   sich als der Inhalt, an dem er entlangläuft.
+   --------------------------------------------------------------------------- */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklab, var(--color-muted) 45%, transparent) transparent;
+}
+
+@supports selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: auto;
+    scrollbar-color: auto;
+  }
+
+  ::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+  }
+
+  ::-webkit-scrollbar-track,
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background-color: color-mix(in oklab, var(--color-muted) 32%, transparent);
+    border: 3px solid transparent;
+    border-radius: var(--radius-pill, 9999px);
+    background-clip: content-box;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: color-mix(in oklab, var(--color-muted) 62%, transparent);
+  }
+}

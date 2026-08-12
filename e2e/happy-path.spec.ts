@@ -72,9 +72,12 @@ test.describe('Der ganze Weg', () => {
     )
     await expect(page.getByText(t('editor.export.docxDone'))).toBeVisible()
 
-    // 7. Die Bewerbung steht in der Liste.
+    // 7. Die Bewerbung steht in der Liste. Sie liegt seit dem Aufräumen der
+    //    Einstiegsseite hinter einem Verweis in der Fußleiste, nicht mehr
+    //    aufgeklappt unter der Stellenausschreibung.
     await page.getByRole('link', { name: t('nav.start') }).click()
-    const list = page.getByRole('region', { name: t('start.applications.heading') })
+    await page.getByRole('button', { name: t('start.applications.open', { count: 1 }) }).click()
+    const list = page.getByRole('dialog')
     await expect(list.getByRole('cell', { name: 'Musterwerk Solutions' })).toBeVisible()
     await expect(list.getByRole('cell', { name: 'Entwicklerin' })).toBeVisible()
   })

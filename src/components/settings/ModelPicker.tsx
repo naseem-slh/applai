@@ -7,6 +7,7 @@ import { FIELD_HINT_CLASS, FIELD_LABEL_CLASS } from '@/components/ui/Field'
 import { Input } from '@/components/ui/Input'
 import { filterModels } from '@/lib/ai/modelFilter'
 import type { LlmProvider, ModelChoice } from '@/lib/ai/provider'
+import { cn } from '@/lib/utils'
 
 /**
  * Welche Modelle Applai anfragt, in welcher Reihenfolge.
@@ -113,11 +114,21 @@ export function ModelPicker({
 
   return (
     <div className="flex flex-col gap-3">
-      <p className={FIELD_HINT_CLASS}>{t('settings.model.hint')}</p>
+      {/* Vier Absätze standen hier untereinander: warum die Anbieterliste
+          nichts über den Tarif sagt, wie die Kette arbeitet, dass keines
+          gewählt ist, und welches voreingestellt ist. Zusammen 60 Wörter
+          über zwei Eingabefeldern.
+
+          Geblieben ist der eine Satz zur Kette, weil ohne ihn die
+          Reihenfolge der Liste nichts bedeutet. Die Erklärung zum Tarif
+          interessiert einmal und liegt hinter einem Verweis; welches
+          Modell gerade greift, steht in einer Zeile statt in zweien. */}
       <p className={FIELD_HINT_CLASS}>{t('settings.model.chainHint')}</p>
 
       {chain.length === 0 ? (
-        <p className={FIELD_HINT_CLASS}>{t('settings.model.empty')}</p>
+        <p className={FIELD_HINT_CLASS}>
+          {t('settings.model.empty')} {t('settings.model.current', { model: provider.model })}
+        </p>
       ) : (
         <ol className="flex flex-col gap-2">
           {chain.map((model, index) => (
@@ -144,7 +155,17 @@ export function ModelPicker({
           ))}
         </ol>
       )}
-      <p className={FIELD_HINT_CLASS}>{t('settings.model.current', { model: provider.model })}</p>
+      <details>
+        <summary
+          className={cn(
+            'focus-ring w-fit cursor-pointer list-none rounded-sm',
+            'text-[length:var(--text-body-sm-size)] text-[var(--color-accent-text)]',
+          )}
+        >
+          {t('settings.model.why')}
+        </summary>
+        <p className={cn('mt-1 max-w-[60ch]', FIELD_HINT_CLASS)}>{t('settings.model.hint')}</p>
+      </details>
 
       <label htmlFor={fieldId} className={FIELD_LABEL_CLASS}>
         {t('settings.model.label')}

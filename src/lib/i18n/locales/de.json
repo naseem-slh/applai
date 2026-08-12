@@ -161,18 +161,17 @@
     "intro": "Legen Sie Ihr Anschreiben ab, fügen Sie die Stellenausschreibung ein, und gehen Sie weiter zur Arbeitsfläche. Alles bleibt in diesem Browser, bis Sie eine Textstelle umschreiben lassen.",
     "storageUnavailable": "Der Browser gibt seinen Speicher gerade nicht frei. Sie können weiterarbeiten, aber Applai merkt sich nichts davon: kein Zwischenstand, keine Einstellungen, keine Bewerbungsliste. Im privaten Modus ist das normal.",
     "documents": {
-      "heading": "Unterlagen",
-      "rule": "Eines von beiden genügt. Liegen beide vor, hat die KI mehr belegte Fakten zur Verfügung und muss weniger offenlassen."
+      "heading": "Unterlagen"
     },
     "files": {
       "letter": "Anschreiben",
-      "letterDescription": "Word-Datei (.docx) oder PDF. Das Layout einer Word-Datei bleibt beim Export unverändert erhalten.",
+      "letterDescription": "DOCX behält beim Export sein Layout.",
       "cv": "Lebenslauf",
-      "cvDescription": "Word-Datei (.docx) oder PDF. Dient als Faktenbasis; bearbeitet wird er in diesem Bauabschnitt noch nicht.",
-      "choose": "Datei auswählen",
-      "replace": "Andere Datei auswählen",
+      "cvDescription": "Dient als Faktenbasis, wird nicht bearbeitet.",
+      "choose": "Auswählen",
+      "replace": "Ersetzen",
       "remove": "Entfernen",
-      "none": "Noch keine Datei gewählt. Sie können eine hierher ziehen.",
+      "none": "Datei hierher ziehen",
       "reading": "Datei wird gelesen …",
       "loaded": "Gewählt: {{name}}",
       "fromDraft": "zuletzt benutztes Dokument",
@@ -180,7 +179,9 @@
         "unsupportedType": "Applai liest Word-Dateien (.docx) und PDF-Dateien. Ein anderes Format lässt sich nicht öffnen.",
         "passwordProtected": "Diese PDF-Datei ist passwortgeschützt. Bitte entfernen Sie den Schutz und wählen Sie sie erneut.",
         "unreadable": "Die Datei ließ sich nicht lesen. Möglicherweise ist sie beschädigt oder trotz ihrer Endung kein Word- oder PDF-Dokument."
-      }
+      },
+      "formats": "DOCX oder PDF",
+      "optional": "Optional"
     },
     "pdf": {
       "beta": "Aus PDF gelesen. Die Umwandlung nach Word ist eine Beta-Funktion: Sie stellt Absätze, Überschriften und Stichpunkte wieder her, aber weder das ursprüngliche Layout noch Bilder oder Tabellen. Bitte lesen Sie das Ergebnis auf der Arbeitsfläche durch, bevor Sie es verwenden.",
@@ -196,16 +197,17 @@
     },
     "name": {
       "label": "Ihr Name",
-      "hint": "Applai ersetzt Ihren Namen vor jeder Anfrage durch einen Platzhalter. Dafür muss es wissen, wie er lautet. Geraten wird er nicht.",
-      "detected": "Aus dem Kopfbereich Ihres Dokuments übernommen. Bitte prüfen Sie ihn: Erkannt wird die erste namensförmige Zeile, und das kann auch eine Firmierung sein."
+      "hint": "Wird vor jeder Anfrage durch einen Platzhalter ersetzt.",
+      "detected": "Aus Ihrem Dokument übernommen. Bitte prüfen, es kann eine Firmierung sein."
     },
     "jobAd": {
       "heading": "Stellenausschreibung",
       "label": "Text der Anzeige",
-      "hint": "Fügen Sie den vollständigen Text ein. Je mehr davon dasteht, desto genauer fällt die Anforderungsliste aus.",
-      "pdfLabel": "Oder aus einer PDF-Datei einlesen",
-      "pdfHint": "Ein Link zur Anzeige lässt sich nicht abrufen: Dafür bräuchte Applai einen Server, der die Seite für Sie holt, und einen Server hat es bewusst nicht.",
-      "reading": "PDF wird gelesen …"
+      "hint": "Je vollständiger, desto genauer die Anforderungsliste.",
+      "pdfLabel": "Aus PDF einlesen",
+      "pdfHint": "Ein Link ließe sich nur über einen Server abrufen, der die Seite für Sie holt. Applai hat bewusst keinen.",
+      "reading": "PDF wird gelesen …",
+      "pdfWhy": "Warum kein Link zur Anzeige"
     },
     "applications": {
       "heading": "Bewerbungsliste",
@@ -214,7 +216,8 @@
       "position": "Stelle",
       "date": "Datum",
       "duplicate": "In dieser Anzeige kommt eine Firma vor, bei der Sie sich schon beworben haben: {{entries}}. Das kann ein Zufall sein: Die Prüfung vergleicht nur Firmennamen.",
-      "duplicateEntry": "{{company}}, {{position}} ({{date}})"
+      "duplicateEntry": "{{company}}, {{position}} ({{date}})",
+      "open": "Bewerbungsliste ({{count}})"
     },
     "missing": {
       "heading": "Dafür fehlt noch:",
@@ -222,8 +225,7 @@
       "jobAd": "der Text der Stellenausschreibung",
       "userName": "Ihr Name"
     },
-    "continue": "Weiter zur Arbeitsfläche",
-    "ready": "Alles da. Weiter zur Arbeitsfläche."
+    "continue": "Weiter zur Arbeitsfläche"
   },
   "editor": {
     "intro": "Markieren Sie mit der Maus die Textstelle, die angepasst werden soll. Tippen können Sie überall im Text; Formatierung und Absatzfolge Ihrer Word-Datei bleiben dabei, wie sie sind, und die Eingabetaste legt deshalb keinen neuen Absatz an.",
@@ -432,23 +434,24 @@
     },
     "export": {
       "heading": "Fertig? Dann hinaus damit",
-      "docx": "Word-Datei herunterladen",
-      "pdf": "Als PDF drucken",
-      "copy": "Text kopieren",
-      "pdfHint": "Beim Drucken im Dialog „Als PDF sichern\" wählen. Gedruckt wird nur der Brief, ohne Bedienelemente.",
+      "docx": "Word-Datei",
+      "pdf": "PDF",
+      "copy": "Text",
+      "pdfHint": "PDF entsteht über den Druckdialog.",
       "working": "Die Word-Datei wird erzeugt.",
       "docxDone": "Die Word-Datei wurde erzeugt. Die Bewerbung steht jetzt in Ihrer Liste, der Zwischenstand ist gelöscht.",
       "docxFailed": "Die Word-Datei konnte nicht erzeugt werden.",
       "copyDone": "Der Text liegt in der Zwischenablage.",
-      "copyFailed": "Der Text konnte nicht kopiert werden. Der Browser hat den Zugriff auf die Zwischenablage abgelehnt."
+      "copyFailed": "Der Text konnte nicht kopiert werden. Der Browser hat den Zugriff auf die Zwischenablage abgelehnt.",
+      "pdfTooltip": "Öffnet den Druckdialog. Dort „Als PDF sichern\" wählen. Gedruckt wird nur der Brief, ohne Bedienelemente.",
+      "copyTooltip": "Legt den Brief als reinen Text in die Zwischenablage, etwa für ein Online-Formular."
     }
   },
   "settings": {
     "storageUnavailable": "Der Browser gibt seinen Speicher gerade nicht frei. Änderungen hier gelten nur für diese Sitzung.",
     "saveFailed": "Die Änderung ließ sich nicht speichern und wurde zurückgenommen. Bitte versuchen Sie es erneut.",
     "appearance": {
-      "heading": "Erscheinungsbild",
-      "hint": "Hell ist die Grundeinstellung. „Wie das System“ folgt der Einstellung Ihres Betriebssystems.",
+      "heading": "Oberfläche",
       "label": "Darstellung",
       "options": {
         "light": "Hell",
@@ -457,8 +460,6 @@
       }
     },
     "language": {
-      "heading": "Sprache der Oberfläche",
-      "hint": "Beim ersten Start wählt Applai die Sprache Ihres Browsers vor. Ihre Wahl hier gilt ab dann.",
       "label": "Sprache",
       "options": {
         "de": "Deutsch",
@@ -466,34 +467,34 @@
       }
     },
     "anonymize": {
-      "heading": "Anonymisierung",
-      "label": "Persönliche Daten vor dem Senden ersetzen",
-      "hint": "Name, Anschrift, Geburtsdatum, Telefonnummer und E-Mail-Adresse werden durch Platzhalter ersetzt, bevor Text an den Anbieter geht, und in der Antwort wieder zurückgetauscht.",
+      "heading": "Privatsphäre",
+      "label": "Persönliche Daten ersetzen",
+      "hint": "Name, Anschrift, Geburtsdatum, Telefon und E-Mail gehen als Platzhalter zum Anbieter.",
       "off": "Ohne Anonymisierung gehen Ihre persönlichen Daten im Klartext an den gewählten Anbieter."
     },
     "truthMode": {
-      "heading": "Wahrheitsgrenze",
-      "hint": "Wie weit darf sich eine Formulierung von dem entfernen, was in Ihren Unterlagen belegt ist?",
-      "label": "Grenze",
+      "label": "Wahrheitsgrenze",
       "options": {
         "strict": "Streng",
         "bridge": "Brücken",
         "free": "Frei"
       },
       "explanations": {
-        "strict": "Es wird nur umformuliert, was in Ihren Unterlagen steht. Fehlt eine geforderte Fähigkeit, bleibt sie in der Lückenliste stehen, statt im Text aufzutauchen.",
-        "bridge": "Zusätzlich sind Verallgemeinerungen erlaubt, die durch Ihre Angaben gedeckt sind, etwa „Erfahrung mit relationalen Datenbanken“, wenn dort PostgreSQL steht. Neue Tatsachen entstehen dabei nicht.",
-        "free": "Die KI darf ergänzen, was nicht belegt ist. Solche Stellen werden farbig markiert und müssen einzeln bestätigt werden; solange eine unbestätigt ist, bleibt der Export gesperrt."
+        "strict": "Nur umformulieren, was in Ihren Unterlagen steht.",
+        "bridge": "Verallgemeinerungen erlaubt, solange Ihre Angaben sie decken.",
+        "free": "Nicht Belegtes wird markiert, muss einzeln bestätigt werden und sperrt bis dahin den Export."
       }
     },
     "key": {
-      "heading": "Anbieter und API-Schlüssel",
-      "currentProvider": "Hinterlegt ist ein Schlüssel für {{provider}}. Der Anbieter wechselt mit dem Schlüssel; beides zusammen wird unten ersetzt.",
-      "noProvider": "Es ist noch kein Schlüssel hinterlegt."
+      "heading": "Anbieter und Modell",
+      "currentProvider": "Schlüssel hinterlegt",
+      "noProvider": "Es ist noch kein Schlüssel hinterlegt.",
+      "replace": "Schlüssel ersetzen",
+      "cancelReplace": "Abbrechen"
     },
     "backup": {
       "heading": "Sicherung",
-      "hint": "Bewerbungsliste, Zwischenstände und Einstellungen als Datei sichern und auf einem anderen Gerät oder nach einer Löschung wieder einspielen. Der API-Schlüssel ist nicht dabei. Er bleibt in dem Browser, in dem Sie ihn hinterlegt haben.",
+      "hint": "Bewerbungsliste, Zwischenstände und Einstellungen als Datei. Ohne API-Schlüssel.",
       "export": "Sicherung herunterladen",
       "import": "Sicherung einspielen",
       "importWarning": "Einspielen ersetzt den vorhandenen Bestand vollständig; es wird nichts zusammengeführt.",
@@ -508,7 +509,7 @@
     },
     "delete": {
       "heading": "Alle Daten löschen",
-      "body": "Entfernt Bewerbungsliste, Zwischenstände, Einstellungen und den hinterlegten API-Schlüssel von diesem Gerät. Danach ist nichts mehr von Applai übrig. Ihr Schlüssel beim Anbieter bleibt bestehen. Den ziehen Sie dort zurück, wenn Sie ihn nicht mehr brauchen.",
+      "body": "Entfernt alles von diesem Gerät, auch den hinterlegten Schlüssel.",
       "action": "Alle Daten löschen",
       "confirmTitle": "Wirklich alle Daten löschen?",
       "confirmBody": "Bewerbungsliste, Zwischenstände, Einstellungen und der hinterlegte API-Schlüssel werden entfernt. Das lässt sich nicht rückgängig machen; nur eine vorher heruntergeladene Sicherung bringt die Liste zurück.",
@@ -517,11 +518,12 @@
       "done": "Alle Daten wurden gelöscht: Bewerbungsliste, Zwischenstände, Einstellungen und der API-Schlüssel.",
       "storageFailed": "Der API-Schlüssel wurde gelöscht, aber Bewerbungsliste, Zwischenstände und Einstellungen nicht. Bitte laden Sie die Seite neu und versuchen Sie es noch einmal.",
       "vaultFailed": "Bewerbungsliste, Zwischenstände und Einstellungen wurden gelöscht, der hinterlegte API-Schlüssel jedoch nicht. Bitte laden Sie die Seite neu und versuchen Sie es noch einmal.",
-      "bothFailed": "Es wurde nichts gelöscht. Der Browser gibt seinen Speicher gerade nicht frei. Bitte schließen Sie andere Tabs mit Applai, laden Sie die Seite neu und versuchen Sie es erneut."
+      "bothFailed": "Es wurde nichts gelöscht. Der Browser gibt seinen Speicher gerade nicht frei. Bitte schließen Sie andere Tabs mit Applai, laden Sie die Seite neu und versuchen Sie es erneut.",
+      "keyStays": "Was mit dem Schlüssel beim Anbieter passiert",
+      "keyStaysBody": "Nichts. Er bleibt dort bestehen. Ziehen Sie ihn beim Anbieter zurück, wenn Sie ihn nicht mehr brauchen."
     },
     "model": {
-      "heading": "Modell",
-      "hint": "Applai fragt dieses Modell an. Welche Modelle Ihr kostenloser Tarif abdeckt, sagt die Liste des Anbieters nicht; sie enthält kein Feld dazu. Nachsehen können Sie es in der Konsole Ihres Anbieters unter „Rate limits“.",
+      "hint": "Die Liste des Anbieters sagt nicht, was Ihr Tarif abdeckt; sie enthält kein Feld dazu. Nachsehen können Sie es in der Konsole Ihres Anbieters unter „Rate limits\".",
       "label": "Modellkennung",
       "load": "Modelle laden",
       "loading": "Modelle werden geladen",
@@ -533,14 +535,15 @@
       "needsKey": "Zum Laden der Liste muss der Schlüssel entsperrt sein.",
       "showAll": "Alle Modelle anzeigen",
       "filtered": "Nur Modelle, die Text ausgeben. Beim kostenlosen Tarif ohne Pro-Modelle, die dort meist nicht enthalten sind.",
-      "chainHint": "Applai versucht die Modelle in dieser Reihenfolge. Ist das Kontingent des ersten erschöpft, übernimmt das nächste.",
+      "chainHint": "Ist eines erschöpft, übernimmt das nächste.",
       "empty": "Keines gewählt. Applai nimmt die Voreinstellung des Anbieters.",
       "entry": "{{position}}. {{model}}",
       "add": "Hinzufügen",
       "addLabel": "{{model}} hinzufügen",
       "moveUp": "Nach oben",
       "removeEntry": "Aus der Kette nehmen",
-      "addAll": "Alle der Reihe nach übernehmen"
+      "addAll": "Alle der Reihe nach übernehmen",
+      "why": "Welches Modell deckt mein Tarif ab"
     }
   },
   "vault": {

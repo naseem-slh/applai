@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { FIELD_HINT_CLASS } from '@/components/ui/Field'
+import { CopyIcon, DownloadIcon, PrinterIcon } from '@/components/ui/icons'
+import { Tooltip } from '@/components/ui/Tooltip'
 import type { DocxDocument } from '@/lib/docx/model'
 import { copyToClipboard, toPlainText } from '@/lib/export/clipboard'
 import { buildFileName, downloadDocx } from '@/lib/export/docx'
@@ -96,22 +98,44 @@ export function ExportBar({ document: docx, company, blocked, onExported }: Expo
           {t('editor.export.heading')}
         </h3>
 
-        <div className="flex flex-wrap gap-3">
-          <Button
-            variant="primary"
-            disabled={blocked || state.kind === 'working'}
-            onClick={() => void handleDownload()}
-          >
-            {t('editor.export.docx')}
-          </Button>
-          <Button variant="secondary" disabled={blocked} onClick={handlePrint}>
-            {t('editor.export.pdf')}
-          </Button>
-          <Button variant="secondary" disabled={blocked} onClick={() => void handleCopy()}>
-            {t('editor.export.copy')}
-          </Button>
+        {/* Der Word-Download über die ganze Breite, die beiden Nebenwege
+            darunter zu zweit: Nur er schließt die Bewerbung ab (siehe
+            Kopfkommentar), und das soll man sehen, ohne es zu lesen.
+
+            Die Beschriftungen sind kurz, weil das Sinnbild die Hälfte der
+            Aussage trägt. Was ein kurzes Wort offenlässt, sagt das
+            Hinweisfähnchen: Radix hängt es als `aria-describedby` an, der
+            sichtbare Text bleibt also der Name des Knopfes (WCAG 2.5.3). */}
+        <Button
+          variant="primary"
+          disabled={blocked || state.kind === 'working'}
+          onClick={() => void handleDownload()}
+          className="w-full"
+        >
+          <DownloadIcon />
+          {t('editor.export.docx')}
+        </Button>
+
+        <div className="grid grid-cols-2 gap-2">
+          <Tooltip content={t('editor.export.pdfTooltip')}>
+            <Button variant="secondary" disabled={blocked} onClick={handlePrint}>
+              <PrinterIcon />
+              {t('editor.export.pdf')}
+            </Button>
+          </Tooltip>
+          <Tooltip content={t('editor.export.copyTooltip')}>
+            <Button variant="secondary" disabled={blocked} onClick={() => void handleCopy()}>
+              <CopyIcon />
+              {t('editor.export.copy')}
+            </Button>
+          </Tooltip>
         </div>
 
+        {/* Der eine Halbsatz bleibt sichtbar statt im Fähnchen: Ein
+            gesperrter Knopf nimmt keine Zeigerereignisse an und zeigt sein
+            Fähnchen deshalb nie, und auf einem Gerät mit Fingerbedienung
+            gibt es kein Überfahren. Dass ein PDF durch Drucken entsteht,
+            ist die einzige der drei Auskünfte, die niemand errät. */}
         <p className={FIELD_HINT_CLASS}>{t('editor.export.pdfHint')}</p>
 
         {/* Eine Zustandsauskunft, keine Unterbrechung: `role="status"`. Der

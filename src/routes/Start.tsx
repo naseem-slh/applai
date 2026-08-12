@@ -22,6 +22,13 @@ import {
 } from '@/components/start/loadDocument'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/Dialog'
 import { Field, FIELD_HINT_CLASS } from '@/components/ui/Field'
 import { Input, Textarea } from '@/components/ui/Input'
 import { SectionCard } from '@/components/ui/SectionCard'
@@ -118,6 +125,7 @@ export default function Start({ loaders = DEFAULT_LOADERS }: StartProps) {
   const [userName, setUserName] = useState(session?.userName ?? '')
   const [nameFromDocument, setNameFromDocument] = useState(false)
   const [applications, setApplications] = useState<Application[]>([])
+  const [applicationsOpen, setApplicationsOpen] = useState(false)
   const jobAdPdfRef = useRef<HTMLInputElement | null>(null)
   const [recent, setRecent] = useState<Record<Slot, Draft | null>>({ letter: null, cv: null })
 
@@ -332,16 +340,18 @@ export default function Start({ loaders = DEFAULT_LOADERS }: StartProps) {
           >
             {t('start.documents.heading')}
           </h2>
-          <p className="mt-1 mb-4 max-w-[52ch] text-[length:var(--text-body-sm-size)] leading-[var(--text-body-sm-leading)] text-[var(--color-muted)]">
-            {t('start.documents.rule')}
-          </p>
+
+          {/* Die Regel „eines von beiden genügt" stand hier als Satz davor.
+              Sie steht jetzt als Kennzeichen „Optional" am Lebenslauf: Wer
+              die beiden Felder sieht, liest die Regel dort ab, statt sie
+              vorweg erklärt zu bekommen. */}
 
           {recentVisible && (
             <SectionCard
               headingId={`${fieldPrefix}-recent`}
               heading={t('start.recent.heading')}
               variant="subtle"
-              className="mb-4"
+              className="mt-4"
             >
               <p className="mt-2 text-[length:var(--text-body-sm-size)] leading-[var(--text-body-sm-leading)] text-[var(--color-ink)]">
                 {t('start.recent.body')}
@@ -370,7 +380,7 @@ export default function Start({ loaders = DEFAULT_LOADERS }: StartProps) {
             </SectionCard>
           )}
 
-          <div className="flex flex-col gap-3">
+          <div className="mt-4 flex flex-col gap-5">
             {SLOTS.map((slot) => {
               const state = slots[slot]
               return (
@@ -378,6 +388,18 @@ export default function Start({ loaders = DEFAULT_LOADERS }: StartProps) {
                   <FileDrop
                     label={t(`start.files.${slot}`)}
                     description={t(`start.files.${slot}Description`)}
+                    // Das Anschreiben nennt sein Format, der Lebenslauf
+                    // seinen Rang. Zwei gleich aussehende Ablegefelder
+                    // ließen sonst offen, welches davon nötig ist.
+                    meta={
+                      slot === 'letter' ? (
+                        <span className={FIELD_HINT_CLASS}>{t('start.files.formats')}</span>
+                      ) : (
+                        <span className="rounded-full border border-[var(--color-border)] bg-[var(--color-surface-alt)] px-2 py-0.5 text-[length:var(--text-label-size)] font-semibold tracking-[var(--text-label-tracking)] text-[var(--color-muted)] uppercase">
+                          {t('start.files.optional')}
+                        </span>
+                      )
+                    }
                     accept=".docx,.pdf"
                     document={state.document}
                     busy={state.busy}
@@ -493,7 +515,21 @@ export default function Start({ loaders = DEFAULT_LOADERS }: StartProps) {
               </p>
             )}
           </div>
-          <p className={cn('mt-2', FIELD_HINT_CLASS)}>{t('start.jobAd.pdfHint')}</p>
+          {/* Warum es keinen Link gibt, ist eine Begründung für etwas, das
+              gar nicht angeboten wird. Sie stand als 27-Wort-Absatz
+              dauerhaft da und beantwortete eine Frage, die die meisten nie
+              stellen. Wer sie stellt, klappt sie auf. */}
+          <details className="mt-2">
+            <summary
+              className={cn(
+                'focus-ring w-fit cursor-pointer list-none rounded-sm text-[var(--color-accent-text)]',
+                'text-[length:var(--text-body-sm-size)] leading-[var(--text-body-sm-leading)]',
+              )}
+            >
+              {t('start.jobAd.pdfWhy')}
+            </summary>
+            <p className={cn('mt-1 max-w-[60ch]', FIELD_HINT_CLASS)}>{t('start.jobAd.pdfHint')}</p>
+          </details>
 
           {duplicates.length > 0 && (
             <Card variant="subtle" padding="md" className="mt-4 text-[var(--color-ink)]">
@@ -516,50 +552,6 @@ export default function Start({ loaders = DEFAULT_LOADERS }: StartProps) {
             </Card>
           )}
 
-          {/* Die Bewerbungsliste ist Nachschlagewerk, kein Arbeitsschritt.
-              Sie steht deshalb zugeklappt unter der Ausschreibung, während
-              die Warnung vor einer Doppelbewerbung oben aufschlägt, wo sie
-              gebraucht wird. */}
-          <details className="mt-4 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-raised)]">
-            <summary className="focus-ring cursor-pointer list-none rounded-md px-4 py-3 text-[length:var(--text-body-sm-size)] font-medium text-[var(--color-ink)]">
-              {t('start.applications.heading')}
-            </summary>
-            <div className="px-4 pb-4">
-              {applications.length === 0 ? (
-                <p className={FIELD_HINT_CLASS}>{t('start.applications.empty')}</p>
-              ) : (
-                <table className="w-full border-collapse text-left text-[length:var(--text-body-sm-size)]">
-                  <thead>
-                    <tr className="border-b border-[var(--color-border)]">
-                      <th scope="col" className="py-2 pr-4 font-medium">
-                        {t('start.applications.company')}
-                      </th>
-                      <th scope="col" className="py-2 pr-4 font-medium">
-                        {t('start.applications.position')}
-                      </th>
-                      <th scope="col" className="py-2 font-medium">
-                        {t('start.applications.date')}
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {applications.map((application) => (
-                      <tr
-                        key={application.id}
-                        className="border-b border-[var(--color-border)] last:border-b-0"
-                      >
-                        <td className="py-2 pr-4">{application.company}</td>
-                        <td className="py-2 pr-4">{application.position}</td>
-                        <td className="py-2">
-                          {formatDate(application.date, i18n.resolvedLanguage ?? 'de')}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-          </details>
         </section>
       </div>
 
@@ -575,9 +567,13 @@ export default function Start({ loaders = DEFAULT_LOADERS }: StartProps) {
         >
           {t('start.continue')}
         </Button>
-        {missing.length > 0 ? (
+        {missing.length > 0 && (
           // Je Punkt eine eigene Zeile, nicht ein zusammengezogener Satz:
           // Wer zwei Dinge nachzuholen hat, soll zwei Dinge sehen.
+          //
+          // Ist nichts offen, steht hier nichts: Der freigegebene Knopf
+          // daneben sagt es schon, und „Alles da. Weiter zur Arbeitsfläche."
+          // wiederholte nur seine Beschriftung.
           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
             <p className={FIELD_HINT_CLASS}>{t('start.missing.heading')}</p>
             <ul className={cn('flex flex-wrap gap-x-4 gap-y-1', FIELD_HINT_CLASS)}>
@@ -586,11 +582,57 @@ export default function Start({ loaders = DEFAULT_LOADERS }: StartProps) {
               ))}
             </ul>
           </div>
-        ) : (
-          <p className="text-[length:var(--text-body-sm-size)] text-[var(--color-accent-text)]">
-            {t('start.ready')}
-          </p>
         )}
+
+        {/* Die Bewerbungsliste ist Nachschlagewerk, kein Arbeitsschritt. Sie
+            stand bis zum Aufräumen unter der Stellenausschreibung, im Weg
+            der einen Sache, um die es hier geht. Jetzt liegt sie hinter
+            einem Verweis am Rand der Fußleiste. Die Warnung vor einer
+            Doppelbewerbung bleibt davon unberührt: Die schlägt oben an der
+            Anzeige auf, wo sie gebraucht wird. */}
+        <Dialog open={applicationsOpen} onOpenChange={setApplicationsOpen}>
+          <DialogTrigger asChild>
+            <Button variant="ghost" size="sm" className="ms-auto">
+              {t('start.applications.open', { count: applications.length })}
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogTitle>{t('start.applications.heading')}</DialogTitle>
+            {applications.length === 0 ? (
+              <DialogDescription>{t('start.applications.empty')}</DialogDescription>
+            ) : (
+              <table className="mt-4 w-full border-collapse text-left text-[length:var(--text-body-sm-size)]">
+                <thead>
+                  <tr className="border-b border-[var(--color-border)]">
+                    <th scope="col" className="py-2 pr-4 font-medium">
+                      {t('start.applications.company')}
+                    </th>
+                    <th scope="col" className="py-2 pr-4 font-medium">
+                      {t('start.applications.position')}
+                    </th>
+                    <th scope="col" className="py-2 font-medium">
+                      {t('start.applications.date')}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {applications.map((application) => (
+                    <tr
+                      key={application.id}
+                      className="border-b border-[var(--color-border)] last:border-b-0"
+                    >
+                      <td className="py-2 pr-4">{application.company}</td>
+                      <td className="py-2 pr-4">{application.position}</td>
+                      <td className="py-2">
+                        {formatDate(application.date, i18n.resolvedLanguage ?? 'de')}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   )
