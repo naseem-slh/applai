@@ -705,8 +705,21 @@ function EditorWorkspace({ session }: { session: StartSession }) {
           </div>
 
           {/* Der Bereich, der das Blatt trägt. Er blättert für sich; die
-              Seite als Ganzes steht still. */}
-          <div className="flex min-h-0 flex-1 flex-col items-center gap-5 px-4 py-6 lg:overflow-y-auto lg:px-8">
+              Seite als Ganzes steht still.
+
+              `tabIndex={0}`, weil er blättert: Ein Blätterbereich muss mit
+              der Tastatur erreichbar sein, sonst kommt niemand ohne Maus an
+              den Text unterhalb der Fensterkante (WCAG 2.1.1, axe-Regel
+              `scrollable-region-focusable`, Wirkung „serious"). Die
+              Dokumentfläche darin ist zwar fokussierbar, zählt aber nicht:
+              Ein `contenteditable` ohne eigenes `tabindex` meldet
+              `tabIndex === -1` und steht damit nicht in der Tabulatorfolge.
+              Mit dem Halt hier blättert Bild-auf und Bild-ab den Brief, ohne
+              dass der Schreibcursor in den Text gesetzt werden muss. */}
+          <div
+            tabIndex={0}
+            className="flex min-h-0 flex-1 flex-col items-center gap-5 px-4 py-6 lg:overflow-y-auto lg:px-8"
+          >
             {/* `data-print-document`: Beim Drucken bleibt genau diese Karte
                 stehen, alles andere wird ausgeblendet (siehe
                 `lib/export/print.css`). Die Markierung sitzt an der Karte und
