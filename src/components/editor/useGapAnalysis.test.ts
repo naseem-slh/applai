@@ -29,6 +29,7 @@ function createProvider(overrides: Partial<LlmProvider> = {}): LlmProvider {
   return {
     id: 'gemini',
     label: 'Gemini',
+    model: 'test-modell',
     endpoint: 'https://generativelanguage.googleapis.com',
     generate: vi.fn(() => Promise.resolve(ANSWER)),
     ...overrides,

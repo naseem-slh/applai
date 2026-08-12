@@ -152,6 +152,7 @@ export function createAnthropicProvider(sleep: Sleep = realSleep): LlmProvider {
   return {
     id: 'anthropic',
     label: 'Anthropic',
+    model: ANTHROPIC_MODEL,
     endpoint: ANTHROPIC_ENDPOINT,
     generate: (req, apiKey, signal) =>
       withSingleRateLimitRetry(() => performAnthropicRequest(req, apiKey, signal), sleep, signal),

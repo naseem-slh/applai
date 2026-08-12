@@ -184,6 +184,7 @@ function EditorWorkspace({ session }: { session: StartSession }) {
     provider,
     apiKey,
     privacy,
+    storage,
   })
 
   const claims = useUnbackedClaims(docx)

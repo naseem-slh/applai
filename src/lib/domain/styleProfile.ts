@@ -47,6 +47,24 @@ export interface StyleProfile {
   sample: string
 }
 
+/**
+ * Das fertige Stilprofil als Laufzeitschema.
+ *
+ * Gebraucht vom Auswertungsspeicher: Was aus der Ablage kommt, ist
+ * `unknown` und muss geprüft werden, bevor es benutzt wird — ein Eintrag aus
+ * einer älteren Fassung darf nicht als gültiges Profil durchgehen. Die
+ * Bindung an `z.ZodType<StyleProfile>` sorgt dafür, dass Schema und
+ * Schnittstelle nicht auseinanderlaufen: Wer oben ein Feld ergänzt, bekommt
+ * hier einen Typfehler.
+ */
+export const StyleProfileSchema: z.ZodType<StyleProfile> = z.object({
+  formality: z.number(),
+  sentenceLength: z.number(),
+  address: z.union([z.literal('sie'), z.literal('du'), z.literal('none')]),
+  traits: z.array(z.string()),
+  sample: z.string(),
+})
+
 // ---------------------------------------------------------------------------
 // sentenceLength — deterministische Satzsegmentierung ohne Bibliothek (G9)
 // ---------------------------------------------------------------------------

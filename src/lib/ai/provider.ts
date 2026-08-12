@@ -64,6 +64,14 @@ export interface LlmProvider {
    * gegen die tatsächliche Datei, damit beide nie auseinanderlaufen.
    */
   endpoint: string
+  /**
+   * Das angefragte Modell, ausgeschrieben. Steht hier, weil der
+   * Auswertungsspeicher es braucht: Ein anderes Modell antwortet anders,
+   * und ein Eintrag des einen darf dem anderen nicht untergeschoben werden
+   * (siehe `analysisCache.ts`). Ohne dieses Feld müsste jeder Aufrufer die
+   * Modellkonstante der Anbieterdatei kennen.
+   */
+  model: string
   generate(req: LlmRequest, apiKey: string, signal?: AbortSignal): Promise<string>
 }
 
@@ -100,14 +108,16 @@ export const PROVIDERS: Record<ProviderId, LlmProvider> = {
  * automatisch für **jeden** Aufruf, den die Domänenfunktion intern macht,
  * auch für den zweiten.
  *
- * `id`, `label` und `endpoint` werden unverändert übernommen: Die Hülle ist
- * derselbe Anbieter, nur abbrechbar. Insbesondere bleibt `endpoint` die
- * geprüfte CSP-Zusage (G3, siehe oben).
+ * `id`, `label`, `model` und `endpoint` werden unverändert übernommen: Die
+ * Hülle ist derselbe Anbieter, nur abbrechbar. Insbesondere bleibt
+ * `endpoint` die geprüfte CSP-Zusage (G3, siehe oben) und `model` der
+ * Schlüsselbestandteil des Auswertungsspeichers.
  */
 export function withSignal(provider: LlmProvider, signal: AbortSignal): LlmProvider {
   return {
     id: provider.id,
     label: provider.label,
+    model: provider.model,
     endpoint: provider.endpoint,
     // Ein vom Aufrufer mitgegebenes Signal gewinnt — heute gibt es keinen
     // solchen Aufrufer, und ein stillschweigend verworfenes Signal wäre der

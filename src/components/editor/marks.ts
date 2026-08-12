@@ -1,5 +1,6 @@
 import type { Range as TextRange } from '@/lib/docx/replace'
 import type { MarkAnchor } from '@/lib/storage/adapter'
+import { textFingerprint } from '@/lib/text/fingerprint'
 
 /**
  * Vorgemerkte Stellen: mehrere Textbereiche, die der Nutzer nacheinander
@@ -261,17 +262,12 @@ export function shiftMarks(
 }
 
 /**
- * Der Fingerabdruck eines Anschreibens: SHA-256 seines auf einfachen
- * Leerraum normalisierten Textes, hexadezimal.
- *
- * Normalisiert, damit ein anders umbrochener, sonst gleicher Brief derselbe
- * bleibt. WebCrypto, also ohne neue Abhängigkeit (G9).
+ * Der Fingerabdruck eines Anschreibens. Seit dem Auswertungsspeicher stellt
+ * `lib/text/fingerprint` dieselbe Rechnung für beide Nutzer bereit; der Name
+ * bleibt hier stehen, weil er an dieser Stelle sagt, **wovon** der Abdruck
+ * genommen wird.
  */
-export async function letterFingerprint(text: string): Promise<string> {
-  const normalized = text.replace(/\s+/g, ' ').trim()
-  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(normalized))
-  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('')
-}
+export const letterFingerprint = textFingerprint
 
 /** Wie gut passt der Text um diese Fundstelle zum gespeicherten Rand? */
 function contextScore(text: string, at: number, anchor: MarkAnchor): number {

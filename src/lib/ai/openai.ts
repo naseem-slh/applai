@@ -149,6 +149,7 @@ export function createOpenAiProvider(sleep: Sleep = realSleep): LlmProvider {
   return {
     id: 'openai',
     label: 'OpenAI',
+    model: OPENAI_MODEL,
     endpoint: OPENAI_ENDPOINT,
     generate: (req, apiKey, signal) =>
       withSingleRateLimitRetry(() => performOpenAiRequest(req, apiKey, signal), sleep, signal),

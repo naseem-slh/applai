@@ -171,6 +171,7 @@ export function createGeminiProvider(sleep: Sleep = realSleep): LlmProvider {
   return {
     id: 'gemini',
     label: 'Google Gemini',
+    model: GEMINI_MODEL,
     endpoint: GEMINI_ENDPOINT,
     generate: (req, apiKey, signal) =>
       withSingleRateLimitRetry(() => performGeminiRequest(req, apiKey, signal), sleep, signal),

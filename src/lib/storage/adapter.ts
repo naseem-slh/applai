@@ -74,6 +74,25 @@ export interface MarkSet {
 }
 
 /**
+ * Eine gespeicherte Auswertung: das Ergebnis eines Modellaufrufs, der
+ * ausschließlich von seinen Eingaben abhängt.
+ *
+ * `key` ist ein Fingerabdruck über Art, Modell und Eingabetext (siehe
+ * `lib/ai/analysisCache.ts`) — gleiche Eingabe, gleicher Schlüssel. Damit
+ * wird derselbe Aufruf nie zweimal bezahlt.
+ *
+ * `value` ist bewusst `unknown`: Diese Schicht kennt die Fachtypen nicht und
+ * soll sie nicht kennen. Wer liest, prüft das Gelesene gegen sein eigenes
+ * Schema, bevor er es benutzt.
+ */
+export interface CachedAnalysis {
+  key: string
+  value: unknown
+  /** Zeitpunkt des Ablegens, `Date.now()`-Millisekunden. */
+  savedAt: number
+}
+
+/**
  * Wahrheitsgrenze beim Formulieren. Hier definiert, weil `Settings` sie
  * braucht; in Aufgabe 11 (Textvarianten) wiederverwendet.
  */
@@ -144,6 +163,16 @@ export interface StorageAdapter {
   saveMarkSet(set: MarkSet): Promise<void>
   /** Löscht genau einen Satz. Löst bei unbekannter Kennung nicht — siehe `deleteDraft`. */
   deleteMarkSet(id: string): Promise<void>
+  /**
+   * Alle abgelegten Auswertungen. Die aufrufende Seite hält damit die Menge
+   * begrenzt — wie viele sinnvoll sind, weiß sie, nicht diese Schicht
+   * (dieselbe Trennung wie bei `purgeExpiredDrafts` und `listMarkSets`).
+   */
+  listCachedAnalyses(): Promise<CachedAnalysis[]>
+  loadCachedAnalysis(key: string): Promise<CachedAnalysis | null>
+  saveCachedAnalysis(entry: CachedAnalysis): Promise<void>
+  /** Löst bei unbekanntem Schlüssel nicht — siehe `deleteDraft`. */
+  deleteCachedAnalysis(key: string): Promise<void>
   getSettings(): Promise<Settings>
   /**
    * `true`, sobald einmal `saveSettings` (oder `importAll`) gelaufen ist —

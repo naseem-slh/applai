@@ -1,4 +1,13 @@
-import type { Application, Draft, MarkAnchor, MarkSet, Settings, StorageAdapter, TruthMode } from './adapter'
+import type {
+  Application,
+  CachedAnalysis,
+  Draft,
+  MarkAnchor,
+  MarkSet,
+  Settings,
+  StorageAdapter,
+  TruthMode,
+} from './adapter'
 import { isProviderId } from './keyVault'
 
 /**
@@ -12,17 +21,18 @@ import { isProviderId } from './keyVault'
  */
 export const STORAGE_DB_NAME = 'applai-storage'
 /**
- * Fassung 2 seit den vorgemerkten Stellen: Sie hat den Speicher `markSets`
- * dazubekommen. `onupgradeneeded` legt jeden Speicher nur an, wenn er fehlt —
+ * Fassung 3: `markSets` (vorgemerkte Stellen) und `analysisCache`
+ * (Auswertungsspeicher) sind nacheinander dazugekommen. `onupgradeneeded` legt jeden Speicher nur an, wenn er fehlt —
  * eine im Browser stehende Datenbank der Fassung 1 wächst also mit, ohne
  * ihren Bestand zu verlieren.
  */
-const STORAGE_DB_VERSION = 2
+const STORAGE_DB_VERSION = 3
 
 export const APPLICATIONS_STORE = 'applications'
 export const DRAFTS_STORE = 'drafts'
 export const SETTINGS_STORE = 'settings'
 export const MARK_SETS_STORE = 'markSets'
+export const ANALYSIS_CACHE_STORE = 'analysisCache'
 
 /** Einziger Datensatz des Einstellungs-Speichers. */
 const SETTINGS_KEY = 'settings'
@@ -239,6 +249,9 @@ function openDatabase(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains(MARK_SETS_STORE)) {
         db.createObjectStore(MARK_SETS_STORE, { keyPath: 'id' })
       }
+      if (!db.objectStoreNames.contains(ANALYSIS_CACHE_STORE)) {
+        db.createObjectStore(ANALYSIS_CACHE_STORE, { keyPath: 'key' })
+      }
     }
     request.onsuccess = () => resolve(request.result)
     request.onerror = () => reject(storageError(request.error))
@@ -420,6 +433,31 @@ async function deleteMarkSet(id: string): Promise<void> {
   })
 }
 
+async function listCachedAnalyses(): Promise<CachedAnalysis[]> {
+  return withTransaction([ANALYSIS_CACHE_STORE], 'readonly', (tx) =>
+    promisifyRequest(tx.objectStore(ANALYSIS_CACHE_STORE).getAll()),
+  )
+}
+
+async function loadCachedAnalysis(key: string): Promise<CachedAnalysis | null> {
+  const entry = await withTransaction([ANALYSIS_CACHE_STORE], 'readonly', (tx) =>
+    promisifyRequest<CachedAnalysis | undefined>(tx.objectStore(ANALYSIS_CACHE_STORE).get(key)),
+  )
+  return entry ?? null
+}
+
+async function saveCachedAnalysis(entry: CachedAnalysis): Promise<void> {
+  await withTransaction([ANALYSIS_CACHE_STORE], 'readwrite', async (tx) => {
+    await promisifyRequest(tx.objectStore(ANALYSIS_CACHE_STORE).put(entry))
+  })
+}
+
+async function deleteCachedAnalysis(key: string): Promise<void> {
+  await withTransaction([ANALYSIS_CACHE_STORE], 'readwrite', async (tx) => {
+    await promisifyRequest(tx.objectStore(ANALYSIS_CACHE_STORE).delete(key))
+  })
+}
+
 async function getSettings(): Promise<Settings> {
   const stored = await withTransaction([SETTINGS_STORE], 'readonly', (tx) =>
     promisifyRequest<Settings | undefined>(tx.objectStore(SETTINGS_STORE).get(SETTINGS_KEY)),
@@ -512,12 +550,20 @@ async function clearAll(): Promise<void> {
   // Eine gemeinsame Transaktion über alle vier Speicher: entweder wird
   // vollständig geleert oder gar nicht. Die Datenbank des Schlüsseltresors
   // (`applai-key-vault`) ist eine andere Datenbank und kommt hier nicht vor.
-  await withTransaction([APPLICATIONS_STORE, DRAFTS_STORE, SETTINGS_STORE, MARK_SETS_STORE], 'readwrite', async (tx) => {
-    await promisifyRequest(tx.objectStore(APPLICATIONS_STORE).clear())
-    await promisifyRequest(tx.objectStore(DRAFTS_STORE).clear())
-    await promisifyRequest(tx.objectStore(SETTINGS_STORE).clear())
-    await promisifyRequest(tx.objectStore(MARK_SETS_STORE).clear())
-  })
+  await withTransaction(
+    [APPLICATIONS_STORE, DRAFTS_STORE, SETTINGS_STORE, MARK_SETS_STORE, ANALYSIS_CACHE_STORE],
+    'readwrite',
+    async (tx) => {
+      await promisifyRequest(tx.objectStore(APPLICATIONS_STORE).clear())
+      await promisifyRequest(tx.objectStore(DRAFTS_STORE).clear())
+      await promisifyRequest(tx.objectStore(SETTINGS_STORE).clear())
+      await promisifyRequest(tx.objectStore(MARK_SETS_STORE).clear())
+      // „Alle Daten löschen" heißt alle: Der Auswertungsspeicher enthält
+      // Modellantworten zu den Unterlagen des Nutzers und bleibt nicht
+      // stehen, nur weil er wiederherstellbar wäre.
+      await promisifyRequest(tx.objectStore(ANALYSIS_CACHE_STORE).clear())
+    },
+  )
 }
 
 export function createIndexedDbAdapter(): StorageAdapter {
@@ -529,6 +575,10 @@ export function createIndexedDbAdapter(): StorageAdapter {
     loadDraft,
     deleteDraft,
     purgeExpiredDrafts,
+    listCachedAnalyses,
+    loadCachedAnalysis,
+    saveCachedAnalysis,
+    deleteCachedAnalysis,
     listMarkSets,
     loadMarkSet,
     saveMarkSet,
