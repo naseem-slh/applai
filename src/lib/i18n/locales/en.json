@@ -257,7 +257,7 @@
       "heading": "Marked passages",
       "count_one": "1 passage",
       "count_other": "{{count}} passages",
-      "none": "Nothing marked yet. Select a passage and choose “Mark passage”.",
+      "none": "Nothing marked yet. Select a passage in the letter and it appears here.",
       "progress": "{{done}} of {{total}} done",
       "entry": "{{number}}. “{{text}}”",
       "select": "Select this passage",
