@@ -1,4 +1,5 @@
 import type { ProviderId } from '../storage/keyVault'
+import { recordRequest } from './usage'
 
 /**
  * Die Fehlerarten, die ein Anbieter-Adapter melden kann. Bewusst ohne
@@ -272,6 +273,10 @@ export async function fetchOrNetworkError(
   provider: ProviderId,
   label: string,
 ): Promise<Response> {
+  // Gezählt wird **vor** dem Absenden: Auch eine Anfrage, die mit einem
+  // Fehler zurückkommt oder abgebrochen wird, hat den Anbieter erreicht und
+  // zählt dort gegen das Kontingent (siehe `usage.ts`).
+  recordRequest()
   try {
     return await fetch(url, init)
   } catch (error) {

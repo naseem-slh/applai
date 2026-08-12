@@ -151,6 +151,10 @@
       "unknown": "Unerwarteter Fehler beim Aufruf des Anbieters.",
       "providerDetails": "Meldung des Anbieters",
       "retryIn": "Erneut versuchen in {{seconds}} s"
+    },
+    "usage": {
+      "requests_one": "1 Anfrage in dieser Sitzung",
+      "requests_other": "{{count}} Anfragen in dieser Sitzung"
     }
   },
   "start": {

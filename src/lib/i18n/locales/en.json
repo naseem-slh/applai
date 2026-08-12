@@ -151,6 +151,10 @@
       "unknown": "Unexpected error while calling the provider.",
       "providerDetails": "Message from the provider",
       "retryIn": "Retry in {{seconds}} s"
+    },
+    "usage": {
+      "requests_one": "1 request this session",
+      "requests_other": "{{count}} requests this session"
     }
   },
   "start": {

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNod
 import { useTranslation } from 'react-i18next'
 import { Link, Navigate } from 'react-router-dom'
 import { AiErrorNotice } from '@/components/app/AiErrorNotice'
+import { ApiUsageStatus } from '@/components/app/ApiUsageStatus'
 import { VaultLockedError } from '@/components/app/aiErrorKey'
 import { LETTER_DRAFT_ID, useApp, type StartSession } from '@/components/app/appContext'
 import { ClaimGuard } from '@/components/editor/ClaimGuard'
@@ -700,6 +701,7 @@ function EditorWorkspace({ session }: { session: StartSession }) {
                   {t('editor.undo')}
                 </Button>
                 <DraftStatus state={draft} />
+                <ApiUsageStatus />
               </div>
             </div>
 
