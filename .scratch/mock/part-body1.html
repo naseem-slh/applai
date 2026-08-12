@@ -1,0 +1,101 @@
+
+<!-- Zeichensatz. Strichstärke durchgängig 1.6.
+     Im Produkt kommt dafür @phosphor-icons/react hinein; hier stehen die
+     Glyphen inline, weil diese Vorschau ohne Bündler auskommen muss. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<g id="i-lock" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <rect x="4" y="10.5" width="16" height="10" rx="2.5"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></g>
+<g id="i-doc" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></g>
+<g id="i-check" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5 10 17.5 19 7"/></g>
+<g id="i-x" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></g>
+<g id="i-chev" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9.5 12 15.5 18 9.5"/></g>
+<g id="i-right" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13M12.5 6.5 19 12l-6.5 5.5"/></g>
+<g id="i-down" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v13M6.5 11.5 12 18l5.5-6.5"/></g>
+<g id="i-spark" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M12 3.5 13.9 9.3 19.5 11 13.9 12.8 12 18.5 10.1 12.8 4.5 11 10.1 9.3z"/><path d="M18.5 16.5 19.2 18.6 21.2 19.3 19.2 20 18.5 22 17.8 20 15.8 19.3 17.8 18.6z"/></g>
+<g id="i-cursor" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M12 5.5v13M9 5.5h6M9 18.5h6"/></g>
+<g id="i-dl" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19h14"/></g>
+<g id="i-warn" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M12 4.5 21 19.5H3z"/><path d="M12 10v4M12 16.8v.2"/></g>
+<g id="i-info" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5M12 7.8v.2"/></g>
+<g id="i-db" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <ellipse cx="12" cy="6.5" rx="7.5" ry="3"/><path d="M4.5 6.5v11c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3v-11"/><path d="M4.5 12c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3"/></g>
+<g id="i-send" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M20.5 3.5 10.5 13.5M20.5 3.5 14 20.5l-3.5-7-7-3.5z"/></g>
+<g id="i-trash" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M4.5 7h15M9.5 7V5a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v2M6.5 7l.8 12a2 2 0 0 0 2 1.9h5.4a2 2 0 0 0 2-1.9l.8-12"/></g>
+<g id="i-undo" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M4 9h9.5a5.5 5.5 0 0 1 0 11H9"/><path d="M7.5 5 3.5 9l4 4"/></g>
+</defs></svg>
+
+<div class="harness">
+  <span class="harness-tag">Entwurf zur Ansicht</span>
+  <nav class="harness-nav" aria-label="Ansichten">
+    <button data-go="gate" aria-current="false">1 &middot; Datenschutz</button>
+    <button data-go="start" aria-current="true">2 &middot; Vorbereiten</button>
+    <button data-go="editor" aria-current="false">3 &middot; Arbeitsfläche</button>
+  </nav>
+  <button class="btn btn-secondary btn-sm" id="theme">Dunkel</button>
+</div>
+
+<!-- ====================================================================
+     Ansicht 1: Datenschutz
+     Bisher vier Absätze am Stück, rund 190 Wörter, bevor man irgendetwas
+     tun kann. Jetzt vier Zeilen, die man in acht Sekunden liest, und der
+     Volltext klappt auf, wer ihn will.
+     ==================================================================== -->
+<section class="screen" id="s-gate" aria-label="Datenschutzhinweis">
+  <div class="gate">
+    <div class="gate-card">
+      <h1>Bevor es losgeht</h1>
+      <p class="gate-lead">Applai läuft in Ihrem Browser. Kein Server, kein Konto, keine Anmeldung. Vier Dinge sollten Sie trotzdem wissen.</p>
+
+      <div class="facts">
+        <details class="fact">
+          <summary>
+            <span class="fact-ic"><svg viewBox="0 0 24 24"><use href="#i-send"/></svg></span>
+            <span class="fact-t">Ihre Texte gehen an den KI-Anbieter, den Sie wählen.</span>
+            <svg class="fact-chev" viewBox="0 0 24 24"><use href="#i-chev"/></svg>
+          </summary>
+          <p class="fact-body">Anschreiben und Stellenausschreibung werden aus Ihrem Browser direkt an Google, OpenAI oder Anthropic gesendet, je nachdem, wen Sie wählen. Ohne diesen Schritt gibt es keine Formulierungsvorschläge. Name, Anschrift, Geburtsdatum, Telefonnummer und E-Mail-Adresse ersetzt Applai vorher durch Platzhalter; der übrige Text geht unverändert.</p>
+        </details>
+
+        <details class="fact">
+          <summary>
+            <span class="fact-ic"><svg viewBox="0 0 24 24"><use href="#i-warn"/></svg></span>
+            <span class="fact-t">Im kostenlosen Gemini-Tarif nutzt Google Ihre Texte zum Training.</span>
+            <svg class="fact-chev" viewBox="0 0 24 24"><use href="#i-chev"/></svg>
+          </summary>
+          <p class="fact-body">Google verwendet Eingaben und Antworten des kostenlosen Tarifs, um seine Produkte und Modelle weiterzuentwickeln, und Menschen bei Google können sie dabei lesen. Für den kostenpflichtigen Tarif sagt Google das Gegenteil zu; OpenAI und Anthropic geben dasselbe für ihre Schnittstellen an.</p>
+        </details>
+
+        <details class="fact">
+          <summary>
+            <span class="fact-ic"><svg viewBox="0 0 24 24"><use href="#i-db"/></svg></span>
+            <span class="fact-t">Ein Zwischenstand bleibt in Ihrem Browser.</span>
+            <svg class="fact-chev" viewBox="0 0 24 24"><use href="#i-chev"/></svg>
+          </summary>
+          <p class="fact-body">Damit nichts verloren geht, legt Applai den Bearbeitungsstand in der Datenbank Ihres Browsers ab, zusammen mit der Bewerbungsliste und Ihren Einstellungen. Das Gerät verlässt davon nichts. Entwürfe werden nach dem Export gelöscht, spätestens nach sieben Tagen.</p>
+        </details>
+
+        <details class="fact">
+          <summary>
+            <span class="fact-ic"><svg viewBox="0 0 24 24"><use href="#i-trash"/></svg></span>
+            <span class="fact-t">„Alle Daten löschen“ ist jederzeit erreichbar.</span>
+            <svg class="fact-chev" viewBox="0 0 24 24"><use href="#i-chev"/></svg>
+          </summary>
+          <p class="fact-body">In den Einstellungen entfernt ein Knopf Bewerbungsliste, Entwürfe, Einstellungen und den hinterlegten API-Schlüssel in einem Zug. Danach ist auf diesem Gerät nichts mehr von Applai übrig.</p>
+        </details>
+      </div>
+
+      <div class="gate-foot">
+        <span class="small muted">Sie können das jederzeit in den Einstellungen nachlesen.</span>
+        <button class="btn btn-primary" data-go="start">Verstanden, weiter</button>
+      </div>
+    </div>
+  </div>
+</section>

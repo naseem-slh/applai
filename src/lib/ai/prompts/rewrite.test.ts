@@ -52,12 +52,76 @@ describe('buildRewritePrompt', () => {
     expect(system).toContain('dürfen sich nicht nur in einzelnen Wörtern unterscheiden')
   })
 
+  // Der häufigste Fehler beim Anpassen eines Anschreibens: Der Brief ist die
+  // Kopie einer früheren Bewerbung, und der alte Arbeitgeber steht noch drin.
+  it('weist an, veraltete Bezüge aus einer früheren Bewerbung zu ersetzen, und nennt die aktuelle Firma und Position', () => {
+    const { system } = buildRewritePrompt(BASIS)
+
+    expect(system).toContain('ALTLASTEN AUS EINER FRÜHEREN BEWERBUNG')
+    expect(system).toContain('Musterwerk Solutions GmbH')
+    expect(system).toContain('Teamleitung Logistik')
+  })
+
+  // Die Grenze, an der die Regel sonst zur Erfindungsmaschine würde: Die
+  // Anzeige beschreibt, was die Firma sucht, nicht was die Bewerberin kann.
+  it('erlaubt beim Ersetzen ausdrücklich nur die Bezüge, nicht die Anforderungen als Aussage über die Person', () => {
+    const { system } = buildRewritePrompt(BASIS)
+
+    expect(system).toContain('ausschließlich BEZÜGE')
+    expect(system).toContain('keine Erlaubnis, Anforderungen aus der Anzeige als Fähigkeit der Person zu behaupten')
+  })
+
+  // Die gefährlichere Hälfte der Regel: Ein früherer Arbeitgeber im
+  // Werdegang ist eine Tatsache, keine Altlast. Wer ihn ersetzt, erfindet
+  // eine Berufsstation — und keine Prüfung in `domain/rewrite.ts` könnte das
+  // fangen, weil der Satz wohlgeformt bliebe.
+  it('nimmt einen früheren Arbeitgeber als eigene Berufserfahrung ausdrücklich aus', () => {
+    const { system } = buildRewritePrompt(BASIS)
+
+    expect(system).toContain('ist KEINE Altlast')
+    expect(system).toContain('sein Name bleibt unverändert stehen')
+  })
+
+  it('erfindet keinen Ersatznamen, wenn die Anzeige weder Firma noch Position nennt', () => {
+    const { system } = buildRewritePrompt({
+      ...BASIS,
+      jobAd: { ...BASIS.jobAd, company: null, position: null },
+    })
+
+    expect(system).toContain('entferne veraltete Bezüge dann ersatzlos, statt einen Namen zu erfinden')
+    expect(system).not.toContain('Gemeint ist diese Bewerbung')
+  })
+
+  it('nennt nur die Angabe, die die Anzeige tatsächlich hergibt', () => {
+    const { system } = buildRewritePrompt({
+      ...BASIS,
+      jobAd: { ...BASIS.jobAd, position: null },
+    })
+
+    expect(system).toContain('Firma „Musterwerk Solutions GmbH"')
+    expect(system).not.toContain('Position „')
+  })
+
   it('trägt im Modus "strict" die Anweisung, ausschließlich Belegtes zu verwenden', () => {
     const { system } = buildRewritePrompt({ ...BASIS, truthMode: 'strict' })
 
     expect(system).toContain('ausschließlich Aussagen, die in der Faktenbasis oder in der markierten Auswahl selbst belegt sind')
     expect(system).toContain('leeres Array')
     expect(system).not.toContain('Verallgemeinerungen, die der belegte Inhalt bereits trägt')
+  })
+
+  it('verbietet im Modus "strict" ausdrücklich, eine nicht erfüllte Anforderung hineinzuschreiben', () => {
+    const { system } = buildRewritePrompt(BASIS)
+
+    expect(system).toContain('darfst du sie nicht in den Text hineinschreiben')
+    expect(system).toContain('auch nicht als Absichtserklärung')
+  })
+
+  it('verlangt einen Vorschlag, der sich nahtlos einfügt, statt werblicher KI-Prosa', () => {
+    const { system } = buildRewritePrompt(BASIS)
+
+    expect(system).toContain('nicht wie eine werbliche KI')
+    expect(system).toContain('nahtlos in den umgebenden Brief')
   })
 
   it('erlaubt im Modus "bridge" nur inhaltlich gedeckte Verallgemeinerungen', () => {

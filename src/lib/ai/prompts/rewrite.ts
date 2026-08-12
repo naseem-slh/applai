@@ -85,7 +85,7 @@ const LANGUAGE_LABELS: Record<'de' | 'en', string> = { de: 'Deutsch', en: 'Engli
  * noch einzeln bestätigen lassen).
  */
 const TRUTH_MODE_RULES: Record<TruthMode, string> = {
-  strict: `Modus "streng" (Grundregel): Verwende ausschließlich Aussagen, die in der Faktenbasis oder in der markierten Auswahl selbst belegt sind. Verboten sind neue Zahlen, Zeiträume, Titel, Abschlüsse, Firmen, Werkzeuge, Ergebnisse und Eigenschaften – auch dann, wenn sie plausibel klingen oder gut zur Stellenanzeige passen. Umformulieren heißt hier: dieselbe Aussage anders sagen, nicht mehr sagen. Auch eine Steigerung ("umfassend", "langjährig", "federführend") ist eine neue Aussage, wenn die Belege sie nicht hergeben. Wenn eine Variante ohne eine unbelegte Aussage schwächer wirkt, ist die schwächere Variante die richtige. "unbackedClaims" ist in diesem Modus für jede Variante ein leeres Array [].`,
+  strict: `Modus "streng" (Grundregel): Verwende ausschließlich Aussagen, die in der Faktenbasis oder in der markierten Auswahl selbst belegt sind. Verboten sind neue Zahlen, Zeiträume, Titel, Abschlüsse, Firmen, Werkzeuge, Ergebnisse und Eigenschaften – auch dann, wenn sie plausibel klingen oder gut zur Stellenanzeige passen. Umformulieren heißt hier: dieselbe Aussage anders sagen, nicht mehr sagen. Auch eine Steigerung ("umfassend", "langjährig", "federführend") ist eine neue Aussage, wenn die Belege sie nicht hergeben. Wenn eine Variante ohne eine unbelegte Aussage schwächer wirkt, ist die schwächere Variante die richtige. Erfüllt der Bewerber eine Anforderung der Stellenanzeige laut seinen Unterlagen nicht, darfst du sie nicht in den Text hineinschreiben – auch nicht angedeutet, auch nicht als Absichtserklärung. "unbackedClaims" ist in diesem Modus für jede Variante ein leeres Array [].`,
   bridge: `Modus "Brücken": wie "streng", zusätzlich erlaubt sind Verallgemeinerungen, die der belegte Inhalt bereits trägt – aus mehreren belegten Einzelbeispielen darf eine zusammenfassende Formulierung werden (Beispiel: drei belegte Projekte mit Terminverantwortung dürfen zu "Erfahrung in der Projektplanung" werden). Die Verallgemeinerung darf nie mehr behaupten als die Belege zusammen hergeben: kein neuer Zeitraum, keine neue Zahl, kein neues Werkzeug, keine neue Rolle, keine Steigerung ohne Beleg. "unbackedClaims" ist auch in diesem Modus für jede Variante ein leeres Array [].`,
   free: `Modus "frei" (vom Nutzer ausdrücklich eingeschaltet): Du darfst zusätzlich Aussagen ergänzen, die nicht belegt sind, wenn sie zur Stelle passen. Jede einzelne unbelegte Aussage MUSS in "unbackedClaims" derselben Variante stehen, und zwar WÖRTLICH als genau der Abschnitt, der so auch in "text" steht – gleiche Zeichenfolge, keine Umschreibung, keine Zusammenfassung, keine Erklärung. Grund: Der Nutzer bekommt jede dieser Stellen farbig markiert, muss sie einzeln bestätigen, und der Export bleibt gesperrt, solange eine unbestätigt ist. Eine Aussage, die du nicht wörtlich zitierst, kann er weder sehen noch bestätigen – sie würde ungeprüft in seinem Anschreiben landen. Enthält eine Variante nichts Unbelegtes, ist ihr "unbackedClaims" ein leeres Array [].`,
 }
@@ -103,6 +103,56 @@ const LENGTH_GOAL_RULES: Record<LengthGoal, string> = {
  * übersetzter oder ausgefüllter Platzhalter ([NAME] → "Dear Sir") überlebt den
  * Rücktausch nicht und stünde sichtbar im fertigen Brief.
  */
+/**
+ * **Der häufigste Fehler beim Anpassen eines Anschreibens** — und bis hierher
+ * stand kein Wort davon im Prompt: Der Brief ist die Kopie einer früheren
+ * Bewerbung, und irgendwo darin steht noch der alte Arbeitgeber, der alte
+ * Stellentitel oder eine Anforderung aus der alten Anzeige. Ein Modell, das
+ * nur „formuliere um" hört, schreibt das treu mit.
+ *
+ * **Zwei Grenzen tragen diese Regel, nicht die Anweisung selbst.**
+ *
+ * Die erste: Ein früherer Arbeitgeber ist zweierlei, je nachdem wo er steht.
+ * In der Anrede oder im Betreff ist er eine Altlast; im Satz „bei der
+ * Nordwerk AG habe ich drei Jahre die Disposition betreut" ist er eine
+ * Tatsache aus dem Lebenslauf. Ein Modell, das nur „ersetze alte
+ * Firmennamen" hört, macht aus der zweiten Form eine **erfundene
+ * Berufsstation** — ein schlimmerer Fehler als die Altlast, die die Regel
+ * beseitigen soll, und einer, den keine der Prüfungen in `domain/rewrite.ts`
+ * fangen könnte: Der Satz bliebe wohlgeformt, drei Varianten kämen zurück,
+ * und im Modus „streng" meldete das Modell dafür auch keine unbelegte
+ * Aussage, weil es die Ersetzung für angeordnet hält.
+ *
+ * Die zweite: Die
+ * naheliegende Fassung („ersetze es durch die Anforderungen der aktuellen
+ * Anzeige") wäre ein Widerspruch zur Wahrheitsgrenze: Die Anzeige beschreibt,
+ * was die Firma sucht, nicht was die Bewerberin kann. Wer beides
+ * gleichsetzt, lässt das Modell genau die Behauptungen erzeugen, die G10
+ * verbietet — und zwar mit der besten Absicht. Erlaubt ist deshalb der
+ * Austausch der **Bezüge** (wer angesprochen wird, worauf man sich bewirbt),
+ * nicht die Übernahme der **Anforderungen** als Aussage über die Person.
+ *
+ * `findForeignCompanyNames` (Aufgabe 12) findet dieselben Altlasten
+ * zusätzlich deterministisch und markiert sie im Text. Prompt und Prüfung
+ * arbeiten hier wie überall paarweise: Der Prompt bittet, die Oberfläche
+ * zeigt, was er übersehen hat.
+ */
+function staleDataRule(jobAd: JobAdSummary): string {
+  const target = [
+    jobAd.company === null ? null : `Firma „${jobAd.company}"`,
+    jobAd.position === null ? null : `Position „${jobAd.position}"`,
+  ]
+    .filter((part): part is string => part !== null)
+    .join(', ')
+
+  const current =
+    target === ''
+      ? 'Die aktuelle Anzeige nennt weder Firma noch Position; entferne veraltete Bezüge dann ersatzlos, statt einen Namen zu erfinden.'
+      : `Gemeint ist diese Bewerbung: ${target}.`
+
+  return `ALTLASTEN AUS EINER FRÜHEREN BEWERBUNG. Die markierte Stelle stammt möglicherweise aus einem älteren Anschreiben. Steht darin der Name einer anderen Firma, ein anderer Stellentitel oder ein Bezug auf eine andere Ausschreibung, ersetze ihn durch den der aktuellen. ${current} Diese Ersetzung betrifft ausschließlich BEZÜGE — wen der Brief anspricht und worauf er sich bewirbt. Zwei Grenzen dabei, beide zwingend: Ein früherer Arbeitgeber, von dem die Auswahl als eigene Berufserfahrung spricht ("bei X habe ich ...", "während meiner Zeit bei X"), ist KEINE Altlast, sondern eine Tatsache aus dem Lebenslauf — sein Name bleibt unverändert stehen. Und die Ersetzung ist keine Erlaubnis, Anforderungen aus der Anzeige als Fähigkeit der Person zu behaupten; dafür gilt unverändert die Wahrheitsgrenze unten.`
+}
+
 const PLACEHOLDER_RULE = `Platzhalter in eckigen Klammern ([NAME], [EMAIL], [TEL], [ADRESSE], [GEBURTSDATUM], auch nummeriert wie [EMAIL_2]) sind anonymisierte persönliche Daten. Übernimm sie unverändert und an sinnvoller Stelle – niemals übersetzen, umbenennen, entfernen oder mit erfundenen Daten füllen.`
 
 function buildRewriteSystemPrompt(input: RewritePromptInput): string {
@@ -120,21 +170,23 @@ Verbindliche Regeln, in dieser Reihenfolge zu prüfen:
 
 1. GENAU ${VARIANT_COUNT} Varianten – nicht zwei, nicht vier. Eine Antwort mit einer anderen Anzahl wird vollständig verworfen. "unbackedClaims" ist immer anzugeben, notfalls als leeres Array [].
 
-2. NUR DIE AUSWAHL: Der Text vor und nach der Auswahl ("Kontext davor", "Kontext danach") ist nur zum Mitlesen da, damit du den Zusammenhang verstehst. Er ist nicht Teil der Aufgabe und darf nicht verändert, nicht fortgesetzt und nicht mit zurückgegeben werden. Gib in "text" ausschließlich den Ersatz für die Auswahl zurück – keinen Satz aus dem Kontext, auch nicht teilweise, auch nicht als Überleitung. Die Variante wird wörtlich an die Stelle der Auswahl gesetzt: Alles, was du aus dem Kontext mitlieferst, stünde danach doppelt im Brief.
+2. ${staleDataRule(input.jobAd)}
 
-3. DREI VERSCHIEDENE ANSÄTZE, nicht dreimal derselbe Satz mit anderen Wörtern:
+3. NUR DIE AUSWAHL: Der Text vor und nach der Auswahl ("Kontext davor", "Kontext danach") ist nur zum Mitlesen da, damit du den Zusammenhang verstehst. Er ist nicht Teil der Aufgabe und darf nicht verändert, nicht fortgesetzt und nicht mit zurückgegeben werden. Gib in "text" ausschließlich den Ersatz für die Auswahl zurück – keinen Satz aus dem Kontext, auch nicht teilweise, auch nicht als Überleitung. Die Variante wird wörtlich an die Stelle der Auswahl gesetzt: Alles, was du aus dem Kontext mitlieferst, stünde danach doppelt im Brief.
+
+4. DREI VERSCHIEDENE ANSÄTZE, nicht dreimal derselbe Satz mit anderen Wörtern:
    - Variante 1 bleibt nah am Original: gleicher Aufbau, gleiche Reihenfolge der Aussagen, nur Feinschliff in Ton und Wortwahl.
    - Variante 2 baut anders auf: andere Satzstruktur oder andere Reihenfolge der Aussagen (z. B. Ergebnis zuerst statt Tätigkeit zuerst).
-   - Variante 3 setzt einen anderen Schwerpunkt: hebt einen anderen belegten Aspekt derselben Auswahl hervor, der zur Stellenanzeige passt.
+   - Variante 3 dreht die Blickrichtung: sagt dasselbe vom Nutzen für den neuen Arbeitgeber her ("was hat die Firma davon") statt von der Tätigkeit her. Auch hier ausschließlich mit belegten Aussagen.
    Die drei Varianten dürfen sich nicht nur in einzelnen Wörtern unterscheiden. Sie stehen zur Auswahl nebeneinander – drei fast gleiche Vorschläge sind für den Nutzer wertlos.
 
-4. STIL: Schreibe im Stilprofil des Nutzers (siehe Nutzer-Prompt). Es ist sein Brief, nicht deiner – übernimm seine Anredeform, seine Satzlänge und seine Eigenheiten, auch wenn du es anders formulieren würdest.
+5. STIL: Schreibe im Stilprofil des Nutzers (siehe Nutzer-Prompt), nicht wie eine werbliche KI. Es ist sein Brief, nicht deiner – übernimm seine Anredeform, seine Satzlänge, sein Vokabular und seine Eigenheiten, auch wenn du es anders formulieren würdest. Die Sätze müssen sich nahtlos in den umgebenden Brief einfügen; ein Vorschlag, den man als maschinell erzeugt erkennt, ist unbrauchbar, auch wenn er für sich genommen gut klingt.
 
-5. WAHRHEITSGRENZE. ${TRUTH_MODE_RULES[input.truthMode]}
+6. WAHRHEITSGRENZE. ${TRUTH_MODE_RULES[input.truthMode]}
 
-6. ${LENGTH_GOAL_RULES[input.lengthGoal]}
+7. ${LENGTH_GOAL_RULES[input.lengthGoal]}
 
-7. ${PLACEHOLDER_RULE}
+8. ${PLACEHOLDER_RULE}
 
 Die gesamte Antwort steht in dieser Sprache: ${LANGUAGE_LABELS[input.targetLanguage]}.`
 }

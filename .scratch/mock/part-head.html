@@ -1,0 +1,126 @@
+<title>Applai Neugestaltung</title>
+<style>
+@font-face{font-family:'Inter Variable';font-style:normal;font-display:swap;font-weight:100 900;src:url(data:font/woff2;base64,__FONT__) format('woff2-variations')}
+
+/* =========================================================================
+   Applai — Neugestaltung, Entwurf zur Ansicht
+   Farb- und Formsystem. Eine Quelle, beide Erscheinungsbilder.
+
+   Radien-Regel (durchgängig, keine Ausnahme):
+     Karten und Flächen 12px · Bedienelemente und Felder 8px · Marken voll
+   ========================================================================= */
+:root{
+  color-scheme:light dark;
+
+  /* Flächen. Der Schreibtisch ist kühl, das Blatt ist weiß.
+     Genau darin liegt der Unterschied zum bisherigen Stand: Dort war die
+     Anwendungsfläche papierfarben, das Blatt konnte sich nicht abheben. */
+  --desk:#e9ecef;
+  --panel:#ffffff;
+  --paper:#ffffff;
+  --sunken:#dfe3e8;
+  --border:#d5dae0;
+  --border-strong:#737f8c;
+
+  --ink:#1b1f24;
+  --ink-strong:#0b0e11;
+  --muted:#5a6472;
+
+  /* Ein Akzent, im ganzen Entwurf derselbe. Das Grün der Marke bleibt,
+     nur die Umgebung wird kühl, damit es trägt. */
+  --accent:#2f6b57;
+  --accent-hover:#245243;
+  --accent-soft:#e2ece8;
+  --accent-on:#ffffff;
+
+  --danger:#a8341f;
+  --danger-soft:#f7e6e2;
+  --warn:#8a5a12;
+
+  --r-card:12px;
+  --r-ctrl:8px;
+  --r-pill:9999px;
+
+  --shadow-panel:0 1px 2px rgb(16 24 32/.04),0 2px 8px rgb(16 24 32/.06);
+  --shadow-paper:0 1px 1px rgb(16 24 32/.04),0 8px 24px rgb(16 24 32/.10),0 24px 56px rgb(16 24 32/.06);
+  --shadow-pop:0 4px 12px rgb(16 24 32/.10),0 16px 40px rgb(16 24 32/.18);
+
+  --step:200ms cubic-bezier(.2,0,0,1);
+}
+:root[data-theme="dark"],
+:root:not([data-theme="light"]){}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --desk:#131619; --panel:#1c2024; --paper:#20242a; --sunken:#0e1113;
+    --border:#333a42; --border-strong:#78838f;
+    --ink:#e4e8ec; --ink-strong:#ffffff; --muted:#98a2af;
+    --accent:#6cb39a; --accent-hover:#8ac9b2; --accent-soft:#22322d; --accent-on:#0b0e11;
+    --danger:#e8836e; --danger-soft:#2e1d19; --warn:#d6a256;
+    --shadow-panel:inset 0 1px 0 rgb(255 255 255/.04),0 1px 2px rgb(0 0 0/.4);
+    --shadow-paper:inset 0 1px 0 rgb(255 255 255/.05),0 8px 24px rgb(0 0 0/.45),0 24px 56px rgb(0 0 0/.35);
+    --shadow-pop:inset 0 1px 0 rgb(255 255 255/.07),0 4px 12px rgb(0 0 0/.5),0 16px 40px rgb(0 0 0/.55);
+  }
+}
+:root[data-theme="dark"]{
+  --desk:#131619; --panel:#1c2024; --paper:#20242a; --sunken:#0e1113;
+  --border:#333a42; --border-strong:#78838f;
+  --ink:#e4e8ec; --ink-strong:#ffffff; --muted:#98a2af;
+  --accent:#6cb39a; --accent-hover:#8ac9b2; --accent-soft:#22322d; --accent-on:#0b0e11;
+  --danger:#e8836e; --danger-soft:#2e1d19; --warn:#d6a256;
+  --shadow-panel:inset 0 1px 0 rgb(255 255 255/.04),0 1px 2px rgb(0 0 0/.4);
+  --shadow-paper:inset 0 1px 0 rgb(255 255 255/.05),0 8px 24px rgb(0 0 0/.45),0 24px 56px rgb(0 0 0/.35);
+  --shadow-pop:inset 0 1px 0 rgb(255 255 255/.07),0 4px 12px rgb(0 0 0/.5),0 16px 40px rgb(0 0 0/.55);
+}
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--desk);color:var(--ink);
+  font-family:'Inter Variable',system-ui,sans-serif;font-size:16px;line-height:1.6;
+  -webkit-font-smoothing:antialiased}
+h1,h2,h3,p,ul,ol,figure{margin:0}
+ul,ol{padding:0;list-style:none}
+button{font:inherit;color:inherit}
+
+:where(a,button,input,textarea,select,[tabindex]:not([tabindex="-1"])):focus-visible{
+  outline:2px solid var(--accent);outline-offset:2px;border-radius:var(--r-ctrl)}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:1ms!important;animation-iteration-count:1!important;transition-duration:1ms!important}
+  [data-motion-essential]{animation-duration:2800ms!important;animation-iteration-count:infinite!important}
+}
+
+/* ---- Prüfleiste. Gehört nicht zum Produkt, nur zu dieser Ansicht. ---- */
+.harness{position:sticky;top:0;z-index:60;display:flex;flex-wrap:wrap;gap:12px;
+  align-items:center;justify-content:space-between;
+  padding:10px 20px;background:var(--sunken);border-bottom:1px solid var(--border)}
+.harness-tag{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.harness-nav{display:flex;gap:4px;flex-wrap:wrap}
+.harness-nav button{padding:6px 12px;border:1px solid transparent;border-radius:var(--r-pill);
+  background:none;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;transition:var(--step)}
+.harness-nav button:hover{color:var(--ink);background:var(--panel)}
+.harness-nav button[aria-current="true"]{background:var(--panel);color:var(--ink-strong);
+  border-color:var(--border);box-shadow:var(--shadow-panel)}
+
+/* ---- Grundbausteine ---- */
+.shell{max-width:1180px;margin:0 auto;padding:0 24px}
+.screen{display:none}
+.screen.is-on{display:block}
+
+.btn{display:inline-flex;align-items:center;gap:8px;white-space:nowrap;
+  padding:10px 18px;border-radius:var(--r-ctrl);border:1px solid transparent;
+  font-size:15px;font-weight:500;cursor:pointer;transition:var(--step)}
+.btn:active{transform:translateY(1px)}
+.btn-primary{background:var(--accent);color:var(--accent-on);border-color:var(--accent)}
+.btn-primary:hover{background:var(--accent-hover);border-color:var(--accent-hover)}
+.btn-secondary{background:var(--panel);color:var(--ink);border-color:var(--border-strong)}
+.btn-secondary:hover{background:var(--sunken)}
+.btn-ghost{background:none;color:var(--muted)}
+.btn-ghost:hover{background:var(--sunken);color:var(--ink)}
+.btn-lg{padding:13px 26px;font-size:16px}
+.btn-sm{padding:7px 13px;font-size:13.5px}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.btn[disabled]:active{transform:none}
+
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:var(--r-card);box-shadow:var(--shadow-panel)}
+.muted{color:var(--muted)}
+.small{font-size:13.5px;line-height:1.55}
+.prose{max-width:62ch}

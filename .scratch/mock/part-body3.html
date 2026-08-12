@@ -1,0 +1,140 @@
+
+<!-- ====================================================================
+     Ansicht 3: Arbeitsfläche
+     Der Brief liegt als Blatt auf einer dunkleren Fläche, mit echten
+     Seitenrändern. Die Kernhandlung der Anwendung ist "eine Stelle
+     markieren" — deshalb steht sie als Hinweis am Blatt, bis sie einmal
+     ausgeführt wurde, und jeder Absatz zeigt beim Überfahren, dass er
+     anfassbar ist.
+     ==================================================================== -->
+<section class="screen" id="s-editor" aria-label="Arbeitsfläche">
+  <header class="topbar">
+    <div class="shell topbar-in" style="max-width:none">
+      <a class="brand" href="#" onclick="return false"><span class="brand-mark">A</span> Applai</a>
+      <div class="topbar-right">
+        <span class="small muted" style="margin-right:6px">Kernbauer Verfahrenstechnik, Technische Redakteurin</span>
+        <span class="local-badge"><svg viewBox="0 0 24 24"><use href="#i-check"/></svg> Gesichert vor 12 Sekunden</span>
+        <button class="topbar-link" data-go="start">Zurück</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="work">
+    <div class="stage">
+      <div class="tools">
+        <div class="tools-grp">
+          <button class="tool" data-pickall><svg viewBox="0 0 24 24"><use href="#i-cursor"/></svg> Ganzes Dokument</button>
+          <button class="tool" data-undo><svg viewBox="0 0 24 24"><use href="#i-undo"/></svg> Rückgängig</button>
+        </div>
+        <div class="tools-grp">
+          <button class="tool" aria-pressed="true" data-truth>Nur belegte Fakten</button>
+          <button class="tool" aria-pressed="false" data-truth>Freier Modus</button>
+        </div>
+      </div>
+
+      <article class="sheet" id="sheet">
+        <p class="lh">Merle Ostwald<br>Auenweg 14, 85049 Ingolstadt<br><br>Kernbauer Verfahrenstechnik GmbH<br>Frau Dr. Annegret Simmerding<br>Donaustraße 88, 85051 Ingolstadt</p>
+        <p class="subj">Bewerbung als Technische Redakteurin</p>
+        <p data-pick>Sehr geehrte Frau Dr. Simmerding,</p>
+        <p data-pick>seit vier Jahren schreibe ich Betriebsanleitungen für Anlagen, die niemand zweimal falsch bedienen darf. Bei der Hollmann Prozesstechnik verantworte ich die Dokumentation von sechs Baureihen, vom Lastenheft bis zur zugelassenen Fassung nach Maschinenrichtlinie.</p>
+        <p data-pick>Was mich an Ihrer Ausschreibung anspricht, ist die Verzahnung von Redaktion und Konstruktion. Ich arbeite seit 2023 direkt in der Entwicklungsbesprechung mit, statt fertige Zeichnungen nachträglich zu beschreiben. Dadurch sind die Rückfragen aus der Montage bei uns messbar zurückgegangen.</p>
+        <p data-pick>Mit strukturierten Redaktionssystemen bin ich vertraut. Ich habe die Umstellung auf ein modulares Quellformat begleitet und den Bestand von rund 400 Modulen migriert, ohne dass die laufende Auslieferung unterbrochen werden musste.</p>
+        <p data-pick>Über ein Gespräch würde ich mich freuen.</p>
+        <p data-pick>Mit freundlichen Grüßen<br>Merle Ostwald</p>
+
+        <div class="coach" id="coach">
+          <svg viewBox="0 0 24 24"><use href="#i-cursor"/></svg>
+          Klicken Sie eine Textstelle an, um drei Formulierungen zu bekommen
+        </div>
+      </article>
+
+      <div class="variants" id="variants">
+        <div class="variants-head">
+          <h2>Drei Formulierungen für diese Stelle</h2>
+          <span class="small muted">Im Stil Ihres Originals, ohne neue Fakten</span>
+        </div>
+        <div class="vlist" id="vlist"></div>
+      </div>
+    </div>
+
+    <!-- Ruhige Spalte: drei Reiter statt drei aufklappbarer Karten
+         untereinander, die gemeinsam die Höhe des Fensters sprengen. -->
+    <aside class="aside" aria-label="Werkzeuge">
+      <div class="aside-tabs" role="tablist">
+        <button class="aside-tab" role="tab" aria-selected="true" data-tab="gaps">Abgleich</button>
+        <button class="aside-tab" role="tab" aria-selected="false" data-tab="style">Stil</button>
+        <button class="aside-tab" role="tab" aria-selected="false" data-tab="head">Briefkopf</button>
+      </div>
+      <div class="aside-body">
+        <div class="aside-pane is-on" data-pane-a="gaps">
+          <p class="aside-h">Anforderungen der Anzeige</p>
+          <div class="gap">
+            <span class="gap-dot gap-yes"><svg viewBox="0 0 24 24"><use href="#i-check"/></svg></span>
+            <span class="gap-txt">Technische Dokumentation nach Maschinenrichtlinie
+              <span class="gap-note">Belegt in Absatz 2</span></span>
+          </div>
+          <div class="gap">
+            <span class="gap-dot gap-yes"><svg viewBox="0 0 24 24"><use href="#i-check"/></svg></span>
+            <span class="gap-txt">Strukturierte Redaktionssysteme
+              <span class="gap-note">Belegt in Absatz 4</span></span>
+          </div>
+          <div class="gap">
+            <span class="gap-dot gap-yes"><svg viewBox="0 0 24 24"><use href="#i-check"/></svg></span>
+            <span class="gap-txt">Zusammenarbeit mit der Konstruktion
+              <span class="gap-note">Belegt in Absatz 3</span></span>
+          </div>
+          <div class="gap">
+            <span class="gap-dot gap-no"><svg viewBox="0 0 24 24"><use href="#i-x"/></svg></span>
+            <span class="gap-txt">Englisch in Wort und Schrift
+              <span class="gap-note">In Ihren Unterlagen nicht belegt</span></span>
+          </div>
+          <div class="gap">
+            <span class="gap-dot gap-no"><svg viewBox="0 0 24 24"><use href="#i-x"/></svg></span>
+            <span class="gap-txt">Erfahrung mit SPS-Programmierung
+              <span class="gap-note">In Ihren Unterlagen nicht belegt</span></span>
+          </div>
+          <p class="small muted" style="margin-top:15px">Applai erfindet nichts, was hier fehlt. Ergänzen Sie es selbst im Text, wenn es zutrifft.</p>
+        </div>
+
+        <div class="aside-pane" data-pane-a="style">
+          <p class="aside-h">Aus Ihrem Original gelesen</p>
+          <div class="chips" style="margin:0 0 20px">
+            <span class="chip">Sie-Form</span><span class="chip">Sachlich</span><span class="chip">Sätze 18 Wörter</span>
+          </div>
+          <div class="slider-row">
+            <div class="slider-top"><b>Förmlichkeit</b><span>wie im Original</span></div>
+            <input type="range" min="0" max="100" value="55" aria-label="Förmlichkeit">
+          </div>
+          <div class="slider-row">
+            <div class="slider-top"><b>Ausführlichkeit</b><span>etwas knapper</span></div>
+            <input type="range" min="0" max="100" value="38" aria-label="Ausführlichkeit">
+          </div>
+          <div class="slider-row">
+            <div class="slider-top"><b>Selbstbewusstsein</b><span>wie im Original</span></div>
+            <input type="range" min="0" max="100" value="50" aria-label="Selbstbewusstsein">
+          </div>
+        </div>
+
+        <div class="aside-pane" data-pane-a="head">
+          <p class="aside-h">Vorschlag aus der Anzeige</p>
+          <div class="lh-field"><label for="lh1">Firma</label><input id="lh1" value="Kernbauer Verfahrenstechnik GmbH"></div>
+          <div class="lh-field"><label for="lh2">Ansprechpartnerin</label><input id="lh2" value="Frau Dr. Annegret Simmerding"></div>
+          <div class="lh-field"><label for="lh3">Anschrift</label><input id="lh3" value="Donaustraße 88, 85051 Ingolstadt"></div>
+          <button class="btn btn-secondary btn-sm" style="margin-top:6px">In den Brief übernehmen</button>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <div class="exportbar">
+    <span class="export-state">
+      <svg viewBox="0 0 24 24"><use href="#i-check"/></svg>
+      Alle Aussagen sind durch Ihre Unterlagen belegt. Export ist frei.
+    </span>
+    <div class="export-acts">
+      <button class="btn btn-secondary btn-sm">Text kopieren</button>
+      <button class="btn btn-secondary btn-sm">Als PDF drucken</button>
+      <button class="btn btn-primary btn-sm"><svg width="16" height="16" viewBox="0 0 24 24"><use href="#i-dl"/></svg> Word herunterladen</button>
+    </div>
+  </div>
+</section>
