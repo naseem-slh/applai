@@ -146,6 +146,7 @@
       "quota_gemini": "Das kostenlose Tageskontingent von Gemini ist aufgebraucht. Es steht morgen wieder zur Verfügung, oder es kann ein eigener, kostenpflichtiger Schlüssel hinterlegt werden.",
       "network": "Die Anfrage konnte nicht gesendet werden. Bitte die Internetverbindung prüfen.",
       "blocked": "Der Anbieter hat die Antwort aus Sicherheitsgründen blockiert.",
+      "model_response": "Die Antwort des Anbieters war unbrauchbar und wurde verworfen. Ein erneuter Versuch führt meist zum Ziel.",
       "unknown": "Unerwarteter Fehler beim Aufruf des Anbieters."
     }
   },
@@ -258,6 +259,49 @@
       "savedJustNow": "Zwischenstand gerade gesichert.",
       "saved": "Zwischenstand gesichert {{when}}.",
       "failed": "Der Zwischenstand konnte nicht gesichert werden. Ihre Änderungen stehen nur in dieser Ansicht."
+    },
+    "variants": {
+      "trigger": "Umformulieren lassen",
+      "heading": "Drei Vorschläge",
+      "pending": "Antwort wird erzeugt",
+      "cancel": "Abbrechen",
+      "retry": "Erneut versuchen",
+      "option": "Vorschlag {{number}}",
+      "apply": "Übernehmen",
+      "length": "{{chars}} Zeichen",
+      "unbacked": {
+        "heading_one": "Eine Aussage ist durch Ihre Unterlagen nicht gedeckt:",
+        "heading_other": "{{count}} Aussagen sind durch Ihre Unterlagen nicht gedeckt:"
+      },
+      "willShift_one": "Absatz {{paragraphs}} bleibt leer stehen. Was dort fest im Dokument liegt, etwa eine Unterschrift, rutscht dadurch sichtbar nach oben.",
+      "willShift_other": "Die Absätze {{paragraphs}} bleiben leer stehen. Was dort fest im Dokument liegt, etwa eine Unterschrift, rutscht dadurch sichtbar nach oben."
+    },
+    "truthMode": {
+      "label": "Wahrheitsgrenze",
+      "free": {
+        "heading": "Freier Modus einschalten?",
+        "intro": "Im freien Modus darf die KI Aussagen formulieren, die in Ihrem Lebenslauf und Ihrem Anschreiben nicht belegt sind. In allen anderen Modi tut sie das nicht.",
+        "marked": "Jede solche Aussage wird im Text farbig hervorgehoben.",
+        "confirm": "Sie bestätigen jede Aussage einzeln, bevor es weitergeht.",
+        "export": "Der Export bleibt gesperrt, solange eine Aussage unbestätigt im Brief steht.",
+        "cancel": "Beim bisherigen Modus bleiben",
+        "confirmAction": "Freien Modus einschalten"
+      }
+    },
+    "claims": {
+      "heading": "Nicht belegte Aussagen",
+      "blocked_one": "Der Export ist gesperrt: Eine Aussage ist noch nicht bestätigt.",
+      "blocked_other": "Der Export ist gesperrt: {{count}} Aussagen sind noch nicht bestätigt.",
+      "released": "Alle Aussagen sind bestätigt. Der Export ist frei.",
+      "location_one": "Steht in Absatz {{paragraphs}}.",
+      "location_other": "Steht in den Absätzen {{paragraphs}}.",
+      "confirm": "Aussage bestätigen",
+      "confirmed": "Von Ihnen bestätigt.",
+      "hint": "Bestätigen ändert den Text nicht. Wer eine Aussage nicht bestätigen möchte, löscht oder überschreibt sie im Brief. Dann verschwindet sie auch aus dieser Liste."
+    },
+    "analysis": {
+      "loading": "Stellenanzeige und Schreibstil werden gelesen.",
+      "retry": "Erneut versuchen"
     }
   },
   "settings": {
@@ -336,5 +380,8 @@
       "vaultFailed": "Bewerbungsliste, Zwischenstände und Einstellungen wurden gelöscht, der hinterlegte API-Schlüssel jedoch nicht. Bitte laden Sie die Seite neu und versuchen Sie es noch einmal.",
       "bothFailed": "Es wurde nichts gelöscht. Der Browser gibt seinen Speicher gerade nicht frei. Bitte schließen Sie andere Tabs mit Applai, laden Sie die Seite neu und versuchen Sie es erneut."
     }
+  },
+  "vault": {
+    "locked": "Zum Umformulieren wird der API-Schlüssel gebraucht. Er lässt sich auf der Einstiegsseite entsperren."
   }
 }

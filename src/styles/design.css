@@ -72,6 +72,30 @@
       transform: scale(0.98);
     }
   }
+
+  /* Die Wartezeige der Arbeitsfläche („Antwort wird erzeugt", Aufgabe 14b).
+     Sie läuft endlos und trägt deshalb `data-motion-essential` — eine
+     Anzeige, die nach einer Umdrehung stehenbleibt, meldet „abgestürzt"
+     statt „läuft noch" (siehe die Regel weiter unten und DESIGN.md,
+     Abschnitt Bewegung).
+
+     Bewusst ein Auf- und Abblenden und kein Kreisen: Damit ist sie in
+     beiden Bewegungsmodi dieselbe Anzeige, nur langsamer, und muss im
+     reduzierten Modus nicht durch etwas anderes ersetzt werden. 1400 ms
+     sind 0,7 Hz, weit unter der Blitzgrenze von 3 Hz (WCAG 2.3.1), und die
+     Deckkraft fällt nie unter 0,4 — die Anzeige verschwindet nicht, sie
+     atmet. */
+  --animate-pending: applai-pending 1400ms cubic-bezier(0.4, 0, 0.6, 1) infinite;
+
+  @keyframes applai-pending {
+    0%,
+    100% {
+      opacity: 0.4;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
 }
 
 @font-face {
@@ -352,6 +376,13 @@
     animation-duration: 1ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 1ms !important;
+  }
+
+  /* Die eine ausgenommene Anzeige wird nicht abgeschaltet, sondern
+     verlangsamt: Sie muss weiterlaufen, solange gewartet wird, darf aber
+     nicht ziehen. */
+  [data-motion-essential] {
+    animation-duration: 2800ms;
   }
 }
 

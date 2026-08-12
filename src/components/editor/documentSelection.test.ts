@@ -15,6 +15,7 @@ import {
   PARAGRAPH_START_ATTRIBUTE,
   paragraphIndexOf,
   paragraphRange,
+  paragraphsLeftBehind,
   rangeToDomRange,
   selectionToRange,
   wholeDocumentRange,
@@ -397,6 +398,45 @@ describe('createSelection', () => {
     // Der erste betroffene Absatz bekommt immer ein Segment und bleibt
     // deshalb an seinem Platz, ohne dass etwas verrutscht.
     expect(selection!.inspection.mayShiftContent).toBe(false)
+  })
+})
+
+// Die Verfeinerung der Verschiebungswarnung: Mit dem Ersatztext in der Hand
+// wird aus „kann verrutschen" ein „wird verrutschen" (Aufgabe 14b, siehe
+// `paragraphsLeftBehind`).
+describe('paragraphsLeftBehind', () => {
+  it('nennt den festgehaltenen Absatz, der kein Segment mehr abbekommt', async () => {
+    const docx = await loadFixture('anschreiben-sonderfaelle.docx')
+    const selection = createSelection(docx, { from: 2, to: 9 })!
+
+    // Eine Zeile Ersatztext für drei betroffene Absätze: Absatz 1 und 2
+    // bekommen nichts mehr und bleiben beide stehen.
+    expect(paragraphsLeftBehind(selection, 'Eine Zeile')).toEqual([
+      { index: 1, position: 1, reason: 'embeddedContent' },
+      { index: 2, position: 2, reason: 'tableCell' },
+    ])
+  })
+
+  it('meldet nichts, wenn der Ersatztext für jeden betroffenen Absatz eine Zeile hat', async () => {
+    const docx = await loadFixture('anschreiben-sonderfaelle.docx')
+    const selection = createSelection(docx, { from: 2, to: 9 })!
+
+    expect(paragraphsLeftBehind(selection, 'Eine\nZwei\nDrei')).toEqual([])
+  })
+
+  it('zählt fremde Zeilenenden wie `replaceRange` als eine Zeile', async () => {
+    const docx = await loadFixture('anschreiben-sonderfaelle.docx')
+    const selection = createSelection(docx, { from: 2, to: 9 })!
+
+    expect(paragraphsLeftBehind(selection, 'Eine\r\nZwei\r\nDrei')).toEqual([])
+  })
+
+  it('meldet nichts für den ersten betroffenen Absatz, der immer ein Segment bekommt', async () => {
+    const docx = await loadFixture('anschreiben-sonderfaelle.docx')
+    const selection = createSelection(docx, { from: 7, to: 12 })!
+
+    expect(selection.inspection.retained).toHaveLength(1)
+    expect(paragraphsLeftBehind(selection, '')).toEqual([])
   })
 })
 

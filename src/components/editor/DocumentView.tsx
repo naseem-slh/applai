@@ -92,6 +92,18 @@ export interface DocumentViewProps {
    * damit der Hinweis in der Werkzeugleiste eine Fundstelle im Text hat.
    */
   retainedParagraphs?: readonly number[]
+  /**
+   * Absätze, in denen eine unbestätigte unbelegte Aussage steht (freier
+   * Modus, G10). Sie bekommen eine deutlichere Kontur als die
+   * festgehaltenen: Der eine Fall ist ein Hinweis auf eine mögliche
+   * Nebenwirkung, der andere hält den Export an.
+   *
+   * Hervorgehoben wird der **Absatz**, nicht die Aussage selbst. Eine
+   * Auszeichnung innerhalb des Absatztexts würde die Offset-Rechnung
+   * brechen (siehe `documentSelection.ts`); der Wortlaut steht deshalb
+   * daneben in `ClaimGuard`.
+   */
+  claimParagraphs?: readonly number[]
   /** Der neue Text genau eines Absatzes, sobald der Nutzer ihn geändert hat. */
   onParagraphInput: (index: number, text: string) => void
   /** Kennung der Überschrift, die diese Fläche benennt. */
@@ -111,6 +123,7 @@ export function DocumentView({
   paragraphs,
   editable,
   retainedParagraphs = [],
+  claimParagraphs = [],
   onParagraphInput,
   labelledBy,
   language,
@@ -119,6 +132,7 @@ export function DocumentView({
 }: DocumentViewProps) {
   const ownRef = useRef<HTMLDivElement>(null)
   const retained = new Set(retainedParagraphs)
+  const claimed = new Set(claimParagraphs)
 
   function host(): HTMLDivElement | null {
     return rootRef?.current ?? ownRef.current
@@ -217,6 +231,7 @@ export function DocumentView({
           key={paragraph.index}
           paragraph={paragraph}
           retained={retained.has(paragraph.index)}
+          claimed={claimed.has(paragraph.index)}
         />
       ))}
     </div>
@@ -226,9 +241,10 @@ export function DocumentView({
 interface DocumentParagraphProps {
   paragraph: Paragraph
   retained: boolean
+  claimed: boolean
 }
 
-function DocumentParagraph({ paragraph, retained }: DocumentParagraphProps) {
+function DocumentParagraph({ paragraph, retained, claimed }: DocumentParagraphProps) {
   const ref = useRef<HTMLParagraphElement>(null)
 
   // Bewusst ohne Abhängigkeitsliste: Der Abgleich läuft nach **jedem**
@@ -252,8 +268,14 @@ function DocumentParagraph({ paragraph, retained }: DocumentParagraphProps) {
         // sichtbar noch anklickbar.
         'min-h-[1.7em] border-l-2 pl-3 whitespace-pre-wrap',
         // Die Kontur liegt immer an, nur farblos: So verschiebt sich beim
-        // Hervorheben kein Zeichen.
-        retained ? 'border-[var(--color-warning)]' : 'border-transparent',
+        // Hervorheben kein Zeichen. Die unbelegte Aussage gewinnt, wenn
+        // beides zusammentrifft — sie hält den Export an, die
+        // Verschiebungswarnung nicht.
+        claimed
+          ? 'border-[var(--color-error)]'
+          : retained
+            ? 'border-[var(--color-warning)]'
+            : 'border-transparent',
       )}
     />
   )

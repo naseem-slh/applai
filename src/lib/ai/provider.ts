@@ -80,3 +80,38 @@ export const PROVIDERS: Record<ProviderId, LlmProvider> = {
   openai: createOpenAiProvider(),
   anthropic: createAnthropicProvider(),
 }
+
+/**
+ * Bindet einen Anbieter an ein Abbruchsignal.
+ *
+ * Die Domänenfunktionen der Aufgaben 9 bis 12 (`analyzeJobAd`,
+ * `deriveStyleProfile`, `rewriteSelection`, `analyzeGaps`) nehmen kein
+ * `AbortSignal` entgegen — sie reichen `provider` und `apiKey` durch und
+ * bestimmen selbst, wie viele Modellaufrufe daraus werden (beim Umschreiben
+ * mit abweichender Zielsprache sind es zwei). Die Oberfläche muss einen
+ * laufenden Aufruf trotzdem abbrechen können; Aufgabe 14 verlangt
+ * ausdrücklich einen „Ladezustand mit Abbrechen-Möglichkeit
+ * (`AbortSignal`)".
+ *
+ * Der Weg dorthin führt über den Anbieter, nicht über eine zusätzliche
+ * Parameterreihe: `generate` trägt das Signal seit Aufgabe 7 an dritter
+ * Stelle. Diese Hülle setzt es ein, ohne dass eine der vier
+ * Domänenfunktionen ihre Schnittstelle ändern muss — und sie gilt
+ * automatisch für **jeden** Aufruf, den die Domänenfunktion intern macht,
+ * auch für den zweiten.
+ *
+ * `id`, `label` und `endpoint` werden unverändert übernommen: Die Hülle ist
+ * derselbe Anbieter, nur abbrechbar. Insbesondere bleibt `endpoint` die
+ * geprüfte CSP-Zusage (G3, siehe oben).
+ */
+export function withSignal(provider: LlmProvider, signal: AbortSignal): LlmProvider {
+  return {
+    id: provider.id,
+    label: provider.label,
+    endpoint: provider.endpoint,
+    // Ein vom Aufrufer mitgegebenes Signal gewinnt — heute gibt es keinen
+    // solchen Aufrufer, und ein stillschweigend verworfenes Signal wäre der
+    // schlechtere Vorgabewert.
+    generate: (req, apiKey, ownSignal) => provider.generate(req, apiKey, ownSignal ?? signal),
+  }
+}

@@ -146,6 +146,7 @@
       "quota_gemini": "Gemini's free daily quota has been used up. It resets tomorrow, or you can add your own paid key.",
       "network": "The request could not be sent. Please check your internet connection.",
       "blocked": "The provider blocked the response for safety reasons.",
+      "model_response": "The provider's response was unusable and has been discarded. Trying again usually works.",
       "unknown": "Unexpected error while calling the provider."
     }
   },
@@ -258,6 +259,49 @@
       "savedJustNow": "Draft saved just now.",
       "saved": "Draft saved {{when}}.",
       "failed": "The draft could not be saved. Your changes exist in this view only."
+    },
+    "variants": {
+      "trigger": "Suggest rewordings",
+      "heading": "Three suggestions",
+      "pending": "Generating a response",
+      "cancel": "Cancel",
+      "retry": "Try again",
+      "option": "Suggestion {{number}}",
+      "apply": "Use this one",
+      "length": "{{chars}} characters",
+      "unbacked": {
+        "heading_one": "One statement is not backed by your documents:",
+        "heading_other": "{{count}} statements are not backed by your documents:"
+      },
+      "willShift_one": "Paragraph {{paragraphs}} will be left empty. Anything anchored there, a signature for instance, visibly moves up.",
+      "willShift_other": "Paragraphs {{paragraphs}} will be left empty. Anything anchored there, a signature for instance, visibly moves up."
+    },
+    "truthMode": {
+      "label": "Truthfulness",
+      "free": {
+        "heading": "Turn on free mode?",
+        "intro": "In free mode the AI may write statements that your CV and cover letter do not back up. In every other mode it will not.",
+        "marked": "Every such statement is highlighted in the text.",
+        "confirm": "You confirm each statement individually before moving on.",
+        "export": "Export stays locked while an unconfirmed statement is in the letter.",
+        "cancel": "Keep the current mode",
+        "confirmAction": "Turn on free mode"
+      }
+    },
+    "claims": {
+      "heading": "Unbacked statements",
+      "blocked_one": "Export is locked: one statement is not confirmed yet.",
+      "blocked_other": "Export is locked: {{count}} statements are not confirmed yet.",
+      "released": "All statements are confirmed. Export is unlocked.",
+      "location_one": "Found in paragraph {{paragraphs}}.",
+      "location_other": "Found in paragraphs {{paragraphs}}.",
+      "confirm": "Confirm statement",
+      "confirmed": "Confirmed by you.",
+      "hint": "Confirming does not change the text. If you would rather not confirm a statement, delete or rewrite it in the letter. It then disappears from this list too."
+    },
+    "analysis": {
+      "loading": "Reading the job ad and your writing style.",
+      "retry": "Try again"
     }
   },
   "settings": {
@@ -336,5 +380,8 @@
       "vaultFailed": "The application list, drafts and settings were deleted, but the stored API key was not. Please reload the page and try again.",
       "bothFailed": "Nothing was deleted. Your browser is not releasing its storage right now. Please close other tabs with Applai, reload the page and try again."
     }
+  },
+  "vault": {
+    "locked": "Rewording needs the API key. You can unlock it on the start page."
   }
 }

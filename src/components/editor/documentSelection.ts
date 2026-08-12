@@ -1,5 +1,10 @@
 import type { DocxDocument } from '@/lib/docx/model'
-import { inspectRange, type Range as TextRange, type RangeInspection } from '@/lib/docx/replace'
+import {
+  inspectRange,
+  type Range as TextRange,
+  type RangeInspection,
+  type RetainedParagraph,
+} from '@/lib/docx/replace'
 
 /**
  * Die Abbildung zwischen der Markierung im Browser und dem Zeichenbereich
@@ -184,6 +189,40 @@ export function createSelection(docx: DocxDocument, range: TextRange): EditorSel
     hasContent: text.trim() !== '',
     inspection: inspectRange(docx, { from, to }),
   }
+}
+
+/**
+ * Aus „kann verrutschen" wird „wird verrutschen": Welche festgehaltenen
+ * Absätze bleiben leer stehen, wenn **dieser** Text die Markierung ersetzt?
+ *
+ * `RangeInspection.mayShiftContent` beantwortet die Frage ohne den
+ * Ersatztext und muss deshalb bei jedem festgehaltenen Absatz hinter dem
+ * ersten warnen (siehe `replace.ts`, „Bewusst ‚kann', nicht ‚wird'"). Sobald
+ * der Text vorliegt, ist sie genauer zu beantworten: `replaceRange` verteilt
+ * ihn zeilenweise, Segment *i* geht in den *i*-ten betroffenen Absatz. Ein
+ * festgehaltener Absatz an Stelle *p* bekommt also nur dann noch Text, wenn
+ * es mehr als *p* Segmente gibt.
+ *
+ * Genau dafür ist die Funktion gedacht: Der Variantenvorschlag (Aufgabe 14b)
+ * kennt den Ersatztext und kann warnen, **bevor** übernommen wird — statt
+ * die allgemeine Warnung der Leiste zu wiederholen, die schon beim Markieren
+ * dastand.
+ *
+ * **Bewusst eine Näherung nach oben.** Ein festgehaltener Absatz ohne
+ * Segment bleibt nur dann als Leerzeile zurück, wenn die Markierung auch
+ * seinen gesamten Text überdeckt; ragt sie nur in ihn hinein, behält er
+ * seinen Rest. Das ist der seltenere Fall (er kann nur den letzten
+ * betroffenen Absatz treffen), und die Näherung irrt in die harmlose
+ * Richtung: Sie warnt einmal zu oft, nie einmal zu wenig.
+ */
+export function paragraphsLeftBehind(
+  selection: EditorSelection,
+  newText: string,
+): RetainedParagraph[] {
+  const segments = newText.replace(/\r\n?/g, '\n').split('\n').length
+  return selection.inspection.retained.filter(
+    (entry) => entry.position > 0 && entry.position >= segments,
+  )
 }
 
 /**

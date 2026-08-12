@@ -1,22 +1,40 @@
-import { useCallback, useEffect, useId, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, Navigate } from 'react-router-dom'
+import { aiErrorKey, VaultLockedError } from '@/components/app/aiErrorKey'
 import { LETTER_DRAFT_ID, useApp, type StartSession } from '@/components/app/appContext'
+import { ClaimGuard } from '@/components/editor/ClaimGuard'
 import { DocumentView } from '@/components/editor/DocumentView'
 import { DraftStatus } from '@/components/editor/DraftStatus'
 import { SelectionLayer } from '@/components/editor/SelectionLayer'
-import { paragraphRange, wholeDocumentRange } from '@/components/editor/documentSelection'
+import { TruthModeSwitch } from '@/components/editor/TruthModeSwitch'
+import { VariantPopover } from '@/components/editor/VariantPopover'
+import {
+  paragraphRange,
+  wholeDocumentRange,
+  type EditorSelection,
+} from '@/components/editor/documentSelection'
 import { diffText } from '@/components/editor/editableInput'
+import {
+  buildRewriteRequest,
+  defaultSliders,
+  factsFrom,
+} from '@/components/editor/rewriteRequest'
 import { TYPING_BREAK_MS, useDocumentHistory } from '@/components/editor/useDocumentHistory'
 import { useDocumentSelection } from '@/components/editor/useDocumentSelection'
 import { useDraftAutosave } from '@/components/editor/useDraftAutosave'
+import { useLetterAnalysis } from '@/components/editor/useLetterAnalysis'
 import { usePrecisePointer } from '@/components/editor/usePrecisePointer'
+import { useUnbackedClaims } from '@/components/editor/useUnbackedClaims'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { FIELD_HINT_CLASS } from '@/components/ui/Field'
+import { PROVIDERS, withSignal } from '@/lib/ai/provider'
 import { parseDocx } from '@/lib/docx/parse'
 import { detectLanguage } from '@/lib/domain/language'
+import { rewriteSelection, type Variant } from '@/lib/domain/rewrite'
 import { replaceRange } from '@/lib/docx/replace'
+import type { TruthMode } from '@/lib/storage/adapter'
 
 /**
  * Die Arbeitsfläche: das Anschreiben als Dokument, die freie Markierung und
@@ -32,14 +50,21 @@ import { replaceRange } from '@/lib/docx/replace'
  *   sowie „aktueller Absatz" an.
  * - `useDocumentHistory` hält die Zustände für Strg+Z, `useDraftAutosave`
  *   sichert alle 20 Sekunden.
+ * - `useLetterAnalysis` liest beim Betreten einmal die Stellenanzeige und
+ *   das Stilprofil (14b) — beides braucht `rewriteSelection` als
+ *   Pflichtfeld.
+ * - `VariantPopover` fragt nach drei Formulierungen, `TruthModeSwitch`
+ *   verschiebt die Wahrheitsgrenze, `useUnbackedClaims` und `ClaimGuard`
+ *   halten Markierung, Einzelbestätigung und Exportsperre des freien Modus
+ *   (G10).
  *
- * **Anbaustellen für 14b und 14c** stehen unten im Aufbau: die Knopfreihe
- * der Markierungsleiste (`actions`) für Variantenvorschlag und
- * Wahrheitsmodus, und die Spalte neben dem Dokument für Briefkopf,
- * Lückenliste und Stilprofil.
+ * **Anbaustelle für 14c** steht unten im Aufbau: die Spalte neben dem
+ * Dokument für Briefkopf, Lückenliste und Stilprofil.
  *
- * **Kein Anbieteraufruf in dieser Aufgabe.** Die Arbeitsfläche liest,
- * markiert und sichert; gefragt wird das Modell erst in 14b.
+ * **Der Modellaufruf wird hier zusammengesetzt, nicht in der Überlagerung.**
+ * `VariantPopover` bekommt eine fertige Funktion und kennt weder Anbieter
+ * noch Schlüssel noch Anonymisierung; hier laufen Sitzung, Einstellungen und
+ * Tresor ohnehin zusammen.
  *
  * Kein eigenes `<main>`: Das steht einmal in `AppLayout` um den `<Outlet />`.
  */
@@ -60,8 +85,9 @@ export default function Editor() {
 
 function EditorWorkspace({ session }: { session: StartSession }) {
   const { t } = useTranslation()
-  const { storage } = useApp()
+  const { storage, keyVault, settings, updateSettings } = useApp()
   const headingId = useId()
+  const claimsHeadingId = useId()
   const rootRef = useRef<HTMLDivElement>(null)
 
   const { document: docx, canUndo, reset, commit, undo } = useDocumentHistory()
@@ -100,6 +126,121 @@ function EditorWorkspace({ session }: { session: StartSession }) {
     document: docx,
     enabled: docx !== null,
   })
+
+  // Der Anbieter kommt aus dem Tresor, nicht aus den Einstellungen: Er
+  // gehört zum Schlüssel (ein Gemini-Schlüssel spricht nicht mit OpenAI),
+  // und `Settings.provider` führt ihn nur mit, damit er in der
+  // Sicherungsdatei steht (siehe `Settings.tsx`).
+  const vaultProvider = keyVault.vault?.getProvider() ?? null
+  const apiKey = keyVault.vault?.getKey() ?? null
+  const provider = vaultProvider === null ? null : PROVIDERS[vaultProvider]
+
+  const privacy = useMemo(
+    () => ({ enabled: settings.anonymize, userName: session.userName }),
+    [settings.anonymize, session.userName],
+  )
+
+  const analysis = useLetterAnalysis({
+    jobAdText: session.jobAdText,
+    letterText: letter?.text ?? '',
+    provider,
+    apiKey,
+    privacy,
+  })
+
+  const claims = useUnbackedClaims(docx)
+
+  /**
+   * Die Zielsprache der Umformulierung.
+   *
+   * `docs/spec.md` sagt: „Zielsprache = Sprache der Anzeige. Nachfrage nur
+   * bei Abweichung." Die Nachfrage ist 14c. Bis dahin steht hier die Sprache
+   * des **Anschreibens**, nicht die der Anzeige — sonst würde eine englische
+   * Anzeige den deutschen Brief übersetzen lassen, ohne dass jemand gefragt
+   * hätte, und genau das verbietet derselbe Satz. 14c ersetzt die Konstante
+   * durch den Zustand, den der Dialog setzt; alles darunter bleibt, wie es
+   * ist.
+   */
+  const targetLanguage = useMemo(
+    () => (docx === null ? 'de' : detectLanguage(docx.text)),
+    [docx],
+  )
+
+  /** Die Faktenbasis: hochgeladener Lebenslauf und hochgeladenes Anschreiben. */
+  const facts = useMemo(
+    () => factsFrom({ cv: session.cv?.text ?? null, letter: letter?.text ?? null }),
+    [session.cv, letter],
+  )
+
+  const { jobAd, style } = analysis
+  const rewrite = useCallback(
+    async (current: EditorSelection, signal: AbortSignal): Promise<Variant[]> => {
+      // Nicht erreichbar, solange `ready` unten den Knopf sperrt — aber der
+      // Typ weiß das nicht, und ein stiller Rückgabewert wäre schlechter als
+      // ein sichtbarer Fehler.
+      if (jobAd === null || style === null || provider === null) {
+        throw new Error('Umformulierung ohne Auswertung oder ohne Anbieter angefordert.')
+      }
+
+      // Der Schlüssel wird **jetzt** gelesen, nicht beim Rendern: Der Tresor
+      // sperrt sich nach der Untätigkeitsfrist selbst und meldet das an
+      // niemanden (siehe `VaultLockedError`). Ein beim Rendern
+      // eingeschlossener Schlüssel ginge sonst noch los, nachdem der Tresor
+      // ihn vergessen hat. `refresh()` bringt den gesperrten Zustand
+      // zugleich in die Oberfläche, wo er hingehört.
+      const key = keyVault.vault?.getKey() ?? null
+      if (key === null) {
+        keyVault.refresh()
+        throw new VaultLockedError()
+      }
+
+      return rewriteSelection(
+        buildRewriteRequest({
+          selection: current,
+          jobAd,
+          style,
+          facts,
+          truthMode: settings.truthMode,
+          targetLanguage,
+          sliders: defaultSliders(style),
+        }),
+        withSignal(provider, signal),
+        key,
+        privacy,
+      )
+    },
+    [jobAd, style, provider, keyVault, facts, settings.truthMode, targetLanguage, privacy],
+  )
+
+  /**
+   * Eine übernommene Variante geht denselben Weg wie das Tippen:
+   * `replaceRange` auf den Bereich der Markierung, dann `commit` **ohne**
+   * Merkmal — sie ist ein eigener Verlaufsschritt und verschmilzt nicht mit
+   * dem Tippen davor.
+   *
+   * Die unbelegten Aussagen werden **nach** dem Einsetzen angemeldet: Erst
+   * dann stehen sie im Dokument, und nur dort findet `locateClaims` sie.
+   */
+  const applyVariant = useCallback(
+    (variant: Variant) => {
+      if (docx === null || selection === null) return
+      commit(replaceRange(docx, selection.range, variant.text))
+      claims.add(variant.unbackedClaims)
+      clear()
+    },
+    [docx, selection, commit, claims, clear],
+  )
+
+  const changeTruthMode = useCallback(
+    (next: TruthMode) => {
+      // Scheitert das Speichern, bleibt der bisherige Modus stehen (siehe
+      // `updateSettings`). Sichtbar ist das an der Auswahlliste selbst, die
+      // dann nicht umspringt — eine zweite Meldung an dieser Stelle wäre
+      // eine Doppelung der Einstellungen-Ansicht.
+      void updateSettings({ truthMode: next }).catch(() => {})
+    },
+    [updateSettings],
+  )
 
   /**
    * Zusammenhängendes Tippen ist **ein** Verlaufsschritt. Der Lauf endet,
@@ -243,10 +384,6 @@ function EditorWorkspace({ session }: { session: StartSession }) {
             <DraftStatus state={draft} />
           </div>
 
-          {/* Anbaustelle 14b: `actions={<VariantPopover selection={selection} … />}`.
-              Der Anbau bekommt dieselbe `EditorSelection` samt gekapptem
-              Kontext und schreibt eine übernommene Variante über denselben
-              Weg wie das Tippen (`replaceRange` und `commit`). */}
           <SelectionLayer
             selection={selection}
             fineSelection={precise}
@@ -257,7 +394,23 @@ function EditorWorkspace({ session }: { session: StartSession }) {
               if (range !== null) select(range)
             }}
             onClear={clear}
+            actions={
+              <VariantPopover
+                selection={selection}
+                rewrite={rewrite}
+                ready={analysis.status === 'ready'}
+                onApply={applyVariant}
+              />
+            }
           />
+
+          {/* Der Wahrheitsmodus steht unter der Markierungsleiste, nicht in
+              ihr: Er gilt für die ganze Sitzung, nicht für diese eine
+              Markierung. */}
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <TruthModeSwitch value={settings.truthMode} onChange={changeTruthMode} />
+            <AnalysisStatus analysis={analysis} hasKey={apiKey !== null} />
+          </div>
         </div>
 
         <Card variant="raised" padding="none">
@@ -288,6 +441,10 @@ function EditorWorkspace({ session }: { session: StartSession }) {
                 .filter((entry) => entry.position > 0)
                 .map((entry) => entry.index) ?? []
             }
+            // Absätze mit einer unbestätigten unbelegten Aussage (freier
+            // Modus). Der Wortlaut steht in `ClaimGuard` darunter — die
+            // Kontur allein wäre eine Bedeutung, die nur an der Farbe hinge.
+            claimParagraphs={claims.pendingParagraphs}
             onParagraphInput={handleParagraphInput}
             // `rounded-lg` statt der Vorgabe `rounded-md`: Der Fokusring
             // folgt dem Radius seines Elements und soll dem Blatt folgen,
@@ -295,7 +452,66 @@ function EditorWorkspace({ session }: { session: StartSession }) {
             className="rounded-lg px-6 py-8 md:px-10 md:py-12"
           />
         </Card>
+
+        <ClaimGuard
+          claims={claims.located}
+          onConfirm={claims.confirm}
+          headingId={claimsHeadingId}
+        />
       </section>
+    </div>
+  )
+}
+
+/**
+ * Der Zustand der beiden Auswertungen, in einem Satz.
+ *
+ * Sie laufen im Hintergrund und ohne sie gibt es keine Varianten — deshalb
+ * muss dastehen, woran es liegt, wenn der Knopf gesperrt ist. Der Fehlertext
+ * kommt aus `aiErrorKey`, nie aus der Ausnahme selbst (G8).
+ *
+ * Im Erfolgsfall steht hier **nichts**. Was gelesen wurde, zeigt 14c in der
+ * Seitenspalte; eine Erfolgsmeldung dazwischen wäre eine Zeile, die nur beim
+ * ersten Mal etwas sagt.
+ */
+function AnalysisStatus({
+  analysis,
+  hasKey,
+}: {
+  analysis: ReturnType<typeof useLetterAnalysis>
+  hasKey: boolean
+}) {
+  const { t } = useTranslation()
+
+  if (analysis.status === 'ready') return null
+
+  if (analysis.status === 'idle') {
+    // Ohne Schlüssel im Arbeitsspeicher ist der Tresor gesperrt oder leer.
+    // Die Einstiegsseite führt durch beides; hier steht nur, warum die
+    // Arbeitsfläche gerade nichts fragen kann.
+    return hasKey ? null : (
+      <p role="status" className={FIELD_HINT_CLASS}>
+        {t('vault.locked')}
+      </p>
+    )
+  }
+
+  if (analysis.status === 'loading') {
+    return (
+      <p role="status" className={FIELD_HINT_CLASS}>
+        {t('editor.analysis.loading')}
+      </p>
+    )
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-3">
+      <p role="alert" className="text-[length:var(--text-body-sm-size)] text-[var(--color-error)]">
+        {t(aiErrorKey(analysis.error))}
+      </p>
+      <Button variant="secondary" size="sm" onClick={analysis.retry}>
+        {t('editor.analysis.retry')}
+      </Button>
     </div>
   )
 }
