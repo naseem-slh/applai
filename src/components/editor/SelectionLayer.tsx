@@ -28,9 +28,9 @@ import type { EditorSelection } from './documentSelection'
 export interface SelectionLayerProps {
   selection: EditorSelection | null
   /**
-   * Ist die Feinmarkierung verfügbar? Auf schmalen Bildschirmen nicht
-   * (`docs/spec.md`: „Nutzbar, aber ohne Feinmarkierung"); dann bleibt der
-   * Knopf „ganzes Dokument".
+   * Ist die Feinmarkierung verfügbar? Mit dem Finger nicht (`docs/spec.md`:
+   * „Nutzbar, aber ohne Feinmarkierung", siehe `usePrecisePointer`); dann
+   * bleibt der Knopf „ganzes Dokument". Getippt werden darf trotzdem.
    */
   fineSelection: boolean
   /** Absatz, in dem der Schreibcursor zuletzt stand. */
@@ -105,7 +105,7 @@ export function SelectionLayer({
       <div role="status" className="flex flex-col gap-1">
         {selection === null ? (
           <p className={FIELD_HINT_CLASS}>
-            {fineSelection ? t('editor.selection.none') : t('editor.selection.narrow')}
+            {fineSelection ? t('editor.selection.none') : t('editor.selection.touch')}
           </p>
         ) : (
           <>

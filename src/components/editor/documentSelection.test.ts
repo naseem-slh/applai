@@ -13,6 +13,7 @@ import {
   createSelection,
   PARAGRAPH_INDEX_ATTRIBUTE,
   PARAGRAPH_START_ATTRIBUTE,
+  paragraphIndexOf,
   paragraphRange,
   rangeToDomRange,
   selectionToRange,
@@ -396,5 +397,31 @@ describe('createSelection', () => {
     // Der erste betroffene Absatz bekommt immer ein Segment und bleibt
     // deshalb an seinem Platz, ohne dass etwas verrutscht.
     expect(selection!.inspection.mayShiftContent).toBe(false)
+  })
+})
+
+// Beide Datenattribute kommen heute von `DocumentView` und sind immer da.
+// Diese beiden Fälle sind deshalb unerreichbar — und trotzdem geprüft:
+// `Number(null)` ist 0, `Number.isInteger(0)` ist wahr, und eine stille 0
+// wäre hier die teuerste Antwort von allen.
+describe('Absätze ohne brauchbare Datenattribute', () => {
+  it('nennt für einen Absatz ohne Index keinen Index, statt ihn für den ersten zu halten', async () => {
+    const docx = await buildDocx(['Alpha', 'Beta'])
+    const root = renderParagraphs(docx)
+    const node = textNode(root, 1)
+
+    paragraphElement(root, 1).removeAttribute(PARAGRAPH_INDEX_ATTRIBUTE)
+
+    expect(paragraphIndexOf(node)).toBeNull()
+  })
+
+  it('rechnet aus einem Absatz mit unlesbarem Offset keinen Bereich, statt am Dokumentanfang zu messen', async () => {
+    const docx = await buildDocx(['Alpha', 'Beta'])
+    const root = renderParagraphs(docx)
+    const node = textNode(root, 0)
+
+    paragraphElement(root, 0).setAttribute(PARAGRAPH_START_ATTRIBUTE, 'zwei')
+
+    expect(selectionToRange(root, selectPoints(node, 1, node, 3))).toBeNull()
   })
 })

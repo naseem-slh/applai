@@ -95,9 +95,13 @@ function undoShortcut(): void {
   fireEvent.keyDown(document.body, { key: 'z', ctrlKey: true })
 }
 
-function stubMatchMedia(matches: boolean): void {
+/**
+ * Das primäre Zeigegerät (siehe `usePrecisePointer`). `coarse` ist der
+ * Finger: Dann fällt die Feinmarkierung weg, das Tippen nicht.
+ */
+function stubPointer(coarse: boolean): void {
   window.matchMedia = vi.fn(() => ({
-    matches,
+    matches: coarse,
     media: '',
     addEventListener: () => {},
     removeEventListener: () => {},
@@ -247,12 +251,11 @@ describe('Editor', () => {
     expect(screen.getByRole('button', { name: t('editor.undo') })).toBeDisabled()
   })
 
-  it('nimmt auf einem schmalen Bildschirm die Feinmarkierung weg', async () => {
-    stubMatchMedia(false)
+  it('nimmt einem groben Zeigegerät die Feinmarkierung weg, das Tippen aber nicht', async () => {
+    stubPointer(true)
     setup()
 
-    expect(await screen.findByText(t('editor.selection.narrow'))).toBeInTheDocument()
-    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+    expect(await screen.findByText(t('editor.selection.touch'))).toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: t('editor.selection.currentParagraph') }),
     ).not.toBeInTheDocument()
@@ -261,6 +264,16 @@ describe('Editor', () => {
     expect(
       screen.getByRole('button', { name: t('editor.selection.wholeDocument') }),
     ).toBeInTheDocument()
+
+    // Und das Anschreiben bleibt beschreibbar. Die Checkliste nimmt nur die
+    // Feinmarkierung weg; ein Brief, der sich unterwegs nicht einmal an
+    // einer Stelle berichtigen ließe, wäre weniger wert als eine ungenaue
+    // Einfügestelle.
+    expect(screen.getByRole('textbox')).toBeInTheDocument()
+    type(0, 'Guten Tag,')
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: t('editor.undo') })).toBeEnabled()
+    })
   })
 
   // Weitergabe aus Aufgabe 3, am ganzen Weg: markieren, und die Warnung
@@ -287,6 +300,33 @@ describe('Editor', () => {
     ).toBeInTheDocument()
     // Und der Absatz ist im Text zu finden, nicht nur in der Meldung.
     expect(paragraphElement(1).className).toContain('border-[var(--color-warning)]')
+  })
+
+  // Die Kontur im Text und der Hinweis in der Leiste sagen dasselbe: Ein
+  // festgehaltener Absatz, der als **erster** betroffen ist, verrutscht
+  // nicht (er bekommt immer ein Segment des Ersatztextes) und wird deshalb
+  // auch nicht hervorgehoben. Sonst stünde eine Kontur im Text, über die
+  // die Leiste kein Wort verliert, und die Bedeutung hinge allein an der
+  // Farbe (DESIGN.md).
+  it('hebt keinen Absatz hervor, über den die Leiste nichts sagt', async () => {
+    setup({
+      session: {
+        letter: letterDocument({ docxBase: specialBytes, text: specialText }),
+        userName: 'Marlene Ostwald',
+      },
+    })
+    await screen.findByRole('textbox')
+
+    // Absatz 3 („Zelle") ist der letzte einer Tabellenzelle und wird nie
+    // entfernt — als einziger betroffener Absatz verrutscht dabei nichts.
+    caretIn(2, 1)
+    fireEvent.click(screen.getByRole('button', { name: t('editor.selection.currentParagraph') }))
+
+    expect(
+      await screen.findByText(t('editor.selection.summary', { chars: 'Zelle'.length })),
+    ).toBeInTheDocument()
+    expect(screen.queryByText(t('editor.retained.heading'))).not.toBeInTheDocument()
+    expect(paragraphElement(2).className).toContain('border-transparent')
   })
 
   it('sagt vor dem ersten Zwischenstand, dass alle 20 Sekunden gesichert wird', async () => {

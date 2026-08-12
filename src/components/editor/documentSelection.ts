@@ -129,15 +129,19 @@ interface DomPoint {
 
 function domPoint(root: HTMLElement, offset: number, prefer: 'first' | 'last'): DomPoint | null {
   const paragraphs = paragraphElements(root)
-  const covering = paragraphs.filter(
-    (paragraph) => paragraphStart(paragraph) <= offset && offset <= paragraphEnd(paragraph),
-  )
+  const covering = paragraphs.filter((paragraph) => {
+    const start = paragraphStart(paragraph)
+    const end = paragraphEnd(paragraph)
+    return start !== null && end !== null && start <= offset && offset <= end
+  })
   // Ein Offset zwischen zwei Absätzen kann es nicht geben: Das
   // Absatztrennzeichen liegt auf dem Endeoffset des vorangehenden Absatzes.
   const paragraph = (prefer === 'first' ? covering[0] : covering.at(-1)) ?? paragraphs.at(-1)
   if (paragraph === undefined) return null
+  const start = paragraphStart(paragraph)
+  if (start === null) return null
 
-  let remaining = clamp(offset - paragraphStart(paragraph), 0, paragraph.textContent?.length ?? 0)
+  let remaining = clamp(offset - start, 0, paragraph.textContent?.length ?? 0)
   const walker = root.ownerDocument.createTreeWalker(paragraph, NodeFilter.SHOW_TEXT)
   for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
     const length = node.nodeValue?.length ?? 0
@@ -237,11 +241,12 @@ function pointToOffset(root: HTMLElement, node: Node | null, offset: number): nu
   if (!isValidPoint(node, offset)) return null
 
   const paragraph = paragraphOf(node)
-  if (paragraph !== null && root.contains(paragraph)) {
+  const start = paragraph === null ? null : paragraphStart(paragraph)
+  if (paragraph !== null && start !== null && root.contains(paragraph)) {
     const measure = ownerDocumentOf(node).createRange()
     measure.setStart(paragraph, 0)
     measure.setEnd(node, offset)
-    return paragraphStart(paragraph) + measure.toString().length
+    return start + measure.toString().length
   }
 
   return boundaryOffset(root, node, offset)
@@ -276,24 +281,46 @@ export function paragraphOf(node: Node | null): HTMLElement | null {
   return element?.closest<HTMLElement>(PARAGRAPH_SELECTOR) ?? null
 }
 
-/** Der Index des Absatzes, in dem dieser Knoten steckt. */
+/**
+ * Der Index des Absatzes, in dem dieser Knoten steckt.
+ *
+ * Fehlt das Attribut, ist die Antwort `null` und nicht 0: `Number(null)` ist
+ * 0 und `Number.isInteger(0)` wahr, ein Absatz ohne Index ginge also als der
+ * erste durch. `DocumentView` schreibt das Attribut heute an jeden Absatz,
+ * der Fall ist damit unerreichbar. Die eine Zeile steht trotzdem hier, weil
+ * sie billiger ist als der Fehler, den sie verhindert: eine Ersetzung im
+ * falschen Absatz.
+ */
 export function paragraphIndexOf(node: Node | null): number | null {
   const paragraph = paragraphOf(node)
   if (paragraph === null) return null
-  const index = Number(paragraph.getAttribute(PARAGRAPH_INDEX_ATTRIBUTE))
-  return Number.isInteger(index) ? index : null
+  return integerAttribute(paragraph, PARAGRAPH_INDEX_ATTRIBUTE)
 }
 
 function paragraphElements(root: HTMLElement): HTMLElement[] {
   return Array.from(root.querySelectorAll<HTMLElement>(PARAGRAPH_SELECTOR))
 }
 
-function paragraphStart(paragraph: HTMLElement): number {
-  return Number(paragraph.getAttribute(PARAGRAPH_START_ATTRIBUTE) ?? 0)
+/**
+ * Der Dokument-Offset, an dem dieser Absatz beginnt — `null`, wenn das
+ * Attribut fehlt oder keine ganze Zahl trägt. Dieselbe Begründung wie bei
+ * {@link paragraphIndexOf}: Eine stille 0 hieße „Dokumentanfang", und jede
+ * daraus gerechnete Markierung zeigte auf die falsche Stelle im Brief.
+ */
+function paragraphStart(paragraph: HTMLElement): number | null {
+  return integerAttribute(paragraph, PARAGRAPH_START_ATTRIBUTE)
 }
 
-function paragraphEnd(paragraph: HTMLElement): number {
-  return paragraphStart(paragraph) + (paragraph.textContent?.length ?? 0)
+function paragraphEnd(paragraph: HTMLElement): number | null {
+  const start = paragraphStart(paragraph)
+  return start === null ? null : start + (paragraph.textContent?.length ?? 0)
+}
+
+function integerAttribute(element: HTMLElement, name: string): number | null {
+  const raw = element.getAttribute(name)
+  if (raw === null || raw.trim() === '') return null
+  const value = Number(raw)
+  return Number.isInteger(value) ? value : null
 }
 
 /**

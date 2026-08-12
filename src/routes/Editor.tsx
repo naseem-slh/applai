@@ -10,7 +10,7 @@ import { diffText } from '@/components/editor/editableInput'
 import { TYPING_BREAK_MS, useDocumentHistory } from '@/components/editor/useDocumentHistory'
 import { useDocumentSelection } from '@/components/editor/useDocumentSelection'
 import { useDraftAutosave } from '@/components/editor/useDraftAutosave'
-import { useWideViewport } from '@/components/editor/useWideViewport'
+import { usePrecisePointer } from '@/components/editor/usePrecisePointer'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { FIELD_HINT_CLASS } from '@/components/ui/Field'
@@ -65,7 +65,7 @@ function EditorWorkspace({ session }: { session: StartSession }) {
   const rootRef = useRef<HTMLDivElement>(null)
 
   const { document: docx, canUndo, reset, commit, undo } = useDocumentHistory()
-  const wide = useWideViewport()
+  const precise = usePrecisePointer()
   const [loading, setLoading] = useState(session.letter !== null)
   const [failed, setFailed] = useState(false)
 
@@ -91,7 +91,7 @@ function EditorWorkspace({ session }: { session: StartSession }) {
   const { selection, caretParagraph, select, clear } = useDocumentSelection({
     rootRef,
     document: docx,
-    trackPointerSelection: wide,
+    trackPointerSelection: precise,
   })
 
   const draft = useDraftAutosave({
@@ -214,7 +214,7 @@ function EditorWorkspace({ session }: { session: StartSession }) {
   return (
     <div className="flex flex-col gap-6">
       {heading}
-      <p className="max-w-[65ch]">{wide ? t('editor.intro') : t('editor.introNarrow')}</p>
+      <p className="max-w-[65ch]">{precise ? t('editor.intro') : t('editor.introTouch')}</p>
 
       {/* Anbaustelle 14c: Briefkopf, Lückenliste und Stilprofil kommen als
           ruhige Spalte neben das Dokument. Dafür wird aus diesem `<section>`
@@ -249,7 +249,7 @@ function EditorWorkspace({ session }: { session: StartSession }) {
               Weg wie das Tippen (`replaceRange` und `commit`). */}
           <SelectionLayer
             selection={selection}
-            fineSelection={wide}
+            fineSelection={precise}
             caretParagraph={caretParagraph}
             onSelectWholeDocument={() => select(wholeDocumentRange(docx))}
             onSelectParagraph={(index) => {
@@ -264,7 +264,13 @@ function EditorWorkspace({ session }: { session: StartSession }) {
           <DocumentView
             rootRef={rootRef}
             paragraphs={docx.paragraphs}
-            editable={wide}
+            // Auch mit dem Finger: Die Checkliste nimmt auf schmalen
+            // Geräten nur die **Feinmarkierung** weg, nicht das Tippen. Ein
+            // Anschreiben, das sich unterwegs nicht einmal an einer Stelle
+            // berichtigen ließe, wäre weniger wert als eine ungenaue
+            // Einfügestelle; die Absatzfolge schützt ohnehin die Prüfung in
+            // `DocumentView`, nicht die Gerätefrage.
+            editable
             labelledBy={headingId}
             // Die Sprache des Briefs, deterministisch erkannt (Aufgabe 9,
             // kein Modellaufruf). Sie entscheidet, in welcher Sprache der
@@ -273,7 +279,15 @@ function EditorWorkspace({ session }: { session: StartSession }) {
             // eingestellter Browser ein deutsches Anschreiben englisch vor
             // und unterstreicht jedes Wort rot.
             language={detectLanguage(docx.text)}
-            retainedParagraphs={selection?.inspection.retained.map((entry) => entry.index) ?? []}
+            // Nur die Absätze, die die Leiste auch benennt (`position > 0`,
+            // siehe `SelectionLayer`). Eine Kontur ohne ein Wort dazu wäre
+            // eine Bedeutung, die allein an der Farbe hinge — genau das,
+            // was `DESIGN.md` verbietet.
+            retainedParagraphs={
+              selection?.inspection.retained
+                .filter((entry) => entry.position > 0)
+                .map((entry) => entry.index) ?? []
+            }
             onParagraphInput={handleParagraphInput}
             // `rounded-lg` statt der Vorgabe `rounded-md`: Der Fokusring
             // folgt dem Radius seines Elements und soll dem Blatt folgen,

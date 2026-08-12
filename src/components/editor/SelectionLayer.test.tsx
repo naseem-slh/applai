@@ -57,14 +57,14 @@ describe('SelectionLayer', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('bietet auf schmalen Bildschirmen nur das ganze Dokument an', () => {
+  it('bietet mit einem groben Zeigegerät nur das ganze Dokument an', () => {
     setup({ fineSelection: false, caretParagraph: 2 })
 
     expect(screen.getByRole('button', { name: t('editor.selection.wholeDocument') })).toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: t('editor.selection.currentParagraph') }),
     ).not.toBeInTheDocument()
-    expect(screen.getByText(t('editor.selection.narrow'))).toBeInTheDocument()
+    expect(screen.getByText(t('editor.selection.touch'))).toBeInTheDocument()
   })
 
   it('sagt ohne Markierung, wie eine entsteht', () => {

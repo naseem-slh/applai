@@ -616,7 +616,24 @@ describe('inspectRange', () => {
     expect(result.paragraphs).toHaveLength(original.paragraphs.length)
   })
 
-  it('prüft den Bereich nach denselben Regeln wie replaceRange', async () => {
+  // Der eine Unterschied zu `replaceRange`, und er ist Absicht: Findet sich
+  // zu einem gültigen Bereich kein Absatz, wirft das Ersetzen, während die
+  // Vorschau ein leeres Ergebnis liefert. Sie läuft bei jeder Änderung der
+  // Markierung, also in einem `selectionchange`-Rückruf; ein Wurf von dort
+  // risse die Ansicht ab, obwohl nichts kaputt ist.
+  it('liefert für ein Dokument ohne Absatz ein leeres Ergebnis, wo replaceRange wirft', async () => {
+    const empty = await parseDocx(buildDocx(''))
+
+    expect(empty.paragraphs).toHaveLength(0)
+    expect(inspectRange(empty, { from: 0, to: 0 })).toEqual({
+      affected: [],
+      retained: [],
+      mayShiftContent: false,
+    })
+    expect(() => replaceRange(empty, { from: 0, to: 0 }, 'X')).toThrow(/keinen Absatz/)
+  })
+
+  it('prüft ungültige Offsets nach denselben Regeln wie replaceRange', async () => {
     const original = await loadFixture('anschreiben.docx')
 
     expect(() => inspectRange(original, { from: 10, to: 3 })).toThrow(/Ungültiger Bereich/)

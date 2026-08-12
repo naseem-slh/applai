@@ -217,8 +217,8 @@
     "continue": "Continue to the workspace"
   },
   "editor": {
-    "intro": "Use the mouse to select the passage you want to adapt. You can type anywhere in the text; formatting stays exactly as it is in your Word file.",
-    "introNarrow": "On narrow screens the cover letter is read only. Selecting individual passages needs a wider screen; choosing the whole document still works here.",
+    "intro": "Use the mouse to select the passage you want to adapt. You can type anywhere in the text; the formatting and the paragraph order of your Word file stay as they are, which is why the Enter key does not start a new paragraph.",
+    "introTouch": "A finger cannot select a single passage precisely, so this device offers the whole document. You can still type anywhere in the text, and the formatting and the paragraph order of your Word file stay as they are.",
     "loading": "Reading the cover letter.",
     "undo": "Undo",
     "backToStart": "Back to the start page",
@@ -238,7 +238,7 @@
       "currentParagraph": "Current paragraph",
       "clear": "Clear selection",
       "none": "Nothing selected. Drag the mouse across the passage you want to change.",
-      "narrow": "Fine selection is switched off on this screen. You can still choose the whole document.",
+      "touch": "Fine selection is switched off on a touch device. You can still choose the whole document.",
       "summary": "{{chars}} characters selected.",
       "preview": "“{{text}}”"
     },

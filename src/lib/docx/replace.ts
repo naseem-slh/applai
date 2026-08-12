@@ -143,8 +143,15 @@ export interface RangeInspection {
 }
 
 /**
- * Vorschau auf `replaceRange`, ohne das Dokument anzufassen. Prüft den
- * Bereich nach denselben Regeln (gleiche Fehler bei ungültigen Offsets).
+ * Vorschau auf `replaceRange`, ohne das Dokument anzufassen.
+ *
+ * Ungültige Offsets weist diese Funktion genauso zurück wie `replaceRange`
+ * (dieselbe `assertValidRange`, dieselbe Meldung). **Ein** Fall läuft
+ * bewusst anders: Findet sich zu einem gültigen Bereich kein Absatz — ein
+ * Dokument ganz ohne `w:p` —, wirft `replaceRange`, während die Vorschau ein
+ * leeres Ergebnis liefert. Sie läuft bei jeder Änderung der Markierung, also
+ * in einem `selectionchange`-Rückruf; ein Wurf von dort risse die Ansicht
+ * ab, obwohl es nichts zu melden gibt und nichts kaputt ist.
  */
 export function inspectRange(docx: DocxDocument, range: Range): RangeInspection {
   assertValidRange(range, docx.text.length)

@@ -217,8 +217,8 @@
     "continue": "Weiter zur Arbeitsfläche"
   },
   "editor": {
-    "intro": "Markieren Sie mit der Maus die Textstelle, die angepasst werden soll. Tippen können Sie überall im Text; Formatierungen bleiben so, wie sie in Ihrer Word-Datei stehen.",
-    "introNarrow": "Auf schmalen Bildschirmen wird das Anschreiben nur gelesen. Für das Markieren einzelner Stellen brauchen Sie einen breiteren Bildschirm; das ganze Dokument lässt sich hier trotzdem wählen.",
+    "intro": "Markieren Sie mit der Maus die Textstelle, die angepasst werden soll. Tippen können Sie überall im Text; Formatierung und Absatzfolge Ihrer Word-Datei bleiben dabei, wie sie sind, und die Eingabetaste legt deshalb keinen neuen Absatz an.",
+    "introTouch": "Mit dem Finger lässt sich keine einzelne Stelle genau markieren; wählbar ist hier das ganze Dokument. Tippen können Sie trotzdem überall im Text, und Formatierung und Absatzfolge Ihrer Word-Datei bleiben dabei, wie sie sind.",
     "loading": "Das Anschreiben wird gelesen.",
     "undo": "Rückgängig",
     "backToStart": "Zurück zur Einstiegsseite",
@@ -238,7 +238,7 @@
       "currentParagraph": "Aktueller Absatz",
       "clear": "Markierung aufheben",
       "none": "Nichts markiert. Ziehen Sie mit der Maus über die Stelle, die geändert werden soll.",
-      "narrow": "Die Feinmarkierung ist auf diesem Bildschirm abgeschaltet. Wählbar ist das ganze Dokument.",
+      "touch": "Die Feinmarkierung ist auf einem Gerät mit Fingerbedienung abgeschaltet. Wählbar ist das ganze Dokument.",
       "summary": "{{chars}} Zeichen markiert.",
       "preview": "„{{text}}“"
     },

@@ -418,7 +418,14 @@ festlegt, gilt für ihre Anbauten (14b, 14c) und für den Export (15):
   an, nur farblos, damit sich beim Hervorheben kein Zeichen verschiebt. Die
   Farbe trägt die Bedeutung nie allein: Der Hinweis in der Leiste nennt
   Absatz und Grund im Text (`--color-warning` ist keine Textfarbe, siehe
-  Kontrast).
+  Kontrast). Hervorgehoben wird deshalb genau die Menge, die die Leiste auch
+  benennt — ein festgehaltener Absatz, der als erster betroffen ist,
+  verrutscht nicht und bekommt keine Kontur.
+- **Die Feinmarkierung hängt am Zeigegerät, nicht an der Fensterbreite.**
+  `(pointer: coarse)` entscheidet, ob einzelne Stellen markierbar sind
+  (`usePrecisePointer`); ein schmal gezogenes Fenster mit Maus behält sie,
+  ein Tablet im Querformat nicht. **Getippt werden darf überall**: Weggenommen
+  wird nur die Markierung, nie die Bearbeitung.
 - **Das Modell gewinnt.** Was auf der Fläche steht, ist die Ansicht eines
   `DocxDocument`. Weicht der DOM davon ab, wird er zurückgeschrieben — auch
   wenn dabei der Schreibcursor springt. Eine Ansicht, die etwas anderes

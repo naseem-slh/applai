@@ -2,7 +2,11 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Paragraph } from '@/lib/docx/model'
 import { DocumentView } from './DocumentView'
-import { PARAGRAPH_INDEX_ATTRIBUTE, PARAGRAPH_START_ATTRIBUTE } from './documentSelection'
+import {
+  PARAGRAPH_INDEX_ATTRIBUTE,
+  PARAGRAPH_START_ATTRIBUTE,
+  paragraphOf,
+} from './documentSelection'
 
 /**
  * `DocumentView` liest von einem `Paragraph` nur `index`, `start` und
@@ -57,15 +61,49 @@ function selectIn(startIndex: number, startOffset: number, endIndex = startIndex
 }
 
 /**
- * `beforeinput` wird von jsdom nicht selbst ausgelöst (es gibt dort keine
- * echte Texteingabe) und kennt auch `getTargetRanges` nicht — dann
- * entscheidet die aktuelle Markierung. Liefert `false`, wenn die Eingabe
- * abgelehnt wurde.
+ * Die Dokumentfläche selbst. Sie trägt die Absätze und den Zuhörer; ein
+ * eigener Testhaken wäre nur eine zweite Wahrheit.
  */
-function dispatchBeforeInput(index: number, inputType: string): boolean {
-  return paragraphElement(index).dispatchEvent(
-    new InputEvent('beforeinput', { inputType, cancelable: true, bubbles: true }),
-  )
+function surface(): HTMLElement {
+  const element = paragraphElement(0).parentElement
+  if (element === null) throw new Error('Dokumentfläche nicht gefunden')
+  return element
+}
+
+/** Ein Bereich, wie `beforeinput.getTargetRanges()` ihn meldet. */
+function targetRange(
+  startIndex: number,
+  startOffset: number,
+  endIndex: number,
+  endOffset: number,
+): StaticRange {
+  const start = paragraphElement(startIndex)
+  const end = paragraphElement(endIndex)
+  return new StaticRange({
+    startContainer: start.firstChild ?? start,
+    startOffset,
+    endContainer: end.firstChild ?? end,
+    endOffset,
+  })
+}
+
+/**
+ * `beforeinput` wird von jsdom nicht selbst ausgelöst (es gibt dort keine
+ * echte Texteingabe) und kennt auch `getTargetRanges` nicht — ohne
+ * gemeldeten Bereich entscheidet die aktuelle Markierung.
+ *
+ * Verschickt wird **an der Fläche**, weil Chrome das Ereignis dort
+ * verschickt: Ein Zuhörer, der zurück ans `<p>` wanderte, bekäme es nie zu
+ * sehen. Genau das war der Fehler, der im Browser einen sechsten Absatz
+ * erzeugte; an einem `<p>` gemeldet würde er hier durch das Aufsteigen
+ * verdeckt. Liefert `false`, wenn die Eingabe abgelehnt wurde.
+ */
+function dispatchBeforeInput(inputType: string, ranges?: readonly StaticRange[]): boolean {
+  const event = new InputEvent('beforeinput', { inputType, cancelable: true, bubbles: true })
+  if (ranges !== undefined) {
+    Object.defineProperty(event, 'getTargetRanges', { value: () => [...ranges] })
+  }
+  return surface().dispatchEvent(event)
 }
 
 afterEach(() => {
@@ -218,10 +256,10 @@ describe('DocumentView', () => {
     setup()
     selectIn(0, 3)
 
-    expect(dispatchBeforeInput(0, 'formatBold')).toBe(false)
-    expect(dispatchBeforeInput(0, 'insertParagraph')).toBe(false)
-    expect(dispatchBeforeInput(0, 'insertText')).toBe(true)
-    expect(dispatchBeforeInput(0, 'deleteContentBackward')).toBe(true)
+    expect(dispatchBeforeInput('formatBold')).toBe(false)
+    expect(dispatchBeforeInput('insertParagraph')).toBe(false)
+    expect(dispatchBeforeInput('insertText')).toBe(true)
+    expect(dispatchBeforeInput('deleteContentBackward')).toBe(true)
   })
 
   // Der Grund, aus dem die Absatzfolge trotz gemeinsamer Fläche unantastbar
@@ -230,22 +268,72 @@ describe('DocumentView', () => {
     setup()
     selectIn(0, 5, 1, 5)
 
-    expect(dispatchBeforeInput(0, 'insertText')).toBe(false)
-    expect(dispatchBeforeInput(0, 'deleteContentBackward')).toBe(false)
+    expect(dispatchBeforeInput('insertText')).toBe(false)
+    expect(dispatchBeforeInput('deleteContentBackward')).toBe(false)
+  })
+
+  // Der zweite Zweig der Prüfung, und der wichtigere: Die Rücktaste am
+  // Absatzanfang meldet einen Bereich, der beim **Ende des vorigen**
+  // Absatzes beginnt, während der Cursor sichtbar in einem einzigen Absatz
+  // steht. Nur `getTargetRanges` zeigt das Verschmelzen, bevor es geschieht.
+  it('lehnt die Rücktaste am Absatzanfang ab, obwohl der Cursor in einem Absatz steht', () => {
+    setup()
+    selectIn(1, 0)
+
+    const prevented = !dispatchBeforeInput('deleteContentBackward', [
+      targetRange(0, PARAGRAPHS[0].text.length, 1, 0),
+    ])
+
+    expect(prevented).toBe(true)
+  })
+
+  // Gegenprobe zum vorigen Fall: Der gemeldete Bereich entscheidet, nicht
+  // die Markierung. Sonst wäre der Zweig oben auch dann grün, wenn er die
+  // Bereiche gar nicht läse.
+  it('lässt eine Eingabe durch, deren gemeldeter Bereich in einem Absatz bleibt', () => {
+    setup()
+    selectIn(0, 5, 1, 5)
+
+    expect(dispatchBeforeInput('insertText', [targetRange(1, 1, 1, 4)])).toBe(true)
   })
 
   it('lehnt eine Eingabe ohne erkennbare Stelle ab', () => {
     setup()
     window.getSelection()?.removeAllRanges()
 
-    expect(dispatchBeforeInput(0, 'insertText')).toBe(false)
+    expect(dispatchBeforeInput('insertText')).toBe(false)
   })
 
   it('hört auf keine Eingabe, wenn nur gelesen wird', () => {
     setup({ editable: false })
     selectIn(0, 3)
 
-    expect(dispatchBeforeInput(0, 'formatBold')).toBe(true)
+    expect(dispatchBeforeInput('formatBold')).toBe(true)
+  })
+
+  // `insertCompositionText` ist in Chrome nicht abbrechbar: Die Prüfung
+  // oben lehnt die Eingabe zwar ab, der Browser führt sie trotzdem aus. Die
+  // Markierung wird deshalb zusammengelegt, bevor die Eingabemethode
+  // anfängt — danach hat sie genau einen Absatz vor sich.
+  it('legt eine Markierung über zwei Absätze zusammen, bevor eine Eingabemethode beginnt', () => {
+    setup()
+    selectIn(0, 5, 1, 5)
+
+    fireEvent.compositionStart(surface())
+
+    const selection = window.getSelection()
+    expect(selection?.isCollapsed).toBe(true)
+    expect(paragraphOf(selection?.anchorNode ?? null)).toBe(paragraphElement(0))
+    expect(selection?.anchorOffset).toBe(5)
+  })
+
+  it('lässt eine Markierung innerhalb eines Absatzes unangetastet', () => {
+    setup()
+    selectIn(0, 5, 0, 9)
+
+    fireEvent.compositionStart(surface())
+
+    expect(window.getSelection()?.isCollapsed).toBe(false)
   })
 
   it('fügt aus der Zwischenablage nur reinen, einzeiligen Text ein', () => {

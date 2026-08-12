@@ -39,6 +39,14 @@ import {
  * Absätze weder verschmelzen noch anlegen noch löschen — die Absatzfolge
  * kommt aus der Word-Datei —, während sich über sie hinweg markieren lässt.
  *
+ * **Die eine Eingabe, die sich nicht ablehnen lässt.** `beforeinput` mit
+ * `insertCompositionText` (Eingabemethoden für Japanisch, Chinesisch,
+ * Koreanisch, aber auch die Wortvorschläge einer Bildschirmtastatur) ist in
+ * Chrome **nicht abbrechbar**: `preventDefault()` bleibt dort wirkungslos.
+ * Die Prüfung greift also zu spät. Deshalb wird eine absatzübergreifende
+ * Markierung schon bei `compositionstart` zusammengelegt, bevor der Browser
+ * etwas ändert (siehe {@link collapseAcrossParagraphs}).
+ *
  * **Wie DOM und Modell zusammenhängen.** Das `DocxDocument` ist die Quelle,
  * der DOM ist seine Ansicht. Bei jeder Eingabe geht der neue Absatztext an
  * den Aufrufer, der daraus über `replaceRange` einen neuen Modellstand
@@ -69,7 +77,14 @@ import {
 
 export interface DocumentViewProps {
   paragraphs: readonly Paragraph[]
-  /** Auf schmalen Bildschirmen wird nur gelesen (siehe `useWideViewport`). */
+  /**
+   * Darf in die Fläche geschrieben werden? Die Arbeitsfläche sagt hier
+   * immer ja, auf jedem Gerät (siehe `usePrecisePointer`: Die Gerätefrage
+   * entscheidet über die Feinmarkierung, nicht über das Tippen). Der
+   * Schalter bleibt, weil eine nur lesbare Fläche eine gültige Ansicht des
+   * Dokuments ist und die Zusicherungen dafür geprüft sind: kein
+   * `role="textbox"`, kein Zuhörer, keine Rechtschreibprüfung.
+   */
   editable: boolean
   /**
    * Absätze, die die laufende Markierung an ihrem Platz festhalten würde
@@ -146,14 +161,19 @@ export function DocumentView({
   useLayoutEffect(() => {
     const element = rootRef?.current ?? ownRef.current
     if (element === null || !editable) return
-    const handle = (event: Event) => {
+    const handleBeforeInput = (event: Event) => {
       const input = event as InputEvent
       if (isBlockedInputType(input.inputType) || !staysWithinOneParagraph(element, input)) {
         event.preventDefault()
       }
     }
-    element.addEventListener('beforeinput', handle)
-    return () => element.removeEventListener('beforeinput', handle)
+    const handleCompositionStart = () => collapseAcrossParagraphs(element)
+    element.addEventListener('beforeinput', handleBeforeInput)
+    element.addEventListener('compositionstart', handleCompositionStart)
+    return () => {
+      element.removeEventListener('beforeinput', handleBeforeInput)
+      element.removeEventListener('compositionstart', handleCompositionStart)
+    }
   }, [editable, rootRef])
 
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>): void {
@@ -271,4 +291,40 @@ function staysWithinOneParagraph(root: HTMLElement, event: InputEvent | null): b
 function sameParagraph(start: Node, end: Node): boolean {
   const paragraph = paragraphOf(start)
   return paragraph !== null && paragraph === paragraphOf(end)
+}
+
+/**
+ * Legt eine Markierung, die über eine Absatzgrenze reicht, auf ihren Anfang
+ * zusammen — die einzige Stelle, an der sich eine Eingabemethode aufhalten
+ * lässt.
+ *
+ * `insertCompositionText` ist in Chrome nicht abbrechbar (siehe oben).
+ * Begänne eine IME-Eingabe über einer Markierung, die zwei Absätze
+ * überdeckt, verschmölze der Browser sie im DOM, obwohl
+ * {@link staysWithinOneParagraph} die Eingabe ablehnt. Sichtbar wäre das als
+ * Verdopplung: `reportChangedParagraph` meldet nur den **ersten**
+ * abweichenden Absatz, dessen Text dann A und B enthielte, während B im
+ * Modell steht und beim nächsten Rendern wieder erschiene.
+ *
+ * `compositionstart` läuft, bevor der Browser den markierten Text löscht.
+ * Danach hat die Eingabe genau einen Absatz vor sich. Der markierte Text
+ * bleibt dabei stehen, statt ersetzt zu werden — das ist nicht, was der
+ * Nutzer wollte, aber es ist sichtbar und rückgängig zu machen, während
+ * zwei verschmolzene Absätze die Zuordnung zwischen Absatz und Offset
+ * brechen.
+ *
+ * Der Anfang ist die Stelle, an der der Nutzer zu schreiben begonnen hat.
+ * Liegt er außerhalb jedes Absatzes (jemand hat über den Rand der Fläche
+ * hinausgezogen), bleibt das Ende; liegt keiner von beiden in einem Absatz,
+ * gibt es keine Absatzgrenze, die verletzt werden könnte.
+ */
+function collapseAcrossParagraphs(root: HTMLElement): void {
+  const selection = root.ownerDocument.defaultView?.getSelection() ?? null
+  if (selection === null || selection.rangeCount === 0) return
+
+  const range = selection.getRangeAt(0)
+  if (range.collapsed || sameParagraph(range.startContainer, range.endContainer)) return
+
+  if (paragraphOf(range.startContainer) !== null) selection.collapseToStart()
+  else if (paragraphOf(range.endContainer) !== null) selection.collapseToEnd()
 }
