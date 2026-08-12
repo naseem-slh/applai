@@ -539,7 +539,8 @@
       "add": "Add",
       "addLabel": "Add {{model}}",
       "moveUp": "Move up",
-      "removeEntry": "Remove from the chain"
+      "removeEntry": "Remove from the chain",
+      "addAll": "Add all in order"
     }
   },
   "vault": {

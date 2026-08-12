@@ -85,6 +85,21 @@ export function ModelPicker({
     setDraft('')
   }
 
+  /**
+   * Die ganze geladene Liste als Kette übernehmen.
+   *
+   * Der Grund, warum es diesen Knopf gibt und keine im Programm
+   * hinterlegte Kette: Jeder Modellname, der fest im Code stünde, wäre ein
+   * Datum, an dem Applai aufhört zu arbeiten — Anbieter benennen Modelle um
+   * und stellen sie ab. Die Namen kommen deshalb aus der Liste des
+   * Anbieters selbst und sind damit immer die von heute.
+   */
+  function addAll(models: readonly ModelChoice[]): void {
+    const added = models.map((entry) => entry.id).filter((id) => !chain.includes(id))
+    if (added.length === 0) return
+    onChange([...chain, ...added])
+  }
+
   function moveUp(index: number): void {
     if (index === 0) return
     const next = [...chain]
@@ -193,6 +208,14 @@ export function ModelPicker({
               </li>
             ))}
           </ul>
+          <Button
+            variant="secondary"
+            size="sm"
+            className="self-start"
+            onClick={() => addAll(shown)}
+          >
+            {t('settings.model.addAll')}
+          </Button>
           <Button
             variant="ghost"
             size="sm"

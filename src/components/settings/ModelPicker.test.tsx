@@ -211,4 +211,31 @@ describe('ModelPicker', () => {
 
     expect(screen.getByText(t('settings.model.loaded', { count: 3 }))).toBeInTheDocument()
   })
+
+  // Der Grund für diesen Knopf: Ein im Programm hinterlegter Modellname wäre
+  // ein Datum, an dem Applai aufhört zu arbeiten. Die Namen kommen aus der
+  // Liste des Anbieters und sind damit immer die von heute.
+  it('übernimmt die ganze geladene Liste der Reihe nach', async () => {
+    const props = setup()
+    fireEvent.click(screen.getByRole('button', { name: t('settings.model.load') }))
+    await waitFor(() =>
+      expect(screen.getByText(t('settings.model.loaded', { count: 2 }))).toBeInTheDocument(),
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: t('settings.model.addAll') }))
+
+    expect(props.onChange).toHaveBeenCalledWith(['gemini-2.5-flash', 'gemini-3.6-flash'])
+  })
+
+  it('nimmt beim Übernehmen nur auf, was noch fehlt', async () => {
+    const props = setup({ chain: ['gemini-2.5-flash'] })
+    fireEvent.click(screen.getByRole('button', { name: t('settings.model.load') }))
+    await waitFor(() =>
+      expect(screen.getByText(t('settings.model.loaded', { count: 2 }))).toBeInTheDocument(),
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: t('settings.model.addAll') }))
+
+    expect(props.onChange).toHaveBeenCalledWith(['gemini-2.5-flash', 'gemini-3.6-flash'])
+  })
 })

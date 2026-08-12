@@ -539,7 +539,8 @@
       "add": "Hinzufügen",
       "addLabel": "{{model}} hinzufügen",
       "moveUp": "Nach oben",
-      "removeEntry": "Aus der Kette nehmen"
+      "removeEntry": "Aus der Kette nehmen",
+      "addAll": "Alle der Reihe nach übernehmen"
     }
   },
   "vault": {
