@@ -10,17 +10,20 @@ import { ExportBar } from '@/components/editor/ExportBar'
 import { GapList } from '@/components/editor/GapList'
 import { LanguagePrompt } from '@/components/editor/LanguagePrompt'
 import { LetterheadPanel } from '@/components/editor/LetterheadPanel'
-import { SelectionLayer } from '@/components/editor/SelectionLayer'
+import { MarkPanel } from '@/components/editor/MarkPanel'
+import { SelectionLayer, type MarkAction } from '@/components/editor/SelectionLayer'
 import { StyleProfilePanel } from '@/components/editor/StyleProfilePanel'
 import { TruthModeSwitch } from '@/components/editor/TruthModeSwitch'
 import { VariantPopover } from '@/components/editor/VariantPopover'
 import {
   paragraphRange,
+  rangeToDomRange,
   wholeDocumentRange,
   type EditorSelection,
 } from '@/components/editor/documentSelection'
 import { diffText } from '@/components/editor/editableInput'
 import { findForeignCompanies } from '@/components/editor/foreignCompanies'
+import { overlappingMarks, shiftMarks, trimRange, type Mark } from '@/components/editor/marks'
 import {
   buildRewriteRequest,
   defaultSliders,
@@ -32,6 +35,8 @@ import { useDocumentSelection } from '@/components/editor/useDocumentSelection'
 import { useDraftAutosave } from '@/components/editor/useDraftAutosave'
 import { useGapAnalysis } from '@/components/editor/useGapAnalysis'
 import { useLetterAnalysis } from '@/components/editor/useLetterAnalysis'
+import { useMarkHighlight } from '@/components/editor/useMarkHighlight'
+import { useMarks } from '@/components/editor/useMarks'
 import { usePrecisePointer } from '@/components/editor/usePrecisePointer'
 import { useUnbackedClaims } from '@/components/editor/useUnbackedClaims'
 import { useWideViewport } from '@/components/editor/useWideViewport'
@@ -45,7 +50,7 @@ import { detectLanguage } from '@/lib/domain/language'
 import { suggestLetterhead, type Letterhead } from '@/lib/domain/letterhead'
 import { rewriteSelection, type Variant } from '@/lib/domain/rewrite'
 import type { StyleProfile } from '@/lib/domain/styleProfile'
-import { replaceRange } from '@/lib/docx/replace'
+import { replaceRange, type Range as TextRange } from '@/lib/docx/replace'
 import type { TruthMode } from '@/lib/storage/adapter'
 
 /**
@@ -65,6 +70,9 @@ import type { TruthMode } from '@/lib/storage/adapter'
  * - `useLetterAnalysis` liest beim Betreten einmal die Stellenanzeige und
  *   das Stilprofil (14b) — beides braucht `rewriteSelection` als
  *   Pflichtfeld.
+ * - `useMarks` und `MarkPanel` halten die vorgemerkten Stellen: mehrere
+ *   Textstellen gleichzeitig, eine nach der anderen umformuliert, und je
+ *   Anschreiben gemerkt.
  * - `VariantPopover` fragt nach drei Formulierungen, `TruthModeSwitch`
  *   verschiebt die Wahrheitsgrenze, `useUnbackedClaims` und `ClaimGuard`
  *   halten Markierung, Einzelbestätigung und Exportsperre des freien Modus
@@ -102,7 +110,7 @@ function EditorWorkspace({ session }: { session: StartSession }) {
   const claimsHeadingId = useId()
   const rootRef = useRef<HTMLDivElement>(null)
 
-  const { document: docx, marks, canUndo, reset, commit, undo } = useDocumentHistory()
+  const { document: docx, marks, canUndo, reset, commit, setMarks, undo } = useDocumentHistory()
   const precise = usePrecisePointer()
   // Nur für den Anfangszustand der aufklappbaren Bereiche, siehe dort.
   const wide = useWideViewport()
@@ -133,6 +141,20 @@ function EditorWorkspace({ session }: { session: StartSession }) {
     document: docx,
     trackPointerSelection: precise,
   })
+
+  const documentText = docx?.text ?? null
+  const markHandle = useMarks({
+    storage,
+    // Der Fingerabdruck kommt vom **hochgeladenen** Brief, nicht vom
+    // Arbeitsstand: Sonst läge der Satz nach jedem Tastendruck unter einer
+    // neuen Kennung.
+    letterText: letter?.text ?? null,
+    documentText,
+    marks,
+    setMarks,
+  })
+
+  useMarkHighlight({ rootRef, marks })
 
   const draft = useDraftAutosave({
     storage,
@@ -328,6 +350,43 @@ function EditorWorkspace({ session }: { session: StartSession }) {
   )
 
   /**
+   * **Der eine Weg, auf dem sich der Brieftext ändert.**
+   *
+   * Tippen, eine übernommene Variante und ein eingesetztes Briefkopf-Feld
+   * laufen alle hier hindurch: `replaceRange` bildet den neuen Stand,
+   * `shiftMarks` führt die vorgemerkten Stellen nach, und beides geht in
+   * **einem** `commit` in den Verlauf. Ein vierter Änderungsweg, der das
+   * Nachführen vergäße, wäre der wahrscheinlichste Fehler dieser
+   * Erweiterung — deshalb gibt es nur diesen einen.
+   *
+   * `completes` hakt die Vormerkung ab, die genau auf dem ersetzten Bereich
+   * liegt. Welche das ist, wird **vor** dem Verschieben festgestellt:
+   * danach ist ihr Bereich ein anderer.
+   */
+  const applyEdit = useCallback(
+    (range: TextRange, text: string, options: { group?: object; completes?: boolean } = {}) => {
+      if (docx === null) return
+      const completed =
+        options.completes === true
+          ? (marks.find(
+              (mark) => mark.range.from === range.from && mark.range.to === range.to,
+            ) ?? null)
+          : null
+
+      const next = replaceRange(docx, range, text)
+      const shifted = shiftMarks(marks, range, text.length, next.text)
+      commit(
+        next,
+        completed === null
+          ? shifted
+          : shifted.map((mark) => (mark.id === completed.id ? { ...mark, done: true } : mark)),
+        options.group,
+      )
+    },
+    [docx, marks, commit],
+  )
+
+  /**
    * Eine übernommene Variante geht denselben Weg wie das Tippen:
    * `replaceRange` auf den Bereich der Markierung, dann `commit` **ohne**
    * Merkmal — sie ist ein eigener Verlaufsschritt und verschmilzt nicht mit
@@ -338,12 +397,12 @@ function EditorWorkspace({ session }: { session: StartSession }) {
    */
   const applyVariant = useCallback(
     (variant: Variant) => {
-      if (docx === null || selection === null) return
-      commit(replaceRange(docx, selection.range, variant.text), marks)
+      if (selection === null) return
+      applyEdit(selection.range, variant.text, { completes: true })
       claims.add(variant.unbackedClaims)
       clear()
     },
-    [docx, selection, commit, marks, claims, clear],
+    [selection, applyEdit, claims, clear],
   )
 
   /**
@@ -356,10 +415,10 @@ function EditorWorkspace({ session }: { session: StartSession }) {
       docx === null || selection === null
         ? null
         : (value: string) => {
-            commit(replaceRange(docx, selection.range, value), marks)
+            applyEdit(selection.range, value)
             clear()
           },
-    [docx, selection, commit, marks, clear],
+    [docx, selection, applyEdit, clear],
   )
 
   /**
@@ -423,17 +482,13 @@ function EditorWorkspace({ session }: { session: StartSession }) {
       if (paragraph === undefined || paragraph.text === text) return
 
       const edit = diffText(paragraph.text, text)
-      commit(
-        replaceRange(
-          docx,
-          { from: paragraph.start + edit.from, to: paragraph.start + edit.to },
-          edit.insert,
-        ),
-        marks,
-        typingToken(index),
+      applyEdit(
+        { from: paragraph.start + edit.from, to: paragraph.start + edit.to },
+        edit.insert,
+        { group: typingToken(index) },
       )
     },
-    [docx, commit, marks, typingToken],
+    [docx, applyEdit, typingToken],
   )
 
   // Strg+Z am Fenster, nicht an der Dokumentfläche: Der Verlauf soll auch
@@ -452,6 +507,58 @@ function EditorWorkspace({ session }: { session: StartSession }) {
     window.addEventListener('keydown', handle)
     return () => window.removeEventListener('keydown', handle)
   }, [undo])
+
+  /**
+   * Was der Knopf „vormerken" mit der laufenden Markierung täte. Gerechnet
+   * wird hier, angezeigt in der Leiste: Die Umschaltregel selbst steht
+   * geprüft in `marks.ts`, und die Leiste kennt die Vormerkungen nicht.
+   */
+  const toggleMarkAt = markHandle.toggle
+  const markAction = useMemo<MarkAction | null>(() => {
+    if (documentText === null || selection === null) return null
+    const trimmed = trimRange(documentText, selection.range)
+    if (trimmed === null) return null
+
+    const releases = marks.some(
+      (mark) => mark.range.from === trimmed.from && mark.range.to === trimmed.to,
+    )
+    return {
+      releases,
+      replaces: releases
+        ? []
+        : overlappingMarks(marks, trimmed).map((mark) => marks.indexOf(mark) + 1),
+      onToggle: () => toggleMarkAt(selection.range),
+    }
+  }, [documentText, selection, marks, toggleMarkAt])
+
+  /** Die Vormerkung, die gerade markiert ist — für `aria-current` in der Liste. */
+  const activeMarkId = useMemo(() => {
+    if (selection === null) return null
+    const active = marks.find(
+      (mark) =>
+        mark.range.from === selection.range.from && mark.range.to === selection.range.to,
+    )
+    return active?.id ?? null
+  }, [marks, selection])
+
+  /**
+   * Eine Stelle aus der Liste anspringen: markieren und ins Bild rollen.
+   * Die Vormerkung wird dabei **nicht** verbraucht — sie bleibt stehen, auch
+   * nachdem eine Variante übernommen wurde.
+   */
+  const selectMark = useCallback(
+    (mark: Mark) => {
+      select(mark.range)
+      const root = rootRef.current
+      if (root === null) return
+      const element = rangeToDomRange(root, mark.range)?.startContainer.parentElement ?? null
+      // jsdom kennt `scrollIntoView` nicht; im Browser ist es immer da.
+      if (typeof element?.scrollIntoView === 'function') {
+        element.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      }
+    },
+    [select],
+  )
 
   const heading = (
     <h1 className="text-[length:var(--text-display-size)] leading-[var(--text-display-leading)] font-semibold tracking-[var(--text-display-tracking)] text-[var(--color-ink-strong)]">
@@ -550,6 +657,7 @@ function EditorWorkspace({ session }: { session: StartSession }) {
               if (range !== null) select(range)
             }}
             onClear={clear}
+            markAction={markAction}
             actions={
               <VariantPopover
                 selection={selection}
@@ -647,6 +755,18 @@ function EditorWorkspace({ session }: { session: StartSession }) {
             defaultOpen={wide}
           />
         )}
+        <MarkPanel
+          marks={marks}
+          unresolved={markHandle.unresolved}
+          restore={markHandle.restore}
+          activeId={activeMarkId}
+          onSelect={selectMark}
+          onToggleDone={markHandle.setDone}
+          onRemove={markHandle.remove}
+          onClearAll={markHandle.clearAll}
+          onDismiss={markHandle.dismiss}
+          defaultOpen={wide}
+        />
         {analysis.jobAd !== null && (
           <GapList
             requirements={analysis.jobAd.requirements}

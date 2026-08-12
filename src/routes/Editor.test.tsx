@@ -990,3 +990,121 @@ describe('Editor — Export (15)', () => {
     ).toBe(false)
   })
 })
+
+// ---------------------------------------------------------------------------
+// Vorgemerkte Stellen
+// ---------------------------------------------------------------------------
+
+/** Der Eintrag mit dieser Nummer in der Merkliste. */
+function markEntry(number: number): HTMLElement {
+  return screen.getByRole('button', { name: new RegExp(`^${number}\\.`) })
+}
+
+/** Absatz markieren, wie es der Nutzer täte, und vormerken. */
+function markParagraph(index: number): void {
+  caretIn(index, 3)
+  fireEvent.click(screen.getByRole('button', { name: t('editor.selection.currentParagraph') }))
+  fireEvent.click(screen.getByRole('button', { name: t('editor.marks.add') }))
+}
+
+describe('Editor — vorgemerkte Stellen', () => {
+  it('merkt die markierte Stelle vor und führt sie in der Liste', async () => {
+    setup()
+    await documentSurface()
+    const paragraphText = paragraphElement(1).textContent ?? ''
+
+    markParagraph(1)
+
+    expect(screen.getByText(t('editor.marks.progress', { done: 0, total: 1 }))).toBeInTheDocument()
+    expect(markEntry(1).textContent).toContain(paragraphText.slice(0, 20))
+  })
+
+  it('hebt die Vormerkung auf, wenn dieselbe Stelle noch einmal vorgemerkt wird', async () => {
+    setup()
+    await documentSurface()
+    markParagraph(1)
+
+    fireEvent.click(screen.getByRole('button', { name: t('editor.marks.release') }))
+
+    expect(screen.getByText(t('editor.marks.none'))).toBeInTheDocument()
+  })
+
+  it('kündigt an, welche Vormerkung eine überschneidende Markierung ersetzen würde', async () => {
+    setup()
+    await documentSurface()
+    markParagraph(1)
+
+    fireEvent.click(screen.getByRole('button', { name: t('editor.selection.wholeDocument') }))
+
+    expect(screen.getByText(t('editor.marks.replaces', { number: 1 }))).toBeInTheDocument()
+  })
+
+  // Der Kernpunkt: Eine Textänderung davor darf die Vormerkung nicht
+  // verrutschen lassen. Sichtbar wird das am Wortlaut in der Liste — zeigt
+  // der Bereich daneben, steht dort etwas anderes.
+  it('führt die Vormerkung mit, wenn davor getippt wird', async () => {
+    setup()
+    await documentSurface()
+    const paragraphText = paragraphElement(1).textContent ?? ''
+    markParagraph(1)
+
+    type(0, `${paragraphElement(0).textContent ?? ''} und noch ein Zusatz`)
+
+    await waitFor(() => expect(markEntry(1).textContent).toContain(paragraphText.slice(0, 20)))
+  })
+
+  it('hakt die Stelle ab, wenn eine Variante übernommen wird, und lässt sie stehen', async () => {
+    stubFetch()
+    setup({ vault: unlockedVault() })
+    await documentSurface()
+    markParagraph(1)
+
+    await openVariants()
+    await screen.findByText(VARIANT_TEXTS[0]!)
+    fireEvent.click(screen.getAllByRole('button', { name: t('editor.variants.apply') })[0]!)
+
+    await waitFor(() =>
+      expect(screen.getByText(t('editor.marks.progress', { done: 1, total: 1 }))).toBeInTheDocument(),
+    )
+    expect(markEntry(1)).toBeInTheDocument()
+  })
+
+  it('holt Strg+Z Text und Vormerkung zusammen zurück', async () => {
+    stubFetch()
+    setup({ vault: unlockedVault() })
+    await documentSurface()
+    const original = paragraphElement(1).textContent
+    markParagraph(1)
+
+    await openVariants()
+    await screen.findByText(VARIANT_TEXTS[0]!)
+    fireEvent.click(screen.getAllByRole('button', { name: t('editor.variants.apply') })[0]!)
+    await waitFor(() => expect(paragraphElement(1).textContent).toBe(VARIANT_TEXTS[0]))
+
+    undoShortcut()
+
+    await waitFor(() => expect(paragraphElement(1).textContent).toBe(original))
+    expect(screen.getByText(t('editor.marks.progress', { done: 0, total: 1 }))).toBeInTheDocument()
+  })
+
+  it('stellt die Vormerkungen beim nächsten Öffnen desselben Anschreibens wieder her', async () => {
+    const storage = createFakeStorage()
+    const first = setup({ storage })
+    await documentSurface()
+    const paragraphText = paragraphElement(1).textContent ?? ''
+    markParagraph(1)
+
+    // Das Ablegen ist bewusst verzögert (siehe MARK_SAVE_DELAY_MS).
+    await waitFor(() => expect(storage.state.markSets.size).toBe(1), { timeout: 3000 })
+    first.unmount()
+
+    setup({ storage })
+    await documentSurface()
+
+    await waitFor(() => expect(markEntry(1).textContent).toContain(paragraphText.slice(0, 20)))
+    expect(
+      screen.getByText(t('editor.marks.restored', { restored: 1, total: 1 })),
+    ).toBeInTheDocument()
+  })
+})
+
