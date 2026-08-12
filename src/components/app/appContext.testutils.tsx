@@ -1,6 +1,13 @@
 import type { ReactNode } from 'react'
 import { vi } from 'vitest'
-import type { Application, Draft, MarkSet, Settings, StorageAdapter } from '@/lib/storage/adapter'
+import type {
+  Application,
+  CachedAnalysis,
+  Draft,
+  MarkSet,
+  Settings,
+  StorageAdapter,
+} from '@/lib/storage/adapter'
 import { DEFAULT_SETTINGS } from '@/lib/storage/indexeddb'
 import type { KeyVault } from '@/lib/storage/keyVault'
 import type { KeyVaultHandle, KeyVaultStatus } from '@/components/onboarding/useKeyVault'
@@ -26,6 +33,7 @@ export interface FakeStorage extends StorageAdapter {
     drafts: Map<string, Draft>
     settings: Settings | null
     markSets: Map<string, MarkSet>
+    analyses: Map<string, CachedAnalysis>
   }
 }
 
@@ -35,6 +43,7 @@ export function createFakeStorage(initial: Partial<FakeStorage['state']> = {}): 
     drafts: initial.drafts ?? new Map(),
     settings: initial.settings ?? null,
     markSets: initial.markSets ?? new Map(),
+    analyses: initial.analyses ?? new Map(),
   }
 
   const storage: FakeStorage = {
@@ -56,6 +65,16 @@ export function createFakeStorage(initial: Partial<FakeStorage['state']> = {}): 
       return Promise.resolve()
     }),
     purgeExpiredDrafts: vi.fn(() => Promise.resolve(0)),
+    listCachedAnalyses: vi.fn(() => Promise.resolve([...state.analyses.values()])),
+    loadCachedAnalysis: vi.fn((key: string) => Promise.resolve(state.analyses.get(key) ?? null)),
+    saveCachedAnalysis: vi.fn((entry: CachedAnalysis) => {
+      state.analyses.set(entry.key, entry)
+      return Promise.resolve()
+    }),
+    deleteCachedAnalysis: vi.fn((key: string) => {
+      state.analyses.delete(key)
+      return Promise.resolve()
+    }),
     listMarkSets: vi.fn(() => Promise.resolve([...state.markSets.values()])),
     loadMarkSet: vi.fn((id: string) => Promise.resolve(state.markSets.get(id) ?? null)),
     saveMarkSet: vi.fn((set: MarkSet) => {
@@ -79,6 +98,7 @@ export function createFakeStorage(initial: Partial<FakeStorage['state']> = {}): 
       state.drafts.clear()
       state.settings = null
       state.markSets.clear()
+      state.analyses.clear()
       return Promise.resolve()
     }),
   }

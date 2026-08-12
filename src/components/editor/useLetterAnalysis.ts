@@ -1,8 +1,14 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { analysisCacheKey, type AnalysisKind } from '@/lib/ai/analysisCache'
 import type { LlmProvider } from '@/lib/ai/provider'
 import { withSignal } from '@/lib/ai/provider'
-import { analyzeJobAd, type JobAd } from '@/lib/domain/jobAd'
-import { deriveStyleProfile, type StyleProfile } from '@/lib/domain/styleProfile'
+import { analyzeJobAd, JobAdSchema, type JobAd } from '@/lib/domain/jobAd'
+import {
+  deriveStyleProfile,
+  StyleProfileSchema,
+  type StyleProfile,
+} from '@/lib/domain/styleProfile'
+import type { StorageAdapter } from '@/lib/storage/adapter'
 import { withAnonymization, type AnonymizationSettings } from '@/lib/privacy/withAnonymization'
 import { isAbortError } from '@/components/app/aiErrorKey'
 
@@ -23,6 +29,19 @@ import { isAbortError } from '@/components/app/aiErrorKey'
  * Arbeitsfläche ist, nicht eine Nebenwirkung des ersten Umformulierens. Die
  * beiden Aufrufe laufen deshalb einmal beim Laden, nicht bei jeder
  * Markierung.
+ *
+ * **Jede nur einmal.** Beide Ergebnisse hängen ausschließlich von ihrem
+ * Eingabetext ab und werden deshalb abgelegt (`lib/ai/analysisCache.ts`).
+ * Ohne diesen Speicher kostete jedes Neuladen der Seite zwei Anfragen, in
+ * der Entwicklung wegen React StrictMode sogar vier — auf einem Tarif, der
+ * Anfragen am Tag zählt, der teuerste Posten der ganzen Anwendung, und er
+ * kaufte nichts. Das Stilprofil trifft es besonders: Es hängt am
+ * Anschreiben, das über zehn Bewerbungen dasselbe bleibt, und wurde
+ * trotzdem zehnmal abgeleitet.
+ *
+ * Was aus dem Speicher kommt, wird gegen sein Schema geprüft, bevor es
+ * benutzt wird. Ein Eintrag, der die Form nicht mehr hält, wird ignoriert
+ * und neu gefragt — nicht zum Fehler gemacht.
  *
  * **Beide gleichzeitig.** Sie hängen nicht voneinander ab, und der Nutzer
  * wartet auf die langsamere von beiden statt auf ihre Summe. Der Preis sind
@@ -59,6 +78,8 @@ export interface LetterAnalysisOptions {
   /** `null`, solange der Tresor gesperrt ist. Dann läuft nichts. */
   apiKey: string | null
   privacy: AnonymizationSettings
+  /** Für den Auswertungsspeicher. Ohne ihn liefe alles, nur teurer. */
+  storage: StorageAdapter
 }
 
 export interface LetterAnalysisHandle {
@@ -77,6 +98,7 @@ export function useLetterAnalysis({
   provider,
   apiKey,
   privacy,
+  storage,
 }: LetterAnalysisOptions): LetterAnalysisHandle {
   const [status, setStatus] = useState<LetterAnalysisStatus>('idle')
   const [jobAd, setJobAd] = useState<JobAd | null>(null)
@@ -92,6 +114,15 @@ export function useLetterAnalysis({
   // erneut auslösen.
   const anonymizeEnabled = privacy.enabled
   const userName = privacy.userName
+
+  // Der Speicher steht **nicht** in der Abhängigkeitsliste: Er ist ein
+  // Werkzeug, keine Eingabe. Ein Aufrufer, der ihn beim Rendern neu
+  // zusammenbaut, würde die Auswertung sonst endlos neu anstoßen — und
+  // ausgerechnet der Speicher, der Anfragen sparen soll, wäre die Ursache
+  // einer Anfrageschleife. Gebraucht wird ohnehin immer nur die jeweils
+  // letzte Fassung.
+  const store = useRef(storage)
+  store.current = storage
 
   useEffect(() => {
     // Ohne Schlüssel oder Anbieter gibt es nichts zu fragen. Das ist kein
@@ -111,16 +142,20 @@ export function useLetterAnalysis({
     void (async () => {
       try {
         const [ad, profile] = await Promise.all([
-          analyzeJobAd(jobAdText, bound, apiKey),
-          withAnonymization(
-            { letterText },
-            { enabled: anonymizeEnabled, userName },
-            (fields) => deriveStyleProfile(fields.letterText, bound, apiKey),
-            (result, restore) => ({
-              ...result,
-              sample: restore(result.sample),
-              traits: result.traits.map(restore),
-            }),
+          cached(store.current, 'jobAd', provider.model, jobAdText, JobAdSchema, () =>
+            analyzeJobAd(jobAdText, bound, apiKey),
+          ),
+          cached(store.current, 'style', provider.model, letterText, StyleProfileSchema, () =>
+            withAnonymization(
+              { letterText },
+              { enabled: anonymizeEnabled, userName },
+              (fields) => deriveStyleProfile(fields.letterText, bound, apiKey),
+              (result, restore) => ({
+                ...result,
+                sample: restore(result.sample),
+                traits: result.traits.map(restore),
+              }),
+            ),
           ),
         ])
         if (controller.signal.aborted) return
@@ -141,4 +176,41 @@ export function useLetterAnalysis({
   }, [jobAdText, letterText, provider, apiKey, anonymizeEnabled, userName, attempt])
 
   return { status, jobAd, style, error, retry }
+}
+
+/**
+ * Erst nachsehen, dann fragen, dann ablegen.
+ *
+ * Ein unlesbarer oder nicht mehr passender Eintrag wird stillschweigend
+ * übergangen: Der Speicher ist eine Ersparnis, kein Bestand. Genauso ein
+ * fehlgeschlagenes Ablegen — die Antwort ist da, und sie deswegen zu
+ * verwerfen wäre die teuerste denkbare Reaktion.
+ */
+async function cached<T>(
+  storage: StorageAdapter,
+  kind: AnalysisKind,
+  model: string,
+  input: string,
+  schema: { safeParse: (value: unknown) => { success: boolean; data?: T } },
+  compute: () => Promise<T>,
+): Promise<T> {
+  const key = await analysisCacheKey(kind, model, input)
+
+  try {
+    const entry = await storage.loadCachedAnalysis(key)
+    if (entry !== null) {
+      const parsed = schema.safeParse(entry.value)
+      if (parsed.success && parsed.data !== undefined) return parsed.data
+    }
+  } catch {
+    // Kein Speicher, kein Problem: dann eben fragen.
+  }
+
+  const value = await compute()
+  try {
+    await storage.saveCachedAnalysis({ key, value, savedAt: Date.now() })
+  } catch {
+    // Siehe oben.
+  }
+  return value
 }

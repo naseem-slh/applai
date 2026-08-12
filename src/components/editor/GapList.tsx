@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { aiErrorKey } from '@/components/app/aiErrorKey'
+import { AiErrorNotice } from '@/components/app/AiErrorNotice'
 import { Button } from '@/components/ui/Button'
 import { FIELD_HINT_CLASS } from '@/components/ui/Field'
 import type { GapEntry } from '@/lib/domain/gaps'
@@ -102,14 +102,7 @@ export function GapList({ requirements, gaps, defaultOpen }: GapListProps) {
 
         {requirements.length > 0 && (
           <div className="flex flex-col gap-2 border-t border-[var(--color-border)] pt-4">
-            {gaps.status === 'failed' && (
-              <p
-                role="alert"
-                className="text-[length:var(--text-body-sm-size)] text-[var(--color-error)]"
-              >
-                {t(aiErrorKey(gaps.error))}
-              </p>
-            )}
+            {gaps.status === 'failed' && <AiErrorNotice error={gaps.error} />}
             <Button
               variant="secondary"
               size="sm"

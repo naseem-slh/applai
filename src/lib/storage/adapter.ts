@@ -74,6 +74,25 @@ export interface MarkSet {
 }
 
 /**
+ * Eine gespeicherte Auswertung: das Ergebnis eines Modellaufrufs, der
+ * ausschließlich von seinen Eingaben abhängt.
+ *
+ * `key` ist ein Fingerabdruck über Art, Modell und Eingabetext (siehe
+ * `lib/ai/analysisCache.ts`) — gleiche Eingabe, gleicher Schlüssel. Damit
+ * wird derselbe Aufruf nie zweimal bezahlt.
+ *
+ * `value` ist bewusst `unknown`: Diese Schicht kennt die Fachtypen nicht und
+ * soll sie nicht kennen. Wer liest, prüft das Gelesene gegen sein eigenes
+ * Schema, bevor er es benutzt.
+ */
+export interface CachedAnalysis {
+  key: string
+  value: unknown
+  /** Zeitpunkt des Ablegens, `Date.now()`-Millisekunden. */
+  savedAt: number
+}
+
+/**
  * Wahrheitsgrenze beim Formulieren. Hier definiert, weil `Settings` sie
  * braucht; in Aufgabe 11 (Textvarianten) wiederverwendet.
  */
@@ -82,6 +101,38 @@ export type TruthMode = 'strict' | 'bridge' | 'free'
 /** Nutzereinstellungen. `getSettings()` liefert sinnvolle Vorgaben, bevor je etwas gespeichert wurde — siehe `indexeddb.ts`. */
 export interface Settings {
   provider: ProviderId
+  /**
+   * Vorgänger von {@link Settings.modelChain}: genau ein Modell je Anbieter.
+   * Wird beim Lesen in eine einelementige Kette übernommen und danach nicht
+   * mehr geschrieben. Steht hier, damit eine bereits getroffene Wahl nicht
+   * stillschweigend verschwindet.
+   *
+   * @deprecated Zugunsten von `modelChain`.
+   */
+  models?: Partial<Record<ProviderId, string>>
+  /**
+   * Die Modellkette je Anbieter, in der Reihenfolge, in der sie versucht
+   * wird. Leer oder fehlend heißt: das voreingestellte Modell.
+   *
+   * Eine Kette statt eines Modells, weil die kostenlosen Kontingente je
+   * Modell zählen: Ist das erste erschöpft, kann das zweite die Arbeit
+   * weiterführen, statt den Nutzer bis zum nächsten Tag stehen zu lassen
+   * (siehe `lib/ai/fallback.ts`).
+   */
+  modelChain?: Partial<Record<ProviderId, string[]>>
+  /**
+   * Ob der hinterlegte Schlüssel abgerechnet wird — die Antwort, die der
+   * Nutzer beim Einrichten gegeben hat.
+   *
+   * Kein Geheimnis und deshalb hier statt im Tresor: Der Tresor benutzt
+   * dieselbe Antwort als Sperre („kostenpflichtig nur mit Passwort"),
+   * behält sie aber nicht. Gebraucht wird sie für die Modellauswahl: Im
+   * kostenlosen Tarif sind Pro-Modelle regelmäßig nicht enthalten, und ein
+   * Modell anzubieten, das zuverlässig 429 antwortet, ist schlechter als es
+   * wegzulassen. Fehlt die Angabe, wird vom kostenlosen Tarif ausgegangen,
+   * denn das ist die Voreinstellung der Anwendung.
+   */
+  paidKey?: boolean
   uiLanguage: 'de' | 'en'
   anonymize: boolean
   truthMode: TruthMode
@@ -144,6 +195,16 @@ export interface StorageAdapter {
   saveMarkSet(set: MarkSet): Promise<void>
   /** Löscht genau einen Satz. Löst bei unbekannter Kennung nicht — siehe `deleteDraft`. */
   deleteMarkSet(id: string): Promise<void>
+  /**
+   * Alle abgelegten Auswertungen. Die aufrufende Seite hält damit die Menge
+   * begrenzt — wie viele sinnvoll sind, weiß sie, nicht diese Schicht
+   * (dieselbe Trennung wie bei `purgeExpiredDrafts` und `listMarkSets`).
+   */
+  listCachedAnalyses(): Promise<CachedAnalysis[]>
+  loadCachedAnalysis(key: string): Promise<CachedAnalysis | null>
+  saveCachedAnalysis(entry: CachedAnalysis): Promise<void>
+  /** Löst bei unbekanntem Schlüssel nicht — siehe `deleteDraft`. */
+  deleteCachedAnalysis(key: string): Promise<void>
   getSettings(): Promise<Settings>
   /**
    * `true`, sobald einmal `saveSettings` (oder `importAll`) gelaufen ist —

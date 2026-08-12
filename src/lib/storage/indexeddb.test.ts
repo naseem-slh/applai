@@ -3,12 +3,13 @@
 // unter tsconfig.test.json.
 import 'fake-indexeddb/auto'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { Application, Draft, MarkAnchor, MarkSet, Settings } from './adapter'
+import type { Application, CachedAnalysis, Draft, MarkAnchor, MarkSet, Settings } from './adapter'
 import {
   APPLICATIONS_STORE,
   DEFAULT_SETTINGS,
   DRAFTS_STORE,
   EXPORT_FORMAT_VERSION,
+  ANALYSIS_CACHE_STORE,
   MARK_SETS_STORE,
   SETTINGS_STORE,
   STORAGE_DB_NAME,
@@ -614,6 +615,68 @@ describe('exportAll / importAll', () => {
   })
 })
 
+describe('Auswertungsspeicher', () => {
+  const entry: CachedAnalysis = { key: 'jobAd:1:modell:abc', value: { company: 'Beispiel' }, savedAt: 5 }
+
+  it('legt eine Auswertung ab und liest sie zurück', async () => {
+    const adapter = createIndexedDbAdapter()
+
+    await adapter.saveCachedAnalysis(entry)
+
+    expect(await adapter.loadCachedAnalysis(entry.key)).toEqual(entry)
+  })
+
+  it('gibt null zurück, wenn zu diesem Schlüssel nichts abgelegt ist', async () => {
+    expect(await createIndexedDbAdapter().loadCachedAnalysis('nie-gesehen')).toBeNull()
+  })
+
+  it('überschreibt denselben Schlüssel, statt einen zweiten Eintrag anzulegen', async () => {
+    const adapter = createIndexedDbAdapter()
+    await adapter.saveCachedAnalysis(entry)
+
+    await adapter.saveCachedAnalysis({ ...entry, value: { company: 'Anders' }, savedAt: 9 })
+
+    const all = await adapter.listCachedAnalyses()
+    expect(all).toHaveLength(1)
+    expect(all[0]?.value).toEqual({ company: 'Anders' })
+  })
+
+  it('löscht einen Eintrag und löst bei unbekanntem Schlüssel nicht', async () => {
+    const adapter = createIndexedDbAdapter()
+    await adapter.saveCachedAnalysis(entry)
+
+    await adapter.deleteCachedAnalysis(entry.key)
+    await expect(adapter.deleteCachedAnalysis('nie-gesehen')).resolves.toBeUndefined()
+
+    expect(await adapter.loadCachedAnalysis(entry.key)).toBeNull()
+  })
+
+  // Der Speicher ist reine Ersparnis und aus den Eingaben jederzeit neu
+  // herstellbar. In die Sicherungsdatei gehört er deshalb nicht: Er würde
+  // sie aufblähen, ohne etwas zu sichern, was verloren gehen könnte.
+  it('wandert nicht in die Sicherungsdatei', async () => {
+    const adapter = createIndexedDbAdapter()
+    await adapter.saveCachedAnalysis(entry)
+
+    const payload = JSON.parse(await (await adapter.exportAll()).text()) as Record<string, unknown>
+
+    expect(payload).not.toHaveProperty('analysisCache')
+  })
+
+  // Die Schlüssel sind Inhalts-Fingerabdrücke: Ein Eintrag aus der Zeit vor
+  // dem Import bleibt entweder ungenutzt liegen oder passt genau. Ihn zu
+  // löschen kostete nur Anfragen beim Anbieter.
+  it('übersteht einen Import unangetastet', async () => {
+    const adapter = createIndexedDbAdapter()
+    await adapter.saveCachedAnalysis(entry)
+    const backup = await adapter.exportAll()
+
+    await adapter.importAll(new File([await backup.text()], 'sicherung.json'))
+
+    expect(await adapter.loadCachedAnalysis(entry.key)).toEqual(entry)
+  })
+})
+
 describe('Sicherung mit Vormerkungen', () => {
   it('nimmt die vorgemerkten Stellen mit und stellt sie wieder her', async () => {
     const adapter = createIndexedDbAdapter()
@@ -658,6 +721,7 @@ describe('clearAll', () => {
     await adapter.saveDraft(makeDraft())
     await adapter.saveSettings({ ...DEFAULT_SETTINGS, theme: 'dark' })
     await adapter.saveMarkSet(makeMarkSet())
+    await adapter.saveCachedAnalysis({ key: 'jobAd:1:m:x', value: 1, savedAt: 1 })
 
     await adapter.clearAll()
 
@@ -665,6 +729,7 @@ describe('clearAll', () => {
     expect(await adapter.loadDraft('entwurf-1')).toBeNull()
     expect(await adapter.listMarkSets()).toEqual([])
     expect(await readRawStore(MARK_SETS_STORE)).toHaveLength(0)
+    expect(await adapter.listCachedAnalyses()).toEqual([])
     // Nach dem Löschen gelten wieder die Vorgaben, weil nichts mehr abgelegt ist.
     expect(await adapter.getSettings()).toEqual(DEFAULT_SETTINGS)
     expect(await readRawStore(APPLICATIONS_STORE)).toHaveLength(0)
@@ -698,13 +763,13 @@ describe('eigene, vom Schlüsseltresor getrennte Datenbank', () => {
     expect(STORAGE_DB_NAME).not.toBe(VAULT_DB_NAME)
   })
 
-  it('legt die vier erwarteten Objektspeicher an', async () => {
+  it('legt die fünf erwarteten Objektspeicher an', async () => {
     await createIndexedDbAdapter().listApplications()
 
     const db = await promisify(indexedDB.open(STORAGE_DB_NAME))
     try {
       expect(Array.from(db.objectStoreNames).sort()).toEqual(
-        [APPLICATIONS_STORE, DRAFTS_STORE, MARK_SETS_STORE, SETTINGS_STORE].sort(),
+        [ANALYSIS_CACHE_STORE, APPLICATIONS_STORE, DRAFTS_STORE, MARK_SETS_STORE, SETTINGS_STORE].sort(),
       )
     } finally {
       db.close()

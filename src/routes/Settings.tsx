@@ -15,6 +15,7 @@ import { Field, FIELD_ERROR_CLASS, FIELD_HINT_CLASS, FIELD_LABEL_CLASS } from '@
 import { SectionCard } from '@/components/ui/SectionCard'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select'
 import { Switch } from '@/components/ui/Switch'
+import { ModelPicker } from '@/components/settings/ModelPicker'
 import { PROVIDERS } from '@/lib/ai/provider'
 import { SUPPORTED_LANGUAGES } from '@/lib/i18n/i18n'
 import type { Settings as StoredSettings, TruthMode } from '@/lib/storage/adapter'
@@ -320,9 +321,28 @@ export default function SettingsRoute() {
           <KeySetup
             keyVault={keyVault}
             className="max-w-none"
-            onSaved={(provider) => void change({ provider })}
+            onSaved={(provider, { paid }) => void change({ provider, paidKey: paid })}
           />
         </section>
+
+        {providerFromVault !== null && (
+          <SectionCard
+            headingId={`${prefix}-model`}
+            heading={t('settings.model.heading')}
+            variant="default"
+          >
+            <ModelPicker
+              fieldId={`${prefix}-model-field`}
+              provider={PROVIDERS[providerFromVault]}
+              apiKey={keyVault.vault?.getKey() ?? null}
+              paidKey={settings.paidKey === true}
+              chain={settings.modelChain?.[providerFromVault] ?? []}
+              onChange={(chain) =>
+                void change({ modelChain: { ...settings.modelChain, [providerFromVault]: chain } })
+              }
+            />
+          </SectionCard>
+        )}
 
         <SectionCard
           headingId={`${prefix}-backup`}

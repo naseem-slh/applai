@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, Navigate } from 'react-router-dom'
-import { aiErrorKey, VaultLockedError } from '@/components/app/aiErrorKey'
+import { AiErrorNotice } from '@/components/app/AiErrorNotice'
+import { ApiUsageStatus } from '@/components/app/ApiUsageStatus'
+import { VaultLockedError } from '@/components/app/aiErrorKey'
 import { LETTER_DRAFT_ID, useApp, type StartSession } from '@/components/app/appContext'
 import { ClaimGuard } from '@/components/editor/ClaimGuard'
 import { DocumentView } from '@/components/editor/DocumentView'
@@ -43,7 +45,7 @@ import { useWideViewport } from '@/components/editor/useWideViewport'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { FIELD_HINT_CLASS } from '@/components/ui/Field'
-import { PROVIDERS, withSignal } from '@/lib/ai/provider'
+import { providerFor, withSignal } from '@/lib/ai/provider'
 import { isoDate } from '@/lib/export/docx'
 import { parseDocx } from '@/lib/docx/parse'
 import { detectLanguage } from '@/lib/domain/language'
@@ -170,7 +172,14 @@ function EditorWorkspace({ session }: { session: StartSession }) {
   // Sicherungsdatei steht (siehe `Settings.tsx`).
   const vaultProvider = keyVault.vault?.getProvider() ?? null
   const apiKey = keyVault.vault?.getKey() ?? null
-  const provider = vaultProvider === null ? null : PROVIDERS[vaultProvider]
+  // Das Modell kommt aus den Einstellungen, der Anbieter aus dem Tresor.
+  // `useMemo`, weil `providerFor` bei jedem Aufruf ein neues Objekt baut und
+  // die Auswertung an der Identität des Anbieters hängt.
+  const chosenChain = settings.modelChain?.[vaultProvider ?? 'gemini']
+  const provider = useMemo(
+    () => (vaultProvider === null ? null : providerFor(vaultProvider, chosenChain)),
+    [vaultProvider, chosenChain],
+  )
 
   const privacy = useMemo(
     () => ({ enabled: settings.anonymize, userName: session.userName }),
@@ -183,6 +192,7 @@ function EditorWorkspace({ session }: { session: StartSession }) {
     provider,
     apiKey,
     privacy,
+    storage,
   })
 
   const claims = useUnbackedClaims(docx)
@@ -698,6 +708,7 @@ function EditorWorkspace({ session }: { session: StartSession }) {
                   {t('editor.undo')}
                 </Button>
                 <DraftStatus state={draft} />
+                <ApiUsageStatus />
               </div>
             </div>
 
@@ -922,13 +933,10 @@ function AnalysisStatus({
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-3">
-      <p role="alert" className="text-[length:var(--text-body-sm-size)] text-[var(--color-error)]">
-        {t(aiErrorKey(analysis.error))}
-      </p>
-      <Button variant="secondary" size="sm" onClick={analysis.retry}>
-        {t('editor.analysis.retry')}
-      </Button>
-    </div>
+    <AiErrorNotice
+      error={analysis.error}
+      onRetry={analysis.retry}
+      retryLabel={t('editor.analysis.retry')}
+    />
   )
 }

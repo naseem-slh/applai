@@ -1,5 +1,7 @@
 import type { ProviderId } from '../storage/keyVault'
 import { createAnthropicProvider } from './anthropic'
+import { realSleep, type Sleep } from './errors'
+import { withModelFallback } from './fallback'
 import { createGeminiProvider } from './gemini'
 import { createOpenAiProvider } from './openai'
 
@@ -11,6 +13,15 @@ import { createOpenAiProvider } from './openai'
  * verdrahtete Auswahl hinter einem gemeinsamen Adapter") hinter einer
  * einzigen Schnittstelle austauschbar.
  */
+/** Ein Modell zur Auswahl, so wie die Oberfläche es anzeigt. */
+export interface ModelChoice {
+  /** Die Kennung für den Aufruf, z. B. `gemini-2.5-flash`. */
+  id: string
+  /** Lesbarer Name des Anbieters. */
+  label: string
+  description?: string
+}
+
 export interface LlmRequest {
   system: string
   user: string
@@ -64,7 +75,31 @@ export interface LlmProvider {
    * gegen die tatsächliche Datei, damit beide nie auseinanderlaufen.
    */
   endpoint: string
+  /**
+   * Das angefragte Modell, ausgeschrieben. Steht hier, weil der
+   * Auswertungsspeicher es braucht: Ein anderes Modell antwortet anders,
+   * und ein Eintrag des einen darf dem anderen nicht untergeschoben werden
+   * (siehe `analysisCache.ts`). Ohne dieses Feld müsste jeder Aufrufer die
+   * Modellkonstante der Anbieterdatei kennen.
+   */
+  model: string
   generate(req: LlmRequest, apiKey: string, signal?: AbortSignal): Promise<string>
+  /**
+   * Welche Modelle dieser Schlüssel aufrufen darf.
+   *
+   * Optional, weil es nicht jeder Anbieter anbietet — fehlt es, kommt in
+   * der Oberfläche kein Knopf zum Laden, und das Modell wird von Hand
+   * eingetragen.
+   *
+   * **Was die Liste nicht sagt:** ob ein Modell im kostenlosen Tarif
+   * enthalten ist. Nachgesehen in der Modellreferenz — das Modell-Objekt
+   * trägt Name, Beschreibung, Token-Grenzen und unterstützte Methoden, aber
+   * kein Feld zu Tarif, Kontingent oder Preis. Ein Modell kann hier stehen
+   * und trotzdem ein Freikontingent von null haben. Die Oberfläche sagt das
+   * ausdrücklich dazu, statt eine Gewissheit vorzutäuschen, die es nicht
+   * gibt.
+   */
+  listModels?: (apiKey: string, signal?: AbortSignal) => Promise<ModelChoice[]>
 }
 
 /**
@@ -79,6 +114,36 @@ export const PROVIDERS: Record<ProviderId, LlmProvider> = {
   gemini: createGeminiProvider(),
   openai: createOpenAiProvider(),
   anthropic: createAnthropicProvider(),
+}
+
+/**
+ * Ein Anbieter mit der gewählten Modellkette — oder mit seinem
+ * voreingestellten Modell, wenn keine gewählt ist.
+ *
+ * **Warum die Auswahl dem Nutzer gehört.** Die kostenlosen Tarife
+ * unterscheiden sich je Modell erheblich, bis hin zu „für dieses Modell gar
+ * kein Freikontingent". Ein fest verdrahtetes Modell macht die Anwendung
+ * dann unbenutzbar, ohne dass jemand etwas dagegen tun könnte.
+ *
+ * **Warum eine Kette und nicht ein Modell.** Die Kontingente zählen je
+ * Modell. Ist das erste erschöpft, führt das zweite die Arbeit weiter, statt
+ * den Nutzer bis zum nächsten Tag stehen zu lassen (siehe `fallback.ts`,
+ * auch dazu, bei welchen Fehlern **nicht** weitergegangen wird).
+ *
+ * Leere Einträge fallen weg, und eine leere Kette gilt als „nicht gewählt":
+ * So kann ein versehentlich geleertes Eingabefeld die Anwendung nicht
+ * lahmlegen.
+ */
+export function providerFor(id: ProviderId, models?: readonly string[]): LlmProvider {
+  const chain = (models ?? []).map((model) => model.trim()).filter((model) => model !== '')
+  if (chain.length === 0) return PROVIDERS[id]
+  return withModelFallback(chain.map((model) => FACTORIES[id](realSleep, model)))
+}
+
+const FACTORIES: Record<ProviderId, (sleep: Sleep, model: string) => LlmProvider> = {
+  gemini: createGeminiProvider,
+  openai: createOpenAiProvider,
+  anthropic: createAnthropicProvider,
 }
 
 /**
@@ -100,15 +165,18 @@ export const PROVIDERS: Record<ProviderId, LlmProvider> = {
  * automatisch für **jeden** Aufruf, den die Domänenfunktion intern macht,
  * auch für den zweiten.
  *
- * `id`, `label` und `endpoint` werden unverändert übernommen: Die Hülle ist
- * derselbe Anbieter, nur abbrechbar. Insbesondere bleibt `endpoint` die
- * geprüfte CSP-Zusage (G3, siehe oben).
+ * `id`, `label`, `model` und `endpoint` werden unverändert übernommen: Die
+ * Hülle ist derselbe Anbieter, nur abbrechbar. Insbesondere bleibt
+ * `endpoint` die geprüfte CSP-Zusage (G3, siehe oben) und `model` der
+ * Schlüsselbestandteil des Auswertungsspeichers.
  */
 export function withSignal(provider: LlmProvider, signal: AbortSignal): LlmProvider {
   return {
     id: provider.id,
     label: provider.label,
+    model: provider.model,
     endpoint: provider.endpoint,
+    listModels: provider.listModels,
     // Ein vom Aufrufer mitgegebenes Signal gewinnt — heute gibt es keinen
     // solchen Aufrufer, und ein stillschweigend verworfenes Signal wäre der
     // schlechtere Vorgabewert.

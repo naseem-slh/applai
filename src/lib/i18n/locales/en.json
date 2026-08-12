@@ -142,13 +142,19 @@
   "ai": {
     "errors": {
       "invalid_key": "The API key is invalid or has expired. Please check it in Settings.",
-      "rate_limit": "The provider is currently overloaded. Please try again shortly.",
+      "rate_limit": "Too many requests in a short time. The provider is temporarily blocking further calls. Wait a moment and it will work again.",
       "quota": "The API key's quota has been used up.",
       "quota_gemini": "Gemini's free daily quota has been used up. It resets tomorrow, or you can add your own paid key.",
       "network": "The request could not be sent. Please check your internet connection.",
       "blocked": "The provider blocked the response for safety reasons.",
       "model_response": "The provider's response was unusable and has been discarded. Trying again usually works.",
-      "unknown": "Unexpected error while calling the provider."
+      "unknown": "Unexpected error while calling the provider.",
+      "providerDetails": "Message from the provider",
+      "retryIn": "Retry in {{seconds}} s"
+    },
+    "usage": {
+      "requests_one": "1 request this session",
+      "requests_other": "{{count}} requests this session"
     }
   },
   "start": {
@@ -512,6 +518,29 @@
       "storageFailed": "The API key was deleted, but the application list, drafts and settings were not. Please reload the page and try again.",
       "vaultFailed": "The application list, drafts and settings were deleted, but the stored API key was not. Please reload the page and try again.",
       "bothFailed": "Nothing was deleted. Your browser is not releasing its storage right now. Please close other tabs with Applai, reload the page and try again."
+    },
+    "model": {
+      "heading": "Model",
+      "label": "Model identifier",
+      "hint": "Applai calls this model. The provider’s list does not say which models your free tier covers; it has no field for that. You can look it up in your provider’s console under “Rate limits”.",
+      "load": "Load models",
+      "loading": "Loading models",
+      "loaded_one": "1 model available",
+      "loaded_other": "{{count}} models available",
+      "choose": "Choose from the list",
+      "reset": "Use the default",
+      "current": "Default: {{model}}",
+      "needsKey": "The key must be unlocked to load the list.",
+      "showAll": "Show all models",
+      "filtered": "Only models that output text. On the free tier without Pro models, which it usually does not include.",
+      "chainHint": "Applai tries the models in this order. When the first one runs out, the next takes over.",
+      "empty": "None chosen. Applai uses the provider's default.",
+      "entry": "{{position}}. {{model}}",
+      "add": "Add",
+      "addLabel": "Add {{model}}",
+      "moveUp": "Move up",
+      "removeEntry": "Remove from the chain",
+      "addAll": "Add all in order"
     }
   },
   "vault": {

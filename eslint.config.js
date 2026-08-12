@@ -5,7 +5,12 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import tseslint from 'typescript-eslint'
 
 export default tseslint.config(
-  { ignores: ['dist', 'coverage', 'playwright-report', 'test-results'] },
+  // Gebaute und erzeugte Verzeichnisse, **wo immer sie liegen**: Ohne das
+  // vorangestellte `**/` gilt das Muster nur auf oberster Ebene, und ein
+  // `git worktree` unter `.claude/worktrees/` schleppt sein eigenes `dist/`
+  // mit — dessen ausgelieferte Fremdbibliotheken machten `npm run lint` mit
+  // 60 Fehlern rot, die niemandem gehören.
+  { ignores: ['**/dist', '**/coverage', '**/playwright-report', '**/test-results'] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ['**/*.{ts,tsx}'],

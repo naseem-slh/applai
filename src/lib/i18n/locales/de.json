@@ -142,13 +142,19 @@
   "ai": {
     "errors": {
       "invalid_key": "Der API-Schlüssel ist ungültig oder abgelaufen. Bitte in den Einstellungen prüfen.",
-      "rate_limit": "Der Anbieter ist gerade überlastet. Bitte in Kürze erneut versuchen.",
+      "rate_limit": "Zu viele Anfragen in kurzer Zeit. Der Anbieter blockt weitere Aufrufe vorübergehend ab. Kurz warten, dann geht es wieder.",
       "quota": "Das Kontingent des API-Schlüssels ist aufgebraucht.",
       "quota_gemini": "Das kostenlose Tageskontingent von Gemini ist aufgebraucht. Es steht morgen wieder zur Verfügung, oder es kann ein eigener, kostenpflichtiger Schlüssel hinterlegt werden.",
       "network": "Die Anfrage konnte nicht gesendet werden. Bitte die Internetverbindung prüfen.",
       "blocked": "Der Anbieter hat die Antwort aus Sicherheitsgründen blockiert.",
       "model_response": "Die Antwort des Anbieters war unbrauchbar und wurde verworfen. Ein erneuter Versuch führt meist zum Ziel.",
-      "unknown": "Unerwarteter Fehler beim Aufruf des Anbieters."
+      "unknown": "Unerwarteter Fehler beim Aufruf des Anbieters.",
+      "providerDetails": "Meldung des Anbieters",
+      "retryIn": "Erneut versuchen in {{seconds}} s"
+    },
+    "usage": {
+      "requests_one": "1 Anfrage in dieser Sitzung",
+      "requests_other": "{{count}} Anfragen in dieser Sitzung"
     }
   },
   "start": {
@@ -512,6 +518,29 @@
       "storageFailed": "Der API-Schlüssel wurde gelöscht, aber Bewerbungsliste, Zwischenstände und Einstellungen nicht. Bitte laden Sie die Seite neu und versuchen Sie es noch einmal.",
       "vaultFailed": "Bewerbungsliste, Zwischenstände und Einstellungen wurden gelöscht, der hinterlegte API-Schlüssel jedoch nicht. Bitte laden Sie die Seite neu und versuchen Sie es noch einmal.",
       "bothFailed": "Es wurde nichts gelöscht. Der Browser gibt seinen Speicher gerade nicht frei. Bitte schließen Sie andere Tabs mit Applai, laden Sie die Seite neu und versuchen Sie es erneut."
+    },
+    "model": {
+      "heading": "Modell",
+      "hint": "Applai fragt dieses Modell an. Welche Modelle Ihr kostenloser Tarif abdeckt, sagt die Liste des Anbieters nicht; sie enthält kein Feld dazu. Nachsehen können Sie es in der Konsole Ihres Anbieters unter „Rate limits“.",
+      "label": "Modellkennung",
+      "load": "Modelle laden",
+      "loading": "Modelle werden geladen",
+      "loaded_one": "1 Modell verfügbar",
+      "loaded_other": "{{count}} Modelle verfügbar",
+      "choose": "Aus der Liste wählen",
+      "reset": "Voreinstellung verwenden",
+      "current": "Voreingestellt: {{model}}",
+      "needsKey": "Zum Laden der Liste muss der Schlüssel entsperrt sein.",
+      "showAll": "Alle Modelle anzeigen",
+      "filtered": "Nur Modelle, die Text ausgeben. Beim kostenlosen Tarif ohne Pro-Modelle, die dort meist nicht enthalten sind.",
+      "chainHint": "Applai versucht die Modelle in dieser Reihenfolge. Ist das Kontingent des ersten erschöpft, übernimmt das nächste.",
+      "empty": "Keines gewählt. Applai nimmt die Voreinstellung des Anbieters.",
+      "entry": "{{position}}. {{model}}",
+      "add": "Hinzufügen",
+      "addLabel": "{{model}} hinzufügen",
+      "moveUp": "Nach oben",
+      "removeEntry": "Aus der Kette nehmen",
+      "addAll": "Alle der Reihe nach übernehmen"
     }
   },
   "vault": {

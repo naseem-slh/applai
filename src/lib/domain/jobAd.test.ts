@@ -14,6 +14,7 @@ function stubProvider(response: string | (() => string)): LlmProvider & { lastRe
   const provider: LlmProvider & { lastRequest?: LlmRequest } = {
     id: 'gemini',
     label: 'Stub',
+    model: 'test-modell',
     endpoint: 'https://example.invalid',
     generate: (req) => {
       provider.lastRequest = req

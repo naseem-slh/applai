@@ -1,4 +1,5 @@
 import type { ProviderId } from '../storage/keyVault'
+import { recordRequest } from './usage'
 
 /**
  * Die Fehlerarten, die ein Anbieter-Adapter melden kann. Bewusst ohne
@@ -56,13 +57,37 @@ export class LlmError extends Error {
   readonly kind: LlmErrorKind
   readonly provider: ProviderId
   readonly retryAfterMs?: number
+  /**
+   * Der Wortlaut, den der Anbieter selbst mitgeschickt hat — unübersetzt und
+   * unverändert.
+   *
+   * **Warum das gebraucht wird.** `kind` ist eine grobe Einteilung, und
+   * gerade bei HTTP 429 sagt sie das Entscheidende nicht: Ob eine
+   * Minutengrenze gerissen wurde (eine Minute warten) oder das
+   * Tageskontingent aufgebraucht ist (bis morgen warten), steht **nur** in
+   * diesem Text. Applai hat ihn früher an dieser Stelle weggeworfen; damit
+   * war der häufigste Fehlerfall des kostenlosen Tarifs für den Nutzer nicht
+   * auflösbar, ohne die Entwicklerwerkzeuge zu öffnen.
+   *
+   * Er gehört nicht in die übersetzte Meldung (G8), sondern daneben, als
+   * ausdrücklich gekennzeichnete Auskunft des Anbieters — so wie ein Zitat
+   * aus einem fremden Dokument.
+   */
+  readonly providerMessage?: string
 
-  constructor(kind: LlmErrorKind, provider: ProviderId, message: string, retryAfterMs?: number) {
+  constructor(
+    kind: LlmErrorKind,
+    provider: ProviderId,
+    message: string,
+    retryAfterMs?: number,
+    options: { providerMessage?: string } = {},
+  ) {
     super(message)
     this.name = 'LlmError'
     this.kind = kind
     this.provider = provider
     this.retryAfterMs = retryAfterMs
+    this.providerMessage = options.providerMessage
   }
 }
 
@@ -77,12 +102,6 @@ export class LlmError extends Error {
  * einzelner Wiederholungsversuch nie länger als eine Minute blockiert.
  */
 export const RETRY_AFTER_CAP_MS = 60_000
-
-/**
- * Wartezeit vor dem Wiederholungsversuch, wenn der Anbieter keinen (oder
- * keinen auswertbaren) `Retry-After`-Hinweis mitliefert.
- */
-export const DEFAULT_RATE_LIMIT_RETRY_MS = 2_000
 
 /**
  * Parst den `Retry-After`-Header (RFC 9110, zwei Formen):
@@ -158,9 +177,21 @@ function toAbortError(signal: AbortSignal): unknown {
 }
 
 /**
- * Genau ein Wiederholungsversuch bei `rate_limit`, mit Wartezeit — sonst
- * keiner (siehe Aufgabenstellung: "Ein Wiederholungsversuch mit Wartezeit
- * bei `rate_limit`, danach Fehlermeldung an die Oberfläche").
+ * Genau ein Wiederholungsversuch bei `rate_limit` — **aber nur, wenn der
+ * Anbieter gesagt hat, wann.**
+ *
+ * Ursprünglich wurde ohne `Retry-After` blind nach zwei Sekunden wiederholt.
+ * Das war nachweislich schädlich: Geminis kostenloser Tarif erlaubt fünf
+ * Anfragen je Minute, und Applai setzt beim Betreten der Arbeitsfläche zwei
+ * gleichzeitig ab. Der Wiederholungsversuch fiel damit in dasselbe
+ * geschlossene Minutenfenster — er konnte nicht gelingen und machte aus zwei
+ * verbrauchten Anfragen vier. Wer daraufhin auf „erneut versuchen" drückte,
+ * verbrauchte vier weitere. Das Kontingent war schneller leer, als der
+ * Nutzer lesen konnte, woran es liegt.
+ *
+ * Ohne genannte Wartezeit wird deshalb sofort gemeldet statt geraten. Die
+ * Oberfläche sagt dem Nutzer dann, wie lange er warten soll, und sperrt
+ * ihren Knopf so lange — das ist ehrlicher und kostet die Hälfte.
  *
  * - `invalid_key`, `quota`, `blocked`: ein zweiter Versuch kann nicht
  *   gelingen — der Schlüssel bleibt ungültig, das Kontingent bleibt leer,
@@ -196,8 +227,12 @@ export async function withSingleRateLimitRetry<T>(
   try {
     return await attempt()
   } catch (error) {
-    if (error instanceof LlmError && error.kind === 'rate_limit') {
-      await sleep(error.retryAfterMs ?? DEFAULT_RATE_LIMIT_RETRY_MS, signal)
+    const waitMs = error instanceof LlmError && error.kind === 'rate_limit' ? error.retryAfterMs : undefined
+    // `0` ist keine Wartezeit, sondern die Aussage „ab sofort wieder
+    // möglich" — und ein sofortiger zweiter Versuch ist genau das, was hier
+    // vermieden werden soll.
+    if (waitMs !== undefined && waitMs > 0) {
+      await sleep(waitMs, signal)
       return await attempt()
     }
     throw error
@@ -238,6 +273,10 @@ export async function fetchOrNetworkError(
   provider: ProviderId,
   label: string,
 ): Promise<Response> {
+  // Gezählt wird **vor** dem Absenden: Auch eine Anfrage, die mit einem
+  // Fehler zurückkommt oder abgebrochen wird, hat den Anbieter erreicht und
+  // zählt dort gegen das Kontingent (siehe `usage.ts`).
+  recordRequest()
   try {
     return await fetch(url, init)
   } catch (error) {

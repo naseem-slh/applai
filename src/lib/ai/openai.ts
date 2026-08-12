@@ -43,16 +43,21 @@ interface OpenAiErrorBody {
   error?: { type?: string; code?: string; message?: string }
 }
 
-async function performOpenAiRequest(req: LlmRequest, apiKey: string, signal: AbortSignal | undefined): Promise<string> {
+async function performOpenAiRequest(
+  req: LlmRequest,
+  apiKey: string,
+  signal: AbortSignal | undefined,
+  model: string,
+): Promise<string> {
   const url = `${OPENAI_ENDPOINT}/v1/responses`
   const body = {
-    model: OPENAI_MODEL,
+    model: model,
     input: [
       { role: 'system', content: req.system },
       { role: 'user', content: req.user },
     ],
     // Kein `temperature` (siehe `LlmRequest.temperature` in `provider.ts`,
-    // Fix-Runde 1): OPENAI_MODEL ist ein Schlussfolgerungsmodell der
+    // Fix-Runde 1): model ist ein Schlussfolgerungsmodell der
     // GPT-5.6-Reihe, das `temperature` nur bei `reasoning.effort: "none"`
     // akzeptiert — mit jeder anderen (auch der Standard-)
     // Schlussfolgerungsstufe liefert die Anfrage sonst einen Fehler.
@@ -106,38 +111,52 @@ async function performOpenAiRequest(req: LlmRequest, apiKey: string, signal: Abo
 
 async function buildOpenAiError(response: Response): Promise<LlmError> {
   const retryAfterMs = parseRetryAfterMs(response.headers.get('retry-after'))
-  const errorType = await readOpenAiErrorType(response)
+  const { type: errorType, message } = await readOpenAiError(response)
+  const details = { providerMessage: message }
 
   if (response.status === 401) {
-    return new LlmError('invalid_key', 'openai', 'OpenAI: ungültiger oder fehlender API-Schlüssel.')
+    return new LlmError(
+      'invalid_key',
+      'openai',
+      'OpenAI: ungültiger oder fehlender API-Schlüssel.',
+      undefined,
+      details,
+    )
   }
   if (response.status === 429) {
     // OpenAI unterscheidet `error.type === 'insufficient_quota'`
     // (aufgebrauchtes Guthaben/Limit) von einer gewöhnlichen, vorübergehenden
     // Ratenbegrenzung — siehe OpenAI-Dokumentation, "Error codes".
     if (errorType === 'insufficient_quota') {
-      return new LlmError('quota', 'openai', 'OpenAI: Kontingent aufgebraucht.', retryAfterMs)
+      return new LlmError('quota', 'openai', 'OpenAI: Kontingent aufgebraucht.', retryAfterMs, details)
     }
-    return new LlmError('rate_limit', 'openai', 'OpenAI: zu viele Anfragen.', retryAfterMs)
+    return new LlmError('rate_limit', 'openai', 'OpenAI: zu viele Anfragen.', retryAfterMs, details)
   }
-  return new LlmError('unknown', 'openai', `OpenAI: unerwartete Antwort (HTTP ${response.status}).`)
+  return new LlmError(
+    'unknown',
+    'openai',
+    `OpenAI: unerwartete Antwort (HTTP ${response.status}).`,
+    undefined,
+    details,
+  )
 }
 
-async function readOpenAiErrorType(response: Response): Promise<string | undefined> {
+async function readOpenAiError(response: Response): Promise<{ type?: string; message?: string }> {
   try {
     const body = (await response.json()) as OpenAiErrorBody
-    return body.error?.type
+    return { type: body.error?.type, message: body.error?.message }
   } catch {
-    return undefined
+    return {}
   }
 }
 
-export function createOpenAiProvider(sleep: Sleep = realSleep): LlmProvider {
+export function createOpenAiProvider(sleep: Sleep = realSleep, model: string = OPENAI_MODEL): LlmProvider {
   return {
     id: 'openai',
     label: 'OpenAI',
+    model,
     endpoint: OPENAI_ENDPOINT,
     generate: (req, apiKey, signal) =>
-      withSingleRateLimitRetry(() => performOpenAiRequest(req, apiKey, signal), sleep, signal),
+      withSingleRateLimitRetry(() => performOpenAiRequest(req, apiKey, signal, model), sleep, signal),
   }
 }

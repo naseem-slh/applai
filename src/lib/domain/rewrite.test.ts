@@ -17,6 +17,7 @@ function stubProvider(...antworten: string[]): LlmProvider & { requests: LlmRequ
   const provider: LlmProvider & { requests: LlmRequest[] } = {
     id: 'gemini',
     label: 'Stub',
+    model: 'test-modell',
     endpoint: 'https://example.invalid',
     requests: [],
     generate: (req) => {

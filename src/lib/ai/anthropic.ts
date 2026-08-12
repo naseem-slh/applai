@@ -56,11 +56,12 @@ async function performAnthropicRequest(
   req: LlmRequest,
   apiKey: string,
   signal: AbortSignal | undefined,
+  model: string,
 ): Promise<string> {
   const url = `${ANTHROPIC_ENDPOINT}/v1/messages`
   const system = req.json ? `${req.system}\n\n${JSON_ONLY_INSTRUCTION}` : req.system
   const body = {
-    model: ANTHROPIC_MODEL,
+    model,
     max_tokens: req.maxTokens ?? DEFAULT_MAX_TOKENS,
     system,
     // Kein `temperature` (siehe `LlmRequest.temperature` in `provider.ts`,
@@ -110,22 +111,51 @@ async function performAnthropicRequest(
 
 async function buildAnthropicError(response: Response): Promise<LlmError> {
   const retryAfterMs = parseRetryAfterMs(response.headers.get('retry-after'))
+  const details = { providerMessage: await readAnthropicErrorMessage(response) }
 
   if (response.status === 401) {
-    return new LlmError('invalid_key', 'anthropic', 'Anthropic: ungültiger oder fehlender API-Schlüssel.')
+    return new LlmError(
+      'invalid_key',
+      'anthropic',
+      'Anthropic: ungültiger oder fehlender API-Schlüssel.',
+      undefined,
+      details,
+    )
   }
   if (response.status === 429) {
-    return new LlmError('rate_limit', 'anthropic', 'Anthropic: zu viele Anfragen.', retryAfterMs)
+    return new LlmError('rate_limit', 'anthropic', 'Anthropic: zu viele Anfragen.', retryAfterMs, details)
   }
-  return new LlmError('unknown', 'anthropic', `Anthropic: unerwartete Antwort (HTTP ${response.status}).`)
+  return new LlmError(
+    'unknown',
+    'anthropic',
+    `Anthropic: unerwartete Antwort (HTTP ${response.status}).`,
+    undefined,
+    details,
+  )
 }
 
-export function createAnthropicProvider(sleep: Sleep = realSleep): LlmProvider {
+/**
+ * Der Wortlaut, den Anthropic mitschickt. Anders als bei den beiden anderen
+ * Anbietern wurde der Fehlerkörper hier bisher gar nicht gelesen — ein
+ * aufgebrauchtes Guthaben meldet Anthropic als HTTP 400 mit dem Hinweis auf
+ * den Kontostand, und der landete in `unknown` ohne jede Auskunft.
+ */
+async function readAnthropicErrorMessage(response: Response): Promise<string | undefined> {
+  try {
+    const body = (await response.json()) as { error?: { message?: string } }
+    return body.error?.message
+  } catch {
+    return undefined
+  }
+}
+
+export function createAnthropicProvider(sleep: Sleep = realSleep, model: string = ANTHROPIC_MODEL): LlmProvider {
   return {
     id: 'anthropic',
     label: 'Anthropic',
+    model,
     endpoint: ANTHROPIC_ENDPOINT,
     generate: (req, apiKey, signal) =>
-      withSingleRateLimitRetry(() => performAnthropicRequest(req, apiKey, signal), sleep, signal),
+      withSingleRateLimitRetry(() => performAnthropicRequest(req, apiKey, signal, model), sleep, signal),
   }
 }

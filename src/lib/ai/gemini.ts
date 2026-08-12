@@ -6,7 +6,7 @@ import {
   realSleep,
   withSingleRateLimitRetry,
 } from './errors'
-import type { LlmProvider, LlmRequest } from './provider'
+import type { LlmProvider, LlmRequest, ModelChoice } from './provider'
 
 /**
  * Modellwahl: aktuelles Flash-Modell — bestes Verhältnis aus Geschwindigkeit
@@ -45,8 +45,13 @@ interface GeminiErrorBody {
  */
 const BLOCKED_FINISH_REASONS = new Set(['SAFETY', 'RECITATION', 'BLOCKLIST', 'PROHIBITED_CONTENT', 'SPII'])
 
-async function performGeminiRequest(req: LlmRequest, apiKey: string, signal: AbortSignal | undefined): Promise<string> {
-  const url = `${GEMINI_ENDPOINT}/v1beta/models/${GEMINI_MODEL}:generateContent`
+async function performGeminiRequest(
+  req: LlmRequest,
+  apiKey: string,
+  signal: AbortSignal | undefined,
+  model: string,
+): Promise<string> {
+  const url = `${GEMINI_ENDPOINT}/v1beta/models/${model}:generateContent`
   const body = {
     contents: [{ role: 'user', parts: [{ text: req.user }] }],
     systemInstruction: { parts: [{ text: req.system }] },
@@ -101,47 +106,113 @@ async function performGeminiRequest(req: LlmRequest, apiKey: string, signal: Abo
   return candidate?.content?.parts?.map((part) => part.text ?? '').join('') ?? ''
 }
 
+/**
+ * Nennt dieser Wortlaut ein **Tages**kontingent?
+ *
+ * Die Fehlerreferenz führt für HTTP 429 zwei Codes: `rate_limit_exceeded`
+ * und `quota_exceeded`. Im Betrieb kommt ein aufgebrauchtes Tageskontingent
+ * des kostenlosen Tarifs aber als `rate_limit_exceeded` an — nachgestellt an
+ * einem echten Schlüssel, dessen Tagesgrenze erreicht war. Der Unterschied
+ * steht dann nur im Klartext der Meldung („requests per day",
+ * „PerDayPerProject…"), und er ist der wichtigste, den es hier gibt: Eine
+ * Minutengrenze ist in einer Minute vorbei, ein Tageskontingent nicht.
+ *
+ * Deshalb wird zusätzlich der Wortlaut befragt. Eine Heuristik auf fremdem
+ * Freitext ist nicht schön, und sie ist bewusst nur eine **Ergänzung**: Sie
+ * kann eine Stelle übersehen, aber keine falsch einordnen, die der Code
+ * schon richtig hatte. Und weil der Wortlaut jetzt bis in die Oberfläche
+ * durchgereicht wird, sieht der Nutzer im Zweifel selbst, was der Anbieter
+ * gesagt hat.
+ */
+function mentionsDailyQuota(text: string | undefined): boolean {
+  return text !== undefined && /per\s*-?\s*day|daily|perday/i.test(text)
+}
+
 async function buildGeminiError(response: Response): Promise<LlmError> {
   const retryAfterMs = parseRetryAfterMs(response.headers.get('retry-after'))
-  const errorCode = await readGeminiErrorCode(response)
+  const { code, message } = await readGeminiError(response)
+  const details = { providerMessage: message }
 
   if (response.status === 401) {
-    return new LlmError('invalid_key', 'gemini', 'Gemini: ungültiger oder abgelaufener API-Schlüssel.')
+    return new LlmError(
+      'invalid_key',
+      'gemini',
+      'Gemini: ungültiger oder abgelaufener API-Schlüssel.',
+      undefined,
+      details,
+    )
   }
   if (response.status === 429) {
-    // Gemini unterscheidet im Fehlercode selbst zwischen vorübergehender
-    // Ratenbegrenzung und aufgebrauchtem Tageskontingent (siehe
-    // Gemini-API-Referenz, `error.code`) — das erlaubt genau hier die
-    // in der Aufgabenstellung geforderte Unterscheidung, ohne den
-    // HTTP-Status allein deuten zu müssen.
-    if (errorCode === 'quota_exceeded') {
+    if (code === 'quota_exceeded' || mentionsDailyQuota(message)) {
       return new LlmError(
         'quota',
         'gemini',
         'Gemini: Tageskontingent des kostenlosen Tarifs aufgebraucht.',
         retryAfterMs,
+        details,
       )
     }
-    return new LlmError('rate_limit', 'gemini', 'Gemini: zu viele Anfragen.', retryAfterMs)
+    return new LlmError('rate_limit', 'gemini', 'Gemini: zu viele Anfragen.', retryAfterMs, details)
   }
-  return new LlmError('unknown', 'gemini', `Gemini: unerwartete Antwort (HTTP ${response.status}).`)
+  return new LlmError(
+    'unknown',
+    'gemini',
+    `Gemini: unerwartete Antwort (HTTP ${response.status}).`,
+    undefined,
+    details,
+  )
 }
 
-async function readGeminiErrorCode(response: Response): Promise<string | undefined> {
+async function readGeminiError(response: Response): Promise<{ code?: string; message?: string }> {
   try {
     const body = (await response.json()) as GeminiErrorBody
-    return body.error?.code
+    return { code: body.error?.code, message: body.error?.message }
   } catch {
-    return undefined
+    return {}
   }
 }
 
-export function createGeminiProvider(sleep: Sleep = realSleep): LlmProvider {
+/**
+ * Die Modelle, die dieser Schlüssel aufrufen darf, gefiltert auf die, mit
+ * denen Applai etwas anfangen kann (`generateContent`).
+ *
+ * Kostet **eine** Anfrage und wird deshalb nur auf ausdrücklichen Wunsch
+ * ausgelöst, nicht beim Öffnen der Einstellungen.
+ *
+ * `name` kommt als `models/gemini-…` und wird auf die reine Kennung
+ * gekürzt: Genau die steht später in der Adresse des Aufrufs.
+ */
+async function listGeminiModels(apiKey: string, signal?: AbortSignal): Promise<ModelChoice[]> {
+  const response = await fetchOrNetworkError(
+    `${GEMINI_ENDPOINT}/v1beta/models`,
+    { method: 'GET', headers: { 'x-goog-api-key': apiKey }, signal },
+    'gemini',
+    'Modelle',
+  )
+  if (!response.ok) throw await buildGeminiError(response)
+
+  const body = (await response.json()) as {
+    models?: { name?: string; displayName?: string; description?: string; supportedGenerationMethods?: string[] }[]
+  }
+
+  return (body.models ?? [])
+    .filter((entry) => entry.supportedGenerationMethods?.includes('generateContent') === true)
+    .map((entry) => ({
+      id: (entry.name ?? '').replace(/^models\//, ''),
+      label: entry.displayName ?? (entry.name ?? '').replace(/^models\//, ''),
+      description: entry.description,
+    }))
+    .filter((choice) => choice.id !== '')
+}
+
+export function createGeminiProvider(sleep: Sleep = realSleep, model: string = GEMINI_MODEL): LlmProvider {
   return {
     id: 'gemini',
     label: 'Google Gemini',
+    model,
     endpoint: GEMINI_ENDPOINT,
     generate: (req, apiKey, signal) =>
-      withSingleRateLimitRetry(() => performGeminiRequest(req, apiKey, signal), sleep, signal),
+      withSingleRateLimitRetry(() => performGeminiRequest(req, apiKey, signal, model), sleep, signal),
+    listModels: listGeminiModels,
   }
 }

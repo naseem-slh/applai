@@ -1,5 +1,6 @@
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
+import { createFakeStorage, type FakeStorage } from '@/components/app/appContext.testutils'
 import { LlmError } from '@/lib/ai/errors'
 import type { LlmProvider } from '@/lib/ai/provider'
 import { useLetterAnalysis, type LetterAnalysisOptions } from './useLetterAnalysis'
@@ -39,6 +40,7 @@ function createProvider(overrides: Partial<LlmProvider> = {}): LlmProvider {
   return {
     id: 'gemini',
     label: 'Gemini',
+    model: 'test-modell',
     endpoint: 'https://generativelanguage.googleapis.com',
     generate: vi.fn((req: { system: string; user: string }) =>
       Promise.resolve(isJobAdCall(req) ? JOB_AD_ANSWER : STYLE_ANSWER),
@@ -54,8 +56,14 @@ function options(overrides: Partial<LetterAnalysisOptions> = {}): LetterAnalysis
     provider: createProvider(),
     apiKey: 'test-key',
     privacy: { enabled: true, userName: 'Marlene Ostwald' },
+    storage: createFakeStorage(),
     ...overrides,
   }
+}
+
+/** Wartet, bis der Haken fertig ist — auch wenn er gar nichts gefragt hat. */
+async function ready(result: { current: { status: string } }): Promise<void> {
+  await waitFor(() => expect(result.current.status).toBe('ready'))
 }
 
 describe('useLetterAnalysis', () => {
@@ -158,5 +166,88 @@ describe('useLetterAnalysis', () => {
     unmount()
 
     expect(seen!.aborted).toBe(true)
+  })
+
+  it('legt beide Auswertungen ab, damit sie nicht zweimal bezahlt werden', async () => {
+    const storage: FakeStorage = createFakeStorage()
+    const props = options({ storage })
+    const { result } = renderHook(() => useLetterAnalysis(props))
+
+    await ready(result)
+
+    expect(await storage.listCachedAnalyses()).toHaveLength(2)
+  })
+
+  // Der teuerste Posten der Anwendung: Beim bloßen Neuladen wurde bisher
+  // beides erneut gefragt, in der Entwicklung wegen StrictMode sogar
+  // doppelt. Auf einem Tarif, der Anfragen am Tag zählt, kaufte das nichts.
+  it('fragt beim zweiten Mal gar nicht mehr, wenn Anzeige und Brief dieselben sind', async () => {
+    const storage: FakeStorage = createFakeStorage()
+    const firstProps = options({ storage })
+    const first = renderHook(() => useLetterAnalysis(firstProps))
+    await ready(first.result)
+    first.unmount()
+
+    const provider = createProvider()
+    const secondProps = options({ storage, provider })
+    const second = renderHook(() => useLetterAnalysis(secondProps))
+    await ready(second.result)
+
+    expect(provider.generate).not.toHaveBeenCalled()
+    expect(second.result.current.jobAd?.company).toBe('Siemens')
+    expect(second.result.current.style?.traits).toEqual(['sachlich', 'knapp'])
+  })
+
+  it('fragt die Anzeige neu, wenn ihr Text ein anderer ist, den Brief aber nicht', async () => {
+    const storage: FakeStorage = createFakeStorage()
+    const firstProps = options({ storage })
+    const first = renderHook(() => useLetterAnalysis(firstProps))
+    await ready(first.result)
+    first.unmount()
+
+    const provider = createProvider()
+    const secondProps = options({ storage, provider, jobAdText: 'Eine ganz andere Anzeige.' })
+    const second = renderHook(() => useLetterAnalysis(secondProps))
+    await ready(second.result)
+
+    // Genau ein Aufruf: die Anzeige. Das Stilprofil kam aus dem Speicher.
+    expect(provider.generate).toHaveBeenCalledTimes(1)
+  })
+
+  it('benutzt den Eintrag eines anderen Modells nicht', async () => {
+    const storage: FakeStorage = createFakeStorage()
+    const firstProps = options({ storage })
+    const first = renderHook(() => useLetterAnalysis(firstProps))
+    await ready(first.result)
+    first.unmount()
+
+    const provider = createProvider({ model: 'anderes-modell' })
+    const secondProps = options({ storage, provider })
+    const second = renderHook(() => useLetterAnalysis(secondProps))
+    await ready(second.result)
+
+    expect(provider.generate).toHaveBeenCalledTimes(2)
+  })
+
+  it('fragt neu, wenn der Speicher Unbrauchbares enthält, statt daran zu scheitern', async () => {
+    const storage: FakeStorage = createFakeStorage()
+    const firstProps = options({ storage })
+    const first = renderHook(() => useLetterAnalysis(firstProps))
+    await ready(first.result)
+    first.unmount()
+
+    // Ein Eintrag, der die Form nicht mehr hält — etwa aus einer älteren
+    // Fassung, deren Versionsnummer jemand zu erhöhen vergessen hat.
+    for (const entry of await storage.listCachedAnalyses()) {
+      await storage.saveCachedAnalysis({ ...entry, value: { kaputt: true } })
+    }
+
+    const provider = createProvider()
+    const secondProps = options({ storage, provider })
+    const second = renderHook(() => useLetterAnalysis(secondProps))
+    await ready(second.result)
+
+    expect(provider.generate).toHaveBeenCalledTimes(2)
+    expect(second.result.current.jobAd?.company).toBe('Siemens')
   })
 })

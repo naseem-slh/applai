@@ -274,7 +274,13 @@ describe('rangeToDomRange', () => {
     }
 
     expect(mismatches).toEqual([])
-  })
+    // Eigene Zeitgrenze: Rund 11 000 Durchläufe über einen echten
+    // Dokumentbaum sind auf einem ruhigen Rechner in gut zwei Sekunden
+    // durch, auf einem ausgelasteten in acht. Die Vorgabe des Rahmenwerks
+    // von fünf Sekunden ist keine für diesen Test bedachte Grenze, sondern
+    // die für alle — und ein Test, der bei Nebenlast umfällt, kostet mehr
+    // Zeit, als er je spart.
+  }, 30_000)
 
   it('markiert das ganze Dokument von seinem ersten bis zu seinem letzten Zeichen', async () => {
     const docx = await loadFixture('anschreiben.docx')
