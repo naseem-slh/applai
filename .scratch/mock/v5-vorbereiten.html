@@ -1,0 +1,942 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Applai · Vorbereiten, aufgeräumt</title>
+
+    <style>
+      /* ===================================================================
+         Attrappe für den Vorbereiten-Tab.
+
+         Die Token unten sind wörtlich aus src/styles/design.css kopiert,
+         damit der Mock nicht neben der echten Anwendung steht. Geändert
+         wird hier nur Aufbau, Menge und Wortlaut, nie die Palette.
+         =================================================================== */
+
+      @font-face {
+        font-family: 'Inter Variable';
+        font-style: normal;
+        font-display: swap;
+        font-weight: 100 900;
+        src: url('/public/fonts/inter-variable-latin.woff2') format('woff2-variations');
+      }
+
+      :root {
+        --color-surface: #f4fafc;
+        --color-surface-alt: #e8f4fa;
+        --color-surface-raised: #ffffff;
+        --color-border: #d9e8f0;
+        --color-ink: #03045e;
+        --color-ink-strong: #010229;
+        --color-muted: #4d5680;
+        --color-accent: #0077b6;
+        --color-accent-light: #00b4d8;
+        --color-accent-dark: #005c86;
+        --color-accent-contrast: #ffffff;
+        --color-accent-text: #00628f;
+        --color-success: #0d6e52;
+        --color-error: #b3261e;
+        --color-warning: #8a5200;
+        --color-surface-hover: #e2f2f8;
+        --color-accent-soft: #caf0f8;
+        --color-control-border: #6f7d95;
+        --shadow-raised: 0 1px 2px rgb(3 4 94 / 0.06), 0 2px 8px rgb(3 4 94 / 0.06);
+
+        --radius-sm: 4px;
+        --radius-md: 8px;
+        --radius-lg: 12px;
+
+        --text-heading-size: 1.5rem;
+        --text-subheading-size: 1.125rem;
+        --text-body-size: 1rem;
+        --text-body-sm-size: 0.875rem;
+        --text-label-size: 0.75rem;
+      }
+
+      :root[data-theme='dark'] {
+        --color-surface: #050a24;
+        --color-surface-alt: #0b1436;
+        --color-surface-raised: #0d1738;
+        --color-border: #1d2a55;
+        --color-ink: #e6f3f8;
+        --color-ink-strong: #ffffff;
+        --color-muted: #9db0cf;
+        --color-accent: #00b4d8;
+        --color-accent-light: #90e0ef;
+        --color-accent-dark: #0077b6;
+        --color-accent-contrast: #03045e;
+        --color-accent-text: #00b4d8;
+        --color-success: #4ec99a;
+        --color-error: #ff8a7a;
+        --color-warning: #e0a256;
+        --color-surface-hover: #142347;
+        --color-accent-soft: #0f2a4d;
+        --color-control-border: #7286a8;
+        --shadow-raised: 0 1px 2px rgb(0 0 0 / 0.4), 0 2px 8px rgb(0 0 0 / 0.32);
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: 'Inter Variable', system-ui, sans-serif;
+        background: var(--color-surface-alt);
+        color: var(--color-ink);
+        font-size: var(--text-body-size);
+        line-height: 1.7;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      button {
+        font: inherit;
+        cursor: pointer;
+      }
+
+      /* Die Bausteine unten setzen display: flex; das schlägt das
+         hidden-Attribut des Browsers. Ohne diese Zeile stünden gefüllter
+         und leerer Zustand gleichzeitig da. */
+      [hidden] {
+        display: none !important;
+      }
+
+      /* --- Steuerleiste der Attrappe. Gehört nicht zum Entwurf. -------- */
+
+      .mockbar {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 1.5rem;
+        padding: 0.75rem 1.5rem;
+        background: #10131c;
+        color: #cfd6e4;
+        font-size: var(--text-body-sm-size);
+        line-height: 1.4;
+      }
+
+      .mockbar strong {
+        color: #fff;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        font-size: var(--text-label-size);
+      }
+
+      .mockbar-group {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .mockbar-group > span {
+        opacity: 0.66;
+      }
+
+      .seg {
+        display: inline-flex;
+        border: 1px solid #333a4d;
+        border-radius: var(--radius-md);
+        overflow: hidden;
+      }
+
+      .seg button {
+        border: 0;
+        background: transparent;
+        color: #cfd6e4;
+        padding: 0.25rem 0.75rem;
+        font-size: var(--text-body-sm-size);
+      }
+
+      .seg button[aria-pressed='true'] {
+        background: #cfd6e4;
+        color: #10131c;
+        font-weight: 600;
+      }
+
+      /* --- Rahmen der Anwendung --------------------------------------- */
+
+      .app {
+        min-height: calc(100dvh - 3.25rem);
+        display: flex;
+        flex-direction: column;
+        background: var(--color-surface);
+      }
+
+      .appbar {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 0 1.5rem;
+        height: 56px;
+        border-bottom: 1px solid var(--color-border);
+        background: var(--color-surface-raised);
+        flex-shrink: 0;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-weight: 600;
+        color: var(--color-ink-strong);
+      }
+
+      .brand-mark {
+        width: 26px;
+        height: 26px;
+        border-radius: 999px;
+        background: var(--color-accent);
+        color: var(--color-accent-contrast);
+        display: grid;
+        place-items: center;
+        font-size: var(--text-body-sm-size);
+        font-weight: 600;
+      }
+
+      .steps {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        margin-left: 1rem;
+      }
+
+      .step {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.375rem 0.75rem;
+        border-radius: var(--radius-md);
+        font-size: var(--text-body-sm-size);
+        color: var(--color-muted);
+      }
+
+      .step[aria-current='step'] {
+        background: var(--color-accent-soft);
+        color: var(--color-ink-strong);
+        font-weight: 600;
+      }
+
+      .step-num {
+        width: 20px;
+        height: 20px;
+        border-radius: 999px;
+        display: grid;
+        place-items: center;
+        font-size: var(--text-label-size);
+        background: var(--color-border);
+        color: var(--color-muted);
+      }
+
+      .step[aria-current='step'] .step-num {
+        background: var(--color-accent);
+        color: var(--color-accent-contrast);
+      }
+
+      .appbar-end {
+        margin-left: auto;
+        display: flex;
+        gap: 1.5rem;
+        font-size: var(--text-body-sm-size);
+      }
+
+      .appbar-end a {
+        color: var(--color-accent-text);
+        text-decoration: none;
+      }
+
+      .appbar-end a:hover {
+        text-decoration: underline;
+      }
+
+      /* --- Gemeinsame Bausteine ---------------------------------------- */
+
+      .page {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        padding: 2rem 1.5rem 3rem;
+      }
+
+      h1 {
+        font-size: var(--text-heading-size);
+        line-height: 1.3;
+        font-weight: 600;
+        color: var(--color-ink-strong);
+        margin: 0;
+      }
+
+      h2 {
+        font-size: var(--text-subheading-size);
+        line-height: 1.4;
+        font-weight: 600;
+        color: var(--color-ink-strong);
+        margin: 0;
+      }
+
+      .hint {
+        font-size: var(--text-body-sm-size);
+        line-height: 1.6;
+        color: var(--color-muted);
+        margin: 0;
+      }
+
+      .label {
+        display: block;
+        font-size: var(--text-body-sm-size);
+        font-weight: 500;
+        color: var(--color-ink-strong);
+        margin-bottom: 0.5rem;
+      }
+
+      .chip {
+        display: inline-block;
+        padding: 0.125rem 0.5rem;
+        border-radius: 999px;
+        font-size: var(--text-label-size);
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        background: var(--color-surface-alt);
+        color: var(--color-muted);
+        border: 1px solid var(--color-border);
+      }
+
+      .chip-done {
+        background: var(--color-accent-soft);
+        border-color: transparent;
+        color: var(--color-accent-text);
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 2.5rem;
+        padding: 0 1rem;
+        border-radius: var(--radius-md);
+        border: 1px solid transparent;
+        font-size: var(--text-body-sm-size);
+        font-weight: 500;
+        white-space: nowrap;
+        transition: background-color 120ms cubic-bezier(0, 0, 0.2, 1);
+      }
+
+      .btn:active {
+        transform: translateY(1px);
+      }
+
+      .btn-primary {
+        background: var(--color-accent);
+        color: var(--color-accent-contrast);
+      }
+
+      .btn-primary:hover {
+        background: var(--color-accent-dark);
+      }
+
+      .btn-primary[disabled] {
+        background: var(--color-border);
+        color: var(--color-muted);
+        cursor: not-allowed;
+      }
+
+      .btn-secondary {
+        background: var(--color-surface-raised);
+        border-color: var(--color-control-border);
+        color: var(--color-ink);
+      }
+
+      .btn-secondary:hover {
+        background: var(--color-surface-hover);
+      }
+
+      .btn-sm {
+        height: 2rem;
+        padding: 0 0.75rem;
+      }
+
+      .btn-ghost {
+        background: transparent;
+        color: var(--color-accent-text);
+        border-color: transparent;
+        padding: 0 0.5rem;
+      }
+
+      .btn-ghost:hover {
+        background: var(--color-surface-hover);
+      }
+
+      .linkbtn {
+        border: 0;
+        background: none;
+        padding: 0;
+        color: var(--color-accent-text);
+        font-size: var(--text-body-sm-size);
+        text-decoration: underline;
+        text-underline-offset: 3px;
+      }
+
+      textarea,
+      input[type='text'] {
+        width: 100%;
+        font: inherit;
+        color: var(--color-ink);
+        background: var(--color-surface-raised);
+        border: 1px solid var(--color-control-border);
+        border-radius: var(--radius-md);
+        padding: 0.625rem 0.75rem;
+      }
+
+      textarea {
+        line-height: 1.6;
+        resize: vertical;
+      }
+
+      input:focus-visible,
+      textarea:focus-visible,
+      button:focus-visible {
+        outline: 2px solid var(--color-accent);
+        outline-offset: 2px;
+      }
+
+      /* Ablagefläche: eine Zeile, kein Kasten um einen Kasten. */
+      .drop {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+        padding: 0.75rem;
+        border: 1px dashed var(--color-control-border);
+        border-radius: var(--radius-md);
+        background: var(--color-surface-raised);
+      }
+
+      .drop-lead {
+        font-size: var(--text-body-sm-size);
+        color: var(--color-muted);
+      }
+
+      .file {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+        padding: 0.75rem;
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-md);
+        background: var(--color-surface-raised);
+      }
+
+      .file-name {
+        font-size: var(--text-body-sm-size);
+        font-weight: 500;
+        color: var(--color-ink-strong);
+        margin-right: auto;
+      }
+
+      /* Aufklappbare Begründung. Der lange Satz bleibt erreichbar,
+         verstellt aber nicht mehr die Erstansicht. */
+      details.why {
+        font-size: var(--text-body-sm-size);
+      }
+
+      details.why > summary {
+        cursor: pointer;
+        color: var(--color-accent-text);
+        list-style: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+      }
+
+      details.why > summary::-webkit-details-marker {
+        display: none;
+      }
+
+      details.why > summary::after {
+        content: '+';
+        font-weight: 600;
+      }
+
+      details.why[open] > summary::after {
+        content: '\2212';
+      }
+
+      details.why > p {
+        margin: 0.5rem 0 0;
+        max-width: 60ch;
+        color: var(--color-muted);
+        line-height: 1.6;
+      }
+
+      /* Fußleiste mit der einzigen Handlung der Ansicht. */
+      .footerbar {
+        position: sticky;
+        bottom: 0;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+        padding: 0.75rem 1.5rem;
+        border-top: 1px solid var(--color-border);
+        background: var(--color-surface-raised);
+      }
+
+      .missing {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        font-size: var(--text-body-sm-size);
+        color: var(--color-muted);
+      }
+
+      .missing .chip {
+        background: transparent;
+        text-transform: none;
+        letter-spacing: normal;
+        font-weight: 500;
+        color: var(--color-ink);
+      }
+
+      /* Bewerbungsliste. Sie ist kein Schritt des Vorbereitens, sondern ein
+         Nachschlagewerk, und liegt deshalb nicht mehr im Fluss der Ansicht,
+         sondern hinter einem Verweis in der Fußleiste. */
+      dialog {
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-lg);
+        background: var(--color-surface-raised);
+        color: var(--color-ink);
+        box-shadow: var(--shadow-raised);
+        padding: 1.5rem;
+        min-width: min(32rem, 90vw);
+      }
+
+      dialog::backdrop {
+        background: rgb(3 4 94 / 0.42);
+      }
+
+      .dialog-head {
+        display: flex;
+        align-items: baseline;
+        gap: 1rem;
+        margin-bottom: 0.5rem;
+      }
+
+      .dialog-head h2 {
+        margin-right: auto;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 0.75rem;
+        font-size: var(--text-body-sm-size);
+      }
+
+      th {
+        text-align: left;
+        font-size: var(--text-label-size);
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--color-muted);
+        font-weight: 600;
+        padding: 0.5rem 0.75rem 0.5rem 0;
+      }
+
+      td {
+        padding: 0.5rem 0.75rem 0.5rem 0;
+        border-top: 1px solid var(--color-border);
+        color: var(--color-ink);
+      }
+
+      /* --- Variante A: zwei Spalten ------------------------------------ */
+
+      .cols {
+        max-width: 1100px;
+        margin: 0 auto;
+        display: grid;
+        gap: 2rem;
+        grid-template-columns: minmax(320px, 0.85fr) minmax(0, 1.15fr);
+        align-items: start;
+      }
+
+      .stack {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+      }
+
+      .stack-lg {
+        gap: 1.5rem;
+      }
+
+      .head-row {
+        display: flex;
+        align-items: baseline;
+        gap: 0.75rem;
+      }
+
+      /* --- Variante B: eine Spalte, Trennlinien statt Karten ----------- */
+
+      .single {
+        max-width: 680px;
+        margin: 0 auto;
+      }
+
+      .block {
+        padding: 1.25rem 0;
+        border-top: 1px solid var(--color-border);
+      }
+
+      .block:first-of-type {
+        border-top: 0;
+        padding-top: 1rem;
+      }
+
+      .block-head {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin-bottom: 0.75rem;
+      }
+
+      .block-head h2 {
+        margin-right: auto;
+      }
+
+      @media (max-width: 900px) {
+        .cols {
+          grid-template-columns: 1fr;
+        }
+        .appbar {
+          height: auto;
+          padding: 0.5rem 1rem;
+          flex-wrap: wrap;
+        }
+        .page {
+          padding: 1.5rem 1rem 2rem;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="mockbar">
+      <strong>Attrappe</strong>
+      <div class="mockbar-group">
+        <span>Variante</span>
+        <div class="seg" id="seg-variant">
+          <button type="button" data-variant="a" aria-pressed="true">A · Aufgeräumt</button>
+          <button type="button" data-variant="b" aria-pressed="false">B · Ein Weg</button>
+        </div>
+      </div>
+      <div class="mockbar-group">
+        <span>Zustand</span>
+        <div class="seg" id="seg-state">
+          <button type="button" data-state="empty" aria-pressed="true">leer</button>
+          <button type="button" data-state="filled" aria-pressed="false">gefüllt</button>
+        </div>
+      </div>
+      <div class="mockbar-group">
+        <span>Thema</span>
+        <div class="seg" id="seg-theme">
+          <button type="button" data-theme-choice="light" aria-pressed="true">hell</button>
+          <button type="button" data-theme-choice="dark" aria-pressed="false">dunkel</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="app">
+      <header class="appbar">
+        <span class="brand"><span class="brand-mark">A</span> Applai</span>
+        <nav class="steps" aria-label="Ablauf">
+          <span class="step" aria-current="step"><span class="step-num">1</span> Vorbereiten</span>
+          <span class="step"><span class="step-num">2</span> Anschreiben anpassen</span>
+        </nav>
+        <div class="appbar-end">
+          <a href="#">Datenschutz</a>
+          <a href="#">Einstellungen</a>
+        </div>
+      </header>
+
+      <!-- ============================ VARIANTE A ======================= -->
+      <main class="page" id="variant-a">
+        <div class="cols">
+          <section class="stack stack-lg" aria-labelledby="a-docs">
+            <h2 id="a-docs">Unterlagen</h2>
+
+            <div class="stack">
+              <div class="head-row">
+                <span class="label" style="margin: 0">Anschreiben</span>
+                <span class="hint">DOCX oder PDF</span>
+              </div>
+
+              <div class="drop" data-when="empty">
+                <span class="drop-lead">Datei hierher ziehen</span>
+                <button type="button" class="btn btn-secondary btn-sm">Auswählen</button>
+              </div>
+
+              <div class="file" data-when="filled" hidden>
+                <span class="file-name">anschreiben.docx</span>
+                <button type="button" class="btn btn-ghost btn-sm">Ersetzen</button>
+                <button type="button" class="btn btn-ghost btn-sm">Entfernen</button>
+              </div>
+
+              <p class="hint">DOCX behält beim Export sein Layout.</p>
+            </div>
+
+            <div class="stack">
+              <div class="head-row">
+                <span class="label" style="margin: 0">Lebenslauf</span>
+                <span class="chip">Optional</span>
+              </div>
+
+              <div class="drop">
+                <span class="drop-lead">Datei hierher ziehen</span>
+                <button type="button" class="btn btn-secondary btn-sm">Auswählen</button>
+              </div>
+
+              <p class="hint">Dient als Faktenbasis, wird nicht bearbeitet.</p>
+            </div>
+
+            <div class="stack">
+              <label class="label" for="a-name">Ihr Name</label>
+              <input id="a-name" type="text" data-fill="Marlene Ostwald" />
+              <p class="hint">Wird vor jeder Anfrage durch einen Platzhalter ersetzt.</p>
+            </div>
+          </section>
+
+          <section class="stack stack-lg" aria-labelledby="a-ad">
+            <h2 id="a-ad">Stellenausschreibung</h2>
+
+            <div class="stack">
+              <label class="label" for="a-jobad">Text der Anzeige</label>
+              <textarea id="a-jobad" rows="14" data-fill="jobad"></textarea>
+              <p class="hint">Je vollständiger, desto genauer die Anforderungsliste.</p>
+            </div>
+
+            <div class="stack">
+              <div class="head-row">
+                <button type="button" class="btn btn-secondary btn-sm">Aus PDF einlesen</button>
+              </div>
+              <details class="why">
+                <summary>Warum kein Link zur Anzeige</summary>
+                <p>
+                  Ein Link ließe sich nur über einen Server abrufen, der die Seite für Sie holt.
+                  Applai hat bewusst keinen.
+                </p>
+              </details>
+            </div>
+          </section>
+        </div>
+
+      </main>
+
+      <!-- ============================ VARIANTE B ======================= -->
+      <main class="page" id="variant-b" hidden>
+        <div class="single">
+          <h1>Bewerbung vorbereiten</h1>
+
+          <section class="block">
+            <div class="block-head">
+              <h2>Anschreiben</h2>
+              <span class="chip" data-when="empty">Fehlt</span>
+              <span class="chip chip-done" data-when="filled" hidden>Bereit</span>
+            </div>
+
+            <div class="drop" data-when="empty">
+              <span class="drop-lead">Datei hierher ziehen</span>
+              <button type="button" class="btn btn-secondary btn-sm">Auswählen</button>
+              <span class="hint" style="margin-left: auto">DOCX oder PDF</span>
+            </div>
+
+            <div class="file" data-when="filled" hidden>
+              <span class="file-name">anschreiben.docx</span>
+              <button type="button" class="btn btn-ghost btn-sm">Ersetzen</button>
+              <button type="button" class="btn btn-ghost btn-sm">Entfernen</button>
+            </div>
+
+            <p class="hint" style="margin-top: 0.5rem">DOCX behält beim Export sein Layout.</p>
+          </section>
+
+          <section class="block">
+            <div class="block-head">
+              <h2>Ihr Name</h2>
+              <span class="chip" data-when="empty">Fehlt</span>
+              <span class="chip chip-done" data-when="filled" hidden>Bereit</span>
+            </div>
+
+            <input id="b-name" type="text" data-fill="Marlene Ostwald" />
+            <p class="hint" style="margin-top: 0.5rem">
+              Wird vor jeder Anfrage durch einen Platzhalter ersetzt.
+            </p>
+          </section>
+
+          <section class="block">
+            <div class="block-head">
+              <h2>Stellenausschreibung</h2>
+              <span class="chip" data-when="empty">Fehlt</span>
+              <span class="chip chip-done" data-when="filled" hidden>Bereit</span>
+            </div>
+
+            <textarea id="b-jobad" rows="7" data-fill="jobad"></textarea>
+
+            <div
+              style="
+                display: flex;
+                gap: 1rem;
+                align-items: center;
+                flex-wrap: wrap;
+                margin-top: 0.75rem;
+              "
+            >
+              <button type="button" class="btn btn-secondary btn-sm">Aus PDF einlesen</button>
+              <details class="why">
+                <summary>Warum kein Link</summary>
+                <p>
+                  Ein Link ließe sich nur über einen Server abrufen, der die Seite für Sie holt.
+                  Applai hat bewusst keinen.
+                </p>
+              </details>
+            </div>
+          </section>
+
+          <section class="block">
+            <div class="block-head">
+              <h2>Lebenslauf</h2>
+              <span class="chip">Optional</span>
+            </div>
+
+            <div class="drop">
+              <span class="drop-lead">Datei hierher ziehen</span>
+              <button type="button" class="btn btn-secondary btn-sm">Auswählen</button>
+              <span class="hint" style="margin-left: auto">Nur als Faktenbasis</span>
+            </div>
+          </section>
+
+        </div>
+      </main>
+
+      <div class="footerbar">
+        <button type="button" class="btn btn-primary" id="continue" disabled>
+          Weiter zur Arbeitsfläche
+        </button>
+        <p class="missing" data-when="empty">
+          Fehlt noch: <span class="chip">Anschreiben</span>
+          <span class="chip">Stellenausschreibung</span> <span class="chip">Ihr Name</span>
+        </p>
+        <button type="button" class="linkbtn" id="records-open" style="margin-left: auto">
+          Bewerbungsliste (3)
+        </button>
+      </div>
+    </div>
+
+    <dialog id="records">
+      <div class="dialog-head">
+        <h2>Bewerbungsliste</h2>
+        <button type="button" class="linkbtn" id="records-close">Schließen</button>
+      </div>
+      <p class="hint">Ein Eintrag entsteht, sobald Sie ein Anschreiben exportieren.</p>
+      <table>
+        <thead>
+          <tr>
+            <th>Firma</th>
+            <th>Stelle</th>
+            <th>Datum</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Musterwerk Solutions</td>
+            <td>Entwicklerin</td>
+            <td>04.08.2026</td>
+          </tr>
+          <tr>
+            <td>Hafenkontor Datentechnik</td>
+            <td>Frontend-Entwicklerin</td>
+            <td>29.07.2026</td>
+          </tr>
+          <tr>
+            <td>Brehmer und Sohn</td>
+            <td>Werkstudentin Software</td>
+            <td>16.07.2026</td>
+          </tr>
+        </tbody>
+      </table>
+    </dialog>
+
+    <script>
+      const JOB_AD = `Stellenanzeige: Entwicklerin (m/w/d)
+
+Die Musterwerk Solutions GmbH in Leipzig sucht eine Entwicklerin.
+
+Dein Profil:
+- Sehr gute Kenntnisse in TypeScript
+- Mehrjährige Erfahrung in der Frontend-Entwicklung
+
+Wir freuen uns auf deine Bewerbung.`
+
+      let variant = 'a'
+      let state = 'empty'
+
+      function render() {
+        document.getElementById('variant-a').hidden = variant !== 'a'
+        document.getElementById('variant-b').hidden = variant !== 'b'
+
+        for (const el of document.querySelectorAll('[data-when]')) {
+          el.hidden = el.dataset.when !== state
+        }
+
+        for (const el of document.querySelectorAll('[data-fill]')) {
+          const value = el.dataset.fill === 'jobad' ? JOB_AD : el.dataset.fill
+          el.value = state === 'filled' ? value : ''
+        }
+
+        document.getElementById('continue').disabled = state !== 'filled'
+      }
+
+      function wire(id, attr, apply) {
+        const group = document.getElementById(id)
+        group.addEventListener('click', (event) => {
+          const button = event.target.closest('button')
+          if (!button) return
+          for (const other of group.querySelectorAll('button')) {
+            other.setAttribute('aria-pressed', String(other === button))
+          }
+          apply(button.dataset[attr])
+        })
+      }
+
+      wire('seg-variant', 'variant', (value) => {
+        variant = value
+        render()
+      })
+      wire('seg-state', 'state', (value) => {
+        state = value
+        render()
+      })
+      wire('seg-theme', 'themeChoice', (value) => {
+        document.documentElement.dataset.theme = value
+      })
+
+      const recordsDialog = document.getElementById('records')
+      document.getElementById('records-open').addEventListener('click', () => {
+        recordsDialog.showModal()
+      })
+      document.getElementById('records-close').addEventListener('click', () => {
+        recordsDialog.close()
+      })
+
+      document.documentElement.dataset.theme = 'light'
+      render()
+    </script>
+  </body>
+</html>
