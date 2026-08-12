@@ -77,11 +77,16 @@ export function FileDrop({
         }}
         onDragLeave={() => setDragging(false)}
         onDrop={handleDrop}
+        // Gestrichelt, solange das Feld leer ist: Es lädt zum Ablegen ein.
+        // Sobald etwas darin liegt, wird die Kontur durchgezogen — dann ist
+        // es kein Ziel mehr, sondern ein Inhalt.
         className={cn(
-          'flex flex-col items-start gap-3 rounded-lg border border-dashed p-4 transition-colors',
+          'flex flex-col items-start gap-3 rounded-lg border p-4 transition-colors',
           dragging
-            ? 'border-[var(--color-accent)] bg-[var(--color-accent-soft)]'
-            : 'border-[var(--color-control-border)] bg-[var(--color-surface-raised)]',
+            ? 'border-dashed border-[var(--color-accent)] bg-[var(--color-accent-soft)]'
+            : loaded === null
+              ? 'border-dashed border-[var(--color-control-border)] bg-[var(--color-surface-raised)] hover:border-[var(--color-accent)] hover:bg-[var(--color-accent-soft)]'
+              : 'border-[var(--color-border)] bg-[var(--color-surface-raised)]',
         )}
       >
         <p className={FIELD_HINT_CLASS}>{description}</p>
@@ -133,7 +138,19 @@ export function FileDrop({
           )}
         </div>
 
-        <p role="status" className="text-[length:var(--text-body-sm-size)]">
+        {/* Der eingelesene Zustand ist die gute Nachricht und darf sich
+            deshalb vom Hinweistext davor abheben. In --color-accent-text,
+            nicht in --color-accent: Als Schrift verfehlt der Akzent auf den
+            getönten Flächen 4,5:1 (siehe design.css). */}
+        <p
+          role="status"
+          className={cn(
+            'text-[length:var(--text-body-sm-size)]',
+            loaded === null || busy
+              ? 'text-[var(--color-muted)]'
+              : 'font-medium text-[var(--color-accent-text)]',
+          )}
+        >
           {busy
             ? t('start.files.reading')
             : loaded === null

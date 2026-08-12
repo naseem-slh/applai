@@ -3,8 +3,8 @@
     "name": "Applai"
   },
   "nav": {
-    "start": "Start",
-    "editor": "Editor",
+    "start": "Prepare",
+    "editor": "Tailor letter",
     "settings": "Settings",
     "label": "Main navigation",
     "privacy": "Privacy"
@@ -216,7 +216,8 @@
       "jobAd": "the text of the job ad",
       "userName": "your name"
     },
-    "continue": "Continue to the workspace"
+    "continue": "Continue to the workspace",
+    "ready": "All set. On to the workspace."
   },
   "editor": {
     "intro": "Use the mouse to select the passage you want to adapt. You can type anywhere in the text; the formatting and the paragraph order of your Word file stay as they are, which is why the Enter key does not start a new paragraph.",

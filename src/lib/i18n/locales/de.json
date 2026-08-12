@@ -3,8 +3,8 @@
     "name": "Applai"
   },
   "nav": {
-    "start": "Start",
-    "editor": "Editor",
+    "start": "Vorbereiten",
+    "editor": "Anschreiben anpassen",
     "settings": "Einstellungen",
     "label": "Hauptnavigation",
     "privacy": "Datenschutz"
@@ -216,7 +216,8 @@
       "jobAd": "der Text der Stellenausschreibung",
       "userName": "Ihr Name"
     },
-    "continue": "Weiter zur Arbeitsfläche"
+    "continue": "Weiter zur Arbeitsfläche",
+    "ready": "Alles da. Weiter zur Arbeitsfläche."
   },
   "editor": {
     "intro": "Markieren Sie mit der Maus die Textstelle, die angepasst werden soll. Tippen können Sie überall im Text; Formatierung und Absatzfolge Ihrer Word-Datei bleiben dabei, wie sie sind, und die Eingabetaste legt deshalb keinen neuen Absatz an.",

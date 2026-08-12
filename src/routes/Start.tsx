@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -267,280 +267,306 @@ export default function Start({ loaders = DEFAULT_LOADERS }: StartProps) {
 
   const duplicates = findDuplicateApplications(jobAdText, applications)
 
-  const heading = (
-    <h1 className="text-[length:var(--text-display-size)] leading-[var(--text-display-leading)] font-semibold tracking-[var(--text-display-tracking)] text-[var(--color-ink-strong)]">
-      {t('routes.start.heading')}
-    </h1>
+  // Onboarding und Tresorzustände gehen der Einstiegsseite vor. Sie sind
+  // Lesestoff, keine Arbeitsfläche, und stehen deshalb in einer ruhigen
+  // Spalte statt im zweispaltigen Aufbau darunter.
+  const gate = (children: ReactNode) => (
+    <div className="min-h-0 flex-1 overflow-y-auto px-5 py-8 sm:px-8">
+      <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
+        <h1 className="text-[length:var(--text-heading-size)] leading-[var(--text-heading-leading)] font-semibold text-[var(--color-ink-strong)]">
+          {t('routes.start.heading')}
+        </h1>
+        {children}
+      </div>
+    </div>
   )
 
-  // Onboarding und Tresorzustände gehen der Einstiegsseite vor.
-  if (keyVault.status === 'loading') {
-    return <div className="flex flex-col gap-6">{heading}</div>
-  }
-  if (privacy.visible) {
-    return (
-      <div className="flex flex-col gap-6">
-        {heading}
-        <PrivacyNotice onAccept={privacy.accept} />
-      </div>
-    )
-  }
+  if (keyVault.status === 'loading') return gate(null)
+  if (privacy.visible) return gate(<PrivacyNotice onAccept={privacy.accept} />)
   if (keyVault.status === 'empty' || keyVault.status === 'corrupted') {
-    return (
-      <div className="flex flex-col gap-6">
-        {heading}
-        {/* Wie in den Einstellungen: Der Tresor ist die maßgebliche Quelle
-            des Anbieters, `Settings.provider` zieht nur nach, damit die
-            Sicherungsdatei ihn trägt. Scheitert das Nachziehen, ist das
-            folgenlos — deshalb keine Meldung. */}
-        <KeySetup
-          keyVault={keyVault}
-          onSaved={(provider) => {
-            void updateSettings({ provider }).catch(() => {})
-          }}
-        />
-      </div>
+    return gate(
+      // Wie in den Einstellungen: Der Tresor ist die maßgebliche Quelle
+      // des Anbieters, `Settings.provider` zieht nur nach, damit die
+      // Sicherungsdatei ihn trägt. Scheitert das Nachziehen, ist das
+      // folgenlos — deshalb keine Meldung.
+      <KeySetup
+        keyVault={keyVault}
+        onSaved={(provider) => {
+          void updateSettings({ provider }).catch(() => {})
+        }}
+      />,
     )
   }
-  if (keyVault.status === 'locked') {
-    return (
-      <div className="flex flex-col gap-6">
-        {heading}
-        <KeyUnlock keyVault={keyVault} />
-      </div>
-    )
-  }
+  if (keyVault.status === 'locked') return gate(<KeyUnlock keyVault={keyVault} />)
+
+  const recentVisible = SLOTS.some(
+    (slot) => recent[slot] !== null && slots[slot].document === null,
+  )
 
   return (
-    <div className="flex flex-col gap-6">
-      {heading}
-      <p className="max-w-[65ch]">{t('start.intro')}</p>
+    <div className="flex min-h-0 flex-1 flex-col">
+      {/* Die Überschrift trägt der Schrittreiter in der Kopfzeile bereits
+          sichtbar. Hier bleibt sie für Vorlesesoftware stehen, damit die
+          Seite eine Ebene-1-Überschrift behält, ohne sie zweimal zu zeigen. */}
+      <h1 className="sr-only">{t('routes.start.heading')}</h1>
 
       {storageUnavailable && (
         // Kein `role="alert"`: Das ist ein dauerhafter Zustand, keine
         // Meldung auf eine Handlung hin.
-        <Card variant="subtle" padding="md" className="text-[var(--color-ink)]">
-          <p className="text-[length:var(--text-body-sm-size)]">{t('start.storageUnavailable')}</p>
-        </Card>
+        <p className="shrink-0 border-b border-[var(--color-border)] bg-[var(--color-surface-alt)] px-5 py-3 text-[length:var(--text-body-sm-size)] leading-[var(--text-body-sm-leading)] text-[var(--color-ink)] sm:px-8">
+          {t('start.storageUnavailable')}
+        </p>
       )}
 
-      {SLOTS.some((slot) => recent[slot] !== null && slots[slot].document === null) && (
-        <SectionCard
-          headingId={`${fieldPrefix}-recent`}
-          heading={t('start.recent.heading')}
-          variant="subtle"
+      {/* Zwei Spalten, beide für sich scrollbar: links das Material, rechts
+          die Ausschreibung. Nebeneinander statt untereinander, damit beides
+          zugleich zu sehen ist und die Seite als Ganzes nicht blättert. */}
+      <div className="grid min-h-0 flex-1 gap-8 overflow-y-auto px-5 py-6 sm:px-8 lg:grid-cols-[minmax(340px,0.85fr)_minmax(0,1.15fr)] lg:overflow-hidden lg:pb-0">
+        <section
+          aria-labelledby={`${fieldPrefix}-documents`}
+          className="flex min-h-0 flex-col lg:overflow-y-auto lg:pb-6"
         >
-          <p className="mt-3 text-[length:var(--text-body-sm-size)] text-[var(--color-ink)]">
-            {t('start.recent.body')}
+          <h2
+            id={`${fieldPrefix}-documents`}
+            className="text-[length:var(--text-subheading-size)] leading-[var(--text-subheading-leading)] font-semibold text-[var(--color-ink-strong)]"
+          >
+            {t('start.documents.heading')}
+          </h2>
+          <p className="mt-1 mb-4 max-w-[52ch] text-[length:var(--text-body-sm-size)] leading-[var(--text-body-sm-leading)] text-[var(--color-muted)]">
+            {t('start.documents.rule')}
           </p>
-          <ul className="mt-4 flex flex-col gap-3">
+
+          {recentVisible && (
+            <SectionCard
+              headingId={`${fieldPrefix}-recent`}
+              heading={t('start.recent.heading')}
+              variant="subtle"
+              className="mb-4"
+            >
+              <p className="mt-2 text-[length:var(--text-body-sm-size)] leading-[var(--text-body-sm-leading)] text-[var(--color-ink)]">
+                {t('start.recent.body')}
+              </p>
+              <ul className="mt-3 flex flex-col gap-3">
+                {SLOTS.map((slot) => {
+                  const draft = recent[slot]
+                  if (draft === null || slots[slot].document !== null) return null
+                  return (
+                    <li key={slot} className="flex flex-wrap items-center gap-2">
+                      <span className="text-[length:var(--text-body-sm-size)] text-[var(--color-ink)]">
+                        {t(`start.recent.${slot}`, {
+                          date: formatDate(draft.savedAt, i18n.resolvedLanguage ?? 'de'),
+                        })}
+                      </span>
+                      <Button variant="secondary" size="sm" onClick={() => handleUseRecent(slot)}>
+                        {t('start.recent.use')}
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => void handleDiscardRecent(slot)}>
+                        {t('start.recent.discard')}
+                      </Button>
+                    </li>
+                  )
+                })}
+              </ul>
+            </SectionCard>
+          )}
+
+          <div className="flex flex-col gap-3">
             {SLOTS.map((slot) => {
-              const draft = recent[slot]
-              if (draft === null || slots[slot].document !== null) return null
+              const state = slots[slot]
               return (
-                <li key={slot} className="flex flex-wrap items-center gap-3">
-                  <span className="text-[length:var(--text-body-sm-size)] text-[var(--color-ink)]">
-                    {t(`start.recent.${slot}`, {
-                      date: formatDate(draft.savedAt, i18n.resolvedLanguage ?? 'de'),
-                    })}
-                  </span>
-                  <Button variant="secondary" size="sm" onClick={() => handleUseRecent(slot)}>
-                    {t('start.recent.use')}
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={() => void handleDiscardRecent(slot)}>
-                    {t('start.recent.discard')}
-                  </Button>
-                </li>
+                <div key={slot} className="flex flex-col gap-2">
+                  <FileDrop
+                    label={t(`start.files.${slot}`)}
+                    description={t(`start.files.${slot}Description`)}
+                    accept=".docx,.pdf"
+                    document={state.document}
+                    busy={state.busy}
+                    error={state.error === null ? undefined : t(`start.files.errors.${state.error}`)}
+                    onSelect={(file) => void handleSelect(slot, file)}
+                    onClear={() => handleClear(slot)}
+                  />
+                  {state.document?.source === 'pdf' && (
+                    <Card variant="subtle" padding="sm" className="text-[var(--color-ink)]">
+                      <p className="text-[length:var(--text-body-sm-size)] leading-[var(--text-body-sm-leading)]">
+                        {t('start.pdf.beta')}
+                      </p>
+                      {/* Zusätzlich, nicht ersatzweise: Der Beta-Hinweis gilt
+                          für jede PDF-Eingabe, die Warnung zur
+                          Mehrspaltigkeit kommt oben drauf, wenn
+                          `detectMultiColumn` angeschlagen hat.
+
+                          In `--color-error`, nicht in `--color-warning`:
+                          Letzteres erreicht auf keiner hellen Fläche 4,5:1
+                          (siehe DESIGN.md). */}
+                      {state.document.multiColumn && (
+                        <p className="mt-2 text-[length:var(--text-body-sm-size)] leading-[var(--text-body-sm-leading)] text-[var(--color-error)]">
+                          {t('start.pdf.multiColumn')}
+                        </p>
+                      )}
+                    </Card>
+                  )}
+                </div>
               )
             })}
-          </ul>
-        </SectionCard>
-      )}
+          </div>
 
-      <SectionCard headingId={`${fieldPrefix}-documents`} heading={t('start.documents.heading')}>
-        <p className="mt-3 max-w-[65ch]">{t('start.documents.rule')}</p>
-
-        <div className="mt-6 grid gap-6 md:grid-cols-2">
-          {SLOTS.map((slot) => {
-            const state = slots[slot]
-            return (
-              <div key={slot} className="flex flex-col gap-3">
-                <FileDrop
-                  label={t(`start.files.${slot}`)}
-                  description={t(`start.files.${slot}Description`)}
-                  accept=".docx,.pdf"
-                  document={state.document}
-                  busy={state.busy}
-                  error={state.error === null ? undefined : t(`start.files.errors.${state.error}`)}
-                  onSelect={(file) => void handleSelect(slot, file)}
-                  onClear={() => handleClear(slot)}
+          {hasDocument && (
+            <Field
+              id={`${fieldPrefix}-user-name`}
+              label={t('start.name.label')}
+              hint={nameFromDocument ? t('start.name.detected') : t('start.name.hint')}
+              className="mt-4"
+            >
+              {(control) => (
+                <Input
+                  {...control}
+                  value={userName}
+                  autoComplete="name"
+                  onChange={(event) => {
+                    setUserName(event.target.value)
+                    setNameFromDocument(false)
+                  }}
                 />
-                {state.document?.source === 'pdf' && (
-                  <Card variant="subtle" padding="sm" className="text-[var(--color-ink)]">
-                    <p className="text-[length:var(--text-body-sm-size)] leading-[var(--text-body-sm-leading)]">
-                      {t('start.pdf.beta')}
-                    </p>
-                    {/* Zusätzlich, nicht ersatzweise: Der Beta-Hinweis gilt
-                        für jede PDF-Eingabe, die Warnung zur
-                        Mehrspaltigkeit kommt oben drauf, wenn
-                        `detectMultiColumn` angeschlagen hat.
+              )}
+            </Field>
+          )}
+        </section>
 
-                        In `--color-error`, nicht in `--color-warning`:
-                        Letzteres erreicht auf keiner hellen Fläche 4,5:1
-                        (3,12 auf `surface-alt`, siehe DESIGN.md). */}
-                    {state.document.multiColumn && (
-                      <p className="mt-2 text-[length:var(--text-body-sm-size)] leading-[var(--text-body-sm-leading)] text-[var(--color-error)]">
-                        {t('start.pdf.multiColumn')}
-                      </p>
-                    )}
-                  </Card>
-                )}
-              </div>
-            )
-          })}
-        </div>
+        <section
+          aria-labelledby={`${fieldPrefix}-job-ad`}
+          className="flex min-h-0 flex-col lg:overflow-y-auto lg:pb-6"
+        >
+          <h2
+            id={`${fieldPrefix}-job-ad`}
+            className="text-[length:var(--text-subheading-size)] leading-[var(--text-subheading-leading)] font-semibold text-[var(--color-ink-strong)]"
+          >
+            {t('start.jobAd.heading')}
+          </h2>
 
-        {hasDocument && (
           <Field
-            id={`${fieldPrefix}-user-name`}
-            label={t('start.name.label')}
-            hint={nameFromDocument ? t('start.name.detected') : t('start.name.hint')}
-            className="mt-6 max-w-sm"
+            id={`${fieldPrefix}-job-ad-text`}
+            label={t('start.jobAd.label')}
+            hint={t('start.jobAd.hint')}
+            error={jobAdError === null ? undefined : t(`start.files.errors.${jobAdError}`)}
+            className="mt-3"
           >
             {(control) => (
-              <Input
+              <Textarea
                 {...control}
-                value={userName}
-                autoComplete="name"
-                onChange={(event) => {
-                  setUserName(event.target.value)
-                  setNameFromDocument(false)
-                }}
+                value={jobAdText}
+                rows={10}
+                onChange={(event) => setJobAdText(event.target.value)}
+                className="min-h-[12rem] lg:min-h-[16rem]"
               />
             )}
           </Field>
-        )}
-      </SectionCard>
 
-      <SectionCard headingId={`${fieldPrefix}-job-ad`} heading={t('start.jobAd.heading')}>
-        <Field
-          id={`${fieldPrefix}-job-ad-text`}
-          label={t('start.jobAd.label')}
-          hint={t('start.jobAd.hint')}
-          error={jobAdError === null ? undefined : t(`start.files.errors.${jobAdError}`)}
-          className="mt-4"
-        >
-          {(control) => (
-            <Textarea
-              {...control}
-              value={jobAdText}
-              rows={10}
-              onChange={(event) => setJobAdText(event.target.value)}
-            />
-          )}
-        </Field>
-
-        {/* Dasselbe Muster wie am Ablegefeld: verstecktes Dateifeld, ein
-            Knopf davor. Das native Feld brächte seine eigene, in jedem
-            Browser andere Beschriftung („Keine Datei ausgewählt") mit und
-            wäre das einzige Bedienelement der Seite, das nicht wie die
-            übrigen aussieht. */}
-        <div className="mt-4 flex flex-wrap items-center gap-3">
-          <Button variant="secondary" size="sm" disabled={jobAdBusy} onClick={() => jobAdPdfRef.current?.click()}>
-            {t('start.jobAd.pdfLabel')}
-          </Button>
-          <input
-            ref={jobAdPdfRef}
-            type="file"
-            accept=".pdf"
-            hidden
-            onChange={(event) => {
-              const file = event.target.files?.item(0) ?? null
-              if (file !== null) void handleJobAdPdf(file)
-              // Zurücksetzen, damit dieselbe Datei erneut gewählt werden kann.
-              event.target.value = ''
-            }}
-          />
-          {jobAdBusy && (
-            <p role="status" className="text-[length:var(--text-body-sm-size)]">
-              {t('start.jobAd.reading')}
-            </p>
-          )}
-        </div>
-        <p className={cn('mt-2', FIELD_HINT_CLASS)}>{t('start.jobAd.pdfHint')}</p>
-      </SectionCard>
-
-      <SectionCard headingId={`${fieldPrefix}-applications`} heading={t('start.applications.heading')}>
-        {duplicates.length > 0 && (
-          <Card variant="subtle" padding="md" className="mt-4 text-[var(--color-ink)]">
-            <p
-              role="alert"
-              className="text-[length:var(--text-body-sm-size)] leading-[var(--text-body-sm-leading)]"
+          {/* Dasselbe Muster wie am Ablegefeld: verstecktes Dateifeld, ein
+              Knopf davor. Das native Feld brächte seine eigene, in jedem
+              Browser andere Beschriftung („Keine Datei ausgewählt") mit und
+              wäre das einzige Bedienelement der Seite, das nicht wie die
+              übrigen aussieht. */}
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={jobAdBusy}
+              onClick={() => jobAdPdfRef.current?.click()}
             >
-              {t('start.applications.duplicate', {
-                entries: duplicates
-                  .map((entry) =>
-                    t('start.applications.duplicateEntry', {
-                      company: entry.company,
-                      position: entry.position,
-                      date: formatDate(entry.date, i18n.resolvedLanguage ?? 'de'),
-                    }),
-                  )
-                  .join('; '),
-              })}
-            </p>
-          </Card>
-        )}
-
-        {applications.length === 0 ? (
-          <p className={cn('mt-4', FIELD_HINT_CLASS)}>{t('start.applications.empty')}</p>
-        ) : (
-          <table className="mt-4 w-full border-collapse text-left text-[length:var(--text-body-sm-size)]">
-            <thead>
-              <tr className="border-b border-[var(--color-border)]">
-                <th scope="col" className="py-2 pr-4 font-medium">
-                  {t('start.applications.company')}
-                </th>
-                <th scope="col" className="py-2 pr-4 font-medium">
-                  {t('start.applications.position')}
-                </th>
-                <th scope="col" className="py-2 font-medium">
-                  {t('start.applications.date')}
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {applications.map((application) => (
-                <tr
-                  key={application.id}
-                  className="border-b border-[var(--color-border)] last:border-b-0"
-                >
-                  <td className="py-2 pr-4">{application.company}</td>
-                  <td className="py-2 pr-4">{application.position}</td>
-                  <td className="py-2">
-                    {formatDate(application.date, i18n.resolvedLanguage ?? 'de')}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </SectionCard>
-
-      <div className="flex flex-col items-end gap-3">
-        {missing.length > 0 && (
-          // Ein gesperrter Knopf nimmt keine Zeigerereignisse an und kann
-          // deshalb nichts erklären (siehe DESIGN.md, Tooltip). Was fehlt,
-          // steht daneben.
-          <div className="text-right">
-            <p className={FIELD_HINT_CLASS}>{t('start.missing.heading')}</p>
-            <ul className={cn('mt-2 flex flex-col gap-1', FIELD_HINT_CLASS)}>
-              {missing.map((entry) => (
-                <li key={entry}>{entry}</li>
-              ))}
-            </ul>
+              {t('start.jobAd.pdfLabel')}
+            </Button>
+            <input
+              ref={jobAdPdfRef}
+              type="file"
+              accept=".pdf"
+              hidden
+              onChange={(event) => {
+                const file = event.target.files?.item(0) ?? null
+                if (file !== null) void handleJobAdPdf(file)
+                // Zurücksetzen, damit dieselbe Datei erneut gewählt werden kann.
+                event.target.value = ''
+              }}
+            />
+            {jobAdBusy && (
+              <p role="status" className="text-[length:var(--text-body-sm-size)]">
+                {t('start.jobAd.reading')}
+              </p>
+            )}
           </div>
-        )}
+          <p className={cn('mt-2', FIELD_HINT_CLASS)}>{t('start.jobAd.pdfHint')}</p>
+
+          {duplicates.length > 0 && (
+            <Card variant="subtle" padding="md" className="mt-4 text-[var(--color-ink)]">
+              <p
+                role="alert"
+                className="text-[length:var(--text-body-sm-size)] leading-[var(--text-body-sm-leading)]"
+              >
+                {t('start.applications.duplicate', {
+                  entries: duplicates
+                    .map((entry) =>
+                      t('start.applications.duplicateEntry', {
+                        company: entry.company,
+                        position: entry.position,
+                        date: formatDate(entry.date, i18n.resolvedLanguage ?? 'de'),
+                      }),
+                    )
+                    .join('; '),
+                })}
+              </p>
+            </Card>
+          )}
+
+          {/* Die Bewerbungsliste ist Nachschlagewerk, kein Arbeitsschritt.
+              Sie steht deshalb zugeklappt unter der Ausschreibung, während
+              die Warnung vor einer Doppelbewerbung oben aufschlägt, wo sie
+              gebraucht wird. */}
+          <details className="mt-4 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-raised)]">
+            <summary className="focus-ring cursor-pointer list-none rounded-md px-4 py-3 text-[length:var(--text-body-sm-size)] font-medium text-[var(--color-ink)]">
+              {t('start.applications.heading')}
+            </summary>
+            <div className="px-4 pb-4">
+              {applications.length === 0 ? (
+                <p className={FIELD_HINT_CLASS}>{t('start.applications.empty')}</p>
+              ) : (
+                <table className="w-full border-collapse text-left text-[length:var(--text-body-sm-size)]">
+                  <thead>
+                    <tr className="border-b border-[var(--color-border)]">
+                      <th scope="col" className="py-2 pr-4 font-medium">
+                        {t('start.applications.company')}
+                      </th>
+                      <th scope="col" className="py-2 pr-4 font-medium">
+                        {t('start.applications.position')}
+                      </th>
+                      <th scope="col" className="py-2 font-medium">
+                        {t('start.applications.date')}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {applications.map((application) => (
+                      <tr
+                        key={application.id}
+                        className="border-b border-[var(--color-border)] last:border-b-0"
+                      >
+                        <td className="py-2 pr-4">{application.company}</td>
+                        <td className="py-2 pr-4">{application.position}</td>
+                        <td className="py-2">
+                          {formatDate(application.date, i18n.resolvedLanguage ?? 'de')}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </details>
+        </section>
+      </div>
+
+      {/* Die Fußleiste steht fest am unteren Rand und sagt in Worten, was
+          noch fehlt. Ein gesperrter Knopf nimmt keine Zeigerereignisse an
+          und kann deshalb nichts erklären (siehe DESIGN.md, Tooltip). */}
+      <div className="flex shrink-0 flex-wrap items-center gap-4 border-t border-[var(--color-border)] bg-[var(--color-surface-raised)] px-5 py-3 sm:px-8">
         <Button
           variant="primary"
           size="lg"
@@ -549,6 +575,22 @@ export default function Start({ loaders = DEFAULT_LOADERS }: StartProps) {
         >
           {t('start.continue')}
         </Button>
+        {missing.length > 0 ? (
+          // Je Punkt eine eigene Zeile, nicht ein zusammengezogener Satz:
+          // Wer zwei Dinge nachzuholen hat, soll zwei Dinge sehen.
+          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+            <p className={FIELD_HINT_CLASS}>{t('start.missing.heading')}</p>
+            <ul className={cn('flex flex-wrap gap-x-4 gap-y-1', FIELD_HINT_CLASS)}>
+              {missing.map((entry) => (
+                <li key={entry}>{entry}</li>
+              ))}
+            </ul>
+          </div>
+        ) : (
+          <p className="text-[length:var(--text-body-sm-size)] text-[var(--color-accent-text)]">
+            {t('start.ready')}
+          </p>
+        )}
       </div>
     </div>
   )

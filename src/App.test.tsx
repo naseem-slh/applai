@@ -20,31 +20,45 @@ describe('App', () => {
     ).toBeInTheDocument()
   })
 
-  it('trägt eine einzeilige Kopfzeile mit den beiden Zielen der Anwendung', () => {
+  it('trägt in der Kopfzeile den Ablauf aus zwei Schritten', () => {
     render(<App />)
 
     const language = i18n.resolvedLanguage ?? 'de'
-    const label = i18n.getFixedT(language)('nav.label')
-    const navigation = screen.getByRole('navigation', { name: label })
+    const t = i18n.getFixedT(language)
+    const navigation = screen.getByRole('navigation', { name: t('nav.label') })
 
     expect(navigation).toBeInTheDocument()
-    // Vier Verweise insgesamt: der Name der Anwendung, die zwei Ziele der
-    // Navigation und der Datenschutz in der Fußzeile. Die Arbeitsfläche ist
-    // erst über die Einstiegsseite erreichbar und gehört nicht in die
-    // Kopfzeile.
-    expect(screen.getAllByRole('link')).toHaveLength(4)
-    expect(navigation.querySelectorAll('a')).toHaveLength(2)
+    // Beide Schritte stehen da, damit von Anfang an sichtbar ist, was noch
+    // kommt. Nur benannt sind sie, nicht beide begehbar — siehe unten.
+    expect(navigation).toHaveTextContent(t('nav.start'))
+    expect(navigation).toHaveTextContent(t('nav.editor'))
+  })
+
+  // Die Arbeitsfläche hängt an einem Übergabestand der Einstiegsseite
+  // (`RequireSession`). Beim ersten Start gibt es keinen, also darf der
+  // zweite Schritt zwar dastehen, aber nicht anklickbar sein: Ein Verweis,
+  // der nur auf eine Umleitung führt, ist eine Sackgasse mit Umweg.
+  it('sperrt den zweiten Schritt, solange es keinen Übergabestand gibt', () => {
+    render(<App />)
+
+    const t = i18n.getFixedT(i18n.resolvedLanguage ?? 'de')
+    const navigation = screen.getByRole('navigation', { name: t('nav.label') })
+
+    expect(navigation.querySelectorAll('a')).toHaveLength(1)
+    expect(screen.queryByRole('link', { name: t('nav.editor') })).toBeNull()
   })
 
   // Die Datenschutzerklärung muss von jeder Seite aus erreichbar sein — auch
   // bevor irgendetwas hochgeladen wurde.
-  it('führt den Datenschutz in der Fußzeile, nicht in der Kopfzeile', () => {
+  it('führt den Datenschutz in der Kopfzeile, aber außerhalb des Ablaufs', () => {
     render(<App />)
 
     const t = i18n.getFixedT(i18n.resolvedLanguage ?? 'de')
     const link = screen.getByRole('link', { name: t('nav.privacy') })
 
     expect(link).toHaveAttribute('href', '/datenschutz')
+    // Erreichbar ja, Teil des Ablaufs nein: Datenschutz und Einstellungen
+    // tragen keine Schrittziffer und stehen außerhalb der Navigation.
     expect(screen.getByRole('navigation', { name: t('nav.label') }).contains(link)).toBe(false)
   })
 
