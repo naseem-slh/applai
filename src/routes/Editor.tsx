@@ -804,7 +804,21 @@ function EditorWorkspace({ session }: { session: StartSession }) {
               onRemove={markHandle.remove}
               onClearAll={markHandle.clearAll}
               onDismiss={markHandle.dismiss}
-              defaultOpen={wide}
+              // Als einziger Bereich beginnt die Merkliste auch auf schmalen
+              // Geräten offen, sobald etwas darin steht.
+              //
+              // Vormerken kann man mit dem Finger nicht: Dafür braucht es die
+              // Feinmarkierung, und die gibt es nur mit einem genauen
+              // Zeigegerät (`docs/spec.md`, `usePrecisePointer`). Eine bereits
+              // vorgemerkte Stelle anzutippen und umformulieren zu lassen geht
+              // aber sehr wohl. Unterwegs ist die wiederhergestellte Liste
+              // damit das Einzige, was die Anwendung überhaupt brauchbar
+              // macht — und wäre ausgerechnet der Bereich, den man erst unter
+              // dreien hervorklappen müsste.
+              //
+              // Leer bleibt sie zu: Eine aufgeklappte Fläche, in der „Noch
+              // nichts vorgemerkt" steht, kostet auf einem Telefon nur Platz.
+              defaultOpen={wide || marks.length > 0 || markHandle.unresolved.length > 0}
             />
           </aside>
 
