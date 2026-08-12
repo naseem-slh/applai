@@ -28,11 +28,24 @@ describe('App', () => {
     const navigation = screen.getByRole('navigation', { name: label })
 
     expect(navigation).toBeInTheDocument()
-    // Drei Verweise insgesamt: der Name der Anwendung und die zwei Ziele
-    // der Navigation. Die Arbeitsfläche ist erst über die Einstiegsseite
-    // erreichbar und gehört nicht in die Kopfzeile.
-    expect(screen.getAllByRole('link')).toHaveLength(3)
+    // Vier Verweise insgesamt: der Name der Anwendung, die zwei Ziele der
+    // Navigation und der Datenschutz in der Fußzeile. Die Arbeitsfläche ist
+    // erst über die Einstiegsseite erreichbar und gehört nicht in die
+    // Kopfzeile.
+    expect(screen.getAllByRole('link')).toHaveLength(4)
     expect(navigation.querySelectorAll('a')).toHaveLength(2)
+  })
+
+  // Die Datenschutzerklärung muss von jeder Seite aus erreichbar sein — auch
+  // bevor irgendetwas hochgeladen wurde.
+  it('führt den Datenschutz in der Fußzeile, nicht in der Kopfzeile', () => {
+    render(<App />)
+
+    const t = i18n.getFixedT(i18n.resolvedLanguage ?? 'de')
+    const link = screen.getByRole('link', { name: t('nav.privacy') })
+
+    expect(link).toHaveAttribute('href', '/datenschutz')
+    expect(screen.getByRole('navigation', { name: t('nav.label') }).contains(link)).toBe(false)
   })
 
   it('beginnt beim ersten Start mit dem Datenschutzhinweis', async () => {

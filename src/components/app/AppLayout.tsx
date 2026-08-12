@@ -63,6 +63,17 @@ export function AppLayout() {
       <main className="mx-auto max-w-5xl px-4 py-8">
         <Outlet />
       </main>
+      {/* Datenschutz und Impressum stehen in der Fußzeile, nicht in der
+          Kopfzeile: Sie müssen von jeder Seite aus erreichbar sein (und sind
+          es damit auch), gehören aber nicht zu den Zielen, zwischen denen
+          jemand während der Arbeit wechselt. */}
+      <footer className="border-t border-[var(--color-border)]">
+        <div className="mx-auto flex max-w-5xl items-center justify-end px-4 py-4">
+          <Link to="/datenschutz" className={NAV_LINK_CLASS}>
+            {t('nav.privacy')}
+          </Link>
+        </div>
+      </footer>
     </div>
   )
 }

@@ -6,7 +6,8 @@
     "start": "Start",
     "editor": "Editor",
     "settings": "Einstellungen",
-    "label": "Hauptnavigation"
+    "label": "Hauptnavigation",
+    "privacy": "Datenschutz"
   },
   "routes": {
     "start": {
@@ -490,5 +491,47 @@
   },
   "vault": {
     "locked": "Zum Umformulieren wird der API-Schlüssel gebraucht. Er lässt sich auf der Einstiegsseite entsperren."
+  },
+  "privacy": {
+    "heading": "Datenschutz und Impressum",
+    "lead": "Diese Seite speichert nichts auf einem Server. Ihre Dokumente werden ausschließlich in Ihrem Browser verarbeitet und nur an den von Ihnen gewählten KI-Anbieter übertragen.",
+    "noServer": {
+      "heading": "Kein Server, keine Konten",
+      "body": "Applai ist eine reine Browser-Anwendung. Es gibt keine Anmeldung, kein Nutzerkonto und keine Datenbank auf unserer Seite. Der Betreiber dieser Seite sieht Ihre Unterlagen nie: Sie werden von Ihrem Gerät gelesen, dort bearbeitet und dort wieder gespeichert."
+    },
+    "provider": {
+      "heading": "Was an den KI-Anbieter geht",
+      "body": "Zum Umformulieren schickt Ihr Browser die markierte Textstelle mit ihrem Umfeld, den Text der Stellenanzeige und eine Faktenbasis aus Ihren Unterlagen direkt an den Anbieter, dessen Schlüssel Sie hinterlegt haben. Die Verbindung geht von Ihrem Gerät aus, nicht über einen Server dieser Seite.",
+      "anonymize": "Vor dem Senden werden Name, Anschrift, Geburtsdatum, Telefonnummer und E-Mail-Adresse durch Platzhalter ersetzt und in der Antwort wieder zurückgetauscht. Diese Ersetzung ist standardmäßig eingeschaltet und lässt sich in den Einstellungen abschalten.",
+      "training": "Beim kostenlosen Tarif von Google Gemini werden Inhalte laut Google zur Verbesserung der Dienste verwendet. Wer das nicht möchte, nimmt einen kostenpflichtigen Schlüssel oder einen anderen Anbieter.",
+      "linksHeading": "Die Bestimmungen der drei Anbieter"
+    },
+    "storage": {
+      "heading": "Was Ihr Browser speichert",
+      "key": "Der API-Schlüssel liegt verschlüsselt in der Datenbank Ihres Browsers (IndexedDB). Bei einem kostenpflichtigen Schlüssel ist ein Passwort Pflicht; ohne Passwort ist der Schlüssel an Ihr Gerät gebunden und nicht auslesbar. Nach einer halben Stunde ohne Nutzung wird er automatisch gesperrt.",
+      "drafts": "Ein Zwischenstand Ihres Anschreibens wird alle 20 Sekunden gespeichert, ebenfalls in IndexedDB. Er wird nach dem Export gelöscht, spätestens nach sieben Tagen.",
+      "applications": "Firma, Stelle und Datum Ihrer Bewerbungen bilden eine Liste, die nur in Ihrem Browser steht.",
+      "delete": "Der Knopf „Alle Daten löschen\" in den Einstellungen entfernt alles davon restlos."
+    },
+    "hosting": {
+      "heading": "Auslieferung",
+      "body": "Diese Seite liegt bei Cloudflare Pages. Beim Aufruf überträgt Ihr Browser die für jede Web-Anfrage üblichen Angaben, darunter Ihre IP-Adresse. Es werden keine Cookies gesetzt, keine Zählpixel geladen und keine Analysewerkzeuge eingebunden. Schriftarten liegen auf demselben Server wie die Anwendung."
+    },
+    "rights": {
+      "heading": "Ihre Rechte",
+      "body": "Da beim Betreiber keine personenbezogenen Daten von Ihnen anfallen, gibt es hier nichts, worüber Auskunft zu erteilen oder was zu löschen wäre. Für die Daten, die Sie an einen KI-Anbieter senden, gelten dessen Bestimmungen; die Ansprechstelle ist dann der Anbieter."
+    },
+    "source": {
+      "heading": "Nachprüfbarkeit",
+      "body": "Der vollständige Quelltext ist öffentlich. Wer wissen will, was diese Anwendung tut, kann es nachlesen, statt es glauben zu müssen.",
+      "link": "Quelltext auf GitHub"
+    },
+    "imprint": {
+      "heading": "Impressum",
+      "body": "Angaben gemäß § 5 DDG. Diese Seite ist ein privates, nicht gewerbliches Vorhaben.",
+      "operator": "Betreiber",
+      "contact": "Kontakt",
+      "placeholder": "Vor der Veröffentlichung eintragen."
+    }
   }
 }

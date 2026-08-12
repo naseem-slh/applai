@@ -8,6 +8,10 @@ export default defineConfig({
   use: {
     baseURL: 'http://localhost:4173',
     trace: 'on-first-retry',
+    // Die Anwendung wählt die Oberflächensprache nach der Browsersprache vor
+    // (G8). Ohne feste Vorgabe hinge der Test daran, wie die Maschine
+    // eingestellt ist, auf der er läuft.
+    locale: 'de-DE',
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   // e2e-Tests laufen gegen den produktiven Build (npm run preview), nicht

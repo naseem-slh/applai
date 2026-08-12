@@ -6,7 +6,8 @@
     "start": "Start",
     "editor": "Editor",
     "settings": "Settings",
-    "label": "Main navigation"
+    "label": "Main navigation",
+    "privacy": "Privacy"
   },
   "routes": {
     "start": {
@@ -490,5 +491,47 @@
   },
   "vault": {
     "locked": "Rewording needs the API key. You can unlock it on the start page."
+  },
+  "privacy": {
+    "heading": "Privacy and legal notice",
+    "lead": "This site stores nothing on a server. Your documents are processed entirely in your browser and are only transmitted to the AI provider you choose.",
+    "noServer": {
+      "heading": "No server, no accounts",
+      "body": "Applai is a pure browser application. There is no sign-in, no user account and no database on our side. Whoever runs this site never sees your documents: they are read from your device, edited there and saved there."
+    },
+    "provider": {
+      "heading": "What goes to the AI provider",
+      "body": "To reword a passage, your browser sends the selected text with its surroundings, the text of the job ad and a factual basis drawn from your documents directly to the provider whose key you have stored. The connection starts from your device, not from a server of this site.",
+      "anonymize": "Before sending, your name, postal address, date of birth, phone number and email address are replaced by placeholders and swapped back in the response. This replacement is on by default and can be switched off in Settings.",
+      "training": "On Google Gemini's free tier, Google states that content is used to improve their services. If you would rather it were not, use a paid key or a different provider.",
+      "linksHeading": "The three providers' terms"
+    },
+    "storage": {
+      "heading": "What your browser stores",
+      "key": "The API key is stored encrypted in your browser's database (IndexedDB). A paid key requires a password; without one, the key is bound to your device and cannot be read out. After half an hour of inactivity it locks automatically.",
+      "drafts": "A draft of your cover letter is saved every 20 seconds, also in IndexedDB. It is deleted after export, and after seven days at the latest.",
+      "applications": "Company, position and date of your applications form a list that exists only in your browser.",
+      "delete": "The \"Delete all data\" button in Settings removes every bit of it."
+    },
+    "hosting": {
+      "heading": "Delivery",
+      "body": "This site is hosted on Cloudflare Pages. When you open it, your browser transmits the details usual for any web request, including your IP address. No cookies are set, no tracking pixels are loaded and no analytics tools are embedded. Fonts are served from the same server as the application."
+    },
+    "rights": {
+      "heading": "Your rights",
+      "body": "Since no personal data of yours reaches the operator, there is nothing here to disclose or delete. For the data you send to an AI provider, that provider's terms apply and the provider is the point of contact."
+    },
+    "source": {
+      "heading": "Verifiability",
+      "body": "The complete source code is public. Anyone who wants to know what this application does can read it rather than take our word for it.",
+      "link": "Source code on GitHub"
+    },
+    "imprint": {
+      "heading": "Legal notice",
+      "body": "Information pursuant to section 5 DDG. This site is a private, non-commercial project.",
+      "operator": "Operator",
+      "contact": "Contact",
+      "placeholder": "To be filled in before publication."
+    }
   }
 }

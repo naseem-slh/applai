@@ -4,6 +4,7 @@ import { AppProvider } from './components/app/AppProvider'
 import { RequireSession } from './components/app/RequireSession'
 import Start from './routes/Start'
 import Editor from './routes/Editor'
+import Privacy from './routes/Privacy'
 import Settings from './routes/Settings'
 
 // Alle drei Ansichten liegen unter demselben Rahmen (Kopfzeile,
@@ -28,6 +29,9 @@ const router = createBrowserRouter([
         ),
       },
       { path: '/settings', element: <Settings /> },
+      // Datenschutz und Impressum: ohne Übergabestand erreichbar, weil man
+      // sie lesen können muss, bevor man irgendetwas hochlädt.
+      { path: '/datenschutz', element: <Privacy /> },
     ],
   },
 ])
