@@ -37,6 +37,7 @@
         --color-accent-contrast: #ffffff;
         --color-accent-text: #00628f;
         --color-success: #0d6e52;
+        --color-error: #b3261e;
         --color-warning: #8a5200;
         --color-surface-hover: #e2f2f8;
         --color-accent-soft: #caf0f8;
@@ -68,6 +69,7 @@
         --color-accent-contrast: #03045e;
         --color-accent-text: #00b4d8;
         --color-success: #4ec99a;
+        --color-error: #ff8a7a;
         --color-warning: #e0a256;
         --color-surface-hover: #142347;
         --color-accent-soft: #0f2a4d;
@@ -588,6 +590,48 @@
         color: var(--color-muted);
       }
 
+      .toolbar .divider {
+        width: 1px;
+        height: 1rem;
+        background: var(--color-border);
+      }
+
+      /* Fehlgeschlagener Modellaufruf: Meldung, Wortlaut des Anbieters im
+         Aufklapper, und ein Knopf nur dann, wenn ein neuer Versuch etwas
+         ändern kann. Bei aufgebrauchtem Kontingent gibt es keinen. */
+      .aierror {
+        border-left: 3px solid var(--color-error);
+        padding-left: 0.75rem;
+      }
+
+      .aierror > p {
+        margin: 0;
+        font-size: var(--text-body-sm-size);
+        line-height: 1.6;
+        color: var(--color-error);
+      }
+
+      .aierror details {
+        margin-top: 0.5rem;
+        font-size: var(--text-body-sm-size);
+      }
+
+      .aierror summary {
+        cursor: pointer;
+        color: var(--color-muted);
+        list-style: none;
+      }
+
+      .aierror summary::-webkit-details-marker {
+        display: none;
+      }
+
+      .aierror details p {
+        margin: 0.25rem 0 0;
+        color: var(--color-muted);
+        overflow-wrap: break-word;
+      }
+
       .sheetwrap {
         flex: 1;
         min-height: 0;
@@ -769,6 +813,13 @@
         </div>
       </div>
       <div class="mockbar-group">
+        <span>Zustand</span>
+        <div class="seg" id="seg-state">
+          <button type="button" data-state="normal" aria-pressed="true">normal</button>
+          <button type="button" data-state="fehler" aria-pressed="false">Kontingent leer</button>
+        </div>
+      </div>
+      <div class="mockbar-group">
         <span>Blättergriffe</span>
         <div class="seg" id="seg-scrollbars">
           <button type="button" data-scrollbars="themed" aria-pressed="true">Thema</button>
@@ -800,7 +851,23 @@
               <h2>Anforderungen</h2>
               <span class="count">4 Punkte</span>
             </div>
-            <div class="card-body">
+            <div class="card-body" data-when="fehler" hidden>
+              <div class="aierror">
+                <p role="alert">
+                  Das kostenlose Tageskontingent von Gemini ist aufgebraucht. Es steht morgen wieder
+                  zur Verfügung, oder es kann ein eigener, kostenpflichtiger Schlüssel hinterlegt
+                  werden.
+                </p>
+                <details>
+                  <summary>Meldung des Anbieters</summary>
+                  <p lang="en">
+                    You exceeded your current quota, please check your plan and billing details.
+                  </p>
+                </details>
+              </div>
+            </div>
+
+            <div class="card-body" data-when="normal">
               <div class="req">
                 <strong>Sehr gute Kenntnisse in TypeScript</strong>
                 <span>Fachliche Fähigkeit</span>
@@ -842,6 +909,11 @@
             <button type="button" class="btn btn-primary btn-sm">Umformulieren lassen</button>
             <button type="button" class="btn btn-quiet btn-sm">Rückgängig</button>
             <span class="spacer"></span>
+            <!-- Was diese Sitzung gekostet hat, steht neben dem
+                 Sicherungsstand: zwei leise Auskünfte, durch einen Strich
+                 getrennt, damit sie nicht als ein Satz gelesen werden. -->
+            <span class="status">7 Anfragen in dieser Sitzung</span>
+            <span class="divider" aria-hidden="true"></span>
             <span class="status">Zwischenstand gerade gesichert.</span>
           </div>
 
@@ -983,6 +1055,11 @@
       })
       wire('seg-scrollbars', 'scrollbars', (value) => {
         document.documentElement.dataset.scrollbars = value
+      })
+      wire('seg-state', 'state', (value) => {
+        for (const el of document.querySelectorAll('[data-when]')) {
+          el.hidden = el.dataset.when !== value
+        }
       })
 
       document.documentElement.dataset.theme = 'light'
