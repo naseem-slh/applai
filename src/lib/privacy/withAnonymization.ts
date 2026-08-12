@@ -42,26 +42,46 @@ import type { AnonymizeHints } from './anonymize'
  * den anonymisierten Text, den das Modell gesehen hat — Prüfung und Modell
  * sehen dieselbe Fassung, die Zusammensetzung ist deshalb unkritisch.
  *
- * Aufgabe 12 (`analyzeGaps`) — die Stellenanzeige gehört bewusst NICHT in die
- * Klammer (öffentliches Dokument der Firma, siehe `domain/jobAd.ts`), die
- * Faktenbasis schon:
+ * Aufgabe 12 (`analyzeGaps`, `domain/gaps.ts`) — die Stellenanzeige gehört
+ * bewusst NICHT in die Klammer (öffentliches Dokument der Firma, siehe
+ * `domain/jobAd.ts`), die Faktenbasis schon. **Nachtrag (bei der Umsetzung
+ * von Aufgabe 12 korrigiert):** Ursprünglich stand hier ein Aufrufbeispiel
+ * mit einem ÄUSSEREN Aufruf durch die Oberfläche (vor Aufgabe 12
+ * niedergeschrieben, als Vorgriff). Umgesetzt wurde stattdessen dieselbe
+ * Form wie bei `rewriteSelection`: `analyzeGaps` ruft die Klammer INTERN
+ * auf und bekommt `AnonymizationSettings` als fünften, **pflichtigen**
+ * Parameter (`analyzeGaps(jobAd, facts, provider, apiKey, privacy)`) – ein
+ * optionaler Parameter oder ein äußerer Aufruf, den ein Aufrufer vergessen
+ * kann, hätte sich stillschweigend weglassen lassen, mit dem Klarnamen des
+ * Nutzers als Preis. Beide KI-Aufrufe mit Nutzertext (Aufgabe 11 und 12)
+ * haben damit dieselbe, nicht vergessbare Form:
  *
  * ```ts
- * const luecken = await withAnonymization(
+ * const luecken = await analyzeGaps(jobAd, facts, provider, apiKey, {
+ *   enabled: settings.anonymize,
+ *   userName,
+ * })
+ * ```
+ *
+ * Intern sieht der Aufruf so aus (siehe `domain/gaps.ts`):
+ *
+ * ```ts
+ * return withAnonymization(
  *   { facts },
- *   { enabled: settings.anonymize, userName },
- *   (felder) => analyzeGaps(jobAd, felder.facts, provider, apiKey),
+ *   privacy,
+ *   (felder) => /* Prompt bauen, Modell aufrufen, Zod-Grenze, index-Bindung *\/,
  *   (eintraege, zurueck) =>
  *     eintraege.map((e) => ({ ...e, evidence: e.evidence === null ? null : zurueck(e.evidence) })),
  * )
  * ```
  *
- * Aufgabe 13 (Oberfläche) ruft die Klammer nicht selbst auf, sondern liefert
- * ihre beiden Eingaben: `enabled` aus `Settings.anonymize` (Aufgabe 6,
- * standardmäßig an) und `userName` (siehe unten).
+ * Aufgabe 13 (Oberfläche) liefert für beide Aufrufwege (11 und 12) dieselben
+ * zwei Eingaben: `enabled` aus `Settings.anonymize` (Aufgabe 6, standardmäßig
+ * an) und `userName` (siehe unten).
  *
- * `rewriteSelection` (Aufgabe 11) ruft die Klammer intern auf und bekommt
- * `AnonymizationSettings` als vierten, **pflichtigen** Parameter — siehe dort.
+ * `rewriteSelection` (Aufgabe 11) ruft die Klammer ebenfalls intern auf und
+ * bekommt `AnonymizationSettings` als vierten, **pflichtigen** Parameter —
+ * siehe dort.
  *
  * ---------------------------------------------------------------------------
  * WARUM ALLE FELDER IN EINEM EINZIGEN DURCHLAUF ANONYMISIERT WERDEN
