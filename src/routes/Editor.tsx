@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, Navigate } from 'react-router-dom'
-import { aiErrorKey, VaultLockedError } from '@/components/app/aiErrorKey'
+import { AiErrorNotice } from '@/components/app/AiErrorNotice'
+import { VaultLockedError } from '@/components/app/aiErrorKey'
 import { LETTER_DRAFT_ID, useApp, type StartSession } from '@/components/app/appContext'
 import { ClaimGuard } from '@/components/editor/ClaimGuard'
 import { DocumentView } from '@/components/editor/DocumentView'
@@ -922,13 +923,10 @@ function AnalysisStatus({
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-3">
-      <p role="alert" className="text-[length:var(--text-body-sm-size)] text-[var(--color-error)]">
-        {t(aiErrorKey(analysis.error))}
-      </p>
-      <Button variant="secondary" size="sm" onClick={analysis.retry}>
-        {t('editor.analysis.retry')}
-      </Button>
-    </div>
+    <AiErrorNotice
+      error={analysis.error}
+      onRetry={analysis.retry}
+      retryLabel={t('editor.analysis.retry')}
+    />
   )
 }

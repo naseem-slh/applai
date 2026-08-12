@@ -142,13 +142,15 @@
   "ai": {
     "errors": {
       "invalid_key": "Der API-Schlüssel ist ungültig oder abgelaufen. Bitte in den Einstellungen prüfen.",
-      "rate_limit": "Der Anbieter ist gerade überlastet. Bitte in Kürze erneut versuchen.",
+      "rate_limit": "Zu viele Anfragen in kurzer Zeit. Der Anbieter blockt weitere Aufrufe vorübergehend ab. Kurz warten, dann geht es wieder.",
       "quota": "Das Kontingent des API-Schlüssels ist aufgebraucht.",
       "quota_gemini": "Das kostenlose Tageskontingent von Gemini ist aufgebraucht. Es steht morgen wieder zur Verfügung, oder es kann ein eigener, kostenpflichtiger Schlüssel hinterlegt werden.",
       "network": "Die Anfrage konnte nicht gesendet werden. Bitte die Internetverbindung prüfen.",
       "blocked": "Der Anbieter hat die Antwort aus Sicherheitsgründen blockiert.",
       "model_response": "Die Antwort des Anbieters war unbrauchbar und wurde verworfen. Ein erneuter Versuch führt meist zum Ziel.",
-      "unknown": "Unerwarteter Fehler beim Aufruf des Anbieters."
+      "unknown": "Unerwarteter Fehler beim Aufruf des Anbieters.",
+      "providerDetails": "Meldung des Anbieters",
+      "retryIn": "Erneut versuchen in {{seconds}} s"
     }
   },
   "start": {

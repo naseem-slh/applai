@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useRef, useState, type MouseEvent } from 'react'
 import { useTranslation } from 'react-i18next'
-import { aiErrorKey, isAbortError } from '@/components/app/aiErrorKey'
+import { AiErrorNotice } from '@/components/app/AiErrorNotice'
+import { isAbortError } from '@/components/app/aiErrorKey'
 import { Button } from '@/components/ui/Button'
 import { FIELD_HINT_CLASS } from '@/components/ui/Field'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/Popover'
@@ -168,9 +169,7 @@ export function VariantPopover({ selection, rewrite, ready, onApply }: VariantPo
 
           {status === 'failed' && (
             <div className="flex flex-col gap-3">
-              <p role="alert" className="text-[length:var(--text-body-sm-size)] text-[var(--color-error)]">
-                {t(aiErrorKey(error))}
-              </p>
+              <AiErrorNotice error={error} />
               <Button
                 variant="secondary"
                 size="sm"

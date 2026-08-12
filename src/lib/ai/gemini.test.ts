@@ -128,6 +128,54 @@ describe('Gemini-Adapter', () => {
     expect(error?.retryAfterMs).toBe(12_000)
   })
 
+  // Der Fall, der Applai im Betrieb eingeholt hat: Bei aufgebrauchtem
+  // Tageskontingent des kostenlosen Tarifs meldet Gemini 429, aber **nicht**
+  // den Code `quota_exceeded`. Applai zeigte deshalb „Der Anbieter ist
+  // gerade überlastet. Bitte in Kürze erneut versuchen." — und der Nutzer
+  // versuchte es in Kürze erneut, obwohl sich bis zum nächsten Tag nichts
+  // ändern konnte. Erkannt wird der Fall am Wortlaut des Anbieters.
+  it('HTTP 429, dessen Wortlaut ein Tageskontingent nennt → quota, nicht rate_limit', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      mockFetchResponse(429, {
+        error: {
+          code: 'rate_limit_exceeded',
+          message:
+            "Quota exceeded for quota metric 'Generate Content API requests per day' and limit 'GenerateRequestsPerDayPerProjectPerModel-FreeTier'.",
+        },
+      }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    const provider = createGeminiProvider(vi.fn().mockResolvedValue(undefined))
+    const error = await provider.generate(REQUEST, 'schluessel').then(
+      () => null,
+      (reason: unknown) => reason as LlmError,
+    )
+
+    expect(error?.kind).toBe('quota')
+    // Ein aufgebrauchtes Tageskontingent wird nicht wiederholt.
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('reicht den Wortlaut des Anbieters weiter, statt ihn wegzuwerfen', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        mockFetchResponse(429, {
+          error: { code: 'rate_limit_exceeded', message: 'Too many requests per minute.' },
+        }),
+      ),
+    )
+
+    const provider = createGeminiProvider(vi.fn().mockResolvedValue(undefined))
+    const error = await provider.generate(REQUEST, 'schluessel').then(
+      () => null,
+      (reason: unknown) => reason as LlmError,
+    )
+
+    expect(error?.providerMessage).toBe('Too many requests per minute.')
+  })
+
   it('HTTP 429 (quota_exceeded) → quota, ohne Wiederholungsversuch (fetch nur einmal aufgerufen)', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       mockFetchResponse(429, { error: { code: 'quota_exceeded', message: 'Tageskontingent aufgebraucht' } }),

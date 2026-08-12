@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
-  DEFAULT_RATE_LIMIT_RETRY_MS,
   LlmError,
   RETRY_AFTER_CAP_MS,
   fetchOrNetworkError,
@@ -26,6 +25,17 @@ describe('LlmError', () => {
   it('retryAfterMs bleibt undefined, wenn es nicht übergeben wird', () => {
     const error = new LlmError('invalid_key', 'openai', 'Testnachricht')
     expect(error.retryAfterMs).toBeUndefined()
+  })
+
+  it('trägt den Wortlaut des Anbieters mit, damit die Oberfläche ihn zeigen kann', () => {
+    const error = new LlmError('rate_limit', 'gemini', 'Testnachricht', undefined, {
+      providerMessage: 'Quota exceeded for quota metric ... per day',
+    })
+    expect(error.providerMessage).toBe('Quota exceeded for quota metric ... per day')
+  })
+
+  it('providerMessage bleibt undefined, wenn der Anbieter nichts mitgeschickt hat', () => {
+    expect(new LlmError('network', 'gemini', 'Testnachricht').providerMessage).toBeUndefined()
   })
 })
 
@@ -89,16 +99,29 @@ describe('withSingleRateLimitRetry', () => {
     expect(sleep).toHaveBeenCalledWith(5_000, undefined)
   })
 
-  it('nutzt DEFAULT_RATE_LIMIT_RETRY_MS, wenn der Fehler keine retryAfterMs mitbringt', async () => {
+  // Früher wurde hier blind nach zwei Sekunden wiederholt. Bei einer
+  // Minutengrenze — Geminis kostenloser Tarif erlaubt fünf Anfragen je
+  // Minute — fällt dieser Versuch zwangsläufig in dasselbe geschlossene
+  // Fenster: Er kann nicht gelingen und verdoppelt nur den Verbrauch.
+  it('wiederholt NICHT, wenn der Anbieter keine Wartezeit genannt hat', async () => {
     const attempt = vi
       .fn()
-      .mockRejectedValueOnce(new LlmError('rate_limit', 'openai', 'zu viele Anfragen'))
-      .mockResolvedValueOnce('ok')
+      .mockRejectedValue(new LlmError('rate_limit', 'openai', 'zu viele Anfragen'))
     const sleep = vi.fn().mockResolvedValue(undefined)
 
-    await withSingleRateLimitRetry(attempt, sleep)
+    await expect(withSingleRateLimitRetry(attempt, sleep)).rejects.toBeInstanceOf(LlmError)
 
-    expect(sleep).toHaveBeenCalledWith(DEFAULT_RATE_LIMIT_RETRY_MS, undefined)
+    expect(attempt).toHaveBeenCalledTimes(1)
+    expect(sleep).not.toHaveBeenCalled()
+  })
+
+  it('wiederholt auch dann nicht, wenn der Anbieter 0 Millisekunden nennt — das ist keine Wartezeit', async () => {
+    const attempt = vi.fn().mockRejectedValue(new LlmError('rate_limit', 'gemini', 'zu viele', 0))
+    const sleep = vi.fn().mockResolvedValue(undefined)
+
+    await expect(withSingleRateLimitRetry(attempt, sleep)).rejects.toBeInstanceOf(LlmError)
+
+    expect(attempt).toHaveBeenCalledTimes(1)
   })
 
   it('reicht ein übergebenes AbortSignal unverändert an die sleep-Funktion weiter', async () => {

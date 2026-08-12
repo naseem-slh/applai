@@ -101,38 +101,69 @@ async function performGeminiRequest(req: LlmRequest, apiKey: string, signal: Abo
   return candidate?.content?.parts?.map((part) => part.text ?? '').join('') ?? ''
 }
 
+/**
+ * Nennt dieser Wortlaut ein **Tages**kontingent?
+ *
+ * Die Fehlerreferenz führt für HTTP 429 zwei Codes: `rate_limit_exceeded`
+ * und `quota_exceeded`. Im Betrieb kommt ein aufgebrauchtes Tageskontingent
+ * des kostenlosen Tarifs aber als `rate_limit_exceeded` an — nachgestellt an
+ * einem echten Schlüssel, dessen Tagesgrenze erreicht war. Der Unterschied
+ * steht dann nur im Klartext der Meldung („requests per day",
+ * „PerDayPerProject…"), und er ist der wichtigste, den es hier gibt: Eine
+ * Minutengrenze ist in einer Minute vorbei, ein Tageskontingent nicht.
+ *
+ * Deshalb wird zusätzlich der Wortlaut befragt. Eine Heuristik auf fremdem
+ * Freitext ist nicht schön, und sie ist bewusst nur eine **Ergänzung**: Sie
+ * kann eine Stelle übersehen, aber keine falsch einordnen, die der Code
+ * schon richtig hatte. Und weil der Wortlaut jetzt bis in die Oberfläche
+ * durchgereicht wird, sieht der Nutzer im Zweifel selbst, was der Anbieter
+ * gesagt hat.
+ */
+function mentionsDailyQuota(text: string | undefined): boolean {
+  return text !== undefined && /per\s*-?\s*day|daily|perday/i.test(text)
+}
+
 async function buildGeminiError(response: Response): Promise<LlmError> {
   const retryAfterMs = parseRetryAfterMs(response.headers.get('retry-after'))
-  const errorCode = await readGeminiErrorCode(response)
+  const { code, message } = await readGeminiError(response)
+  const details = { providerMessage: message }
 
   if (response.status === 401) {
-    return new LlmError('invalid_key', 'gemini', 'Gemini: ungültiger oder abgelaufener API-Schlüssel.')
+    return new LlmError(
+      'invalid_key',
+      'gemini',
+      'Gemini: ungültiger oder abgelaufener API-Schlüssel.',
+      undefined,
+      details,
+    )
   }
   if (response.status === 429) {
-    // Gemini unterscheidet im Fehlercode selbst zwischen vorübergehender
-    // Ratenbegrenzung und aufgebrauchtem Tageskontingent (siehe
-    // Gemini-API-Referenz, `error.code`) — das erlaubt genau hier die
-    // in der Aufgabenstellung geforderte Unterscheidung, ohne den
-    // HTTP-Status allein deuten zu müssen.
-    if (errorCode === 'quota_exceeded') {
+    if (code === 'quota_exceeded' || mentionsDailyQuota(message)) {
       return new LlmError(
         'quota',
         'gemini',
         'Gemini: Tageskontingent des kostenlosen Tarifs aufgebraucht.',
         retryAfterMs,
+        details,
       )
     }
-    return new LlmError('rate_limit', 'gemini', 'Gemini: zu viele Anfragen.', retryAfterMs)
+    return new LlmError('rate_limit', 'gemini', 'Gemini: zu viele Anfragen.', retryAfterMs, details)
   }
-  return new LlmError('unknown', 'gemini', `Gemini: unerwartete Antwort (HTTP ${response.status}).`)
+  return new LlmError(
+    'unknown',
+    'gemini',
+    `Gemini: unerwartete Antwort (HTTP ${response.status}).`,
+    undefined,
+    details,
+  )
 }
 
-async function readGeminiErrorCode(response: Response): Promise<string | undefined> {
+async function readGeminiError(response: Response): Promise<{ code?: string; message?: string }> {
   try {
     const body = (await response.json()) as GeminiErrorBody
-    return body.error?.code
+    return { code: body.error?.code, message: body.error?.message }
   } catch {
-    return undefined
+    return {}
   }
 }
 
