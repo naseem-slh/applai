@@ -1,6 +1,7 @@
 import { act, renderHook } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import type { DocxDocument } from '@/lib/docx/model'
+import type { Mark } from './marks'
 import { HISTORY_LIMIT, useDocumentHistory } from './useDocumentHistory'
 
 /**
@@ -10,6 +11,11 @@ import { HISTORY_LIMIT, useDocumentHistory } from './useDocumentHistory'
  */
 function doc(label: string): DocxDocument {
   return { text: label } as unknown as DocxDocument
+}
+
+/** Eine Vormerkung, so weit die Historie sie ansieht: gar nicht. */
+function mark(id: string): Mark {
+  return { id, range: { from: 0, to: 1 }, anchor: id, current: id, done: false }
 }
 
 describe('useDocumentHistory', () => {
@@ -36,7 +42,7 @@ describe('useDocumentHistory', () => {
     const second = doc('zwei')
 
     act(() => result.current.reset(first))
-    act(() => result.current.commit(second))
+    act(() => result.current.commit(second, []))
     expect(result.current.document).toBe(second)
     expect(result.current.canUndo).toBe(true)
 
@@ -51,9 +57,9 @@ describe('useDocumentHistory', () => {
     const run = {}
 
     act(() => result.current.reset(doc('leer')))
-    act(() => result.current.commit(doc('T'), run))
-    act(() => result.current.commit(doc('Te'), run))
-    act(() => result.current.commit(doc('Tex'), run))
+    act(() => result.current.commit(doc('T'), [], run))
+    act(() => result.current.commit(doc('Te'), [], run))
+    act(() => result.current.commit(doc('Tex'), [], run))
 
     expect(result.current.document?.text).toBe('Tex')
     expect(result.current.depth).toBe(1)
@@ -67,8 +73,8 @@ describe('useDocumentHistory', () => {
     const { result } = renderHook(() => useDocumentHistory())
 
     act(() => result.current.reset(doc('leer')))
-    act(() => result.current.commit(doc('A'), {}))
-    act(() => result.current.commit(doc('AB'), {}))
+    act(() => result.current.commit(doc('A'), [], {}))
+    act(() => result.current.commit(doc('AB'), [], {}))
 
     expect(result.current.depth).toBe(2)
   })
@@ -77,8 +83,8 @@ describe('useDocumentHistory', () => {
     const { result } = renderHook(() => useDocumentHistory())
 
     act(() => result.current.reset(doc('leer')))
-    act(() => result.current.commit(doc('eins')))
-    act(() => result.current.commit(doc('zwei')))
+    act(() => result.current.commit(doc('eins'), []))
+    act(() => result.current.commit(doc('zwei'), []))
 
     expect(result.current.depth).toBe(2)
   })
@@ -88,9 +94,9 @@ describe('useDocumentHistory', () => {
     const run = {}
 
     act(() => result.current.reset(doc('leer')))
-    act(() => result.current.commit(doc('A'), run))
+    act(() => result.current.commit(doc('A'), [], run))
     act(() => result.current.undo())
-    act(() => result.current.commit(doc('B'), run))
+    act(() => result.current.commit(doc('B'), [], run))
 
     // Ohne das Zurücksetzen des Merkmals hätte der zweite `commit` den
     // gerade wiederhergestellten Stand überschrieben, statt ihn zu bewahren.
@@ -105,7 +111,7 @@ describe('useDocumentHistory', () => {
 
     act(() => result.current.reset(doc('stand-0')))
     for (let step = 1; step <= HISTORY_LIMIT + overflow; step += 1) {
-      act(() => result.current.commit(doc(`stand-${step}`)))
+      act(() => result.current.commit(doc(`stand-${step}`), []))
     }
 
     expect(result.current.depth).toBe(HISTORY_LIMIT)
@@ -135,7 +141,7 @@ describe('useDocumentHistory', () => {
     const same = doc('gleich')
 
     act(() => result.current.reset(same))
-    act(() => result.current.commit(same))
+    act(() => result.current.commit(same, []))
 
     expect(result.current.canUndo).toBe(false)
   })
@@ -144,10 +150,72 @@ describe('useDocumentHistory', () => {
     const { result } = renderHook(() => useDocumentHistory())
 
     act(() => result.current.reset(doc('alt')))
-    act(() => result.current.commit(doc('bearbeitet')))
+    act(() => result.current.commit(doc('bearbeitet'), []))
     act(() => result.current.reset(doc('neu')))
 
     expect(result.current.canUndo).toBe(false)
     expect(result.current.document?.text).toBe('neu')
+  })
+
+  it('beginnt ohne vorgemerkte Stellen', () => {
+    const { result } = renderHook(() => useDocumentHistory())
+    expect(result.current.marks).toEqual([])
+  })
+
+  it('nimmt Dokument und Stellen zusammen in einen Schritt', () => {
+    const { result } = renderHook(() => useDocumentHistory())
+    const stellen = [mark('a')]
+
+    act(() => result.current.reset(doc('geladen')))
+    act(() => result.current.commit(doc('bearbeitet'), stellen))
+
+    expect(result.current.marks).toEqual(stellen)
+  })
+
+  it('stellt mit Rückgängig Text und Stellen zusammen wieder her', () => {
+    const { result } = renderHook(() => useDocumentHistory())
+    const vorher = [mark('a')]
+    const nachher = [mark('a'), mark('b')]
+    const erst = doc('eins')
+
+    act(() => result.current.reset(erst))
+    act(() => result.current.setMarks(vorher))
+    act(() => result.current.commit(doc('zwei'), nachher))
+
+    act(() => result.current.undo())
+
+    expect(result.current.document).toBe(erst)
+    expect(result.current.marks).toEqual(vorher)
+  })
+
+  it('legt für eine geänderte Vormerkung allein keinen Schritt an', () => {
+    const { result } = renderHook(() => useDocumentHistory())
+
+    act(() => result.current.reset(doc('geladen')))
+    act(() => result.current.setMarks([mark('a')]))
+
+    expect(result.current.marks).toEqual([mark('a')])
+    expect(result.current.canUndo).toBe(false)
+  })
+
+  it('legt keinen Schritt an, wenn sich nur die Stellen ändern und das Dokument gleich bleibt', () => {
+    const { result } = renderHook(() => useDocumentHistory())
+    const gleich = doc('unverändert')
+
+    act(() => result.current.reset(gleich))
+    act(() => result.current.commit(gleich, [mark('a')]))
+
+    expect(result.current.marks).toEqual([mark('a')])
+    expect(result.current.canUndo).toBe(false)
+  })
+
+  it('räumt die Stellen, wenn ein neues Dokument geladen wird', () => {
+    const { result } = renderHook(() => useDocumentHistory())
+
+    act(() => result.current.reset(doc('alt')))
+    act(() => result.current.setMarks([mark('a')]))
+    act(() => result.current.reset(doc('neu')))
+
+    expect(result.current.marks).toEqual([])
   })
 })

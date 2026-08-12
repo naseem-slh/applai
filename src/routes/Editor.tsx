@@ -102,7 +102,7 @@ function EditorWorkspace({ session }: { session: StartSession }) {
   const claimsHeadingId = useId()
   const rootRef = useRef<HTMLDivElement>(null)
 
-  const { document: docx, canUndo, reset, commit, undo } = useDocumentHistory()
+  const { document: docx, marks, canUndo, reset, commit, undo } = useDocumentHistory()
   const precise = usePrecisePointer()
   // Nur für den Anfangszustand der aufklappbaren Bereiche, siehe dort.
   const wide = useWideViewport()
@@ -339,11 +339,11 @@ function EditorWorkspace({ session }: { session: StartSession }) {
   const applyVariant = useCallback(
     (variant: Variant) => {
       if (docx === null || selection === null) return
-      commit(replaceRange(docx, selection.range, variant.text))
+      commit(replaceRange(docx, selection.range, variant.text), marks)
       claims.add(variant.unbackedClaims)
       clear()
     },
-    [docx, selection, commit, claims, clear],
+    [docx, selection, commit, marks, claims, clear],
   )
 
   /**
@@ -356,10 +356,10 @@ function EditorWorkspace({ session }: { session: StartSession }) {
       docx === null || selection === null
         ? null
         : (value: string) => {
-            commit(replaceRange(docx, selection.range, value))
+            commit(replaceRange(docx, selection.range, value), marks)
             clear()
           },
-    [docx, selection, commit, clear],
+    [docx, selection, commit, marks, clear],
   )
 
   /**
@@ -429,10 +429,11 @@ function EditorWorkspace({ session }: { session: StartSession }) {
           { from: paragraph.start + edit.from, to: paragraph.start + edit.to },
           edit.insert,
         ),
+        marks,
         typingToken(index),
       )
     },
-    [docx, commit, typingToken],
+    [docx, commit, marks, typingToken],
   )
 
   // Strg+Z am Fenster, nicht an der Dokumentfläche: Der Verlauf soll auch

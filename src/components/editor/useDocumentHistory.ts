@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useReducer } from 'react'
 import type { DocxDocument } from '@/lib/docx/model'
+import type { Mark } from './marks'
 
 /**
  * Die Verlaufshistorie der Arbeitsfläche: ein Stapel vollständiger
@@ -23,6 +24,22 @@ import type { DocxDocument } from '@/lib/docx/model'
  * war, wird am wenigsten vermisst, und der zuletzt gemachte Schritt muss
  * immer rückgängig zu machen sein.
  *
+ * **Die vorgemerkten Stellen fahren mit.** Ein Verlaufsstand ist nicht das
+ * Dokument allein, sondern der {@link Workspace} aus Dokument **und**
+ * Vormerkungen. Strg+Z stellt beides zusammen wieder her.
+ *
+ * Der billigere Weg wäre, die Stellen nach jedem Rückgängigmachen über ihren
+ * Ankertext neu zu suchen. Er scheitert genau dort, wo es weh tut: Nach einer
+ * übernommenen Variante steht der Ankertext nicht mehr im Brief, die Stelle
+ * wäre nicht auffindbar und ginge verloren — und das wäre der Augenblick, in
+ * dem der Nutzer sie am dringendsten braucht, denn er nimmt die Umformulierung
+ * ja gerade zurück. Mitfahren kostet dagegen fast nichts: Ein unveränderter
+ * Schritt teilt dieselbe Liste, es ist eine Referenz mehr je Stand.
+ *
+ * **Das Vormerken selbst ist kein Verlaufsschritt.** Dafür gibt es
+ * `setMarks`; und auch `commit` legt keinen Schritt an, wenn sich nur die
+ * Stellen ändern und das Dokument gleich bleibt. Strg+Z gehört dem Text.
+ *
  * **Kein Wiederherstellen (Redo).** Der Plan nennt nur „Strg+Z". Ein
  * zweiter Stapel wäre eine eigene Entscheidung samt eigener Grenze.
  *
@@ -44,41 +61,67 @@ export const HISTORY_LIMIT = 30
  */
 export const TYPING_BREAK_MS = 2000
 
+/** Ein Verlaufsstand: der Text und die dazu vorgemerkten Stellen. */
+interface Workspace {
+  document: DocxDocument
+  marks: readonly Mark[]
+}
+
 interface HistoryState {
-  current: DocxDocument | null
-  past: DocxDocument[]
+  current: Workspace | null
+  past: Workspace[]
   /** Das Merkmal des letzten `commit`, für das Zusammenfassen. */
   group: object | null
 }
 
 type HistoryAction =
   | { type: 'reset'; document: DocxDocument }
-  | { type: 'commit'; document: DocxDocument; group?: object }
+  | { type: 'commit'; document: DocxDocument; marks: readonly Mark[]; group?: object }
+  | { type: 'marks'; marks: readonly Mark[] }
   | { type: 'undo' }
+
+/**
+ * Eine geteilte leere Liste statt eines frischen `[]` je Zustand: So bleibt
+ * `marks` referenzgleich, solange nichts vorgemerkt ist, und Effekte, die
+ * darauf horchen, laufen nicht bei jedem Rendern erneut.
+ */
+const NO_MARKS: readonly Mark[] = []
 
 const EMPTY_STATE: HistoryState = { current: null, past: [], group: null }
 
 function reduce(state: HistoryState, action: HistoryAction): HistoryState {
   switch (action.type) {
     case 'reset':
-      return { current: action.document, past: [], group: null }
+      return { current: { document: action.document, marks: NO_MARKS }, past: [], group: null }
 
     case 'commit': {
+      const next: Workspace = { document: action.document, marks: action.marks }
       if (state.current === null) {
-        return { current: action.document, past: [], group: action.group ?? null }
+        return { current: next, past: [], group: action.group ?? null }
       }
-      if (state.current === action.document) return state
+      // Unverändertes Dokument: kein Schritt. Die Stellen werden trotzdem
+      // übernommen — eine Änderung an ihnen allein gehört nicht in den
+      // Verlauf (siehe oben), soll aber auch nicht verloren gehen.
+      if (state.current.document === action.document) {
+        return state.current.marks === action.marks ? state : { ...state, current: next }
+      }
       // Fortsetzung desselben Tipp-Laufs: der Stand wird ersetzt, kein
       // neuer Schritt angelegt.
       if (action.group !== undefined && action.group === state.group) {
-        return { ...state, current: action.document }
+        return { ...state, current: next }
       }
       const past = [...state.past, state.current]
       return {
-        current: action.document,
+        current: next,
         past: past.length > HISTORY_LIMIT ? past.slice(past.length - HISTORY_LIMIT) : past,
         group: action.group ?? null,
       }
+    }
+
+    case 'marks': {
+      if (state.current === null) return state
+      if (state.current.marks === action.marks) return state
+      return { ...state, current: { ...state.current, marks: action.marks } }
     }
 
     case 'undo': {
@@ -94,14 +137,19 @@ function reduce(state: HistoryState, action: HistoryAction): HistoryState {
 export interface DocumentHistory {
   /** Der aktuelle Stand, `null` solange nichts geladen ist. */
   document: DocxDocument | null
+  /** Die zu diesem Stand vorgemerkten Stellen. */
+  marks: readonly Mark[]
   canUndo: boolean
-  /** Ein neu geladenes Dokument: der Verlauf beginnt von vorn. */
+  /** Ein neu geladenes Dokument: der Verlauf und die Stellen beginnen von vorn. */
   reset: (document: DocxDocument) => void
   /**
-   * Ein geänderter Stand. `group` fasst aufeinanderfolgende Änderungen mit
-   * demselben Objekt zu einem Verlaufsschritt zusammen.
+   * Ein geänderter Stand samt der dazu nachgeführten Stellen. `group` fasst
+   * aufeinanderfolgende Änderungen mit demselben Objekt zu einem
+   * Verlaufsschritt zusammen.
    */
-  commit: (document: DocxDocument, group?: object) => void
+  commit: (document: DocxDocument, marks: readonly Mark[], group?: object) => void
+  /** Nur die Stellen ändern — vormerken, aufheben, abhaken. Kein Verlaufsschritt. */
+  setMarks: (marks: readonly Mark[]) => void
   undo: () => void
   /** Nur für Zusicherungen und Anzeigen: wie viele Schritte zurückliegen. */
   depth: number
@@ -113,8 +161,14 @@ export function useDocumentHistory(): DocumentHistory {
   const reset = useCallback((document: DocxDocument) => {
     dispatch({ type: 'reset', document })
   }, [])
-  const commit = useCallback((document: DocxDocument, group?: object) => {
-    dispatch({ type: 'commit', document, group })
+  const commit = useCallback(
+    (document: DocxDocument, marks: readonly Mark[], group?: object) => {
+      dispatch({ type: 'commit', document, marks, group })
+    },
+    [],
+  )
+  const setMarks = useCallback((marks: readonly Mark[]) => {
+    dispatch({ type: 'marks', marks })
   }, [])
   const undo = useCallback(() => {
     dispatch({ type: 'undo' })
@@ -122,13 +176,15 @@ export function useDocumentHistory(): DocumentHistory {
 
   return useMemo(
     () => ({
-      document: state.current,
+      document: state.current?.document ?? null,
+      marks: state.current?.marks ?? NO_MARKS,
       canUndo: state.past.length > 0,
       depth: state.past.length,
       reset,
       commit,
+      setMarks,
       undo,
     }),
-    [state, reset, commit, undo],
+    [state, reset, commit, setMarks, undo],
   )
 }
