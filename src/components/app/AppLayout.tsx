@@ -103,6 +103,10 @@ function StepTab({
 export function AppLayout() {
   const { t } = useTranslation()
   const { session } = useApp()
+  const { pathname } = useLocation()
+
+  const ownsHeight = pathname === '/'
+  const needsFrame = pathname === '/editor'
 
   return (
     <div className="flex min-h-[100dvh] flex-col lg:h-[100dvh] lg:overflow-hidden">
@@ -160,7 +164,26 @@ export function AppLayout() {
         </Link>
       </header>
 
-      <main className="flex min-h-0 flex-1 flex-col">
+      {/* Wer blättert, entscheidet die Ansicht, nicht der Rahmen.
+
+          Die Einstiegsseite regelt ihre Höhe selbst: zwei Spalten, die für
+          sich blättern, während die Seite als Ganzes stehen bleibt. Bekäme
+          sie hier zusätzlich einen Scrollbereich, gäbe es zwei ineinander.
+
+          Alle übrigen Ansichten sind fortlaufender Text und blättern wie
+          gewohnt — sonst schneidet der Rahmen sie ab, ohne dass man an den
+          Rest herankommt. */}
+      <main
+        className={cn(
+          'flex min-h-0 flex-1 flex-col',
+          ownsHeight ? '' : 'overflow-y-auto',
+          // Die Arbeitsfläche ist die einzige Ansicht, die noch keinen
+          // eigenen Rahmen mitbringt; sie wird gerade an anderer Stelle
+          // umgebaut. Bis dahin bekommt sie ihn hier. Diese Zeile fällt
+          // weg, sobald sie auf den neuen Aufbau umgestellt ist.
+          needsFrame && 'mx-auto w-full max-w-5xl px-4 py-8',
+        )}
+      >
         <Outlet />
       </main>
     </div>

@@ -36,7 +36,7 @@ export default function Privacy() {
   const { t } = useTranslation()
 
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto px-5 py-8 sm:px-8">
+    <div className="w-full px-5 py-8 sm:px-8">
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
         <h1 className="text-[length:var(--text-display-size)] leading-[var(--text-display-leading)] font-semibold tracking-[var(--text-display-tracking)] text-[var(--color-ink-strong)]">
           {t('privacy.heading')}
