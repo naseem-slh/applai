@@ -25,7 +25,7 @@ function rangeOf(text: string, needle: string) {
 /** Eine Vormerkung auf einen Wortlaut, so wie `toggleMark` sie anlegen würde. */
 function markOn(text: string, needle: string, id = needle): Mark {
   const range = rangeOf(text, needle)
-  return { id, range, anchor: needle, current: needle, done: false }
+  return { id, range, anchor: createAnchor(text, range), current: needle, done: false }
 }
 
 describe('trimRange', () => {
@@ -46,7 +46,7 @@ describe('toggleMark', () => {
       {
         id: 'm1',
         range: rangeOf(LETTER, 'ich bewerbe mich'),
-        anchor: 'ich bewerbe mich',
+        anchor: createAnchor(LETTER, rangeOf(LETTER, 'ich bewerbe mich')),
         current: 'ich bewerbe mich',
         done: false,
       },
@@ -67,7 +67,7 @@ describe('toggleMark', () => {
   it('ersetzt eine überschneidende Vormerkung durch die neue', () => {
     const existing = markOn(LETTER, 'ich bewerbe mich')
     const next = toggleMark([existing], LETTER, rangeOf(LETTER, 'mich um die Stelle'), 'm2')
-    expect(next.map((entry) => entry.anchor)).toEqual(['mich um die Stelle'])
+    expect(next.map((entry) => entry.anchor.text)).toEqual(['mich um die Stelle'])
     expect(next[0]?.id).toBe('m2')
   })
 
@@ -86,7 +86,7 @@ describe('toggleMark', () => {
   it('hält die Liste nach Position sortiert', () => {
     const late = markOn(LETTER, 'als Entwickler')
     const next = toggleMark([late], LETTER, rangeOf(LETTER, 'Sehr geehrte'), 'm2')
-    expect(next.map((entry) => entry.anchor)).toEqual(['Sehr geehrte', 'als Entwickler'])
+    expect(next.map((entry) => entry.anchor.text)).toEqual(['Sehr geehrte', 'als Entwickler'])
   })
 })
 
@@ -94,7 +94,7 @@ describe('overlappingMarks', () => {
   it('nennt die Vormerkungen, die eine Auswahl überschneidet', () => {
     const marks = [markOn(LETTER, 'ich bewerbe mich'), markOn(LETTER, 'als Entwickler')]
     const hit = overlappingMarks(marks, rangeOf(LETTER, 'mich um die Stelle'))
-    expect(hit.map((entry) => entry.anchor)).toEqual(['ich bewerbe mich'])
+    expect(hit.map((entry) => entry.anchor.text)).toEqual(['ich bewerbe mich'])
   })
 
   it('zählt eine Berührung an der Grenze nicht als Überschneidung', () => {
@@ -109,6 +109,12 @@ describe('createAnchor', () => {
     expect(anchor.text).toBe('ich bewerbe mich')
     expect(anchor.before).toBe('Sehr geehrte Damen und Herren, ')
     expect(anchor.after).toBe(' um die Stelle als Entwickler.')
+  })
+
+  it('hält den Anker fest, wie er beim Vormerken war', () => {
+    const marks = toggleMark([], LETTER, rangeOf(LETTER, 'ich bewerbe mich'), 'm1')
+    const shifted = shiftMarks(marks, rangeOf(LETTER, 'Sehr geehrte'), 4, LETTER.replace('Sehr geehrte', 'Hallo'))
+    expect(shifted[0]?.anchor).toEqual(createAnchor(LETTER, rangeOf(LETTER, 'ich bewerbe mich')))
   })
 
   it('kappt den Kontext auf beiden Seiten', () => {
@@ -164,8 +170,9 @@ describe('restoreMarks', () => {
 
     const restored = restoreMarks(text, [found, lost], (index) => `m${index}`)
 
-    expect(restored.marks.map((entry) => entry.anchor)).toEqual(['ich bewerbe mich'])
+    expect(restored.marks.map((entry) => entry.anchor.text)).toEqual(['ich bewerbe mich'])
     expect(restored.marks[0]?.range).toEqual(rangeOf(text, 'ich bewerbe mich'))
+    expect(restored.marks[0]?.anchor).toEqual(found)
     expect(restored.unresolved).toEqual([lost])
   })
 
@@ -176,7 +183,7 @@ describe('restoreMarks', () => {
 
     const restored = restoreMarks(text, [first, overlapping], (index) => `m${index}`)
 
-    expect(restored.marks.map((entry) => entry.anchor)).toEqual(['ich bewerbe mich'])
+    expect(restored.marks.map((entry) => entry.anchor.text)).toEqual(['ich bewerbe mich'])
     expect(restored.unresolved).toEqual([overlapping])
   })
 
@@ -232,7 +239,7 @@ describe('shiftMarks', () => {
     const marks = [markOn(text, 'zwei')]
     const next = shiftMarks(marks, rangeOf(text, 'zwei'), 4, 'eins ZWEI drei')
     expect(next[0]?.current).toBe('ZWEI')
-    expect(next[0]?.anchor).toBe('zwei')
+    expect(next[0]?.anchor.text).toBe('zwei')
   })
 })
 

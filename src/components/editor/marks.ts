@@ -20,10 +20,17 @@ import type { MarkAnchor } from '@/lib/storage/adapter'
  * 2. **Sie stehen in Dokumentreihenfolge.** Die Liste in der Oberfläche
  *    nummeriert sie, und eine Nummerierung, die springt, wäre keine.
  * 3. **`anchor` ändert sich nie, `current` immer.** Der Anker ist der
- *    Wortlaut beim Vormerken und geht so in den Speicher; er ist es, was die
- *    Stelle beim nächsten Anschreiben wiederfindet. `current` ist der
- *    Wortlaut, den der Bereich **jetzt** überdeckt, und dient nur der
- *    Anzeige.
+ *    vollständige {@link MarkAnchor} vom Zeitpunkt des Vormerkens — Wortlaut,
+ *    Rand und damalige Position — und geht unverändert in den Speicher; er
+ *    ist es, was die Stelle beim nächsten Anschreiben wiederfindet.
+ *    `current` ist der Wortlaut, den der Bereich **jetzt** überdeckt, und
+ *    dient nur der Anzeige.
+ *
+ *    Dass der Anker beim **Vormerken** entsteht und nicht beim Speichern,
+ *    ist der Kern der Wiederverwendung: Beim nächsten Mal wird das
+ *    Grundanschreiben geladen, nicht die für die letzte Firma angepasste
+ *    Fassung. Ein beim Speichern gebildeter Anker trüge den angepassten
+ *    Wortlaut und fände im Grundanschreiben nichts wieder.
  */
 
 /**
@@ -42,8 +49,8 @@ export interface Mark {
   /** Stabile Kennung über Textänderungen hinweg — Listenschlüssel und Auswahl. */
   id: string
   range: TextRange
-  /** Der Wortlaut beim Vormerken. Wandert als Suchanker in den Speicher. */
-  anchor: string
+  /** Der Anker vom Zeitpunkt des Vormerkens. Wandert unverändert in den Speicher. */
+  anchor: MarkAnchor
   /** Der Wortlaut, den der Bereich jetzt überdeckt. Nur für die Anzeige. */
   current: string
   /** In dieser Bewerbungsrunde erledigt. Wird nicht gespeichert. */
@@ -117,8 +124,11 @@ export function toggleMark(
   if (identical !== undefined) return marks.filter((mark) => mark !== identical)
 
   const kept = marks.filter((mark) => !overlaps(mark.range, trimmed))
-  const wording = text.slice(trimmed.from, trimmed.to)
-  return sortByPosition([...kept, { id, range: trimmed, anchor: wording, current: wording, done: false }])
+  const anchor = createAnchor(text, trimmed)
+  return sortByPosition([
+    ...kept,
+    { id, range: trimmed, anchor, current: anchor.text, done: false },
+  ])
 }
 
 /** Die speicherbare Form eines Bereichs: Wortlaut, Rand und alte Position. */
@@ -210,7 +220,7 @@ export function restoreMarks(
     marks.push({
       id: makeId(index),
       range,
-      anchor: anchor.text,
+      anchor,
       current: text.slice(range.from, range.to),
       done: false,
     })

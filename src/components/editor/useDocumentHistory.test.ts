@@ -15,7 +15,13 @@ function doc(label: string): DocxDocument {
 
 /** Eine Vormerkung, so weit die Historie sie ansieht: gar nicht. */
 function mark(id: string): Mark {
-  return { id, range: { from: 0, to: 1 }, anchor: id, current: id, done: false }
+  return {
+    id,
+    range: { from: 0, to: 1 },
+    anchor: { text: id, before: '', after: '', from: 0, to: 1 },
+    current: id,
+    done: false,
+  }
 }
 
 describe('useDocumentHistory', () => {
