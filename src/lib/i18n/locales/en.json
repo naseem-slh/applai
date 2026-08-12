@@ -257,7 +257,7 @@
       "entry": "{{number}}. “{{text}}”",
       "select": "Select this passage",
       "done": "Done",
-      "remove": "Remove from list",
+      "remove": "Remove",
       "clearAll": "Remove all",
       "next": "Next open passage",
       "restored": "Restored {{restored}} of {{total}} marked passages.",

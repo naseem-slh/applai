@@ -77,6 +77,25 @@ test.describe('Barrierefreiheit', () => {
     await scan(page)
   })
 
+  // Eigener Durchgang, weil die Merkliste erst entsteht, wenn etwas
+  // vorgemerkt ist: Der Scan oben sähe nur den Leerzustand.
+  test('Arbeitsfläche mit vorgemerkten Stellen', async ({ page }) => {
+    await stubProvider(page)
+    await page.goto('/')
+    await completeOnboarding(page)
+    await fillStartPage(page)
+    await waitForAnalysis(page)
+
+    for (const paragraph of ['ich bewerbe mich hiermit', 'Mit freundlichen Grüßen']) {
+      await page.getByRole('paragraph').filter({ hasText: paragraph }).click()
+      await page.getByRole('button', { name: t('editor.selection.currentParagraph') }).click()
+      await page.getByRole('button', { name: t('editor.marks.add') }).click()
+    }
+    await page.getByText(t('editor.marks.progress', { done: 0, total: 2 })).waitFor()
+
+    await scan(page)
+  })
+
   test('Datenschutz und Impressum', async ({ page }) => {
     await stubProvider(page)
     await page.goto('/datenschutz')

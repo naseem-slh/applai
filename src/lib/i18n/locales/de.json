@@ -257,7 +257,7 @@
       "entry": "{{number}}. „{{text}}“",
       "select": "Diese Stelle markieren",
       "done": "Erledigt",
-      "remove": "Aus der Liste nehmen",
+      "remove": "Entfernen",
       "clearAll": "Alle entfernen",
       "next": "Nächste offene Stelle",
       "restored": "{{restored}} von {{total}} Stellen wiederhergestellt.",

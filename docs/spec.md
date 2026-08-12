@@ -1,7 +1,9 @@
-# Spezifikation — die 28 Entscheidungen
+# Spezifikation — die 29 Entscheidungen
 
 Diese Tabelle ist die verbindliche Fassung. Quelle:
 [`docs/superpowers/plans/2026-08-11-applai-bauabschnitt-1.md`](superpowers/plans/2026-08-11-applai-bauabschnitt-1.md).
+Die 29. Entscheidung („Vorgemerkte Stellen") kam später dazu:
+[`docs/superpowers/specs/2026-08-12-vorgemerkte-stellen-design.md`](superpowers/specs/2026-08-12-vorgemerkte-stellen-design.md).
 
 ### Produkt und Auslieferung
 
@@ -44,6 +46,7 @@ Diese Tabelle ist die verbindliche Fassung. Quelle:
 |---|---|
 | Reihenfolge | Anschreiben zuerst, Lebenslauf im zweiten Bauabschnitt |
 | Auswahl | Freie Textmarkierung per Maus, beliebiger Bereich, auch satzübergreifend. Zusätzlich „ganzes Dokument" |
+| Vorgemerkte Stellen | Mehrere Stellen gleichzeitig vormerkbar, eine nach der anderen umformulierbar. Vormerkungen werden je Anschreiben gemerkt und beim nächsten Mal selbsttätig wiederhergestellt |
 | Ergebnis | **Drei Varianten** zur Auswahl, übernehmen oder verwerfen |
 | Stil | Stilprofil aus dem vorhandenen Anschreiben abgeleitet, einsehbar und korrigierbar. Zusätzlich zwei bis drei Schieberegler (förmlich↔locker, kurz↔ausführlich) |
 | Eigene Änderungen | Tippen überall möglich (Text ja, Formatierung nein) |
