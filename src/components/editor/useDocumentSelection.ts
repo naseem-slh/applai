@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type RefObject } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import type { DocxDocument } from '@/lib/docx/model'
 import type { Range as TextRange } from '@/lib/docx/replace'
 import {
@@ -22,6 +22,17 @@ import {
  *   die Auswahl löschen, wäre sie in genau dem Augenblick weg, in dem etwas
  *   mit ihr geschehen soll. Ein Klick **in** den Text löscht sie dagegen
  *   sehr wohl: Dort ist das Zusammenfallen die Absicht des Nutzers.
+ * - **Die fertige Markierung wird eigens gemeldet.** `selectionchange`
+ *   feuert beim Ziehen fortwährend; jeder Zwischenstand ist eine
+ *   Markierung, aber keine Absicht. Erst das Loslassen der Maustaste oder
+ *   der Umschalttaste sagt, dass der Nutzer fertig ist — und nur dann ruft
+ *   der Haken {@link DocumentSelectionOptions.onSettled}. Daran hängt das
+ *   Vormerken: Ohne diese Unterscheidung entstünde für einen Zug mit der
+ *   Maus ein Dutzend Stellen, die einander sofort wieder ersetzen.
+ *
+ *   Gemeldet wird auch ein **zusammengefallener** Bereich, also ein bloßer
+ *   Klick. Er ist die Geste, mit der eine vorgemerkte Stelle wieder
+ *   aufgehoben wird; was damit geschieht, entscheidet die Arbeitsfläche.
  * - **Jede Änderung am Dokument löscht die Markierung.** Ihre Offsets
  *   beziehen sich auf einen Text, den es danach nicht mehr gibt; sie
  *   weiterzuführen hieße, auf eine verschobene Stelle zu zeigen.
@@ -49,6 +60,12 @@ export interface DocumentSelectionOptions {
   document: DocxDocument | null
   /** Der Maus-Markierung folgen? Auf schmalen Bildschirmen nicht. */
   trackPointerSelection?: boolean
+  /**
+   * Die **fertige** Markierung, sobald Maustaste oder Umschalttaste
+   * losgelassen wurden. `null`, wenn sich kein Bereich zuordnen ließ; ein
+   * zusammengefallener Bereich (`from === to`) ist ein Klick.
+   */
+  onSettled?: (range: TextRange | null) => void
 }
 
 export function useDocumentSelection({
@@ -56,9 +73,13 @@ export function useDocumentSelection({
   // Umbenannt, damit `document` weiterhin das Browser-Dokument meint.
   document: docx,
   trackPointerSelection = true,
+  onSettled,
 }: DocumentSelectionOptions): DocumentSelectionHandle {
   const [selection, setSelection] = useState<EditorSelection | null>(null)
   const [caretParagraph, setCaretParagraph] = useState<number | null>(null)
+
+  const settled = useRef(onSettled)
+  settled.current = onSettled
 
   useEffect(() => {
     setSelection(null)
@@ -83,6 +104,37 @@ export function useDocumentSelection({
     document.addEventListener('selectionchange', handle)
     return () => document.removeEventListener('selectionchange', handle)
   }, [docx, rootRef, trackPointerSelection])
+
+  useEffect(() => {
+    const root = rootRef.current
+    if (root === null || docx === null) return
+
+    // Die Markierung wird hier **frisch gelesen**, nicht aus einem beim
+    // `selectionchange` gemerkten Wert. Das Ereignis feuert verzögert: Beim
+    // Klick in einen anderen Absatz steht im gemerkten Wert noch die vorige
+    // Markierung, und die würde dann als „dieselbe noch einmal markiert"
+    // gelten und die Vormerkung aufheben. Nachgestellt im Browser, nicht
+    // hergeleitet. Der DOM-Zustand ist zum Zeitpunkt des Loslassens bereits
+    // richtig, nur die Benachrichtigung darüber hinkt hinterher.
+    const finish = () => {
+      const domSelection = window.getSelection()
+      const anchor = domSelection?.anchorNode ?? null
+      if (domSelection === null || anchor === null || !root.contains(anchor)) return
+      settled.current?.(selectionToRange(root, domSelection))
+    }
+    // Nur das Loslassen der Umschalttaste: Jeder andere Tastendruck im
+    // Brief ist Tippen, und Tippen ist keine fertige Markierung.
+    const finishKeyboard = (event: KeyboardEvent) => {
+      if (event.key === 'Shift') finish()
+    }
+
+    root.addEventListener('pointerup', finish)
+    root.addEventListener('keyup', finishKeyboard)
+    return () => {
+      root.removeEventListener('pointerup', finish)
+      root.removeEventListener('keyup', finishKeyboard)
+    }
+  }, [docx, rootRef])
 
   const select = useCallback(
     (range: TextRange) => {

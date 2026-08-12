@@ -133,6 +133,16 @@ export interface Settings {
    * denn das ist die Voreinstellung der Anwendung.
    */
   paidKey?: boolean
+  /**
+   * Sollen die vorgemerkten Stellen für die nächste Bewerbung erhalten
+   * bleiben?
+   *
+   * Früher geschah das ungefragt. Das ist eine Entscheidung über
+   * Briefinhalte — die Anker tragen den Wortlaut der Stellen —, und die
+   * gehört dem Nutzer. Ohne Angabe wird nichts behalten: Die zurückhaltende
+   * Vorgabe ist die, die nichts speichert.
+   */
+  keepMarks?: boolean
   uiLanguage: 'de' | 'en'
   anonymize: boolean
   truthMode: TruthMode

@@ -57,6 +57,14 @@ export interface MarksOptions {
   documentText: string | null
   marks: readonly Mark[]
   setMarks: (marks: readonly Mark[]) => void
+  /**
+   * Sollen die Stellen für die nächste Bewerbung erhalten bleiben?
+   *
+   * Wird sie abgewählt, wird der gemerkte Satz **gelöscht**, nicht nur
+   * nicht mehr fortgeschrieben: „nicht behalten" heißt nicht behalten, und
+   * ein liegengebliebener Satz käme beim nächsten Öffnen zurück.
+   */
+  keep: boolean
 }
 
 export interface MarksHandle {
@@ -85,6 +93,7 @@ export function useMarks({
   documentText,
   marks,
   setMarks,
+  keep,
 }: MarksOptions): MarksHandle {
   const [unresolved, setUnresolved] = useState<readonly MarkAnchor[]>([])
   const [restore, setRestore] = useState<MarksRestore | null>(null)
@@ -157,10 +166,10 @@ export function useMarks({
     if (!ready || id === null) return
 
     const timer = setTimeout(() => {
-      void persist(storage, id, marks)
+      void persist(storage, id, keep ? marks : [])
     }, MARK_SAVE_DELAY_MS)
     return () => clearTimeout(timer)
-  }, [ready, marks, storage])
+  }, [ready, marks, storage, keep])
 
   const toggle = useCallback(
     (range: TextRange) => {

@@ -14,10 +14,12 @@ import type { EditorSelection } from './documentSelection'
  * `useDocumentSelection.ts`. Diese Datei zeigt nur an und löst aus — so
  * bleibt die Offset-Abbildung ohne Oberfläche prüfbar.
  *
- * **Das Vormerken sitzt hier und nicht in der Liste.** Vorgemerkt wird
- * immer die *laufende* Markierung, und die entsteht am Text — der Knopf
- * gehört an die Stelle, an der schon steht, was markiert ist. Die Liste in
- * der Seitenspalte (`MarkPanel`) zeigt danach, was daraus geworden ist.
+ * **Es gibt keinen Knopf zum Vormerken mehr.** Eine markierte Stelle *ist*
+ * vorgemerkt — das Markieren selbst ist die Geste. Ein Klick in eine
+ * vorgemerkte Stelle hebt sie wieder auf, eine überschneidende Markierung
+ * ersetzt sie. Ein eigener Knopf wäre ein zweiter Handgriff für etwas, das
+ * der erste schon gesagt hat. Die Liste in der Seitenspalte (`MarkPanel`)
+ * zeigt, was daraus geworden ist.
  *
  * **Die verrutschende Unterschriftsgrafik (Weitergabe aus Aufgabe 3).**
  * Ein Absatz, der ein Bild, eine Tabellenzelle oder einen Abschnittswechsel
@@ -29,19 +31,6 @@ import type { EditorSelection } from './documentSelection'
  * Absatz im Text hervor, damit der Nutzer ihn findet und seine Markierung
  * gegebenenfalls verkleinert.
  */
-
-/**
- * Was ein Druck auf „vormerken" mit der laufenden Markierung täte. Die
- * Leiste rechnet das nicht selbst aus — sie kennt die Vormerkungen nicht,
- * und die Umschaltregel steht geprüft in `marks.ts`.
- */
-export interface MarkAction {
-  /** Deckungsgleich mit einer Vormerkung: Der Knopf hebt sie auf. */
-  releases: boolean
-  /** Nummern der Vormerkungen (wie in der Liste), die ersetzt würden. */
-  replaces: readonly number[]
-  onToggle: () => void
-}
 
 export interface SelectionLayerProps {
   selection: EditorSelection | null
@@ -56,12 +45,6 @@ export interface SelectionLayerProps {
   onSelectWholeDocument: () => void
   onSelectParagraph: (index: number) => void
   onClear: () => void
-  /**
-   * Das Vormerken der laufenden Markierung. Fehlt es, kommt der Knopf gar
-   * nicht vor — so bleibt die Leiste ohne Vormerkungen genau die, die sie
-   * vorher war.
-   */
-  markAction?: MarkAction | null
   /**
    * Anbau für Aufgabe 14b: Was mit der Markierung geschehen soll
    * (`VariantPopover` samt Auslöser). Steht am Ende der Knopfreihe und
@@ -85,7 +68,6 @@ export function SelectionLayer({
   onSelectWholeDocument,
   onSelectParagraph,
   onClear,
-  markAction = null,
   actions,
 }: SelectionLayerProps) {
   const { t } = useTranslation()
@@ -97,10 +79,6 @@ export function SelectionLayer({
   function keepSelection(event: MouseEvent<HTMLButtonElement>): void {
     event.preventDefault()
   }
-
-  // Ohne Inhalt gibt es nichts vorzumerken — dieselbe Schranke, an der auch
-  // das Umformulieren hängt (siehe `EditorSelection.hasContent`).
-  const canMark = markAction !== null && selection !== null && selection.hasContent
 
   const retained = selection?.inspection.retained.filter((entry) => entry.position > 0) ?? []
   const showsShiftWarning = selection?.inspection.mayShiftContent === true && retained.length > 0
@@ -119,16 +97,6 @@ export function SelectionLayer({
             onClick={() => onSelectParagraph(caretParagraph)}
           >
             {t('editor.selection.currentParagraph')}
-          </Button>
-        )}
-        {canMark && (
-          <Button
-            variant="secondary"
-            size="sm"
-            onMouseDown={keepSelection}
-            onClick={markAction.onToggle}
-          >
-            {markAction.releases ? t('editor.marks.release') : t('editor.marks.add')}
           </Button>
         )}
         {selection !== null && (
@@ -156,14 +124,6 @@ export function SelectionLayer({
             </p>
           </>
         )}
-
-        {canMark &&
-          markAction.replaces.length > 0 &&
-          markAction.replaces.map((number) => (
-            <p key={number} className={FIELD_HINT_CLASS}>
-              {t('editor.marks.replaces', { number })}
-            </p>
-          ))}
 
         {showsShiftWarning && (
           // In `--color-error`, nicht in `--color-warning`: Letzteres

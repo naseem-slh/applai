@@ -144,6 +144,7 @@ function isSettings(value: unknown): value is Settings {
   const candidate = value as Partial<Settings>
   return (
     (candidate.paidKey === undefined || typeof candidate.paidKey === 'boolean') &&
+    (candidate.keepMarks === undefined || typeof candidate.keepMarks === 'boolean') &&
     isModelSelection(candidate.models) &&
     isModelChain(candidate.modelChain) &&
     isProviderId(candidate.provider) &&

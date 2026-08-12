@@ -13,7 +13,7 @@ import { GapList } from '@/components/editor/GapList'
 import { LanguagePrompt } from '@/components/editor/LanguagePrompt'
 import { LetterheadPanel } from '@/components/editor/LetterheadPanel'
 import { MarkPanel } from '@/components/editor/MarkPanel'
-import { SelectionLayer, type MarkAction } from '@/components/editor/SelectionLayer'
+import { SelectionLayer } from '@/components/editor/SelectionLayer'
 import { StyleProfilePanel } from '@/components/editor/StyleProfilePanel'
 import { TruthModeSwitch } from '@/components/editor/TruthModeSwitch'
 import { VariantPopover } from '@/components/editor/VariantPopover'
@@ -25,7 +25,7 @@ import {
 } from '@/components/editor/documentSelection'
 import { diffText } from '@/components/editor/editableInput'
 import { findForeignCompanies } from '@/components/editor/foreignCompanies'
-import { overlappingMarks, shiftMarks, trimRange, type Mark } from '@/components/editor/marks'
+import { shiftMarks, type Mark } from '@/components/editor/marks'
 import {
   buildRewriteRequest,
   defaultSliders,
@@ -139,13 +139,51 @@ function EditorWorkspace({ session }: { session: StartSession }) {
     }
   }, [letter, reset])
 
+  /**
+   * **Markieren ist Vormerken.** Es gibt keinen eigenen Knopf mehr: Wer eine
+   * Textstelle markiert, hat sie damit vorgemerkt, und ein Klick hinein
+   * hebt sie wieder auf. Der Handgriff, den der Nutzer ohnehin macht, sagt
+   * bereits alles; ein zweiter wäre eine Wiederholung.
+   *
+   * Gerufen wird das erst, wenn die Markierung **fertig** ist (siehe
+   * `onSettled`) — beim Ziehen meldet der Browser fortwährend
+   * Zwischenstände, und jeden davon vorzumerken hieße, für einen Zug ein
+   * Dutzend Stellen anzulegen.
+   *
+   * `toggleMark` erledigt den Rest: deckungsgleich hebt auf, überschneidend
+   * ersetzt (siehe `marks.ts`).
+   */
+  const settleSelection = useCallback(
+    (range: TextRange | null) => {
+      if (range === null) return
+      if (range.to > range.from) {
+        markHandleRef.current?.toggle(range)
+        return
+      }
+      // Zusammengefallen: ein Klick. Liegt er in einer vorgemerkten Stelle,
+      // nimmt er sie weg. Der Schreibcursor steht danach trotzdem dort, und
+      // der nächste Klick verhält sich wieder gewöhnlich.
+      const hit = marksRef.current.find(
+        (mark) => mark.range.from <= range.from && range.from <= mark.range.to,
+      )
+      if (hit !== undefined) markHandleRef.current?.remove(hit.id)
+    },
+    [],
+  )
+
   const { selection, caretParagraph, select, clear } = useDocumentSelection({
     rootRef,
     document: docx,
     trackPointerSelection: precise,
+    onSettled: settleSelection,
   })
 
   const documentText = docx?.text ?? null
+  // `settleSelection` hängt an einem Ereigniszuhörer und muss stabil
+  // bleiben; die jeweils letzte Fassung reicht ihm.
+  const marksRef = useRef<readonly Mark[]>(marks)
+  marksRef.current = marks
+
   const markHandle = useMarks({
     storage,
     // Der Fingerabdruck kommt vom **hochgeladenen** Brief, nicht vom
@@ -155,7 +193,11 @@ function EditorWorkspace({ session }: { session: StartSession }) {
     documentText,
     marks,
     setMarks,
+    keep: settings.keepMarks === true,
   })
+
+  const markHandleRef = useRef(markHandle)
+  markHandleRef.current = markHandle
 
   useMarkHighlight({ rootRef, marks })
 
@@ -519,29 +561,6 @@ function EditorWorkspace({ session }: { session: StartSession }) {
     return () => window.removeEventListener('keydown', handle)
   }, [undo])
 
-  /**
-   * Was der Knopf „vormerken" mit der laufenden Markierung täte. Gerechnet
-   * wird hier, angezeigt in der Leiste: Die Umschaltregel selbst steht
-   * geprüft in `marks.ts`, und die Leiste kennt die Vormerkungen nicht.
-   */
-  const toggleMarkAt = markHandle.toggle
-  const markAction = useMemo<MarkAction | null>(() => {
-    if (documentText === null || selection === null) return null
-    const trimmed = trimRange(documentText, selection.range)
-    if (trimmed === null) return null
-
-    const releases = marks.some(
-      (mark) => mark.range.from === trimmed.from && mark.range.to === trimmed.to,
-    )
-    return {
-      releases,
-      replaces: releases
-        ? []
-        : overlappingMarks(marks, trimmed).map((mark) => marks.indexOf(mark) + 1),
-      onToggle: () => toggleMarkAt(selection.range),
-    }
-  }, [documentText, selection, marks, toggleMarkAt])
-
   /** Die Vormerkung, die gerade markiert ist — für `aria-current` in der Liste. */
   const activeMarkId = useMemo(() => {
     if (selection === null) return null
@@ -689,11 +708,13 @@ function EditorWorkspace({ session }: { session: StartSession }) {
                   onSelectWholeDocument={() => select(wholeDocumentRange(docx))}
                   onSelectParagraph={(index) => {
                     const range = paragraphRange(docx, index)
-                    if (range !== null) select(range)
+                    if (range !== null) {
+                      select(range)
+                      markHandle.toggle(range)
+                    }
                   }}
                   onClear={clear}
-                  markAction={markAction}
-                  actions={
+                        actions={
                     <VariantPopover
                       selection={selection}
                       rewrite={rewrite}
@@ -810,6 +831,12 @@ function EditorWorkspace({ session }: { session: StartSession }) {
               unresolved={markHandle.unresolved}
               restore={markHandle.restore}
               activeId={activeMarkId}
+          keep={settings.keepMarks === true}
+          onKeepChange={(next) => {
+            // Scheitert das Speichern, bleibt der Schalter stehen, wo er
+            // war — dieselbe Behandlung wie beim Wahrheitsmodus.
+            void updateSettings({ keepMarks: next }).catch(() => {})
+          }}
               onSelect={selectMark}
               onToggleDone={markHandle.setDone}
               onRemove={markHandle.remove}

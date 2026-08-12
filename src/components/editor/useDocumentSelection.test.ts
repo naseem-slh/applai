@@ -166,4 +166,70 @@ describe('useDocumentSelection', () => {
 
     expect(result.current.selection).toBe(before)
   })
+
+  // Vorgemerkt wird erst, wenn die Markierung **fertig** ist. Beim Ziehen
+  // meldet der Browser fortwährend Zwischenstände; jeden davon vorzumerken
+  // hieße, für einen Zug mit der Maus ein Dutzend Stellen anzulegen und
+  // wieder zu ersetzen.
+  it('meldet die fertige Markierung erst beim Loslassen', () => {
+    const root = renderParagraphs(letter)
+    const settled: (unknown | null)[] = []
+    renderHook(() =>
+      useDocumentSelection({
+        rootRef: { current: root },
+        document: letter,
+        onSettled: (range) => settled.push(range),
+      }),
+    )
+
+    act(() => selectInDom(textNode(root, 0), 0, textNode(root, 0), 4))
+    expect(settled).toEqual([])
+
+    act(() => {
+      root.dispatchEvent(new Event('pointerup', { bubbles: true }))
+    })
+
+    expect(settled).toEqual([{ from: 0, to: 4 }])
+  })
+
+  it('meldet auch eine mit der Tastatur gezogene Markierung', () => {
+    const root = renderParagraphs(letter)
+    const settled: (unknown | null)[] = []
+    renderHook(() =>
+      useDocumentSelection({
+        rootRef: { current: root },
+        document: letter,
+        onSettled: (range) => settled.push(range),
+      }),
+    )
+
+    act(() => selectInDom(textNode(root, 0), 2, textNode(root, 0), 7))
+    act(() => {
+      root.dispatchEvent(new KeyboardEvent('keyup', { key: 'Shift', bubbles: true }))
+    })
+
+    expect(settled).toEqual([{ from: 2, to: 7 }])
+  })
+
+  // Der Klick: Er meldet einen zusammengefallenen Bereich. Was damit
+  // geschieht, entscheidet die Arbeitsfläche — hier zählt, dass die Stelle
+  // überhaupt genannt wird.
+  it('meldet einen Klick als zusammengefallenen Bereich', () => {
+    const root = renderParagraphs(letter)
+    const settled: (unknown | null)[] = []
+    renderHook(() =>
+      useDocumentSelection({
+        rootRef: { current: root },
+        document: letter,
+        onSettled: (range) => settled.push(range),
+      }),
+    )
+
+    act(() => selectInDom(textNode(root, 0), 5, textNode(root, 0), 5))
+    act(() => {
+      root.dispatchEvent(new Event('pointerup', { bubbles: true }))
+    })
+
+    expect(settled).toEqual([{ from: 5, to: 5 }])
+  })
 })
