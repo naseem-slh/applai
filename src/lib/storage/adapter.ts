@@ -110,6 +110,19 @@ export interface Settings {
    * ein vor dieser Einstellung gespeicherter Datensatz weiter gilt.
    */
   models?: Partial<Record<ProviderId, string>>
+  /**
+   * Ob der hinterlegte Schlüssel abgerechnet wird — die Antwort, die der
+   * Nutzer beim Einrichten gegeben hat.
+   *
+   * Kein Geheimnis und deshalb hier statt im Tresor: Der Tresor benutzt
+   * dieselbe Antwort als Sperre („kostenpflichtig nur mit Passwort"),
+   * behält sie aber nicht. Gebraucht wird sie für die Modellauswahl: Im
+   * kostenlosen Tarif sind Pro-Modelle regelmäßig nicht enthalten, und ein
+   * Modell anzubieten, das zuverlässig 429 antwortet, ist schlechter als es
+   * wegzulassen. Fehlt die Angabe, wird vom kostenlosen Tarif ausgegangen,
+   * denn das ist die Voreinstellung der Anwendung.
+   */
+  paidKey?: boolean
   uiLanguage: 'de' | 'en'
   anonymize: boolean
   truthMode: TruthMode

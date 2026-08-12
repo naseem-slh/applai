@@ -89,7 +89,12 @@ export interface KeySetupProps {
    * (`getProvider()`); wer ihn zusätzlich in den Einstellungen führen will
    * (`Settings.provider`, Aufgabe 13c), tut das hier.
    */
-  onSaved?: (provider: ProviderId) => void
+  /**
+   * Gemeldet wird auch, ob der Schlüssel abgerechnet wird. Die Antwort gab
+   * der Nutzer ohnehin; sie noch einmal zu erfragen wäre eine Zumutung, und
+   * die Modellauswahl braucht sie (siehe `Settings.paidKey`).
+   */
+  onSaved?: (provider: ProviderId, options: { paid: boolean }) => void
   className?: string
 }
 
@@ -188,7 +193,7 @@ export function KeySetup({ keyVault, onSaved, className }: KeySetupProps) {
       setSubmitted(false)
       setSaved(true)
       keyVault.refresh()
-      onSaved?.(provider)
+      onSaved?.(provider, { paid: billingActive === true })
     } catch {
       // Nie `error.message` (G8) — und die unsichere Herkunft wird an der
       // Ursache erkannt, nicht am Text der Ausnahme.

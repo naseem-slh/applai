@@ -31,6 +31,7 @@ function setup(overrides: Partial<ModelPickerProps> = {}) {
     value: undefined,
     onChange: vi.fn(),
     fieldId: 'modell',
+    paidKey: false,
     ...overrides,
   }
   render(<ModelPicker {...props} />)
@@ -82,6 +83,7 @@ describe('ModelPicker', () => {
 
     fireEvent.click(screen.getByRole('button', { name: t('settings.model.load') }))
 
+    // Beide sind Flash-Modelle, im kostenlosen Tarif bleiben also beide stehen.
     await waitFor(() =>
       expect(screen.getByText(t('settings.model.loaded', { count: 2 }))).toBeInTheDocument(),
     )
@@ -115,5 +117,48 @@ describe('ModelPicker', () => {
     fireEvent.click(screen.getByRole('button', { name: t('settings.model.load') }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent(t('ai.errors.invalid_key'))
+  })
+
+  it('lässt Pro-Modelle im kostenlosen Tarif weg', async () => {
+    const listModels = vi.fn(() =>
+      Promise.resolve([...CHOICES, { id: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' }]),
+    )
+    setup({ provider: provider({ listModels }), paidKey: false })
+
+    fireEvent.click(screen.getByRole('button', { name: t('settings.model.load') }))
+
+    await waitFor(() =>
+      expect(screen.getByText(t('settings.model.loaded', { count: 2 }))).toBeInTheDocument(),
+    )
+  })
+
+  it('nimmt Pro dazu, sobald der Schlüssel abgerechnet wird', async () => {
+    const listModels = vi.fn(() =>
+      Promise.resolve([...CHOICES, { id: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' }]),
+    )
+    setup({ provider: provider({ listModels }), paidKey: true })
+
+    fireEvent.click(screen.getByRole('button', { name: t('settings.model.load') }))
+
+    await waitFor(() =>
+      expect(screen.getByText(t('settings.model.loaded', { count: 3 }))).toBeInTheDocument(),
+    )
+  })
+
+  // Eine Heuristik über fremde Namen wird eines Tages danebenliegen. Dann
+  // darf sie nicht das Modell verstecken, das gerade gebraucht wird.
+  it('zeigt auf Wunsch alles, auch was die Heuristik aussortiert hätte', async () => {
+    const listModels = vi.fn(() =>
+      Promise.resolve([...CHOICES, { id: 'text-embedding-004', label: 'Einbettung' }]),
+    )
+    setup({ provider: provider({ listModels }), paidKey: false })
+    fireEvent.click(screen.getByRole('button', { name: t('settings.model.load') }))
+    await waitFor(() =>
+      expect(screen.getByText(t('settings.model.loaded', { count: 2 }))).toBeInTheDocument(),
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: t('settings.model.showAll') }))
+
+    expect(screen.getByText(t('settings.model.loaded', { count: 3 }))).toBeInTheDocument()
   })
 })

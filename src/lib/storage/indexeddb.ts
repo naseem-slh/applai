@@ -134,6 +134,7 @@ function isSettings(value: unknown): value is Settings {
   if (typeof value !== 'object' || value === null) return false
   const candidate = value as Partial<Settings>
   return (
+    (candidate.paidKey === undefined || typeof candidate.paidKey === 'boolean') &&
     isModelSelection(candidate.models) &&
     isProviderId(candidate.provider) &&
     (candidate.uiLanguage === 'de' || candidate.uiLanguage === 'en') &&

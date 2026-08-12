@@ -137,7 +137,9 @@ describe('KeySetup', () => {
       treatAsPaid: false,
     })
     expect(refresh).toHaveBeenCalled()
-    expect(onSaved).toHaveBeenCalledWith('gemini')
+    // Die Abrechnungsantwort geht mit: Die Modellauswahl braucht sie,
+    // und noch einmal danach zu fragen wäre eine Zumutung.
+    expect(onSaved).toHaveBeenCalledWith('gemini', { paid: false })
   })
 
   it('lässt die Abrechnungsfrage bei Google nicht unbeantwortet', async () => {

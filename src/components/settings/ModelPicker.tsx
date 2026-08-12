@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { FIELD_HINT_CLASS, FIELD_LABEL_CLASS } from '@/components/ui/Field'
 import { Input } from '@/components/ui/Input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select'
+import { filterModels } from '@/lib/ai/modelFilter'
 import type { LlmProvider, ModelChoice } from '@/lib/ai/provider'
 
 /**
@@ -37,13 +38,32 @@ export interface ModelPickerProps {
   onChange: (model: string | undefined) => void
   /** Kennung der Beschriftung des Eingabefelds. */
   fieldId: string
+  /**
+   * Wird der Schlüssel abgerechnet? Beim kostenlosen Tarif bleiben
+   * Pro-Modelle aus der Liste (siehe `modelFilter.ts`).
+   */
+  paidKey: boolean
 }
 
-export function ModelPicker({ provider, apiKey, value, onChange, fieldId }: ModelPickerProps) {
+export function ModelPicker({
+  provider,
+  apiKey,
+  value,
+  onChange,
+  fieldId,
+  paidKey,
+}: ModelPickerProps) {
   const { t } = useTranslation()
   const [choices, setChoices] = useState<ModelChoice[] | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<unknown>(null)
+  // Der Notausgang aus der Heuristik: Sie beurteilt fremde Namen und wird
+  // eines Tages danebenliegen. Dann darf sie nicht das Modell verstecken,
+  // das gerade gebraucht wird.
+  const [showAll, setShowAll] = useState(false)
+
+  const shown =
+    choices === null ? null : showAll ? choices : filterModels(choices, { includePro: paidKey })
 
   const load = provider.listModels
   async function loadModels(): Promise<void> {
@@ -100,23 +120,33 @@ export function ModelPicker({ provider, apiKey, value, onChange, fieldId }: Mode
 
       {error !== null && <AiErrorNotice error={error} />}
 
-      {choices !== null && choices.length > 0 && (
+      {shown !== null && shown.length > 0 && (
         <div className="flex flex-col gap-2">
           <p role="status" className={FIELD_HINT_CLASS}>
-            {t('settings.model.loaded', { count: choices.length })}
+            {t('settings.model.loaded', { count: shown.length })}
           </p>
+          <p className={FIELD_HINT_CLASS}>{t('settings.model.filtered')}</p>
           <Select value={value ?? provider.model} onValueChange={(next) => onChange(next)}>
             <SelectTrigger aria-label={t('settings.model.choose')}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {choices.map((choice) => (
+              {shown.map((choice) => (
                 <SelectItem key={choice.id} value={choice.id}>
                   {choice.label}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="self-start"
+            aria-pressed={showAll}
+            onClick={() => setShowAll((current) => !current)}
+          >
+            {t('settings.model.showAll')}
+          </Button>
         </div>
       )}
     </div>

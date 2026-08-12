@@ -116,7 +116,9 @@ describe('Settings — Anbieter und Schlüssel', () => {
     choose(t('onboarding.key.billingLabel'), t('onboarding.key.billingFree'))
     await user.click(screen.getByRole('button', { name: t('onboarding.key.submit') }))
 
-    await waitFor(() => expect(updateSettings).toHaveBeenCalledWith({ provider: 'gemini' }))
+    await waitFor(() =>
+      expect(updateSettings).toHaveBeenCalledWith({ provider: 'gemini', paidKey: false }),
+    )
   })
 })
 

@@ -321,7 +321,7 @@ export default function SettingsRoute() {
           <KeySetup
             keyVault={keyVault}
             className="max-w-none"
-            onSaved={(provider) => void change({ provider })}
+            onSaved={(provider, { paid }) => void change({ provider, paidKey: paid })}
           />
         </section>
 
@@ -335,6 +335,7 @@ export default function SettingsRoute() {
               fieldId={`${prefix}-model-field`}
               provider={providerFor(providerFromVault, settings.models?.[providerFromVault])}
               apiKey={keyVault.vault?.getKey() ?? null}
+              paidKey={settings.paidKey === true}
               value={settings.models?.[providerFromVault]}
               onChange={(model) =>
                 void change({ models: { ...settings.models, [providerFromVault]: model } })

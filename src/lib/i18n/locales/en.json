@@ -530,7 +530,9 @@
       "choose": "Choose from the list",
       "reset": "Use the default",
       "current": "Default: {{model}}",
-      "needsKey": "The key must be unlocked to load the list."
+      "needsKey": "The key must be unlocked to load the list.",
+      "showAll": "Show all models",
+      "filtered": "Only models that output text. On the free tier without Pro models, which it usually does not include."
     }
   },
   "vault": {

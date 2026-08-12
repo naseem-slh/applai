@@ -291,8 +291,8 @@ export default function Start({ loaders = DEFAULT_LOADERS }: StartProps) {
       // folgenlos — deshalb keine Meldung.
       <KeySetup
         keyVault={keyVault}
-        onSaved={(provider) => {
-          void updateSettings({ provider }).catch(() => {})
+        onSaved={(provider, { paid }) => {
+          void updateSettings({ provider, paidKey: paid }).catch(() => {})
         }}
       />,
     )
