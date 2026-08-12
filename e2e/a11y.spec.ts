@@ -40,80 +40,115 @@ async function scan(page: Page): Promise<void> {
   ).toEqual([])
 }
 
-test.describe('Barrierefreiheit', () => {
-  test('Einstiegsseite, Erststart mit Datenschutzhinweis', async ({ page }) => {
-    await stubProvider(page)
-    await page.goto('/')
-    await page.getByRole('heading', { name: t('onboarding.privacy.heading') }).waitFor()
+/**
+ * Die geprüften Ansichten — je eine Funktion, die die Anwendung dorthin
+ * bringt. Vom Prüfen getrennt, weil jede Ansicht bei **jeder**
+ * Fenstergröße durchlaufen wird.
+ */
+const VIEWS: { name: string; open: (page: Page) => Promise<void> }[] = [
+  {
+    name: 'Einstiegsseite, Erststart mit Datenschutzhinweis',
+    open: async (page) => {
+      await page.goto('/')
+      await page.getByRole('heading', { name: t('onboarding.privacy.heading') }).waitFor()
+    },
+  },
+  {
+    name: 'Schlüsseleinrichtung',
+    open: async (page) => {
+      await page.goto('/')
+      await page.getByRole('button', { name: t('onboarding.privacy.accept') }).click()
+      await page.getByRole('heading', { name: t('onboarding.key.heading') }).waitFor()
+    },
+  },
+  {
+    name: 'Einstiegsseite mit Unterlagen und Bewerbungsliste',
+    open: async (page) => {
+      await page.goto('/')
+      await completeOnboarding(page)
+      await page.getByRole('heading', { name: t('start.documents.heading') }).waitFor()
+    },
+  },
+  {
+    name: 'Arbeitsfläche samt Seitenspalte und Export',
+    open: async (page) => {
+      await page.goto('/')
+      await completeOnboarding(page)
+      await fillStartPage(page)
+      await waitForAnalysis(page)
+    },
+  },
+  {
+    // Eigener Durchgang, weil die Merkliste erst entsteht, wenn etwas
+    // vorgemerkt ist: Der Durchgang darüber sähe nur den Leerzustand.
+    name: 'Arbeitsfläche mit vorgemerkten Stellen',
+    open: async (page) => {
+      await page.goto('/')
+      await completeOnboarding(page)
+      await fillStartPage(page)
+      await waitForAnalysis(page)
 
-    await scan(page)
-  })
+      for (const paragraph of ['ich bewerbe mich hiermit', 'Mit freundlichen Grüßen']) {
+        await page.getByRole('paragraph').filter({ hasText: paragraph }).click()
+        await page.getByRole('button', { name: t('editor.selection.currentParagraph') }).click()
+        await page.getByRole('button', { name: t('editor.marks.add') }).click()
+      }
+      // Auf schmalen Fenstern sind die Bereiche der Seitenspalte
+      // zugeklappt. Zugeklappt ist die Merkliste weder für den Nutzer noch
+      // für axe da — und geprüft werden soll sie aufgeklappt.
+      const progress = page.getByText(t('editor.marks.progress', { done: 0, total: 2 }))
+      if (!(await progress.isVisible())) {
+        await page.getByRole('heading', { level: 3, name: t('editor.marks.heading') }).click()
+      }
+      await progress.waitFor()
+    },
+  },
+  {
+    name: 'Datenschutz und Impressum',
+    open: async (page) => {
+      await page.goto('/datenschutz')
+      await page.getByRole('heading', { level: 1, name: t('privacy.heading') }).waitFor()
+    },
+  },
+  {
+    name: 'Einstellungen',
+    open: async (page) => {
+      await page.goto('/')
+      await completeOnboarding(page)
+      await page.getByRole('link', { name: t('nav.settings') }).click()
+      await page.getByRole('heading', { name: t('routes.settings.heading') }).waitFor()
+    },
+  },
+]
 
-  test('Schlüsseleinrichtung', async ({ page }) => {
-    await stubProvider(page)
-    await page.goto('/')
-    await page.getByRole('button', { name: t('onboarding.privacy.accept') }).click()
-    await page.getByRole('heading', { name: t('onboarding.key.heading') }).waitFor()
+/**
+ * Breit und schmal. Der schmale Durchgang ist keine Zugabe, sondern der
+ * Teil, der die Fehler findet: Was bei 1280 Pixeln im Baum steht, kann bei
+ * 390 mit `hidden` ausgeblendet sein — und `hidden` nimmt eine Beschriftung
+ * nicht nur aus dem Bild, sondern auch aus dem Zugänglichkeitsbaum. Genau so
+ * sind zwei Verweise ohne Namen in der Kopfzeile durch alle bisherigen
+ * Durchgänge gerutscht, weil sie sämtlich breit liefen.
+ *
+ * 390 × 700 ist ein heute übliches Telefon.
+ */
+const VIEWPORTS = [
+  { name: 'breites Fenster', size: { width: 1280, height: 720 } },
+  { name: 'schmales Fenster', size: { width: 390, height: 700 } },
+]
 
-    await scan(page)
-  })
+for (const viewport of VIEWPORTS) {
+  test.describe(`Barrierefreiheit, ${viewport.name}`, () => {
+    for (const view of VIEWS) {
+      test(view.name, async ({ page }) => {
+        await page.setViewportSize(viewport.size)
+        await stubProvider(page)
+        await view.open(page)
 
-  test('Einstiegsseite mit Unterlagen und Bewerbungsliste', async ({ page }) => {
-    await stubProvider(page)
-    await page.goto('/')
-    await completeOnboarding(page)
-    await page.getByRole('heading', { name: t('start.documents.heading') }).waitFor()
-
-    await scan(page)
-  })
-
-  test('Arbeitsfläche samt Seitenspalte und Export', async ({ page }) => {
-    await stubProvider(page)
-    await page.goto('/')
-    await completeOnboarding(page)
-    await fillStartPage(page)
-    await waitForAnalysis(page)
-
-    await scan(page)
-  })
-
-  // Eigener Durchgang, weil die Merkliste erst entsteht, wenn etwas
-  // vorgemerkt ist: Der Scan oben sähe nur den Leerzustand.
-  test('Arbeitsfläche mit vorgemerkten Stellen', async ({ page }) => {
-    await stubProvider(page)
-    await page.goto('/')
-    await completeOnboarding(page)
-    await fillStartPage(page)
-    await waitForAnalysis(page)
-
-    for (const paragraph of ['ich bewerbe mich hiermit', 'Mit freundlichen Grüßen']) {
-      await page.getByRole('paragraph').filter({ hasText: paragraph }).click()
-      await page.getByRole('button', { name: t('editor.selection.currentParagraph') }).click()
-      await page.getByRole('button', { name: t('editor.marks.add') }).click()
+        await scan(page)
+      })
     }
-    await page.getByText(t('editor.marks.progress', { done: 0, total: 2 })).waitFor()
-
-    await scan(page)
   })
-
-  test('Datenschutz und Impressum', async ({ page }) => {
-    await stubProvider(page)
-    await page.goto('/datenschutz')
-    await page.getByRole('heading', { level: 1, name: t('privacy.heading') }).waitFor()
-
-    await scan(page)
-  })
-
-  test('Einstellungen', async ({ page }) => {
-    await stubProvider(page)
-    await page.goto('/')
-    await completeOnboarding(page)
-    await page.getByRole('link', { name: t('nav.settings') }).click()
-    await page.getByRole('heading', { name: t('routes.settings.heading') }).waitFor()
-
-    await scan(page)
-  })
-})
+}
 
 test.describe('Bedienung mit der Tastatur', () => {
   test('markieren mit Umschalt+Pfeiltasten und die Variantenauswahl erreichen', async ({ page }) => {
