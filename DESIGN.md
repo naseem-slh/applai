@@ -375,15 +375,20 @@ Knopfes gar nicht unwahr werden, weil er keinen nennt — und er ist kürzer.
 
 **Warum das eine Schreibregel ist und kein Test.** Ein Wächter „jedes
 Zitat muss der Wert eines anderen Schlüssels sein" wurde erwogen und
-ausgezählt: 20 Zitate im Deutschen, davon **zwei** auf ein eigenes
-Bedienelement auflösbar und sechzehn Fremdbegriffe aus den Konsolen der
+ausgezählt: 16 Zitate im Deutschen, davon **eines** auf ein eigenes
+Bedienelement auflösbar und dreizehn Fremdbegriffe aus den Konsolen der
 Anbieter („Get API key", „API keys", „AIza", „sk-ant-"). Vier Fünftel
 wären Ausnahmen gewesen. Schlimmer: Im Englischen löst
 `onboarding.key.guide.anthropic.step2` das Zitat „Settings" zufällig auf
 `routes.settings.heading` auf, gemeint ist aber Anthropics Menüpunkt — der
 Wächter hätte dort grün gemeldet und danebengelegen. Ein Wächter, der
-zwei Fälle schützt, fünfzehn Ausnahmen verwaltet und einmal still irrt,
+einen Fall schützt, dreizehn Ausnahmen verwaltet und einmal still irrt,
 kostet mehr, als er einbringt.
+
+Die Zahlen stammen aus `.scratch/zitate.py` und gelten für den Stand nach
+dem Aufräumen der drei Ansichten. Wer sie nachrechnet und andere Werte
+bekommt, hat vermutlich gerade Oberflächentexte hinzugefügt; das Verhältnis
+ist das Argument, nicht die einzelne Zahl.
 
 Zitate um **fremde** Beschriftungen sind ausdrücklich richtig: Wer durch
 die Konsole eines Anbieters führt, muss dessen Wörter nennen. Die Regel
