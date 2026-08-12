@@ -1,4 +1,4 @@
-import type { Application, Draft, Settings, StorageAdapter, TruthMode } from './adapter'
+import type { Application, Draft, MarkAnchor, MarkSet, Settings, StorageAdapter, TruthMode } from './adapter'
 import { isProviderId } from './keyVault'
 
 /**
@@ -11,11 +11,18 @@ import { isProviderId } from './keyVault'
  * dieser Datei rührt den Tresor nicht an — er hat seine eigene `clear()`.
  */
 export const STORAGE_DB_NAME = 'applai-storage'
-const STORAGE_DB_VERSION = 1
+/**
+ * Fassung 2 seit den vorgemerkten Stellen: Sie hat den Speicher `markSets`
+ * dazubekommen. `onupgradeneeded` legt jeden Speicher nur an, wenn er fehlt —
+ * eine im Browser stehende Datenbank der Fassung 1 wächst also mit, ohne
+ * ihren Bestand zu verlieren.
+ */
+const STORAGE_DB_VERSION = 2
 
 export const APPLICATIONS_STORE = 'applications'
 export const DRAFTS_STORE = 'drafts'
 export const SETTINGS_STORE = 'settings'
+export const MARK_SETS_STORE = 'markSets'
 
 /** Einziger Datensatz des Einstellungs-Speichers. */
 const SETTINGS_KEY = 'settings'
@@ -39,7 +46,15 @@ export const DEFAULT_SETTINGS: Settings = {
  * `STORAGE_DB_VERSION`. Ändert sich das Format der Datei, steigt diese Zahl,
  * und `importAll` kann alte Dateien erkennen und migrieren oder ablehnen.
  */
-export const EXPORT_FORMAT_VERSION = 1
+export const EXPORT_FORMAT_VERSION = 2
+
+/**
+ * Welche Fassungen `importAll` annimmt. Fassung 1 kannte die vorgemerkten
+ * Stellen noch nicht; eine solche Datei bleibt lesbar und liefert schlicht
+ * keine. Eine alte Sicherung abzulehnen, wäre der schlechteste Zeitpunkt
+ * dafür — sie wird gelesen, wenn sonst nichts mehr da ist.
+ */
+const SUPPORTED_EXPORT_VERSIONS: readonly number[] = [1, EXPORT_FORMAT_VERSION]
 
 function isTruthMode(value: unknown): value is TruthMode {
   return value === 'strict' || value === 'bridge' || value === 'free'
@@ -106,12 +121,36 @@ function isSettings(value: unknown): value is Settings {
   )
 }
 
+function isMarkAnchor(value: unknown): value is MarkAnchor {
+  if (typeof value !== 'object' || value === null) return false
+  const candidate = value as Partial<MarkAnchor>
+  return (
+    typeof candidate.text === 'string' &&
+    typeof candidate.before === 'string' &&
+    typeof candidate.after === 'string' &&
+    Number.isInteger(candidate.from) &&
+    Number.isInteger(candidate.to)
+  )
+}
+
+function isMarkSet(value: unknown): value is MarkSet {
+  if (typeof value !== 'object' || value === null) return false
+  const candidate = value as Partial<MarkSet>
+  return (
+    typeof candidate.id === 'string' &&
+    typeof candidate.savedAt === 'number' &&
+    Array.isArray(candidate.anchors) &&
+    candidate.anchors.every(isMarkAnchor)
+  )
+}
+
 interface ExportPayload {
   formatVersion: number
   exportedAt: string
   applications: Application[]
   drafts: ExportedDraft[]
   settings: Settings
+  markSets: MarkSet[]
 }
 
 /**
@@ -125,7 +164,10 @@ function parseExportPayload(value: unknown): ExportPayload {
     throw new Error('Die Sicherungsdatei ist beschädigt oder kein gültiges Applai-Backup.')
   }
   const candidate = value as Partial<ExportPayload>
-  if (candidate.formatVersion !== EXPORT_FORMAT_VERSION) {
+  if (
+    typeof candidate.formatVersion !== 'number' ||
+    !SUPPORTED_EXPORT_VERSIONS.includes(candidate.formatVersion)
+  ) {
     throw new Error(`Die Sicherungsdatei hat eine unbekannte Version (${String(candidate.formatVersion)}).`)
   }
   if (!Array.isArray(candidate.applications) || !candidate.applications.every(isApplication)) {
@@ -137,12 +179,18 @@ function parseExportPayload(value: unknown): ExportPayload {
   if (!isSettings(candidate.settings)) {
     throw new Error('Die Sicherungsdatei ist beschädigt: Die Einstellungen sind ungültig.')
   }
+  // Fehlt in einer Datei der Fassung 1 und ist dort auch kein Mangel.
+  const markSets = candidate.markSets ?? []
+  if (!Array.isArray(markSets) || !markSets.every(isMarkSet)) {
+    throw new Error('Die Sicherungsdatei ist beschädigt: Die vorgemerkten Stellen sind ungültig.')
+  }
   return {
     formatVersion: candidate.formatVersion,
     exportedAt: typeof candidate.exportedAt === 'string' ? candidate.exportedAt : new Date(0).toISOString(),
     applications: candidate.applications,
     drafts: candidate.drafts,
     settings: candidate.settings,
+    markSets,
   }
 }
 
@@ -187,6 +235,9 @@ function openDatabase(): Promise<IDBDatabase> {
       }
       if (!db.objectStoreNames.contains(SETTINGS_STORE)) {
         db.createObjectStore(SETTINGS_STORE)
+      }
+      if (!db.objectStoreNames.contains(MARK_SETS_STORE)) {
+        db.createObjectStore(MARK_SETS_STORE, { keyPath: 'id' })
       }
     }
     request.onsuccess = () => resolve(request.result)
@@ -344,6 +395,31 @@ async function purgeExpiredDrafts(maxAgeMs: number): Promise<number> {
   })
 }
 
+async function listMarkSets(): Promise<MarkSet[]> {
+  return withTransaction([MARK_SETS_STORE], 'readonly', (tx) =>
+    promisifyRequest(tx.objectStore(MARK_SETS_STORE).getAll()),
+  )
+}
+
+async function loadMarkSet(id: string): Promise<MarkSet | null> {
+  const set = await withTransaction([MARK_SETS_STORE], 'readonly', (tx) =>
+    promisifyRequest<MarkSet | undefined>(tx.objectStore(MARK_SETS_STORE).get(id)),
+  )
+  return set ?? null
+}
+
+async function saveMarkSet(set: MarkSet): Promise<void> {
+  await withTransaction([MARK_SETS_STORE], 'readwrite', async (tx) => {
+    await promisifyRequest(tx.objectStore(MARK_SETS_STORE).put(set))
+  })
+}
+
+async function deleteMarkSet(id: string): Promise<void> {
+  await withTransaction([MARK_SETS_STORE], 'readwrite', async (tx) => {
+    await promisifyRequest(tx.objectStore(MARK_SETS_STORE).delete(id))
+  })
+}
+
 async function getSettings(): Promise<Settings> {
   const stored = await withTransaction([SETTINGS_STORE], 'readonly', (tx) =>
     promisifyRequest<Settings | undefined>(tx.objectStore(SETTINGS_STORE).get(SETTINGS_KEY)),
@@ -372,10 +448,11 @@ async function saveSettings(settings: Settings): Promise<void> {
 }
 
 async function exportAll(): Promise<Blob> {
-  const [applications, drafts, settings] = await Promise.all([
+  const [applications, drafts, settings, markSets] = await Promise.all([
     listApplications(),
     withTransaction([DRAFTS_STORE], 'readonly', (tx) => promisifyRequest<Draft[]>(tx.objectStore(DRAFTS_STORE).getAll())),
     getSettings(),
+    listMarkSets(),
   ])
   const payload: ExportPayload = {
     formatVersion: EXPORT_FORMAT_VERSION,
@@ -388,6 +465,7 @@ async function exportAll(): Promise<Blob> {
       docxBase: arrayBufferToBase64(draft.docxBase),
     })),
     settings,
+    markSets,
   }
   return new Blob([JSON.stringify(payload)], { type: 'application/json' })
 }
@@ -398,16 +476,18 @@ async function importAll(file: File): Promise<void> {
   const raw: unknown = JSON.parse(await file.text())
   const payload = parseExportPayload(raw)
 
-  await withTransaction([APPLICATIONS_STORE, DRAFTS_STORE, SETTINGS_STORE], 'readwrite', async (tx) => {
+  await withTransaction([APPLICATIONS_STORE, DRAFTS_STORE, SETTINGS_STORE, MARK_SETS_STORE], 'readwrite', async (tx) => {
     const applicationsStore = tx.objectStore(APPLICATIONS_STORE)
     const draftsStore = tx.objectStore(DRAFTS_STORE)
     const settingsStore = tx.objectStore(SETTINGS_STORE)
+    const markSetsStore = tx.objectStore(MARK_SETS_STORE)
 
     // importAll stellt eine Sicherung wieder her — es führt nicht mit dem
     // aktuellen Bestand zusammen, sondern ersetzt ihn vollständig. Alles
     // andere wäre für eine Wiederherstellung überraschend.
     await promisifyRequest(applicationsStore.clear())
     await promisifyRequest(draftsStore.clear())
+    await promisifyRequest(markSetsStore.clear())
 
     for (const application of payload.applications) {
       await promisifyRequest(applicationsStore.put(application))
@@ -421,18 +501,22 @@ async function importAll(file: File): Promise<void> {
       }
       await promisifyRequest(draftsStore.put(restored))
     }
+    for (const set of payload.markSets) {
+      await promisifyRequest(markSetsStore.put(set))
+    }
     await promisifyRequest(settingsStore.put(payload.settings, SETTINGS_KEY))
   })
 }
 
 async function clearAll(): Promise<void> {
-  // Eine gemeinsame Transaktion über alle drei Speicher: entweder wird
+  // Eine gemeinsame Transaktion über alle vier Speicher: entweder wird
   // vollständig geleert oder gar nicht. Die Datenbank des Schlüsseltresors
   // (`applai-key-vault`) ist eine andere Datenbank und kommt hier nicht vor.
-  await withTransaction([APPLICATIONS_STORE, DRAFTS_STORE, SETTINGS_STORE], 'readwrite', async (tx) => {
+  await withTransaction([APPLICATIONS_STORE, DRAFTS_STORE, SETTINGS_STORE, MARK_SETS_STORE], 'readwrite', async (tx) => {
     await promisifyRequest(tx.objectStore(APPLICATIONS_STORE).clear())
     await promisifyRequest(tx.objectStore(DRAFTS_STORE).clear())
     await promisifyRequest(tx.objectStore(SETTINGS_STORE).clear())
+    await promisifyRequest(tx.objectStore(MARK_SETS_STORE).clear())
   })
 }
 
@@ -445,6 +529,10 @@ export function createIndexedDbAdapter(): StorageAdapter {
     loadDraft,
     deleteDraft,
     purgeExpiredDrafts,
+    listMarkSets,
+    loadMarkSet,
+    saveMarkSet,
+    deleteMarkSet,
     getSettings,
     hasSettings,
     saveSettings,

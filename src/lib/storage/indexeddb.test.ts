@@ -3,12 +3,13 @@
 // unter tsconfig.test.json.
 import 'fake-indexeddb/auto'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { Application, Draft, Settings } from './adapter'
+import type { Application, Draft, MarkAnchor, MarkSet, Settings } from './adapter'
 import {
   APPLICATIONS_STORE,
   DEFAULT_SETTINGS,
   DRAFTS_STORE,
   EXPORT_FORMAT_VERSION,
+  MARK_SETS_STORE,
   SETTINGS_STORE,
   STORAGE_DB_NAME,
   createIndexedDbAdapter,
@@ -108,6 +109,19 @@ function makeDraft(overrides: Partial<Draft> = {}): Draft {
     id: 'entwurf-1',
     docxBase: makeArrayBuffer([80, 75, 3, 4, 255, 0, 128]),
     text: 'Sehr geehrte Damen und Herren,',
+    savedAt: Date.now(),
+    ...overrides,
+  }
+}
+
+function makeAnchor(text: string, from: number): MarkAnchor {
+  return { text, before: 'davor ', after: ' danach', from, to: from + text.length }
+}
+
+function makeMarkSet(overrides: Partial<MarkSet> = {}): MarkSet {
+  return {
+    id: 'abdruck-eins',
+    anchors: [makeAnchor('ich bewerbe mich', 31)],
     savedAt: Date.now(),
     ...overrides,
   }
@@ -394,6 +408,56 @@ describe('hasSettings', () => {
   })
 })
 
+describe('Vormerkungen', () => {
+  it('legt einen Satz an und liest ihn zurück', async () => {
+    const adapter = createIndexedDbAdapter()
+    const set = makeMarkSet()
+
+    await adapter.saveMarkSet(set)
+
+    expect(await adapter.loadMarkSet('abdruck-eins')).toEqual(set)
+  })
+
+  it('gibt null zurück, wenn zu diesem Anschreiben nichts gemerkt ist', async () => {
+    const adapter = createIndexedDbAdapter()
+    expect(await adapter.loadMarkSet('nie-gesehen')).toBeNull()
+  })
+
+  it('überschreibt den Satz desselben Anschreibens, statt einen zweiten anzulegen', async () => {
+    const adapter = createIndexedDbAdapter()
+    await adapter.saveMarkSet(makeMarkSet())
+
+    await adapter.saveMarkSet(makeMarkSet({ anchors: [makeAnchor('als Entwickler', 62)] }))
+
+    const sets = await adapter.listMarkSets()
+    expect(sets).toHaveLength(1)
+    expect(sets[0]?.anchors[0]?.text).toBe('als Entwickler')
+  })
+
+  it('löscht einen Satz', async () => {
+    const adapter = createIndexedDbAdapter()
+    await adapter.saveMarkSet(makeMarkSet())
+
+    await adapter.deleteMarkSet('abdruck-eins')
+
+    expect(await adapter.loadMarkSet('abdruck-eins')).toBeNull()
+  })
+
+  it('löst nicht, wenn ein unbekannter Satz gelöscht wird', async () => {
+    const adapter = createIndexedDbAdapter()
+    await expect(adapter.deleteMarkSet('nie-gesehen')).resolves.toBeUndefined()
+  })
+
+  it('listet die Sätze mehrerer Anschreiben', async () => {
+    const adapter = createIndexedDbAdapter()
+    await adapter.saveMarkSet(makeMarkSet({ id: 'abdruck-eins' }))
+    await adapter.saveMarkSet(makeMarkSet({ id: 'abdruck-zwei' }))
+
+    const ids = (await adapter.listMarkSets()).map((set) => set.id).sort()
+    expect(ids).toEqual(['abdruck-eins', 'abdruck-zwei'])
+  })
+})
+
 describe('exportAll / importAll', () => {
   it('exportiert eine Blob-Datei mit Versionsfeld', async () => {
     const adapter = createIndexedDbAdapter()
@@ -550,17 +614,57 @@ describe('exportAll / importAll', () => {
   })
 })
 
+describe('Sicherung mit Vormerkungen', () => {
+  it('nimmt die vorgemerkten Stellen mit und stellt sie wieder her', async () => {
+    const adapter = createIndexedDbAdapter()
+    const set = makeMarkSet()
+    await adapter.saveMarkSet(set)
+    const blob = await adapter.exportAll()
+    const file = new File([await blob.text()], 'sicherung.json', { type: 'application/json' })
+
+    await adapter.clearAll()
+    await adapter.importAll(file)
+
+    expect(await adapter.loadMarkSet('abdruck-eins')).toEqual(set)
+  })
+
+  it('nimmt eine Sicherungsdatei der Fassung 1 ohne Vormerkungen an', async () => {
+    const adapter = createIndexedDbAdapter()
+    const alteDatei = new File(
+      [
+        JSON.stringify({
+          formatVersion: 1,
+          exportedAt: '2026-08-01T00:00:00.000Z',
+          applications: [{ id: 'a1', company: 'A', position: 'B', date: '2026-01-01' }],
+          drafts: [],
+          settings: DEFAULT_SETTINGS,
+        }),
+      ],
+      'alt.json',
+      { type: 'application/json' },
+    )
+
+    await adapter.importAll(alteDatei)
+
+    expect(await adapter.listApplications()).toHaveLength(1)
+    expect(await adapter.listMarkSets()).toEqual([])
+  })
+})
+
 describe('clearAll', () => {
   it('leert Bewerbungen, Entwürfe und Einstellungen restlos', async () => {
     const adapter = createIndexedDbAdapter()
     await adapter.addApplication({ company: 'A', position: 'B', date: '2026-01-01' })
     await adapter.saveDraft(makeDraft())
     await adapter.saveSettings({ ...DEFAULT_SETTINGS, theme: 'dark' })
+    await adapter.saveMarkSet(makeMarkSet())
 
     await adapter.clearAll()
 
     expect(await adapter.listApplications()).toEqual([])
     expect(await adapter.loadDraft('entwurf-1')).toBeNull()
+    expect(await adapter.listMarkSets()).toEqual([])
+    expect(await readRawStore(MARK_SETS_STORE)).toHaveLength(0)
     // Nach dem Löschen gelten wieder die Vorgaben, weil nichts mehr abgelegt ist.
     expect(await adapter.getSettings()).toEqual(DEFAULT_SETTINGS)
     expect(await readRawStore(APPLICATIONS_STORE)).toHaveLength(0)
@@ -594,16 +698,43 @@ describe('eigene, vom Schlüsseltresor getrennte Datenbank', () => {
     expect(STORAGE_DB_NAME).not.toBe(VAULT_DB_NAME)
   })
 
-  it('legt die drei erwarteten Objektspeicher an', async () => {
+  it('legt die vier erwarteten Objektspeicher an', async () => {
     await createIndexedDbAdapter().listApplications()
 
     const db = await promisify(indexedDB.open(STORAGE_DB_NAME))
     try {
       expect(Array.from(db.objectStoreNames).sort()).toEqual(
-        [APPLICATIONS_STORE, DRAFTS_STORE, SETTINGS_STORE].sort(),
+        [APPLICATIONS_STORE, DRAFTS_STORE, MARK_SETS_STORE, SETTINGS_STORE].sort(),
       )
     } finally {
       db.close()
     }
+  })
+
+  it('rüstet eine Datenbank der Fassung 1 um, ohne ihren Bestand zu verlieren', async () => {
+    // Eine Datenbank, wie sie vor den Vormerkungen aussah: Fassung 1, drei
+    // Speicher, ein Datensatz darin. Der Nutzer hat sie im Browser stehen.
+    const alteDatenbank = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open(STORAGE_DB_NAME, 1)
+      request.onupgradeneeded = () => {
+        request.result.createObjectStore(APPLICATIONS_STORE, { keyPath: 'id' })
+        request.result.createObjectStore(DRAFTS_STORE, { keyPath: 'id' })
+        request.result.createObjectStore(SETTINGS_STORE)
+      }
+      request.onsuccess = () => resolve(request.result)
+      request.onerror = () => reject(request.error)
+    })
+    const bestand: Application = { id: 'a1', company: 'Alt GmbH', position: 'Stelle', date: '2026-01-01' }
+    const tx = alteDatenbank.transaction(APPLICATIONS_STORE, 'readwrite')
+    tx.objectStore(APPLICATIONS_STORE).put(bestand)
+    await new Promise<void>((resolve) => {
+      tx.oncomplete = () => resolve()
+    })
+    alteDatenbank.close()
+
+    const adapter = createIndexedDbAdapter()
+
+    expect(await adapter.listApplications()).toEqual([bestand])
+    expect(await adapter.listMarkSets()).toEqual([])
   })
 })

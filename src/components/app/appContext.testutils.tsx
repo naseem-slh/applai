@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { vi } from 'vitest'
-import type { Application, Draft, Settings, StorageAdapter } from '@/lib/storage/adapter'
+import type { Application, Draft, MarkSet, Settings, StorageAdapter } from '@/lib/storage/adapter'
 import { DEFAULT_SETTINGS } from '@/lib/storage/indexeddb'
 import type { KeyVault } from '@/lib/storage/keyVault'
 import type { KeyVaultHandle, KeyVaultStatus } from '@/components/onboarding/useKeyVault'
@@ -25,6 +25,7 @@ export interface FakeStorage extends StorageAdapter {
     applications: Application[]
     drafts: Map<string, Draft>
     settings: Settings | null
+    markSets: Map<string, MarkSet>
   }
 }
 
@@ -33,6 +34,7 @@ export function createFakeStorage(initial: Partial<FakeStorage['state']> = {}): 
     applications: initial.applications ?? [],
     drafts: initial.drafts ?? new Map(),
     settings: initial.settings ?? null,
+    markSets: initial.markSets ?? new Map(),
   }
 
   const storage: FakeStorage = {
@@ -54,6 +56,16 @@ export function createFakeStorage(initial: Partial<FakeStorage['state']> = {}): 
       return Promise.resolve()
     }),
     purgeExpiredDrafts: vi.fn(() => Promise.resolve(0)),
+    listMarkSets: vi.fn(() => Promise.resolve([...state.markSets.values()])),
+    loadMarkSet: vi.fn((id: string) => Promise.resolve(state.markSets.get(id) ?? null)),
+    saveMarkSet: vi.fn((set: MarkSet) => {
+      state.markSets.set(set.id, set)
+      return Promise.resolve()
+    }),
+    deleteMarkSet: vi.fn((id: string) => {
+      state.markSets.delete(id)
+      return Promise.resolve()
+    }),
     getSettings: vi.fn(() => Promise.resolve(state.settings ?? { ...DEFAULT_SETTINGS })),
     hasSettings: vi.fn(() => Promise.resolve(state.settings !== null)),
     saveSettings: vi.fn((settings: Settings) => {
@@ -66,6 +78,7 @@ export function createFakeStorage(initial: Partial<FakeStorage['state']> = {}): 
       state.applications = []
       state.drafts.clear()
       state.settings = null
+      state.markSets.clear()
       return Promise.resolve()
     }),
   }

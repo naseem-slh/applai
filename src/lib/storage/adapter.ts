@@ -128,6 +128,22 @@ export interface StorageAdapter {
    * dieser Schicht — siehe `Draft`.
    */
   purgeExpiredDrafts(maxAgeMs: number): Promise<number>
+  /**
+   * Alle gemerkten Sätze vorgemerkter Stellen. Die Oberfläche braucht das
+   * für zweierlei: um beim Öffnen eines überarbeiteten Anschreibens auf den
+   * zuletzt gespeicherten Satz zurückzufallen, und um die Zahl der Sätze
+   * begrenzt zu halten. **Wie viele es höchstens sein dürfen, entscheidet
+   * die aufrufende Seite** — dieselbe Trennung wie bei `purgeExpiredDrafts`,
+   * dessen Frist ebenfalls ein Parameter und keine Konstante dieser Schicht
+   * ist.
+   */
+  listMarkSets(): Promise<MarkSet[]>
+  /** Der Satz zu diesem Anschreiben, `null` wenn zu ihm nichts gemerkt ist. */
+  loadMarkSet(id: string): Promise<MarkSet | null>
+  /** Legt einen Satz an oder überschreibt ihn (Schlüssel: `MarkSet.id`). */
+  saveMarkSet(set: MarkSet): Promise<void>
+  /** Löscht genau einen Satz. Löst bei unbekannter Kennung nicht — siehe `deleteDraft`. */
+  deleteMarkSet(id: string): Promise<void>
   getSettings(): Promise<Settings>
   /**
    * `true`, sobald einmal `saveSettings` (oder `importAll`) gelaufen ist —
