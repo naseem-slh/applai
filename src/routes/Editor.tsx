@@ -679,9 +679,22 @@ function EditorWorkspace({ session }: { session: StartSession }) {
           <div className="flex flex-none flex-col gap-2 border-b border-[var(--color-border)] bg-[var(--color-surface-raised)] px-4 py-2.5 lg:px-6">
             {/* `items-start`, damit Rückgängig und Sicherungsstand auf der
                 Höhe der Knopfreihe stehen und nicht auf der Höhe des
-                Hinweises, den die Markierungsleiste darunter setzt. */}
-            <div className="flex items-start gap-3">
-              <div className="min-w-0 flex-1">
+                Hinweises, den die Markierungsleiste darunter setzt.
+
+                **Warum die Reihe umbrechen darf.** Rechts standen zwei
+                Auskünfte, seit dem Anfragenzähler sind es drei. Gemessen
+                bei 1280 px Fensterbreite: Die rechte Gruppe braucht 652 px
+                in einer Zeile von 592 px. Sie ist `shrink-0`, die linke
+                trug `min-w-0` — also gab die linke nach, bis auf **null**.
+                Der Statusabsatz der Markierungsleiste stand danach mit dem
+                richtigen Text im Baum und war nicht mehr zu sehen; genau
+                das hat `a11y.spec.ts` gemeldet.
+
+                Jetzt bricht die Reihe um, statt eine Seite zu zerdrücken,
+                und die linke behält mit `min-w-[16rem]` so viel Breite, dass
+                „124 Zeichen markiert." in eine Zeile passt. */}
+            <div className="flex flex-wrap items-start gap-x-3 gap-y-2">
+              <div className="min-w-[16rem] flex-1">
                 <SelectionLayer
                   selection={selection}
                   fineSelection={precise}
@@ -703,7 +716,10 @@ function EditorWorkspace({ session }: { session: StartSession }) {
                   }
                 />
               </div>
-              <div className="flex shrink-0 items-center gap-2">
+              {/* Auch die rechte Gruppe darf in sich umbrechen: Drei
+                  Auskünfte nebeneinander sind in der schmalen Mittelspalte
+                  breiter als die Spalte selbst. */}
+              <div className="flex shrink-0 flex-wrap items-center justify-end gap-x-3 gap-y-1">
                 <Button variant="ghost" size="sm" disabled={!canUndo} onClick={undo}>
                   {t('editor.undo')}
                 </Button>

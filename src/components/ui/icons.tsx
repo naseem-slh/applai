@@ -49,6 +49,8 @@ const PATHS = {
   arrowUp:
     'M205.66,117.66a8,8,0,0,1-11.32,0L136,59.31V216a8,8,0,0,1-16,0V59.31L61.66,117.66a8,8,0,0,1-11.32-11.32l72-72a8,8,0,0,1,11.32,0l72,72A8,8,0,0,1,205.66,117.66Z',
   x: 'M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z',
+  check:
+    'M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z',
 } as const
 
 export const DownloadIcon = (props: IconProps) => <Icon d={PATHS.downloadSimple} {...props} />
@@ -57,3 +59,4 @@ export const CopyIcon = (props: IconProps) => <Icon d={PATHS.copy} {...props} />
 export const CaretDownIcon = (props: IconProps) => <Icon d={PATHS.caretDown} {...props} />
 export const ArrowUpIcon = (props: IconProps) => <Icon d={PATHS.arrowUp} {...props} />
 export const XIcon = (props: IconProps) => <Icon d={PATHS.x} {...props} />
+export const CheckIcon = (props: IconProps) => <Icon d={PATHS.check} {...props} />
