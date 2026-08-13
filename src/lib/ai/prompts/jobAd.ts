@@ -30,6 +30,15 @@
  *
  * `company`, `position`, `contactPerson` sind Eigennamen bzw. Zitate aus der
  * Anzeige und daher ohnehin sprachunabhängig wörtlich zu übernehmen.
+ *
+ * **`position` ausdrücklich vollständig.** Ohne die Auflage kürzt ein Modell
+ * die Stellenbezeichnung auf ihren Kern — aus „Werkstudent (m/w/d) im
+ * Private Banking als Unterstützung für die Bereichsleitung" wurde
+ * „Werkstudent (m/w/d) im Private Banking". Im Betreff des Anschreibens
+ * fällt das auf: Der Personaler sucht dort die Stelle, auf die beworben
+ * wird, und findet eine andere Bezeichnung als in seiner eigenen Anzeige.
+ * Gekürzt wird nirgends im Programm — `nullableFactString` schneidet nichts
+ * ab —, die Auflage muss also im Prompt stehen.
  */
 
 const REQUIREMENT_KINDS = ['skill', 'experience', 'education', 'language', 'soft'] as const
@@ -52,6 +61,8 @@ Verbindliche Regeln, in dieser Reihenfolge zu prüfen:
 1. "language": die Sprache der Stellenanzeige, "de" oder "en". Eine deterministische Vorprüfung hat bereits "${detectedLanguage}" ermittelt – bestätige diesen Wert, sofern der Anzeigentext dem nicht eindeutig widerspricht.
 
 2. "company", "position", "contactPerson": Nenne hier ausschließlich, was wörtlich oder eindeutig erschließbar in der Anzeige steht. Steht eine der drei Angaben NICHT in der Anzeige, ist der Wert für genau dieses Feld null – rate niemals einen plausibel klingenden Namen, erfinde nichts aus Weltwissen, vervollständige nichts. Ein falscher Firmenname ist schlimmer als ein fehlender.
+
+2a. "position" ist die VOLLSTÄNDIGE Stellenbezeichnung, Wort für Wort so, wie sie in der Anzeige steht – auch wenn sie lang ist oder aus mehreren Teilen besteht. Kürze sie nicht, fasse sie nicht zusammen und lasse keinen Zusatz weg. Steht in der Anzeige "Werkstudent (m/w/d) im Private Banking als Unterstützung für die Bereichsleitung", dann ist genau das der Wert – nicht "Werkstudent" und nicht "Werkstudent im Private Banking". Weg bleiben nur Dinge, die nicht zur Bezeichnung gehören: eine vorangestellte Kennziffer, ein angehängter Standort nach Komma, ein Datum.
 
 3. "salutation": die Briefanrede zur wörtlichen Übernahme in einem Anschreiben, in der Sprache der Anzeige (Deutsch z. B. "Sehr geehrter Herr Dr. Meier", Englisch z. B. "Dear Ms. Connolly"), abgeleitet aus "contactPerson" inklusive erkennbarem Titel. Ist "contactPerson" null, MUSS "salutation" ebenfalls null sein – erfinde niemals eine allgemeine Anrede wie "Sehr geehrte Damen und Herren", wenn kein Ansprechpartner genannt ist.
 

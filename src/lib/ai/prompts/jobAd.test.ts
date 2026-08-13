@@ -34,6 +34,23 @@ describe('buildJobAdPrompt', () => {
     }
   })
 
+  /**
+   * Ohne diese Auflage kürzt das Modell die Stellenbezeichnung auf ihren
+   * Kern. Im Betreff des Anschreibens steht dann eine andere Stelle als in
+   * der Anzeige des Empfängers — aus „Werkstudent (m/w/d) im Private Banking
+   * als Unterstützung für die Bereichsleitung" wurde „Werkstudent (m/w/d) im
+   * Private Banking".
+   */
+  it('verlangt die vollständige, ungekürzte Stellenbezeichnung', () => {
+    const { system } = buildJobAdPrompt('Text', 'de')
+
+    expect(system).toMatch(/VOLLSTÄNDIGE Stellenbezeichnung/u)
+    expect(system.toLowerCase()).toMatch(/kürze sie nicht|nicht kürzen/u)
+    // Das Gegenbeispiel steht ausdrücklich im Prompt: Es trägt die Auflage
+    // deutlicher als jede Umschreibung.
+    expect(system).toContain('nicht "Werkstudent"')
+  })
+
   it('verlangt eine reine JSON-Antwort ohne Codeblock oder Fließtext', () => {
     const { system } = buildJobAdPrompt('Text', 'de')
     expect(system.toLowerCase()).toContain('json')
