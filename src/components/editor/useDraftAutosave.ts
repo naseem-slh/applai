@@ -39,6 +39,20 @@ export interface DraftAutosaveOptions {
   document: DocxDocument | null
   /** Abschalten, solange nichts zu sichern ist (Ladevorgang, Fehlerzustand). */
   enabled?: boolean
+  /**
+   * Kennung der Stellenanzeige, für die die selbsttätige
+   * Briefkopf-Übernahme (`Editor.tsx`) zuletzt gelaufen ist
+   * (`Draft.letterheadAppliedFor`) — wird bei jedem Sichern mitgeführt,
+   * UNABHÄNGIG davon, ob sich zugleich der Dokumentinhalt geändert hat
+   * (siehe `save()` unten): Lief die Übernahme, fand aber nichts zu
+   * ersetzen, ändert sich das Dokument nicht, wohl aber diese Kennung —
+   * und genau dieser Fall muss trotzdem gesichert werden, sonst bliebe die
+   * Sperre über Sitzungen hinweg (Schaden 2) für ihn wirkungslos.
+   *
+   * `null`/`undefined`, solange noch keine Übernahme lief oder dieser
+   * Entwurf sie nicht braucht (Lebenslauf).
+   */
+  letterheadAppliedFor?: string | null
 }
 
 export function useDraftAutosave({
@@ -46,6 +60,7 @@ export function useDraftAutosave({
   draftId,
   document,
   enabled = true,
+  letterheadAppliedFor = null,
 }: DraftAutosaveOptions): DraftSaveState {
   const [state, setState] = useState<DraftSaveState>({ status: 'idle' })
 
@@ -58,6 +73,15 @@ export function useDraftAutosave({
    * „hat sich etwas geändert".
    */
   const savedRef = useRef<DocxDocument | null>(null)
+  /**
+   * Dieselbe Zusicherung wie `savedRef`, nur für `letterheadAppliedFor`.
+   * Beide starten auf demselben Anfangswert (analog zur Bootstrap-Regel für
+   * `savedRef` unten): Eine Kennung, die schon beim Laden mitgegeben wurde
+   * — aus einem fortgesetzten Entwurf —, gilt als bereits gesichert und
+   * löst keinen unnötigen Schreibzugriff aus.
+   */
+  const appliedForRef = useRef<string | null>(letterheadAppliedFor)
+  const savedAppliedForRef = useRef<string | null>(letterheadAppliedFor)
   const savingRef = useRef(false)
   const mountedRef = useRef(true)
 
@@ -70,9 +94,18 @@ export function useDraftAutosave({
     if (document !== null && savedRef.current === null) savedRef.current = document
   }, [document])
 
+  useEffect(() => {
+    appliedForRef.current = letterheadAppliedFor
+  }, [letterheadAppliedFor])
+
   const save = useCallback(async () => {
     const current = currentRef.current
-    if (current === null || savingRef.current || current === savedRef.current) return
+    const appliedFor = appliedForRef.current
+    // Gesichert wird, wenn sich SEIT DEM LETZTEN SICHERN eines von beiden
+    // geändert hat — Dokumentinhalt ODER die Kennung der übernommenen
+    // Anzeige (siehe die Doc-Kommentare an `letterheadAppliedFor` oben).
+    const unchanged = current === savedRef.current && appliedFor === savedAppliedForRef.current
+    if (current === null || savingRef.current || unchanged) return
 
     savingRef.current = true
     if (mountedRef.current) setState({ status: 'saving' })
@@ -84,8 +117,10 @@ export function useDraftAutosave({
         docxBase: await blob.arrayBuffer(),
         text: current.text,
         savedAt,
+        letterheadAppliedFor: appliedFor ?? undefined,
       })
       savedRef.current = current
+      savedAppliedForRef.current = appliedFor
       if (mountedRef.current) setState({ status: 'saved', at: savedAt })
     } catch {
       // Der Grund ist für den Nutzer nicht handlungsleitend (er kann einen

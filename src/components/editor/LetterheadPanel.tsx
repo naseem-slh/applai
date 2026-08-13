@@ -126,7 +126,9 @@ export function LetterheadPanel({
             <p className="text-[length:var(--text-body-sm-size)] font-medium text-[var(--color-info)]">
               {t('editor.letterhead.applied.heading')}
             </p>
-            {application.changes.length === 0 ? (
+            {application.changes.length === 0 && application.unchanged.length === 0 ? (
+              // Wirklich nichts gefunden — anders als ein Feld, das gefunden
+              // wurde, aber schon richtig war (siehe `unchanged` unten).
               <p className={FIELD_HINT_CLASS}>{t('editor.letterhead.applied.none')}</p>
             ) : (
               <ul className="flex flex-col gap-1">
@@ -137,6 +139,15 @@ export function LetterheadPanel({
                       previous: change.previous,
                       next: change.next,
                     })}
+                  </li>
+                ))}
+                {application.unchanged.map((field) => (
+                  <li
+                    key={field}
+                    className="text-[length:var(--text-body-sm-size)] text-[var(--color-muted)]"
+                  >
+                    <span className="font-medium">{t(`editor.letterhead.fields.${field}`)}</span>{' '}
+                    {t('editor.letterhead.applied.unchanged')}
                   </li>
                 ))}
                 {application.missing.map((field) => (

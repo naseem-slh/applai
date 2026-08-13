@@ -17,6 +17,7 @@ import { PARAGRAPH_INDEX_ATTRIBUTE } from '@/components/editor/documentSelection
 import { mockFetchResponse } from '@/lib/ai/mockFetchResponse'
 import { parseDocx } from '@/lib/docx/parse'
 import i18n from '@/lib/i18n/i18n'
+import { textFingerprint } from '@/lib/text/fingerprint'
 import Editor from './Editor'
 
 const t = i18n.getFixedT(i18n.resolvedLanguage ?? 'de')
@@ -822,6 +823,77 @@ describe('Editor — Seitenspalte und Sprache (14c)', () => {
 
     await waitFor(() => expect(paragraphElement(1).textContent).toBe('Ein neuer Satz im Brief.'))
     expect(screen.queryByText(t('editor.letterhead.applied.heading'))).not.toBeInTheDocument()
+  })
+
+  /**
+   * Schaden 2: Die ursprüngliche Behebung von Befund 2
+   * (`LoadedDocument.source === 'draft'` unterbindet die Übernahme ganz)
+   * war zu grob — sie traf auch den HAUPTFALL der Anwendung: gestriges
+   * Anschreiben fortsetzen, eine NEUE Stellenanzeige einfügen. Dort sollen
+   * Empfänger, Datum und Betreff sehr wohl automatisch einziehen. Die
+   * Sperre über Sitzungen hinweg ist jetzt feiner: die Kennung der ANZEIGE
+   * selbst (`Draft.letterheadAppliedFor`, ein Fingerabdruck des rohen
+   * Anzeigentexts, siehe `Editor.tsx`). Der fortgesetzte Entwurf hier trägt
+   * die Kennung einer ANDEREN, früheren Anzeige — die Übernahme muss also
+   * laufen, wie beim ersten Mal.
+   */
+  it('übernimmt den Briefkopf trotz fortgesetztem Entwurf, wenn eine neue Stellenanzeige eingefügt wurde', async () => {
+    const kennungDerAltenAnzeige = await textFingerprint('Eine ganz andere, frühere Stellenanzeige.')
+
+    await ready(
+      { jobAd: JOB_AD_MIT_ANSPRECHPARTNER },
+      {
+        session: {
+          letter: letterDocument({ source: 'draft', letterheadAppliedFor: kennungDerAltenAnzeige }),
+          cv: null,
+          jobAdText: 'Wir suchen eine Entwicklerin.',
+          userName: 'Marlene Ostwald',
+        },
+      },
+    )
+
+    expect(await screen.findByText(t('editor.letterhead.applied.heading'))).toBeInTheDocument()
+    await waitFor(() =>
+      expect(paragraphElement(0).textContent).toBe('Sehr geehrter Herr Dr. Weber,'),
+    )
+  })
+
+  /**
+   * Der eigentliche Schutzfall (Befund 2, jetzt über die Kennung der
+   * Anzeige statt über die grobe Wache): Dieselbe Anzeige wie beim letzten
+   * Mal — erkennbar an derselben Kennung im fortgesetzten Entwurf — löst
+   * keine zweite Übernahme aus. Der Brief trägt hier bereits eine ANDERE
+   * Anrede als die, die `suggestLetterhead` erneut vorschlagen würde (der
+   * Nutzer hat sie also bewusst von Hand geändert), und diese Handkorrektur
+   * muss stehen bleiben.
+   */
+  it('übernimmt den Briefkopf nicht noch einmal, wenn dieselbe Stellenanzeige fortgesetzt wird', async () => {
+    const jobAdText = 'Wir suchen eine Entwicklerin.'
+    const kennungDerGleichenAnzeige = await textFingerprint(jobAdText)
+
+    await ready(
+      { jobAd: JOB_AD_MIT_ANSPRECHPARTNER },
+      {
+        session: {
+          letter: letterDocument({ source: 'draft', letterheadAppliedFor: kennungDerGleichenAnzeige }),
+          cv: null,
+          jobAdText,
+          userName: 'Marlene Ostwald',
+        },
+      },
+    )
+
+    // Beweis, dass Auswertung und Vorschlag durchgelaufen sind — und damit
+    // auch der Renderzyklus, in dem die selbsttätige Übernahme liefe, wenn
+    // sie nicht unterbunden wäre.
+    await waitFor(() =>
+      expect(screen.getByLabelText(t('editor.letterhead.fields.salutation'))).toHaveValue(
+        'Sehr geehrter Herr Dr. Weber,',
+      ),
+    )
+
+    expect(screen.queryByText(t('editor.letterhead.applied.heading'))).not.toBeInTheDocument()
+    expect(paragraphElement(0).textContent).toBe('Sehr geehrte Damen und Herren,')
   })
 
   it('setzt ein Briefkopf-Feld an der Markierung ein und macht das mit Strg+Z rückgängig', async () => {

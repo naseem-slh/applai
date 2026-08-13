@@ -3,6 +3,7 @@ import { buildDocx, paragraphXml } from '@/lib/docx/docx.testutils'
 import type { DocxDocument } from '@/lib/docx/model'
 import { parseDocx } from '@/lib/docx/parse'
 import type { Letterhead } from '@/lib/domain/letterhead'
+import type { LetterheadMatch } from '@/lib/domain/letterheadMatch'
 import { applyLetterhead } from './letterheadApply'
 import type { Mark } from './marks'
 
@@ -27,9 +28,30 @@ vi.mock('@/lib/docx/replace', async () => {
   }
 })
 
+/**
+ * Schaden 1, Riegel: `matchLetterhead` durch eine Attrappe ersetzbar, um
+ * einen leeren Ersetzungsbereich (`range.from === range.to`) unabhängig von
+ * der eigentlichen Erkennung erzwingen zu können — die Rückversicherung in
+ * `applyLetterhead` muss auch dann greifen, wenn die Erkennung selbst (aus
+ * heutiger Sicht) keinen solchen Bereich mehr liefert. `null` heißt: echte
+ * Umsetzung.
+ */
+const matchOverride = vi.hoisted(() => ({ value: null as LetterheadMatch[] | null }))
+
+vi.mock('@/lib/domain/letterheadMatch', async () => {
+  const actual =
+    await vi.importActual<typeof import('@/lib/domain/letterheadMatch')>('@/lib/domain/letterheadMatch')
+  return {
+    ...actual,
+    matchLetterhead: (...args: Parameters<typeof actual.matchLetterhead>) =>
+      matchOverride.value ?? actual.matchLetterhead(...args),
+  }
+})
+
 beforeEach(() => {
   replaceState.calls = 0
   replaceState.failOnCall = 0
+  matchOverride.value = null
 })
 
 const LETTERHEAD: Letterhead = {
@@ -101,6 +123,41 @@ describe('applyLetterhead', () => {
     expect(result.changes.some((change) => change.field === 'recipient')).toBe(false)
   })
 
+  /**
+   * Befund 4: Ist der alte Wortlaut bereits zeichengleich mit dem neuen,
+   * ist nichts zu tun — ein Verlaufsschritt und ein Bericht „X → X" für
+   * nichts wären irreführend. Das Feld ist trotzdem gefunden worden
+   * (gehört also nicht nach `missing`, das hieße „nicht gefunden"), zählt
+   * aber auch nicht als `changes`, sondern eigens als `unchanged`.
+   */
+  it('überspringt ein Feld, dessen Wortlaut bereits zeichengleich mit dem Vorschlag ist', async () => {
+    const gleicheAnrede: Letterhead = { ...LETTERHEAD, salutation: 'Sehr geehrte Frau Klein,' }
+
+    const result = applyLetterhead(await brief(), gleicheAnrede, [], ['Alte Muster GmbH'], 'Neue Beispiel AG')
+
+    expect(result.changes.some((change) => change.field === 'salutation')).toBe(false)
+    expect(result.missing).not.toContain('salutation')
+    expect(result.unchanged).toContain('salutation')
+    expect(result.document.text).toContain('Sehr geehrte Frau Klein,')
+  })
+
+  it('meldet vollständig unveränderte Felder weder als geändert noch als fehlend', async () => {
+    const original = await brief()
+    const identisch: Letterhead = {
+      recipient: 'Alte Muster GmbH',
+      date: '14.03.2026',
+      subject: 'Bewerbung als Sachbearbeiterin',
+      salutation: 'Sehr geehrte Frau Klein,',
+    }
+
+    const result = applyLetterhead(original, identisch, [], ['Alte Muster GmbH'], null)
+
+    expect(result.document).toBe(original)
+    expect(result.changes).toEqual([])
+    expect(result.missing).toEqual([])
+    expect([...result.unchanged].sort()).toEqual(['date', 'recipient', 'salutation', 'subject'])
+  })
+
   it('lässt das Dokument unberührt, wenn nichts gefunden wurde', async () => {
     const nurText = await parseDocx(buildDocx(paragraphXml('Nur ein Satz ohne jeden Briefkopf.')))
 
@@ -120,6 +177,84 @@ describe('applyLetterhead', () => {
     expect(result.document).toBe(original)
     expect(result.changes).toEqual([])
     expect(original.text).toContain('Alte Muster GmbH')
+  })
+
+  /**
+   * Schaden 1 (Regression): Beginnt der Anrede-Absatz mit einem manuellen
+   * Zeilenumbruch (Shift+Enter — in Word ein üblicher Abstand vor der
+   * Anrede), ist die erste Zeile leer. `replaceRange` behandelt einen
+   * leeren Bereich (`range.from === range.to`) als reine Einfügestelle,
+   * nicht als Ersetzung — der neue Text würde eingefügt, die alte Anrede
+   * bliebe zusätzlich stehen. Geprüft wird bewusst am Dokumenttext nach
+   * einer echten `replaceRange`, nicht nur am von `matchLetterhead`
+   * zurückgegebenen Bereich.
+   */
+  it('dupliziert die Anrede nicht, wenn ihr Absatz mit einem Zeilenumbruch beginnt', async () => {
+    const docx = await parseDocx(
+      buildDocx(
+        [
+          paragraphXml('Alte Muster GmbH'),
+          paragraphXml('Musterstraße 12'),
+          paragraphXml('Berlin, 14.03.2026'),
+          paragraphXml('Bewerbung als Sachbearbeiterin'),
+          // Anrede-Absatz: EIN Absatz, der mit einem `w:br` beginnt.
+          '<w:p><w:r><w:br/></w:r><w:r><w:t xml:space="preserve">Sehr geehrte Frau Klein,</w:t></w:r></w:p>',
+          paragraphXml('mit großem Interesse habe ich Ihre Anzeige gelesen.'),
+        ].join(''),
+      ),
+    )
+
+    const result = applyLetterhead(docx, LETTERHEAD, [], ['Alte Muster GmbH'], 'Neue Beispiel AG')
+
+    expect(result.document.text).toContain('Sehr geehrter Herr Dr. Meier,')
+    expect(result.document.text).not.toContain('Sehr geehrte Frau Klein,')
+    // Genau ein Vorkommen — keine Verdopplung von alter und neuer Anrede.
+    expect(result.document.text.split('Sehr geehrter Herr Dr. Meier,')).toHaveLength(2)
+  })
+
+  // Dieselbe Gefahr, wenn die erste Zeile statt ganz leer nur Leerraum trägt.
+  it('dupliziert die Anrede nicht, wenn die erste Zeile des Absatzes nur Leerraum trägt', async () => {
+    const docx = await parseDocx(
+      buildDocx(
+        [
+          paragraphXml('Alte Muster GmbH'),
+          paragraphXml('Musterstraße 12'),
+          paragraphXml('Berlin, 14.03.2026'),
+          paragraphXml('Bewerbung als Sachbearbeiterin'),
+          [
+            '<w:p>',
+            '<w:r><w:t xml:space="preserve">   </w:t></w:r>',
+            '<w:r><w:br/></w:r>',
+            '<w:r><w:t xml:space="preserve">Sehr geehrte Frau Klein,</w:t></w:r>',
+            '</w:p>',
+          ].join(''),
+          paragraphXml('mit großem Interesse habe ich Ihre Anzeige gelesen.'),
+        ].join(''),
+      ),
+    )
+
+    const result = applyLetterhead(docx, LETTERHEAD, [], ['Alte Muster GmbH'], 'Neue Beispiel AG')
+
+    expect(result.document.text).toContain('Sehr geehrter Herr Dr. Meier,')
+    expect(result.document.text).not.toContain('Sehr geehrte Frau Klein,')
+  })
+
+  /**
+   * Schaden 1, Riegel: Rückversicherung in `applyLetterhead` selbst, falls
+   * `matchLetterhead` (aus welchem Grund auch immer, jetzt oder künftig)
+   * doch einmal einen leeren Bereich liefert. Erzwungen über die Attrappe
+   * `matchOverride`, unabhängig von der eigentlichen Erkennung.
+   */
+  it('überspringt einen leeren Ersetzungsbereich, statt eine reine Einfügestelle anzuwenden', async () => {
+    matchOverride.value = [{ field: 'salutation', range: { from: 10, to: 10 }, paragraph: 4, previous: '' }]
+    const original = await brief()
+
+    const result = applyLetterhead(original, LETTERHEAD, [], ['Alte Muster GmbH'], 'Neue Beispiel AG')
+
+    expect(result.document).toBe(original)
+    expect(result.changes).toEqual([])
+    expect(result.missing).toContain('salutation')
+    expect(result.document.text).not.toContain('Sehr geehrter Herr Dr. Meier,')
   })
 
   it('führt die Vormerkungen mit', async () => {

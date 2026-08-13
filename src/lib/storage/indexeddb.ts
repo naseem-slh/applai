@@ -87,6 +87,8 @@ interface ExportedDraft {
   text: string
   savedAt: number
   docxBase: string
+  /** Optional wie in `Draft` selbst — siehe dort für die Bedeutung eines fehlenden Werts. */
+  letterheadAppliedFor?: string
 }
 
 /**
@@ -115,7 +117,10 @@ function isExportedDraft(value: unknown): value is ExportedDraft {
     typeof candidate.text === 'string' &&
     typeof candidate.savedAt === 'number' &&
     typeof candidate.docxBase === 'string' &&
-    isWellFormedBase64(candidate.docxBase)
+    isWellFormedBase64(candidate.docxBase) &&
+    // Fehlt in jeder Sicherungsdatei von vor dieser Fixrunde — kein Mangel,
+    // siehe `Draft.letterheadAppliedFor`.
+    (candidate.letterheadAppliedFor === undefined || typeof candidate.letterheadAppliedFor === 'string')
   )
 }
 
@@ -543,6 +548,7 @@ async function exportAll(): Promise<Blob> {
       text: draft.text,
       savedAt: draft.savedAt,
       docxBase: arrayBufferToBase64(draft.docxBase),
+      letterheadAppliedFor: draft.letterheadAppliedFor,
     })),
     settings,
     markSets,
@@ -578,6 +584,7 @@ async function importAll(file: File): Promise<void> {
         text: draft.text,
         savedAt: draft.savedAt,
         docxBase: base64ToArrayBuffer(draft.docxBase),
+        letterheadAppliedFor: draft.letterheadAppliedFor,
       }
       await promisifyRequest(draftsStore.put(restored))
     }

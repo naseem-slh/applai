@@ -91,6 +91,16 @@ describe('Anrede mit Komma', () => {
 
     expect(suggestLetterhead(mitDoppelpunkt, 'en', HEUTE).salutation).toBe('Dear Ms. Connolly,')
   })
+
+  // Befund 5: `[,;:]+$` fing bisher nur Komma, Semikolon und Doppelpunkt —
+  // ein Ausrufezeichen, ein Punkt oder ein Fragezeichen blieben stehen und
+  // bekamen das Komma zusätzlich angehängt ("Hallo Frau Meier!," statt
+  // "Hallo Frau Meier,").
+  it('ersetzt ein Ausrufezeichen durch das Komma, statt es anzuhängen', () => {
+    const mitAusrufezeichen = { ...JOB_AD_MIT_ANSPRECHPARTNER, salutation: 'Hallo Frau Meier!' }
+
+    expect(suggestLetterhead(mitAusrufezeichen, 'de', HEUTE).salutation).toBe('Hallo Frau Meier,')
+  })
 })
 
 describe('suggestLetterhead — Empfänger', () => {

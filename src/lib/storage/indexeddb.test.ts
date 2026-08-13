@@ -254,6 +254,30 @@ describe('saveDraft / loadDraft', () => {
     expect(loaded?.text).toBe('Zweiter Stand')
     expect(await readRawStore(DRAFTS_STORE)).toHaveLength(1)
   })
+
+  // Schaden 2: die Kennung der Anzeige, für die die selbsttätige
+  // Briefkopf-Übernahme zuletzt gelaufen ist — reine Speicherung, ohne
+  // Kenntnis, was der Wert bedeutet (das weiß nur `Editor.tsx`).
+  it('speichert und lädt die Kennung der bereits übernommenen Anzeige verlustfrei', async () => {
+    const adapter = createIndexedDbAdapter()
+    const draft = makeDraft({ letterheadAppliedFor: 'fingerabdruck-der-anzeige' })
+
+    await adapter.saveDraft(draft)
+    const loaded = await adapter.loadDraft(draft.id)
+
+    expect(loaded?.letterheadAppliedFor).toBe('fingerabdruck-der-anzeige')
+  })
+
+  // Ein Entwurf ohne dieses Feld (kein Aufruf hat es je gesetzt) bleibt
+  // lesbar — das Feld ist optional, kein Pflichtfeld eines neuen Schemas.
+  it('lädt einen Entwurf ohne die Kennung der Anzeige klaglos', async () => {
+    const adapter = createIndexedDbAdapter()
+    await adapter.saveDraft(makeDraft())
+
+    const loaded = await adapter.loadDraft('entwurf-1')
+
+    expect(loaded?.letterheadAppliedFor).toBeUndefined()
+  })
 })
 
 describe('deleteDraft', () => {
@@ -504,6 +528,50 @@ describe('exportAll / importAll', () => {
     expect(new Uint8Array(restoredDraft!.docxBase)).toEqual(new Uint8Array(draft.docxBase))
 
     expect(await adapter.getSettings()).toEqual(settings)
+  })
+
+  // Schaden 2: Die Kennung der bereits übernommenen Anzeige gehört zum
+  // Entwurf und muss deshalb dieselbe Sicherung/Wiederherstellung
+  // durchlaufen wie Text und `docxBase`.
+  it('rundet die Kennung der bereits übernommenen Anzeige eines Entwurfs verlustfrei', async () => {
+    const adapter = createIndexedDbAdapter()
+    const draft = makeDraft({ letterheadAppliedFor: 'fingerabdruck-der-anzeige' })
+    await adapter.saveDraft(draft)
+
+    const blob = await adapter.exportAll()
+    const file = new File([blob], 'sicherung.json', { type: 'application/json' })
+    await adapter.clearAll()
+    await adapter.importAll(file)
+
+    const restored = await adapter.loadDraft(draft.id)
+    expect(restored?.letterheadAppliedFor).toBe('fingerabdruck-der-anzeige')
+  })
+
+  // Verträglichkeit mit einer Sicherungsdatei, die das Feld noch nicht
+  // kannte (vor dieser Fixrunde exportiert): Sie bleibt lesbar, und der
+  // wiederhergestellte Entwurf trägt das Feld einfach nicht — „noch nie
+  // übernommen" ist die sichere Lesart eines fehlenden Werts (siehe
+  // `adapter.ts`, `Draft.letterheadAppliedFor`).
+  it('liest eine Sicherungsdatei ohne die Kennung der Anzeige klaglos ein', async () => {
+    const adapter = createIndexedDbAdapter()
+    const datei = new File(
+      [
+        JSON.stringify({
+          formatVersion: EXPORT_FORMAT_VERSION,
+          applications: [],
+          drafts: [{ id: 'alter-entwurf', text: 'Text', savedAt: Date.now(), docxBase: 'AAA=' }],
+          settings: DEFAULT_SETTINGS,
+        }),
+      ],
+      'alte-sicherung.json',
+      { type: 'application/json' },
+    )
+
+    await adapter.importAll(datei)
+
+    const restored = await adapter.loadDraft('alter-entwurf')
+    expect(restored).not.toBeNull()
+    expect(restored?.letterheadAppliedFor).toBeUndefined()
   })
 
   it('rundet ein großes docxBase über mehrere Base64-Blöcke verlustfrei (arrayBufferToBase64 chunkt in 32-KiB-Schritten)', async () => {

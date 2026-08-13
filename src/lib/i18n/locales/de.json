@@ -349,6 +349,7 @@
         "heading": "Selbsttätig übernommen",
         "change": "{{previous}} → {{next}}",
         "missing": "nicht gefunden, bitte einsetzen",
+        "unchanged": "stand schon richtig da, nichts geändert",
         "hint": "Prüfen Sie, was daneben stehen blieb: eine alte Anschrift etwa wird nicht mitgetauscht.",
         "dismiss": "Verstanden",
         "none": "Im Brief war kein Briefkopf zu finden. Setzen Sie die Felder von Hand ein."

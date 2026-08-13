@@ -56,6 +56,7 @@ import { rewriteSelection, type Variant } from '@/lib/domain/rewrite'
 import type { StyleProfile } from '@/lib/domain/styleProfile'
 import { replaceRange, type Range as TextRange } from '@/lib/docx/replace'
 import type { TruthMode } from '@/lib/storage/adapter'
+import { textFingerprint } from '@/lib/text/fingerprint'
 import { cn } from '@/lib/utils'
 
 /**
@@ -203,11 +204,46 @@ function EditorWorkspace({ session }: { session: StartSession }) {
 
   useMarkHighlight({ rootRef, marks })
 
+  /**
+   * Fingerabdruck der aktuellen Stellenanzeige (`textFingerprint`,
+   * `lib/text/fingerprint.ts`), über den rohen Anzeigentext — bewusst NICHT
+   * über `analysisCacheKey` (Art + Modell + Text): Ein Wechsel des
+   * Anbieters oder Modells ändert nicht, welche ANZEIGE das ist, und genau
+   * die Anzeige ist die Einheit, „je Stellenanzeige" (Schaden 2, siehe der
+   * ausführliche Kommentar am Übernahme-Effekt weiter unten). Berechnet
+   * unabhängig von der eigentlichen Auswertung — sie liegt lange vor dem
+   * ersten Modellaufruf vor, kostet also keine spürbare Verzögerung.
+   */
+  const [jobAdFingerprint, setJobAdFingerprint] = useState<string | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    void textFingerprint(session.jobAdText).then((fingerprint) => {
+      if (!cancelled) setJobAdFingerprint(fingerprint)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [session.jobAdText])
+
+  /**
+   * Die Kennung der Anzeige, für die die selbsttätige Briefkopf-Übernahme
+   * zuletzt gelaufen ist — die Sperre ÜBER SITZUNGEN HINWEG (Schaden 2).
+   * Beginnt mit dem Wert aus einem fortgesetzten Entwurf, falls vorhanden
+   * (`Draft.letterheadAppliedFor`, über `session.letter` gereicht, siehe
+   * `Start.handleUseRecent`); `useDraftAutosave` unten schreibt jede
+   * spätere Änderung in den Entwurf zurück, unabhängig davon, ob sich dabei
+   * auch der Dokumentinhalt ändert (siehe dort).
+   */
+  const [appliedForFingerprint, setAppliedForFingerprint] = useState<string | null>(
+    session.letter?.letterheadAppliedFor ?? null,
+  )
+
   const draft = useDraftAutosave({
     storage,
     draftId: LETTER_DRAFT_ID,
     document: docx,
     enabled: docx !== null,
+    letterheadAppliedFor: appliedForFingerprint,
   })
 
   // Der Anbieter kommt aus dem Tresor, nicht aus den Einstellungen: Er
@@ -385,6 +421,44 @@ function EditorWorkspace({ session }: { session: StartSession }) {
    * Briefkopf (samt alter Firma) übernommen, und der Ref oben markierte die
    * neue Anzeige fälschlich als erledigt, sodass der richtige Briefkopf nie
    * mehr zum Zug käme.
+   *
+   * **„Einmal je Anzeige" über zwei Sperren, für zwei verschiedene Fälle.**
+   * `appliedFor` (der Ref) ist die Sperre INNERHALB einer Sitzung — sie
+   * genügt so lange, wie die Komponente lebt: Analysiert der Nutzer zu
+   * demselben Brief eine zweite Anzeige, ändert sich `jobAd`, der
+   * Ref-Vergleich schlägt fehl, und die Übernahme läuft (bewusst) erneut.
+   *
+   * Ein Ref stirbt aber mit der Komponente. Über „zuletzt bearbeitet"
+   * (`Start.handleUseRecent`) lädt die Anwendung `draft.docxBase` — den
+   * Arbeitsstand einer VORIGEN Sitzung, in dem der Briefkopf für die
+   * damalige Anzeige schon steht — in eine NEU gemountete Arbeitsfläche,
+   * mit einem frischen, leeren `appliedFor`. Ohne weitere Sperre liefe die
+   * Übernahme deshalb ein zweites Mal.
+   *
+   * Ein zu grobes Gegenmittel wäre, die Übernahme für JEDEN fortgesetzten
+   * Entwurf ganz auszulassen (`LoadedDocument.source === 'draft'`) — das
+   * verhindert zwar das Überschreiben, verhindert aber auch den Hauptfall,
+   * für den die Anwendung gebaut ist: gestriges Anschreiben fortsetzen,
+   * eine NEUE Stellenanzeige einfügen. Dort sollen Empfänger, Datum und
+   * Betreff sehr wohl automatisch einziehen.
+   *
+   * Die tatsächliche Sperre ÜBER SITZUNGEN HINWEG ist deshalb feiner: die
+   * Kennung der Anzeige selbst (`jobAdFingerprint`, `textFingerprint` des
+   * rohen Anzeigentexts, oben berechnet), abgeglichen mit
+   * `appliedForFingerprint` — dessen Anfangswert aus
+   * `Draft.letterheadAppliedFor` stammt (`Start.handleUseRecent` reicht ihn
+   * über `session.letter.letterheadAppliedFor` durch, `useDraftAutosave`
+   * schreibt jede Änderung zurück). „Dieselbe Anzeige wie beim letzten Mal"
+   * heißt: keine zweite Übernahme. „Andere (oder noch nie erfasste)
+   * Anzeige" heißt: Übernahme läuft, wie beim ersten Mal.
+   *
+   * Ein reiner Text-Vergleich je Feld (Befund 4, `letterheadApply.ts` —
+   * überspringt Treffer, deren `previous` bereits zeichengleich mit dem
+   * neuen Wert ist) wurde erwogen und bleibt zusätzlich bestehen, reicht
+   * aber allein nicht: Er fängt nur den Fall, in dem der neue Vorschlag
+   * zufällig mit dem alten übereinstimmt, nicht den Fall einer bewussten
+   * Handkorrektur, die vom neuen Vorschlag abweicht — genau die würde ein
+   * reiner Text-Vergleich weiterhin überschreiben.
    */
   const appliedFor = useRef<JobAd | null>(null)
   const [application, setApplication] = useState<LetterheadApplication | null>(null)
@@ -393,12 +467,38 @@ function EditorWorkspace({ session }: { session: StartSession }) {
     // Siehe oben: `letterhead` muss zur laufenden `jobAd` gehören.
     if (letterheadFor !== jobAd) return
     if (appliedFor.current === jobAd) return
+    // Der Fingerabdruck der Anzeige muss vorliegen, bevor die Sperre über
+    // Sitzungen hinweg geprüft werden kann — er ist praktisch sofort da
+    // (siehe oben), aber theoretisch für einen Rendervorgang `null`.
+    if (jobAdFingerprint === null) return
     appliedFor.current = jobAd
+
+    // Dieselbe Anzeige wie beim letzten Mal (diese Sitzung ODER eine
+    // vorige) — keine zweite Übernahme, siehe der ausführliche Kommentar
+    // oben.
+    if (appliedForFingerprint === jobAdFingerprint) return
 
     const result = applyLetterhead(docx, letterhead, marks, knownCompanies, jobAd.company)
     setApplication(result)
     if (result.changes.length > 0) commit(result.document, result.marks)
-  }, [docx, jobAd, letterhead, letterheadFor, marks, knownCompanies, companiesLoaded, commit])
+    // Für DIESE Anzeige ist die Entscheidung gefallen — unabhängig vom
+    // Ergebnis (auch wenn nichts gefunden oder alles schon richtig war):
+    // Ein erneuter Versuch für dieselbe Anzeige sähe wieder denselben
+    // Stand und liefe ins Leere oder, schlimmer, gegen eine inzwischen
+    // vorgenommene Handkorrektur.
+    setAppliedForFingerprint(jobAdFingerprint)
+  }, [
+    docx,
+    jobAd,
+    letterhead,
+    letterheadFor,
+    marks,
+    knownCompanies,
+    companiesLoaded,
+    commit,
+    jobAdFingerprint,
+    appliedForFingerprint,
+  ])
 
   /**
    * Rückgängig nimmt auch den Bericht mit: Er bezeichnet Änderungen, die es
