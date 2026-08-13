@@ -204,3 +204,77 @@ describe('matchLetterhead', () => {
     expect(salutation?.range.from).toBe('  \t\n'.length)
   })
 })
+
+/**
+ * Zwei Befunde aus einem echten Anschreiben, das beide zugleich auslöste:
+ * Der Betreff hieß „Initiativbewerbung als Werkstudent …" und stand im
+ * Absatz 17, weil der Brief seine Abstände nach DIN 5008 mit leeren
+ * Absätzen setzt. Gefunden wurde er nicht — und beim Übernehmen des
+ * Briefkopfs blieb die alte Stellenbezeichnung stehen.
+ */
+describe('matchLetterhead — Betreff in einem echten Brief', () => {
+  /**
+   * Deutsch bildet Komposita. „Initiativbewerbung" ist die übliche Form für
+   * eine Bewerbung ohne Ausschreibung — und sie beginnt nicht mit
+   * „Bewerbung".
+   */
+  it.each([
+    'Initiativbewerbung als Werkstudent im Bereich IT',
+    'Blindbewerbung als Disponentin',
+    'Kurzbewerbung als Werkstudentin',
+    'Onlinebewerbung als Praktikant',
+  ])('erkennt "%s" als Betreff', (subject) => {
+    const brief = slices('Alte Muster GmbH', '', subject, '', 'Sehr geehrte Damen und Herren,')
+
+    const matches = matchLetterhead(brief, [], null)
+
+    expect(matches.map((match) => match.field)).toContain('subject')
+    expect(matches.find((match) => match.field === 'subject')?.previous).toBe(subject)
+  })
+
+  it('erkennt die bisherigen Einleitungsformeln weiterhin', () => {
+    for (const subject of ['Bewerbung als Koch', 'Betreff: Stelle als Koch', 'Application for the role']) {
+      const brief = slices('Alte Muster GmbH', '', subject, '', 'Sehr geehrte Damen und Herren,')
+
+      expect(matchLetterhead(brief, [], null).map((match) => match.field)).toContain('subject')
+    }
+  })
+
+  /**
+   * Leere Absätze sind in einem Brief kein Inhalt, sondern Abstand. Zählte
+   * das Suchfenster sie mit, fiele der Betreff aus dem Briefkopfbereich,
+   * obwohl im Brief nichts über ihm steht außer Anschrift und Datum.
+   */
+  it('zählt für das Suchfenster nur Absätze mit Inhalt', () => {
+    const leer = Array.from({ length: 11 }, () => '')
+    const brief = slices(
+      '',
+      'Naseem Salih',
+      '',
+      'Musterstraße 58 10827 Berlin',
+      ...leer,
+      'Berlin, 31.03.2026',
+      '',
+      'Initiativbewerbung als Werkstudent oder Praktikant im Bereich IT',
+      '',
+      'Sehr geehrte Damen und Herren,',
+    )
+
+    const matches = matchLetterhead(brief, [], null)
+
+    expect(matches.map((match) => match.field)).toContain('subject')
+  })
+
+  /** Die Grenze bleibt eine Grenze: Fließtext darf nicht hineinrutschen. */
+  it('hält den Fließtext weiterhin draußen', () => {
+    const brief = slices(
+      ...Array.from({ length: 20 }, (_ignored, index) => `Inhaltlicher Absatz ${index}`),
+      'Bewerbung als Disponentin',
+      'Sehr geehrte Damen und Herren,',
+    )
+
+    const matches = matchLetterhead(brief, [], null)
+
+    expect(matches.map((match) => match.field)).not.toContain('subject')
+  })
+})

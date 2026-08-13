@@ -59,7 +59,20 @@ const SALUTATION_OPENERS: readonly string[] = [
   'to whom it may concern',
 ]
 
-const SUBJECT_OPENERS: readonly string[] = ['bewerbung', 'betreff', 'application', 're:']
+/**
+ * Wörter, auf die das **erste Wort** eines Betreffs enden darf.
+ *
+ * Deutsch bildet Komposita, und die Bewerbung ist dafür ein Musterfall:
+ * „Initiativbewerbung" für eine Stelle ohne Ausschreibung,
+ * „Blindbewerbung", „Kurzbewerbung", „Onlinebewerbung". Sie einzeln
+ * aufzuzählen wäre ein Wettlauf gegen eine Wortbildung, die neue Formen
+ * schneller hervorbringt, als eine Liste ihnen nachkommt — geprüft wird
+ * deshalb die Endung.
+ */
+const SUBJECT_HEADS: readonly string[] = ['bewerbung', 'application']
+
+/** Formeln, die einen Betreff einleiten, ohne auf ein Kompositum zu enden. */
+const SUBJECT_OPENERS: readonly string[] = ['betreff', 'betr.', 're:', 'subject']
 
 const MONTHS_DE = 'Januar|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember'
 const MONTHS_EN =
@@ -77,7 +90,17 @@ const DATE_PATTERNS: readonly RegExp[] = [
   /\d{4}-\d{2}-\d{2}/u,
 ]
 
-/** Ohne erkannte Anrede gilt diese Zahl Absätze als Briefkopfbereich. */
+/**
+ * Ohne erkannte Anrede gelten so viele **inhaltliche** Absätze als
+ * Briefkopfbereich.
+ *
+ * Gezählt werden nur Absätze, die Text tragen. Ein Brief nach DIN 5008
+ * setzt seine Abstände mit leeren Absätzen: Zwischen Anschriftenfeld,
+ * Datum und Betreff liegen schnell zehn davon, und aus einer Umwandlung
+ * aus PDF kommen noch mehr. Zählte man sie mit, fiele der Betreff aus dem
+ * Fenster, obwohl über ihm nichts steht als Anschrift und Datum — und der
+ * Briefkopf ließe genau das Feld stehen, auf das es ankommt.
+ */
 const FALLBACK_WINDOW = 15
 
 /** Bis hierhin darf die Anrede stehen; darunter ist sie Fließtext. */
@@ -143,8 +166,24 @@ function wholeParagraph(field: LetterheadField, paragraph: ParagraphSlice): Lett
   }
 }
 
+/**
+ * Der Absatzindex, an dem das Fenster endet: hinter dem `limit`-ten Absatz
+ * mit Inhalt. Leere Absätze sind Abstand, kein Inhalt (siehe
+ * {@link FALLBACK_WINDOW}).
+ */
+function windowEnd(paragraphs: readonly ParagraphSlice[], limit: number): number {
+  let withContent = 0
+  for (const paragraph of paragraphs) {
+    if (paragraph.text.trim() === '') continue
+    withContent += 1
+    if (withContent > limit) return paragraph.index
+  }
+  return Number.POSITIVE_INFINITY
+}
+
 function findSalutation(paragraphs: readonly ParagraphSlice[]): LetterheadMatch | null {
-  for (const paragraph of paragraphs.slice(0, SALUTATION_WINDOW)) {
+  const end = windowEnd(paragraphs, SALUTATION_WINDOW)
+  for (const paragraph of paragraphs.filter((candidate) => candidate.index < end)) {
     const lower = paragraph.text.trim().toLowerCase()
     if (lower === '') continue
     if (!SALUTATION_OPENERS.some((opener) => lower.startsWith(opener))) continue
@@ -157,7 +196,13 @@ function findSubject(paragraphs: readonly ParagraphSlice[]): LetterheadMatch | n
   for (const paragraph of paragraphs) {
     const lower = paragraph.text.trim().toLowerCase()
     if (lower === '') continue
-    if (!SUBJECT_OPENERS.some((opener) => lower.startsWith(opener))) continue
+    // Das erste Wort ohne anhängende Satzzeichen — „Bewerbung:" zählt wie
+    // „Bewerbung".
+    const head = lower.split(/[\s:,;.]/u)[0] ?? ''
+    const isSubject =
+      SUBJECT_HEADS.some((ending) => head.endsWith(ending)) ||
+      SUBJECT_OPENERS.some((opener) => lower.startsWith(opener))
+    if (!isSubject) continue
     return wholeParagraph('subject', paragraph)
   }
   return null
@@ -256,12 +301,11 @@ export function matchLetterhead(
   // Präfixprüfung kennt keine Wortgrenze, „Liebe Grüße" im Fließtext genügt)
   // das Suchfenster bis in den Fließtext auf — weiter, als die
   // Rückfallgrenze ohne Anrede je zuließe.
-  const above =
-    salutation === null
-      ? paragraphs.slice(0, FALLBACK_WINDOW)
-      : paragraphs.filter(
-          (paragraph) => paragraph.index < salutation.paragraph && paragraph.index < FALLBACK_WINDOW,
-        )
+  const end = windowEnd(paragraphs, FALLBACK_WINDOW)
+  const above = paragraphs.filter(
+    (paragraph) =>
+      paragraph.index < end && (salutation === null || paragraph.index < salutation.paragraph),
+  )
 
   const found = [
     salutation,
