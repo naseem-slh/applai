@@ -159,7 +159,9 @@ function buildSubject(jobAd: JobAd, uiLanguage: 'de' | 'en'): string {
  *
  * Ein bereits vorhandenes Satzzeichen wird ersetzt statt ergänzt: Ein
  * Doppelpunkt, wie ihn amerikanische Anschreiben tragen, würde sonst zu
- * „Dear Ms. Connolly:," werden.
+ * „Dear Ms. Connolly:," werden — und ebenso ein Ausrufezeichen, ein Punkt
+ * oder ein Fragezeichen zu „Hallo Frau Meier!,". Die Zeichenklasse führt
+ * deshalb neben Komma, Semikolon und Doppelpunkt auch diese drei auf.
  *
  * Das ist die einzige Stelle, an der `jobAd.salutation` nicht mehr
  * unverändert durchgereicht wird (siehe den Kommentar über
@@ -167,7 +169,7 @@ function buildSubject(jobAd: JobAd, uiLanguage: 'de' | 'en'): string {
  * unberührt, es wird weiterhin keine Person und keine Anrede erfunden.
  */
 function withComma(salutation: string): string {
-  return `${salutation.trimEnd().replace(/[,;:]+$/u, '')},`
+  return `${salutation.trimEnd().replace(/[,;:.!?]+$/u, '')},`
 }
 
 /**
