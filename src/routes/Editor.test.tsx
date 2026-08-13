@@ -145,8 +145,12 @@ const JOB_AD_REPLY = {
   language: 'de',
   company: 'Musterwerk Solutions',
   position: 'Entwicklerin',
-  contactPerson: null,
-  salutation: null,
+  // Explizit als `string | null` getippt (statt der sonst aus dem
+  // Literal `null` abgeleiteten Type `null`): Overrides in `ready({ jobAd:
+  // … })` müssen hier auch einen Ansprechpartner samt Anrede setzen können
+  // (Korrekturrunde Task 6, Anrede-Tests unten).
+  contactPerson: null as string | null,
+  salutation: null as string | null,
   requirements: [{ text: 'Erfahrung mit TypeScript', kind: 'skill' }],
   tone: 'sachlich',
 }
@@ -751,27 +755,43 @@ describe('Editor — Seitenspalte und Sprache (14c)', () => {
     )
   })
 
+  /**
+   * Korrekturrunde (Task 6, komma-Fix): Mit der allgemeinen Formel deckt
+   * sich der Vorschlag inzwischen zeichengleich mit der Anrede der Fixture
+   * ("Sehr geehrte Damen und Herren," — vorher wie nachher). Ein Absatz, der
+   * sich nicht ändert, beweist die Übernahme nicht mehr. Ein Ansprechpartner
+   * in der Anzeige liefert stattdessen einen Vorschlag, der sich inhaltlich
+   * von der Fixture unterscheidet — das beweist die Übernahme unabhängig
+   * vom Komma. (Empfänger/Betreff scheiden aus: In dieser Fixture steht die
+   * Anrede bereits in Absatz 0, `matchLetterhead` sucht Empfänger/Datum/
+   * Betreff aber nur in den Absätzen OBERHALB der Anrede — hier also nie.)
+   */
+  const JOB_AD_MIT_ANSPRECHPARTNER = {
+    contactPerson: 'Dr. Thomas Weber',
+    salutation: 'Sehr geehrter Herr Dr. Weber',
+  }
+
   it('übernimmt den Briefkopf selbsttätig, sobald die Analyse fertig ist', async () => {
-    await ready()
+    await ready({ jobAd: JOB_AD_MIT_ANSPRECHPARTNER })
 
     expect(await screen.findByText(t('editor.letterhead.applied.heading'))).toBeInTheDocument()
     await waitFor(() =>
-      expect(paragraphElement(0).textContent).not.toContain('Sehr geehrte Damen und Herren,'),
+      expect(paragraphElement(0).textContent).toBe('Sehr geehrter Herr Dr. Weber,'),
     )
   })
 
   it('nimmt die gesamte Übernahme mit einem einzigen Schritt zurück', async () => {
-    await ready()
+    await ready({ jobAd: JOB_AD_MIT_ANSPRECHPARTNER })
     await screen.findByText(t('editor.letterhead.applied.heading'))
     // Die Übernahme hat tatsächlich stattgefunden: Absatz 0 trägt die neue
-    // Anrede ohne Komma, nicht mehr die der Fixture.
-    expect(paragraphElement(0).textContent).toBe('Sehr geehrte Damen und Herren')
+    // Anrede aus der Anzeige, nicht mehr die der Fixture.
+    expect(paragraphElement(0).textContent).toBe('Sehr geehrter Herr Dr. Weber,')
     expect(screen.getByRole('button', { name: t('editor.undo') })).toBeEnabled()
 
     undoShortcut()
 
     // Der Ursprungszustand, nicht bloß irgendein anderer Text: Absatz 0
-    // trägt wieder exakt die Anrede der Fixture, mitsamt Komma.
+    // trägt wieder exakt die Anrede der Fixture.
     await waitFor(() =>
       expect(paragraphElement(0).textContent).toBe('Sehr geehrte Damen und Herren,'),
     )
@@ -806,7 +826,7 @@ describe('Editor — Seitenspalte und Sprache (14c)', () => {
     fireEvent.click(insertButtons[3]!)
 
     await waitFor(() =>
-      expect(paragraphElement(0).textContent).toBe('Sehr geehrte Damen und Herren'),
+      expect(paragraphElement(0).textContent).toBe('Sehr geehrte Damen und Herren,'),
     )
 
     undoShortcut()
