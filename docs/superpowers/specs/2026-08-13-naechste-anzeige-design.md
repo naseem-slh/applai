@@ -148,8 +148,15 @@ Abbruchsignal, die laufende `JobAd`, den Fortschrittstext. Sein Ablauf:
    werden gezählt und **vor** dem ersten bezahlten Aufruf gemeldet. Alle
    wiedergefundenen Stellen stehen wieder **offen**: Das Abgehakt-Sein galt
    der vorigen Bewerbung, nicht der Stelle selbst.
-3. `analyzeJobAd(text)` → neue `JobAd`. Damit greift der vorhandene
-   selbsttätige Briefkopf-Weg von allein.
+3. Den neuen Anzeigentext in die Sitzung setzen. `analyzeJobAd` wird
+   **nicht** selbst gerufen: `useLetterAnalysis` hängt bereits an
+   `session.jobAdText`, und damit erbt der Durchlauf Auswertungsspeicher,
+   Fehleranzeige, Wiederholung und den selbsttätigen Briefkopf, ohne sie
+   nachzubauen. Es entsteht kein neuer KI-Aufrufort (G3, G4). Gewartet wird
+   auf die **Identität** der neuen `JobAd`; ein Statuswert allein wäre der
+   der vorigen Anzeige. Das Stilprofil liegt unter `letterText` im
+   Zwischenspeicher und wird nicht neu geholt — die Kostenzusage „1 + N"
+   bleibt gültig.
 4. Je Schritt: Bereich aus der Merkliste lesen → `buildRewriteRequest` mit
    neuer `jobAd`, unverändertem Stilprofil, Wahrheitsmodus und Reglern →
    `rewriteVariants` → Ergebnis in die Maschine geben.
@@ -184,8 +191,14 @@ Prozentwert ausdrücklich ablehnt.
 
 ### Wählen-Modus
 
-Der Brief springt zur Stelle, die vorhandene `VariantPopover` öffnet sich.
-Keine zweite Variantenoberfläche, keine eigene Tastaturbedienung.
+Die drei Formulierungen stehen **im Halt selbst**, mit demselben
+Übernahme-Knopf wie im Fähnchen am Brief.
+
+Ursprünglich war dafür die vorhandene `VariantPopover` vorgesehen. Das geht
+nicht: Sie holt ihre Varianten selbst und nimmt keine entgegen. Sie zu
+benutzen hieße, dieselbe Stelle ein zweites Mal anzufragen — die Kostenzusage
+des Dialogs („eine Anfrage je Stelle") wäre gebrochen. Die Beschriftung des
+Knopfes bleibt dieselbe, damit derselbe Vorgang auch gleich heißt.
 
 ### Bericht
 
@@ -204,7 +217,7 @@ Alle Texte über i18next in `de` und `en` (G8), Schlüsselraum
 | Modellantwort verworfen (`rewrite.ts` prüft Anzahl, Modusdisziplin, Kontexttreue, Zitierbarkeit) | `haelt` mit Grund |
 | Stelle nicht wiedergefunden | Vorab im Dialog gemeldet, Schritt entfällt, kein Aufruf |
 | Unbelegte Aussagen im freien Modus | `haelt`, auch im Schnellmodus — G10 |
-| Anzeige nicht auswertbar | Durchlauf beginnt gar nicht, Brief bleibt unberührt |
+| Anzeige nicht auswertbar | Der Durchlauf wartet; der Brief steht als hergestelltes Original da, und die vorhandene Fehlermeldung samt „Erneut versuchen" führt weiter. **Nicht** die vorige Fassung — das Original herzustellen ist der erste Schritt und muss vor der neuen Anzeige geschehen, sonst liefe der selbsttätige Briefkopf auf dem alten Text und käme nie wieder zum Zug. Der Dialog sagt genau das zu: „Der Brief entsteht neu aus Ihrem hochgeladenen Anschreiben." |
 | Abbruch durch den Nutzer | Übernommenes bleibt stehen, Rest bleibt offen in der Merkliste |
 
 Im strengen Modus ist `unbackedClaims` immer leer — dort läuft der
