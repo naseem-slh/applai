@@ -442,13 +442,16 @@
       "docx": "Word file",
       "pdf": "PDF",
       "copy": "Text",
-      "pdfHint": "A PDF comes out of the print dialog.",
+      "pdfHint": "The PDF is typeset afresh and comes very close to the original.",
       "working": "Creating the Word file.",
+      "pdfWorking": "Creating the PDF.",
       "docxDone": "Word file created. The application is now in your list.",
       "docxFailed": "The Word file could not be created.",
+      "pdfDone": "PDF created. The application is now in your list.",
+      "pdfFailed": "The PDF could not be created.",
       "copyDone": "The text is in your clipboard.",
       "copyFailed": "The text could not be copied. The browser denied access to the clipboard.",
-      "pdfTooltip": "Opens the print dialog. Choose “Save as PDF” there.",
+      "pdfTooltip": "Creates a PDF file with the original's typeface, margins and letterhead.",
       "copyTooltip": "Puts the letter into the clipboard as plain text."
     }
   },

@@ -1,9 +1,17 @@
 /*
- * Der PDF-Export läuft über den Druckdialog des Browsers
- * (`docs/spec.md`: „Über den Druckdialog des Browsers, aus der Ansicht, die
- * der Nutzer sieht"). Kein eigener PDF-Erzeuger, keine zusätzliche
- * Bibliothek (G9) — und vor allem keine zweite Fassung des Dokuments, die
- * vom Gesehenen abweichen könnte.
+ * Das Blatt für den Drucker.
+ *
+ * **Nicht mehr der PDF-Export.** Der lief früher über den Druckdialog und
+ * setzte damit die Bildschirmdarstellung aufs Papier — die kennt vom
+ * Word-Original nur die Zeichen, nicht seine Schrift, seine Ränder oder
+ * seinen Briefkopf. Das Ergebnis hatte mit der Word-Datei nichts gemein
+ * außer dem Wortlaut. Ein PDF entsteht seit `src/lib/export/pdf/` aus dem
+ * Original selbst.
+ *
+ * **Warum dieses Blatt trotzdem bleibt.** Strg+P drückt jeder irgendwann,
+ * und dann soll ausschließlich der Brief auf dem Papier stehen, nicht die
+ * Werkzeugleiste. Es ist eine Bequemlichkeit, keine Zusage über Treue —
+ * dafür gibt es den Knopf daneben.
  *
  * Was dieses Blatt tut: Beim Drucken bleibt **ausschließlich** das Dokument
  * stehen. Werkzeugleiste, Seitenspalte, Kopfzeile und jede Schaltfläche

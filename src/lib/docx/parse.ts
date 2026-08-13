@@ -45,7 +45,7 @@ export async function parseDocx(buffer: ArrayBuffer): Promise<DocxDocument> {
  * nur diese eine Implementierung.
  */
 export function buildTextModel(doc: XMLDocument): { paragraphs: Paragraph[]; text: string } {
-  const paragraphNodes = Array.from(doc.getElementsByTagName('w:p')).filter((node) => !isNestedContent(node))
+  const paragraphNodes = paragraphNodesOf(doc)
   const paragraphs: Paragraph[] = []
   let text = ''
 
@@ -70,9 +70,7 @@ export function buildTextModel(doc: XMLDocument): { paragraphs: Paragraph[]; tex
 }
 
 function parseParagraph(paragraphNode: Element): { text: string; runs: Run[] } {
-  const runNodes = Array.from(paragraphNode.getElementsByTagName('w:r')).filter((runNode) =>
-    belongsToParagraph(runNode, paragraphNode),
-  )
+  const runNodes = runNodesOf(paragraphNode)
   const runs: Run[] = []
   let text = ''
 
@@ -93,6 +91,26 @@ function parseParagraph(paragraphNode: Element): { text: string; runs: Run[] } {
 // erhalten bleiben sollen), `w:tab` wird zu einem Tabulator, `w:br` und
 // `w:cr` zu einem Zeilenumbruch. Andere Kindelemente (z. B. `w:rPr` für
 // Formatierung) tragen keinen Text bei und werden übersprungen.
+/**
+ * Die Absätze eines XML-Teils in Dokumentreihenfolge.
+ *
+ * Exportiert, weil `src/lib/docx/format.ts` dieselbe Auswahl braucht — für
+ * `word/document.xml` **und** für Kopf- und Fußzeilen, die eigene Teile mit
+ * demselben Aufbau sind. Zwei Stellen mit zwei Auffassungen davon, was ein
+ * Absatz ist, wären genau die Art von Abweichung, die später als
+ * verrutschter Text auffällt.
+ */
+export function paragraphNodesOf(root: XMLDocument | Element): Element[] {
+  return Array.from(root.getElementsByTagName('w:p')).filter((node) => !isNestedContent(node))
+}
+
+/** Die Läufe eines Absatzes, ohne die verschachtelter Absätze und Textfelder. */
+export function runNodesOf(paragraphNode: Element): Element[] {
+  return Array.from(paragraphNode.getElementsByTagName('w:r')).filter((runNode) =>
+    belongsToParagraph(runNode, paragraphNode),
+  )
+}
+
 function parseRunText(runNode: Element): string {
   let text = ''
   for (const child of Array.from(runNode.children)) {

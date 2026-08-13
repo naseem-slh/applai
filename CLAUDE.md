@@ -43,8 +43,13 @@ gegenstandslos.
 
 ## Architektur-Grenzen
 
-- `src/lib/docx`, `src/lib/pdf`, `src/lib/ai`, `src/lib/storage`,
-  `src/lib/privacy` kennen React nicht und sind ohne Oberfläche testbar.
+- `src/lib/docx`, `src/lib/pdf`, `src/lib/export`, `src/lib/ai`,
+  `src/lib/storage`, `src/lib/privacy` kennen React nicht und sind ohne
+  Oberfläche testbar.
+- `src/lib/pdf` liest PDF **ein** (Beta-Umwandlung nach Word),
+  `src/lib/export/pdf` schreibt PDF **aus**. Die beiden Richtungen teilen
+  keinen Code außer `pdfjs-dist` in den Tests des Schreibers, wo es als
+  fremder Leser den Nachweis führt.
 - `src/lib/domain` kennt nur `src/lib/ai` und die Modelltypen.
 - Die Oberfläche (`src/routes`, `src/components`) kennt `src/lib/domain`,
   aber nie einen KI-Anbieter direkt.

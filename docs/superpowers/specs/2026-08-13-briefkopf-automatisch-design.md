@@ -12,8 +12,8 @@ und das für jedes der vier Felder einzeln. Vier Markierungen, vier Klicks —
 bei jeder Bewerbung erneut, und immer für dieselbe mechanische Arbeit.
 
 Der Word- und PDF-Export braucht dafür keine eigene Änderung: `downloadDocx`
-serialisiert den laufenden Dokumentstand, PDF entsteht über den Druckdialog
-auf denselben Brief. Was im Dokument steht, ist in beiden Ausgaben enthalten.
+serialisiert den laufenden Dokumentstand, der PDF-Export liest denselben
+Brief. Was im Dokument steht, ist in beiden Ausgaben enthalten.
 Das manuelle Einsetzen ist die einzige Lücke zwischen Vorschlag und Ergebnis.
 
 ## Die bestehende Entscheidung, und was sich an ihr ändert

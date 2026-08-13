@@ -12,6 +12,12 @@ vi.mock('@/lib/docx/serialize', () => ({
   serializeDocx: vi.fn(() => Promise.resolve(new Blob(['docx'], { type: 'application/zip' }))),
 }))
 
+// Dasselbe für den PDF-Weg: Dass die Datei richtig aussieht, prüft
+// `src/lib/export/pdf/write.test.ts` mit einem fremden Leser. Hier zählt nur,
+// ob die Ansicht ihn anstößt, den Erfolg meldet und die Bewerbung abschließt.
+const downloadPdf = vi.hoisted(() => vi.fn(() => Promise.resolve()))
+vi.mock('@/lib/export/pdf', () => ({ downloadPdf }))
+
 function fakeDocument(texts: string[]): DocxDocument {
   let offset = 0
   const paragraphs: Paragraph[] = texts.map((text, index) => {
@@ -144,21 +150,44 @@ describe('ExportBar', () => {
     )
   })
 
-  it('öffnet für das PDF den Druckdialog und schließt die Bewerbung nicht ab', () => {
-    const print = vi.fn()
-    vi.stubGlobal('print', print)
+  it('erzeugt das PDF unter demselben Namen wie die Word-Datei', async () => {
+    setup()
+
+    fireEvent.click(screen.getByRole('button', { name: t('editor.export.pdf') }))
+
+    await waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent(t('editor.export.pdfDone')),
+    )
+    expect(downloadPdf).toHaveBeenCalledWith(DOCX, expect.stringMatching(/^Anschreiben_Musterwerk_\d{4}-\d{2}-\d{2}\.pdf$/))
+  })
+
+  /**
+   * Der Unterschied zum alten Weg über den Druckdialog: Eine erzeugte Datei
+   * ist ein eindeutiger Abschluss. `afterprint` war es nie — es feuerte auch
+   * nach einem Abbruch, und den Zwischenstand daraufhin zu löschen hieße, die
+   * Arbeit wegzuwerfen, weil jemand in eine Vorschau geschaut hat.
+   */
+  it('schließt die Bewerbung mit dem PDF ab', async () => {
     const { onExported } = setup()
 
     fireEvent.click(screen.getByRole('button', { name: t('editor.export.pdf') }))
 
-    expect(print).toHaveBeenCalledTimes(1)
-    // `afterprint` feuert auch nach einem Abbruch; den Zwischenstand daraufhin
-    // zu löschen hieße, die Arbeit wegzuwerfen, weil jemand in eine Vorschau
-    // geschaut hat.
+    await waitFor(() => expect(onExported).toHaveBeenCalledTimes(1))
+  })
+
+  it('meldet ein gescheitertes PDF, statt Erfolg vorzutäuschen', async () => {
+    downloadPdf.mockRejectedValueOnce(new Error('Schrift nicht ladbar'))
+    const { onExported } = setup()
+
+    fireEvent.click(screen.getByRole('button', { name: t('editor.export.pdf') }))
+
+    await waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent(t('editor.export.pdfFailed')),
+    )
     expect(onExported).not.toHaveBeenCalled()
   })
 
-  it('sagt, wo im Druckdialog „Als PDF sichern" steht', () => {
+  it('sagt, dass das PDF neu gesetzt wird', () => {
     setup()
 
     expect(screen.getByText(t('editor.export.pdfHint'))).toBeInTheDocument()

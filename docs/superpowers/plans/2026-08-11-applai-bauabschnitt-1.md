@@ -117,7 +117,7 @@ Diese Tabelle ist die verbindliche Fassung. Sie wird als `docs/spec.md` ins Repo
 | Thema | Entscheidung |
 |---|---|
 | Word-Export | Das Original mit gepatchten Textstellen — Schrift, Ränder, Kopfzeile unverändert |
-| PDF-Export | Über den Druckdialog des Browsers, aus der Ansicht, die der Nutzer sieht |
+| PDF-Export | Im Browser aus dem Original neu gesetzt: Schrift, Grade, Ränder, Ausrichtung, Kopf- und Fußzeile samt Bildern. Metrikgleiche Schriften halten den Zeilenumbruch |
 | Kopierfeld | Reintext für Online-Formulare |
 | PDF→Word | **Beta**, einspaltig, sichtbar gekennzeichnet mit Prüfhinweis. Originaltreue folgt im zweiten Abschnitt |
 | Bewerbungsliste | Firma, Stelle, Datum. Nur im Browser. Hinweis bei doppelter Bewerbung |
@@ -567,7 +567,7 @@ export function findForeignCompanyNames(text: string, currentCompany: string | n
 **Dateien:** `src/lib/export/docx.ts`, `src/lib/export/print.css`, `src/components/editor/ExportBar.tsx`, `.test.ts`
 
 - [ ] Word-Export: `serializeDocx` → Download mit sprechendem Dateinamen `Anschreiben_<Firma>_<JJJJ-MM-TT>.docx`
-- [ ] PDF-Export über den Druckdialog: eigenes Druck-Stylesheet, das ausschließlich das Dokument setzt (Seitenränder, Schriftgrößen, keine Bedienelemente), plus ein kurzer Hinweis „Im Dialog ‚Als PDF sichern' wählen"
+- [x] PDF-Export als eigener Erzeuger (`src/lib/export/pdf/`, nachgereicht): Formatierung aus dem OOXML lesen, mit metrikgleichen Schriften setzen, PDF schreiben. Das Druck-Stylesheet bleibt für Strg+P, ist aber nicht mehr der Exportweg
 - [ ] Kopierfeld: Reintext des Dokuments in die Zwischenablage, für Online-Formulare
 - [ ] Nach erfolgreichem Export: Bewerbung in die Liste eintragen (`addApplication`) und den Entwurf löschen
 - [ ] Tests: Dateiname korrekt gebildet; Exportknöpfe sind gesperrt, solange unbestätigte erfundene Aussagen vorliegen; nach Export ist der Entwurf entfernt und die Bewerbung in der Liste
@@ -603,7 +603,7 @@ export function findForeignCompanyNames(text: string, currentCompany: string | n
 6. Über zwei Absätze markieren, umschreiben — Absatzstruktur bleibt erhalten
 7. Modus `free` einschalten: erfundene Aussagen sind farbig, der Export ist gesperrt bis zur Bestätigung
 8. Word exportieren, in Word öffnen: **Schrift, Ränder, Kopfzeile identisch zum Original**
-9. PDF über den Druckdialog: entspricht der Vorschau
+9. PDF exportieren und neben die Word-Datei legen: Schrift, Ränder, Umbrüche, Briefkopf
 10. Seite neu laden: Zwischenstand ist wieder da
 11. Zweite Bewerbung bei derselben Firma auf dieselbe Stelle: Hinweis erscheint
 12. „Alle Daten löschen": IndexedDB ist leer, Schlüssel weg

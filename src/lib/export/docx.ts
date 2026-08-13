@@ -64,6 +64,11 @@ export function isoDate(date: Date): string {
 /**
  * Baut den Dateinamen `Anschreiben_<Firma>_<JJJJ-MM-TT>.docx`.
  *
+ * Die Endung ist überschreibbar, weil der PDF-Export denselben Namen unter
+ * `.pdf` braucht. Beide Wege sollen dieselbe Datei benennen — die Regeln für
+ * verbotene Zeichen, die Länge und den fehlenden Firmennamen gelten für ein
+ * PDF genauso, und ein zweiter Satz davon wäre ein zweiter Satz Fehler.
+ *
  * Ohne bekannte Firma entfällt der mittlere Teil samt seinem Trennzeichen —
  * `Anschreiben__2026-08-12.docx` mit einer Lücke sähe nach einem Fehler aus,
  * und einen Platzhalter („unbekannt") in den Namen zu schreiben wäre eine
@@ -74,7 +79,11 @@ export function isoDate(date: Date): string {
  * Bewerbungsportalen, und dort ist ein Name ohne Leerzeichen der
  * verlässlichere.
  */
-export function buildFileName(company: string | null, date: Date): string {
+export function buildFileName(
+  company: string | null,
+  date: Date,
+  extension: string = DOCX_EXTENSION,
+): string {
   const cleaned = [...(company ?? '')]
     .map((character) =>
       FORBIDDEN_CHARACTERS.has(character) || !isPrintable(character) ? ' ' : character,
@@ -88,7 +97,7 @@ export function buildFileName(company: string | null, date: Date): string {
     .replace(/ /g, '_')
 
   const parts = cleaned === '' ? ['Anschreiben', isoDate(date)] : ['Anschreiben', cleaned, isoDate(date)]
-  return `${parts.join('_')}${DOCX_EXTENSION}`
+  return `${parts.join('_')}${extension}`
 }
 
 /**

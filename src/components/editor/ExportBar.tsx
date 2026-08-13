@@ -3,35 +3,29 @@ import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { FIELD_HINT_CLASS } from '@/components/ui/Field'
-import { CopyIcon, DownloadIcon, PrinterIcon } from '@/components/ui/icons'
+import { CopyIcon, DownloadIcon } from '@/components/ui/icons'
 import { Tooltip } from '@/components/ui/Tooltip'
 import type { DocxDocument } from '@/lib/docx/model'
 import { copyToClipboard, toPlainText } from '@/lib/export/clipboard'
 import { buildFileName, downloadDocx } from '@/lib/export/docx'
 
 /**
- * Die drei Ausgabewege: Word-Datei, PDF über den Druckdialog, Reintext in
- * der Zwischenablage.
+ * Die drei Ausgabewege: Word-Datei, PDF-Datei, Reintext in der Zwischenablage.
  *
- * **Was „Export" heißt — und was nicht.** Nur der **Word-Download**
- * schließt die Bewerbung ab: Er trägt sie in die Liste ein und löscht den
+ * **Was „Export" heißt — und was nicht.** Word-Datei und PDF schließen die
+ * Bewerbung ab: Beide tragen sie in die Liste ein und löschen den
  * Zwischenstand (`docs/spec.md`: „gelöscht nach Export oder nach 7 Tagen").
- * Die beiden anderen Wege tun das ausdrücklich nicht, und zwar aus je einem
- * eigenen Grund:
+ * Das Kopierfeld tut das ausdrücklich nicht — wer den Text in ein
+ * Online-Formular kopiert, steht mitten im Ausfüllen und ist gerade nicht
+ * fertig.
  *
- * - **Der Druckdialog meldet keinen Erfolg.** `afterprint` feuert auch dann,
- *   wenn der Nutzer abgebrochen hat; die Browser unterscheiden das nicht.
- *   Den Zwischenstand daraufhin zu löschen hieße, die Arbeit einer Stunde
- *   wegzuwerfen, weil jemand in eine Vorschau geschaut hat. Das ist der eine
- *   Fehler, den ein Werkzeug für Bewerbungen nicht machen darf.
- * - **Das Kopierfeld ist für Online-Formulare.** Wer den Text dorthin
- *   kopiert, steht mitten im Ausfüllen und ist gerade nicht fertig.
- *
- * Der Preis ist benannt: Wer ausschließlich als PDF oder über ein Formular
- * bewirbt, bekommt keinen Eintrag in der Liste, solange er nicht zusätzlich
- * die Word-Datei erzeugt. Ein dritter Knopf „Bewerbung eintragen" wäre die
- * Alternative; sie steht nicht im Plan, und ein automatischer Eintrag auf
- * einen Verdacht hin wäre die schlechtere Wahl als ein fehlender.
+ * **Warum das PDF früher nicht mitzählte.** Es entstand über den Druckdialog,
+ * und der meldet keinen Erfolg: `afterprint` feuert auch nach einem Abbruch,
+ * die Browser unterscheiden das nicht. Den Zwischenstand daraufhin zu löschen
+ * hieße, die Arbeit einer Stunde wegzuwerfen, weil jemand in eine Vorschau
+ * geschaut hat. Seit das PDF hier selbst erzeugt wird (`lib/export/pdf`), ist
+ * es so eindeutig wie der Word-Download: Entweder die Datei ist entstanden,
+ * oder es gab einen Fehler. Der Grund für die Ausnahme ist weggefallen.
  *
  * **Die Exportsperre** (G10) gilt für alle drei Wege gleich: Solange eine
  * unbestätigte erfundene Aussage im Brief steht, geht nichts hinaus — auch
@@ -40,11 +34,14 @@ import { buildFileName, downloadDocx } from '@/lib/export/docx'
  * Auskunft.
  */
 
+/** Welcher Weg gerade gelaufen ist — für die Meldung darunter. */
+export type ExportAction = 'docx' | 'pdf' | 'copy'
+
 export type ExportState =
   | { kind: 'idle' }
-  | { kind: 'working' }
-  | { kind: 'done'; action: 'docx' | 'copy' }
-  | { kind: 'failed'; action: 'docx' | 'copy' }
+  | { kind: 'working'; action: 'docx' | 'pdf' }
+  | { kind: 'done'; action: ExportAction }
+  | { kind: 'failed'; action: ExportAction }
 
 export interface ExportBarProps {
   document: DocxDocument
@@ -53,9 +50,10 @@ export interface ExportBarProps {
   /** Wird gesperrt, solange unbestätigte erfundene Aussagen im Text stehen. */
   blocked: boolean
   /**
-   * Trägt die Bewerbung ein und löscht den Zwischenstand. Wird **nur** nach
-   * dem Word-Download gerufen (siehe oben). Wirft nicht: Ein gescheiterter
-   * Eintrag darf den erzeugten Brief nicht als Fehlschlag erscheinen lassen.
+   * Trägt die Bewerbung ein und löscht den Zwischenstand. Wird nach jeder
+   * erzeugten Datei gerufen, nicht nach dem Kopieren (siehe oben). Wirft
+   * nicht: Ein gescheiterter Eintrag darf den erzeugten Brief nicht als
+   * Fehlschlag erscheinen lassen.
    */
   onExported: () => void
 }
@@ -66,7 +64,7 @@ export function ExportBar({ document: docx, company, blocked, onExported }: Expo
   const [state, setState] = useState<ExportState>({ kind: 'idle' })
 
   const handleDownload = useCallback(async () => {
-    setState({ kind: 'working' })
+    setState({ kind: 'working', action: 'docx' })
     try {
       await downloadDocx(docx, buildFileName(company, new Date()))
       setState({ kind: 'done', action: 'docx' })
@@ -79,14 +77,29 @@ export function ExportBar({ document: docx, company, blocked, onExported }: Expo
     }
   }, [docx, company, onExported])
 
+  const handlePdf = useCallback(async () => {
+    // Der sichtbare Zwischenzustand ist hier nicht nur Höflichkeit: Beim
+    // ersten Mal werden das Satzwerk und die Schriften geladen.
+    setState({ kind: 'working', action: 'pdf' })
+    try {
+      // Nachgeladen wie die PDF-Einlesestrecke in `loadDocument.ts`: Wer nur
+      // die Word-Datei herunterlädt, soll den Schriftsatz nie im Bündel
+      // haben.
+      const { downloadPdf } = await import('@/lib/export/pdf')
+      await downloadPdf(docx, buildFileName(company, new Date(), '.pdf'))
+      setState({ kind: 'done', action: 'pdf' })
+      onExported()
+    } catch {
+      setState({ kind: 'failed', action: 'pdf' })
+    }
+  }, [docx, company, onExported])
+
   const handleCopy = useCallback(async () => {
     const result = await copyToClipboard(toPlainText(docx.text))
     setState(result === 'copied' ? { kind: 'done', action: 'copy' } : { kind: 'failed', action: 'copy' })
   }, [docx])
 
-  // Kein eigener Zustand: Der Druckdialog blockiert den Hauptstrang, und was
-  // danach geschieht, weiß diese Ansicht nicht (siehe Kopfkommentar).
-  const handlePrint = useCallback(() => window.print(), [])
+  const working = state.kind === 'working'
 
   return (
     <Card asChild variant="default" padding="md">
@@ -99,8 +112,9 @@ export function ExportBar({ document: docx, company, blocked, onExported }: Expo
         </h3>
 
         {/* Der Word-Download über die ganze Breite, die beiden Nebenwege
-            darunter zu zweit: Nur er schließt die Bewerbung ab (siehe
-            Kopfkommentar), und das soll man sehen, ohne es zu lesen.
+            darunter zu zweit: Er reicht das Original mit allem, was daran
+            hängt, unangetastet weiter — das PDF wird neu gesetzt und kommt
+            dem Original nahe, ohne es zu sein.
 
             Die Beschriftungen sind kurz, weil das Sinnbild die Hälfte der
             Aussage trägt. Was ein kurzes Wort offenlässt, sagt das
@@ -108,7 +122,7 @@ export function ExportBar({ document: docx, company, blocked, onExported }: Expo
             sichtbare Text bleibt also der Name des Knopfes (WCAG 2.5.3). */}
         <Button
           variant="primary"
-          disabled={blocked || state.kind === 'working'}
+          disabled={blocked || working}
           onClick={() => void handleDownload()}
           className="w-full"
         >
@@ -118,8 +132,12 @@ export function ExportBar({ document: docx, company, blocked, onExported }: Expo
 
         <div className="grid grid-cols-2 gap-2">
           <Tooltip content={t('editor.export.pdfTooltip')}>
-            <Button variant="secondary" disabled={blocked} onClick={handlePrint}>
-              <PrinterIcon />
+            <Button
+              variant="secondary"
+              disabled={blocked || working}
+              onClick={() => void handlePdf()}
+            >
+              <DownloadIcon />
               {t('editor.export.pdf')}
             </Button>
           </Tooltip>
@@ -134,8 +152,10 @@ export function ExportBar({ document: docx, company, blocked, onExported }: Expo
         {/* Der eine Halbsatz bleibt sichtbar statt im Fähnchen: Ein
             gesperrter Knopf nimmt keine Zeigerereignisse an und zeigt sein
             Fähnchen deshalb nie, und auf einem Gerät mit Fingerbedienung
-            gibt es kein Überfahren. Dass ein PDF durch Drucken entsteht,
-            ist die einzige der drei Auskünfte, die niemand errät. */}
+            gibt es kein Überfahren. Dass das PDF neu gesetzt wird und dem
+            Original nur nahekommt, ist die einzige der drei Auskünfte, die
+            niemand errät — und die einzige, die jemanden überraschen könnte,
+            der beide Dateien nebeneinanderlegt. */}
         <p className={FIELD_HINT_CLASS}>{t('editor.export.pdfHint')}</p>
 
         {/* Eine Zustandsauskunft, keine Unterbrechung: `role="status"`. Der
@@ -160,11 +180,11 @@ export function ExportBar({ document: docx, company, blocked, onExported }: Expo
 function message(state: ExportState, t: (key: string) => string): string {
   switch (state.kind) {
     case 'working':
-      return t('editor.export.working')
+      return state.action === 'docx' ? t('editor.export.working') : t('editor.export.pdfWorking')
     case 'done':
-      return state.action === 'docx' ? t('editor.export.docxDone') : t('editor.export.copyDone')
+      return t(`editor.export.${state.action}Done`)
     case 'failed':
-      return state.action === 'docx' ? t('editor.export.docxFailed') : t('editor.export.copyFailed')
+      return t(`editor.export.${state.action}Failed`)
     case 'idle':
       return ''
   }

@@ -442,13 +442,16 @@
       "docx": "Word-Datei",
       "pdf": "PDF",
       "copy": "Text",
-      "pdfHint": "PDF entsteht über den Druckdialog.",
+      "pdfHint": "Das PDF wird neu gesetzt und kommt dem Original sehr nahe.",
       "working": "Die Word-Datei wird erzeugt.",
+      "pdfWorking": "Das PDF wird erzeugt.",
       "docxDone": "Word-Datei erzeugt. Die Bewerbung steht in Ihrer Liste.",
       "docxFailed": "Die Word-Datei konnte nicht erzeugt werden.",
+      "pdfDone": "PDF erzeugt. Die Bewerbung steht in Ihrer Liste.",
+      "pdfFailed": "Das PDF konnte nicht erzeugt werden.",
       "copyDone": "Der Text liegt in der Zwischenablage.",
       "copyFailed": "Der Text konnte nicht kopiert werden. Der Browser hat den Zugriff auf die Zwischenablage abgelehnt.",
-      "pdfTooltip": "Öffnet den Druckdialog. Dort „Als PDF sichern“ wählen.",
+      "pdfTooltip": "Erzeugt eine PDF-Datei mit Schrift, Rändern und Briefkopf des Originals.",
       "copyTooltip": "Legt den Brief als reinen Text in die Zwischenablage."
     }
   },

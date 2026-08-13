@@ -58,7 +58,7 @@ gegen `localhost`.
 **4. Ein echter Durchlauf mit einem echten Schlüssel.** Die Verifikationsliste
 im Implementierungsplan nennt zwölf Punkte; die beiden, die kein Test
 abdecken kann, sind: Word-Datei in Word öffnen (Schrift, Ränder, Kopfzeile
-identisch zum Original) und der PDF-Druck (entspricht der Vorschau).
+identisch zum Original) und das PDF (steht neben der Word-Datei: Schrift, Ränder, Umbrüche, Briefkopf).
 
 ## Vor jeder Veröffentlichung
 
