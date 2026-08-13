@@ -26,7 +26,10 @@ import {
 } from '@/components/editor/documentSelection'
 import { diffText } from '@/components/editor/editableInput'
 import { findForeignCompanies } from '@/components/editor/foreignCompanies'
-import { shiftMarks, type Mark } from '@/components/editor/marks'
+import { restoreMarks, shiftMarks, type Mark } from '@/components/editor/marks'
+import { ReapplyDialog } from '@/components/editor/ReapplyDialog'
+import { ReapplyStatus } from '@/components/editor/ReapplyStatus'
+import { useReapply } from '@/components/editor/useReapply'
 import {
   buildRewriteRequest,
   defaultSliders,
@@ -110,7 +113,7 @@ export default function Editor() {
 
 function EditorWorkspace({ session }: { session: StartSession }) {
   const { t } = useTranslation()
-  const { storage, keyVault, settings, updateSettings } = useApp()
+  const { storage, keyVault, settings, updateSettings, setSession } = useApp()
   const headingId = useId()
   const claimsHeadingId = useId()
   const rootRef = useRef<HTMLDivElement>(null)
@@ -526,6 +529,60 @@ function EditorWorkspace({ session }: { session: StartSession }) {
     },
     [selection, applyEdit, claims, clear],
   )
+
+  /**
+   * Zurück auf das hochgeladene Anschreiben — derselbe Weg, den das Betreten
+   * der Arbeitsfläche geht (`parseDocx` + `reset`), und danach die
+   * vorgemerkten Stellen neu gegen genau diesen Text gesetzt.
+   *
+   * Die Anker wurden seinerzeit auf dem Original gebildet und treffen hier
+   * deshalb, sofern das Anschreiben nicht ausgetauscht wurde. Was dennoch
+   * nicht sitzt, wird gezählt und im Dialog gemeldet — vor der ersten
+   * bezahlten Anfrage, nicht mitten im Lauf.
+   *
+   * Alle wiedergefundenen Stellen stehen wieder **offen**: Das Abgehakt-Sein
+   * galt der vorigen Bewerbung, nicht der Stelle selbst.
+   */
+  const restoreOriginal = useCallback(async () => {
+    if (letter === null) return { markIds: [], unresolved: 0 }
+    const anchors = marksRef.current.map((mark) => mark.anchor)
+    const parsed = await parseDocx(letter.docxBase)
+    reset(parsed)
+    const restored = restoreMarks(parsed.text, anchors, (index) => `mark-${index}`)
+    setMarks(restored.marks)
+    return {
+      markIds: restored.marks.map((mark) => mark.id),
+      unresolved: restored.unresolved.length,
+    }
+  }, [letter, reset, setMarks])
+
+  const setJobAdText = useCallback(
+    (text: string) => setSession({ ...session, jobAdText: text }),
+    [session, setSession],
+  )
+
+  const [reapplyOpen, setReapplyOpen] = useState(false)
+
+  /**
+   * Der Durchlauf für die nächste Ausschreibung.
+   *
+   * Er bekommt ausschließlich Vorhandenes gereicht: `rewrite` ist dasselbe,
+   * das die Variantenauswahl von Hand benutzt, `applyEdit` derselbe eine Weg,
+   * auf dem sich Brieftext ändert. Die neue Anzeige setzt er über die
+   * Sitzung — `useLetterAnalysis` wertet sie dann von allein aus, samt
+   * Zwischenspeicher, Fehleranzeige und selbsttätigem Briefkopf.
+   */
+  const reapply = useReapply({
+    docx,
+    marks,
+    rewrite,
+    applyEdit,
+    addClaims: claims.add,
+    setJobAdText,
+    restoreOriginal,
+    currentJobAdText: session.jobAdText,
+    jobAd: analysis.jobAd,
+  })
 
   /**
    * Einsetzen eines Briefkopf-Feldes an der Markierung — derselbe Weg wie
@@ -1031,11 +1088,29 @@ function EditorWorkspace({ session }: { session: StartSession }) {
                 company={jobAd?.company ?? null}
                 blocked={claims.exportBlocked}
                 onExported={handleExported}
+                onNextPosting={marks.length === 0 ? null : () => setReapplyOpen(true)}
+              />
+              <ReapplyStatus
+                state={reapply.state}
+                onRetry={reapply.retry}
+                onSkip={reapply.skip}
+                onCancel={reapply.cancel}
               />
             </div>
           </aside>
         </div>
       </div>
+
+      <ReapplyDialog
+        open={reapplyOpen}
+        onOpenChange={setReapplyOpen}
+        markCount={marks.length}
+        unresolvedCount={markHandle.unresolved.length}
+        onStart={(text, mode) => {
+          setReapplyOpen(false)
+          reapply.start(text, mode)
+        }}
+      />
 
       {adLanguage !== null && (
         <LanguagePrompt

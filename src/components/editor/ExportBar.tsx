@@ -58,9 +58,21 @@ export interface ExportBarProps {
    * Eintrag darf den erzeugten Brief nicht als Fehlschlag erscheinen lassen.
    */
   onExported: () => void
+  /**
+   * Öffnet den Durchlauf für die nächste Ausschreibung. `null`, solange es
+   * nichts abzuarbeiten gibt — ohne vorgemerkte Stelle bliebe vom Durchlauf
+   * nur der Briefkopf, und dafür ist er nicht gebaut.
+   */
+  onNextPosting: (() => void) | null
 }
 
-export function ExportBar({ document: docx, company, blocked, onExported }: ExportBarProps) {
+export function ExportBar({
+  document: docx,
+  company,
+  blocked,
+  onExported,
+  onNextPosting,
+}: ExportBarProps) {
   const { t } = useTranslation()
   const headingId = useId()
   const [state, setState] = useState<ExportState>({ kind: 'idle' })
@@ -130,6 +142,16 @@ export function ExportBar({ document: docx, company, blocked, onExported }: Expo
             </Button>
           </Tooltip>
         </div>
+
+        {/* Die nächste Bewerbung steht **unter** der Ausgabe, nicht
+            daneben: Sie ist der Schritt danach, nicht einer der drei Wege
+            hinaus. Gesperrt ohne vorgemerkte Stellen — dann hätte der
+            Durchlauf nichts zu tun. */}
+        {onNextPosting !== null && (
+          <Button variant="secondary" onClick={onNextPosting} className="w-full">
+            {t('editor.reapply.trigger')}
+          </Button>
+        )}
 
         {/* Der eine Halbsatz bleibt sichtbar statt im Fähnchen: Ein
             gesperrter Knopf nimmt keine Zeigerereignisse an und zeigt sein

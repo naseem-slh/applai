@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import { vi } from 'vitest'
 import type {
   Application,
@@ -182,8 +182,35 @@ export function createHarness(options: HarnessOptions = {}): Harness {
     storageUnavailable: options.storageUnavailable ?? false,
   }
 
-  function wrapper({ children }: { children: ReactNode }) {
-    return <AppContext value={value}>{children}</AppContext>
+  /**
+   * Die Sitzung liegt im Zustand, nicht fest im Kontextwert.
+   *
+   * `setSession` war zuvor eine wirkungslose Attrappe. Für Ansichten, die
+   * die Sitzung nur lesen, genügte das — für den Durchlauf über die
+   * vorgemerkten Stellen nicht: Er setzt den neuen Anzeigentext und wartet
+   * darauf, dass die Auswertung ihn liest. Mit einer wirkungslosen Attrappe
+   * wartete er zu Recht ewig, und der Test prüfte nichts.
+   *
+   * Die Attrappe bleibt vorgeschaltet, damit Zusicherungen über den Aufruf
+   * weiter greifen.
+   */
+  function HarnessWrapper({ children }: { children: ReactNode }) {
+    const [session, setSession] = useState(value.session)
+
+    const handleSetSession = useCallback(
+      (next: StartSession) => {
+        value.setSession(next)
+        setSession(next)
+      },
+      [],
+    )
+
+    const current = useMemo(
+      () => ({ ...value, session, setSession: handleSetSession }),
+      [session, handleSetSession],
+    )
+
+    return <AppContext value={current}>{children}</AppContext>
   }
 
   return {
@@ -194,6 +221,6 @@ export function createHarness(options: HarnessOptions = {}): Harness {
     updateSettings: value.updateSettings,
     reloadSettings: value.reloadSettings,
     refresh: value.keyVault.refresh,
-    wrapper,
+    wrapper: HarnessWrapper,
   }
 }
