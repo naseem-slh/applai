@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { FIELD_HINT_CLASS } from '@/components/ui/Field'
 import type { ReapplyState } from '@/lib/domain/reapply'
+import type { Variant } from '@/lib/domain/rewrite'
 
 /**
  * Der Durchlauf, während er läuft — und was er hinterlassen hat.
@@ -19,18 +20,32 @@ import type { ReapplyState } from '@/lib/domain/reapply'
  * nicht `assertive` — es unterbricht nichts, es begleitet nur.
  *
  * **Beim Wählen gibt es kein „Erneut versuchen".** Dort ist nichts
- * schiefgegangen; der Weg weiter ist die Variantenauswahl im Brief selbst.
- * Ein Knopf daneben wäre eine zweite Anfrage für dasselbe Ergebnis.
+ * schiefgegangen; der Weg weiter ist die Auswahl selbst. Ein Knopf daneben
+ * wäre eine zweite Anfrage für dasselbe Ergebnis.
+ *
+ * **Die drei Formulierungen stehen hier und nicht in `VariantPopover`.** Das
+ * Fähnchen am Brief holt seine Varianten selbst — es entgegenzunehmen gibt
+ * es dort keinen Weg. Sie dort anzuzeigen hieße, dieselbe Stelle ein zweites
+ * Mal zu bezahlen, und die Kostenzusage des Dialogs („eine Anfrage je
+ * Stelle") wäre gebrochen. Die Beschriftung des Übernahme-Knopfes ist
+ * dieselbe wie dort, damit derselbe Vorgang auch gleich heißt.
  */
 
 export interface ReapplyStatusProps {
   state: ReapplyState
+  onChoose: (variant: Variant) => void
   onRetry: () => void
   onSkip: () => void
   onCancel: () => void
 }
 
-export function ReapplyStatus({ state, onRetry, onSkip, onCancel }: ReapplyStatusProps) {
+export function ReapplyStatus({
+  state,
+  onChoose,
+  onRetry,
+  onSkip,
+  onCancel,
+}: ReapplyStatusProps) {
   const { t } = useTranslation()
 
   if (state.status === 'bereit') return null
@@ -92,6 +107,24 @@ export function ReapplyStatus({ state, onRetry, onSkip, onCancel }: ReapplyStatu
           </Button>
         </div>
       </div>
+
+      {halt !== null && halt.variants.length > 0 && (
+        <ul className="mt-3 flex flex-col gap-2">
+          {halt.variants.map((variant, index) => (
+            <li
+              key={`${index}-${variant.text}`}
+              className="flex flex-col gap-2 rounded-md border border-[var(--color-border)] p-3"
+            >
+              <p className="text-[var(--color-ink)]">{variant.text}</p>
+              <div>
+                <Button variant="secondary" size="sm" onClick={() => onChoose(variant)}>
+                  {t('editor.variants.apply')}
+                </Button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
     </Card>
   )
 }

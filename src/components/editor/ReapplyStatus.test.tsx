@@ -20,10 +20,17 @@ function setup(state: ReapplyState) {
   const onSkip = vi.fn()
   const onCancel = vi.fn()
   const user = userEvent.setup()
+  const onChoose = vi.fn()
   const view = render(
-    <ReapplyStatus state={state} onRetry={onRetry} onSkip={onSkip} onCancel={onCancel} />,
+    <ReapplyStatus
+      state={state}
+      onChoose={onChoose}
+      onRetry={onRetry}
+      onSkip={onSkip}
+      onCancel={onCancel}
+    />,
   )
-  return { onRetry, onSkip, onCancel, user, view }
+  return { onRetry, onSkip, onCancel, onChoose, user, view }
 }
 
 describe('ReapplyStatus', () => {
@@ -83,6 +90,31 @@ describe('ReapplyStatus', () => {
       screen.queryByRole('button', { name: t('editor.reapply.retry') }),
     ).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: t('editor.reapply.skip') })).toBeInTheDocument()
+  })
+
+  // Die drei stehen hier, weil sie schon bezahlt sind: Das Fähnchen am Brief
+  // holt seine Varianten selbst und würde dieselbe Stelle ein zweites Mal
+  // anfragen.
+  it('zeigt beim Wählen die bereits geholten Formulierungen zur Übernahme', async () => {
+    const varianten = [
+      { text: 'Erste Fassung', unbackedClaims: [] },
+      { text: 'Zweite Fassung', unbackedClaims: [] },
+      { text: 'Dritte Fassung', unbackedClaims: [] },
+    ]
+    const { onChoose, user } = setup({
+      status: 'haelt',
+      reason: 'wahl',
+      variants: varianten,
+      ...LAUF,
+    })
+
+    expect(screen.getByText('Zweite Fassung')).toBeInTheDocument()
+
+    const knoepfe = screen.getAllByRole('button', { name: t('editor.variants.apply') })
+    expect(knoepfe).toHaveLength(3)
+    await user.click(knoepfe[1]!)
+
+    expect(onChoose).toHaveBeenCalledWith(varianten[1])
   })
 
   it('lässt den ganzen Durchlauf abbrechen, solange er läuft', async () => {

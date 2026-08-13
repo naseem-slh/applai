@@ -21,10 +21,15 @@ export const FIXTURES_DIR = join(dirname(fileURLToPath(import.meta.url)), '../te
 
 /** Auflösung eines Übersetzungsschlüssels, wie i18next sie vornimmt. */
 export function t(path: string, values: Record<string, string | number> = {}): string {
-  let node: unknown = de
-  for (const key of path.split('.')) {
-    node = (node as Record<string, unknown>)[key]
+  let node: unknown = resolve(path)
+
+  // Mehrzahl wie i18next: Steht unter dem Schlüssel selbst nichts, entscheidet
+  // `count` zwischen `_one` und `_other`. Ohne das wären alle gezählten Texte
+  // aus dem Ende-zu-Ende-Test ausgesperrt.
+  if (typeof node !== 'string' && typeof values.count === 'number') {
+    node = resolve(`${path}_${values.count === 1 ? 'one' : 'other'}`)
   }
+
   if (typeof node !== 'string') {
     throw new Error(`Übersetzungsschlüssel "${path}" fehlt oder ist kein Text.`)
   }
@@ -32,6 +37,16 @@ export function t(path: string, values: Record<string, string | number> = {}): s
     (text, [key, value]) => text.replaceAll(`{{${key}}}`, String(value)),
     node,
   )
+}
+
+/** Ein punktgetrennter Pfad in den deutschen Texten. */
+function resolve(path: string): unknown {
+  let node: unknown = de
+  for (const key of path.split('.')) {
+    if (node === undefined || node === null) return undefined
+    node = (node as Record<string, unknown>)[key]
+  }
+  return node
 }
 
 // ---------------------------------------------------------------------------

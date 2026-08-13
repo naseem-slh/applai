@@ -1092,6 +1092,7 @@ function EditorWorkspace({ session }: { session: StartSession }) {
               />
               <ReapplyStatus
                 state={reapply.state}
+                onChoose={reapply.choose}
                 onRetry={reapply.retry}
                 onSkip={reapply.skip}
                 onCancel={reapply.cancel}

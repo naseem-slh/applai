@@ -104,6 +104,45 @@ const VIEWS: { name: string; open: (page: Page) => Promise<void> }[] = [
     },
   },
   {
+    // Der Dialog für die nächste Ausschreibung. Eigener Durchgang, weil er
+    // den Rest der Seite verdeckt und axe sonst nur den Hintergrund sähe.
+    name: 'Dialog für die nächste Anzeige',
+    open: async (page) => {
+      await page.goto('/')
+      await completeOnboarding(page)
+      await fillStartPage(page)
+      await waitForAnalysis(page)
+
+      await page.getByRole('paragraph').filter({ hasText: 'ich bewerbe mich hiermit' }).click()
+      await page.getByRole('button', { name: t('editor.selection.currentParagraph') }).click()
+
+      await page.getByRole('button', { name: t('editor.reapply.trigger') }).click()
+      await page.getByRole('dialog', { name: t('editor.reapply.heading') }).waitFor()
+    },
+  },
+  {
+    // Der Haltezustand: Fortschrittszeile, Grund und die drei Formulierungen
+    // zur Auswahl stehen erst hier zusammen im Baum.
+    name: 'Durchlauf hält zur Auswahl an',
+    open: async (page) => {
+      await page.goto('/')
+      await completeOnboarding(page)
+      await fillStartPage(page)
+      await waitForAnalysis(page)
+
+      await page.getByRole('paragraph').filter({ hasText: 'ich bewerbe mich hiermit' }).click()
+      await page.getByRole('button', { name: t('editor.selection.currentParagraph') }).click()
+
+      await page.getByRole('button', { name: t('editor.reapply.trigger') }).click()
+      await page
+        .getByRole('textbox', { name: t('editor.reapply.jobAdLabel') })
+        .fill('Stellenanzeige: Projektleiterin (m/w/d). Gesucht wird Erfahrung in der Leitung.')
+      await page.getByRole('button', { name: t('editor.reapply.choose') }).click()
+
+      await page.getByText(t('editor.reapply.halt.wahl')).waitFor()
+    },
+  },
+  {
     name: 'Datenschutz und Impressum',
     open: async (page) => {
       await page.goto('/datenschutz')
