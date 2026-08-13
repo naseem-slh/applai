@@ -92,7 +92,8 @@ const DATE_CONTEXT_LIMIT = 40
 const PRIORITY: readonly LetterheadField[] = ['salutation', 'date', 'subject', 'recipient']
 
 /**
- * Nur die **erste Zeile** des Absatzes, nicht der ganze Absatz.
+ * Nur die erste **inhaltliche** Zeile des Absatzes, nicht der ganze Absatz
+ * und nicht zwingend die rein erste Zeile im rohen Sinn.
  *
  * `Paragraph.text` (`src/lib/docx/parse.ts`) trägt ein `\n` für jeden
  * manuellen Zeilenumbruch (`w:br`/`w:cr`) — ein Word-Absatz mit
@@ -104,18 +105,41 @@ const PRIORITY: readonly LetterheadField[] = ['salutation', 'date', 'subject', '
  * mit dem neuen Betreff. Dieselbe Form trägt eine Anrede mit angehängter
  * Leerzeile.
  *
- * Endet die erste Zeile am Absatzende (kein `\n` enthalten), bleibt das
- * Verhalten wie zuvor — der Regelfall trifft weiterhin den ganzen Absatz.
+ * **Schaden 1 (Regression der ersten Fixrunde).** Ein Absatz kann
+ * umgekehrt auch MIT einem `\n` BEGINNEN — in Word der übliche
+ * Shift+Enter-Abstand vor der Anrede. Die rein erste Zeile ist dann leer,
+ * und „nimm die erste Zeile" lieferte `range.from === range.to`.
+ * `replaceRange` behandelt einen leeren Bereich als reine EINFÜGESTELLE,
+ * nicht als Ersetzung (siehe `docx/replace.ts`): Der neue Text würde
+ * eingefügt, die alte Zeile bliebe zusätzlich stehen — neue und alte
+ * Anrede stünden untereinander im Brief. Gesucht wird deshalb die erste
+ * NICHT-LEERE Zeile (Leerraum, auch Tabulatoren, zählt als leer); gibt es
+ * gar keine Zeilenumbrüche, ist das weiterhin die letzte (und einzige)
+ * Zeile — der Regelfall bleibt der ganze Absatz.
+ *
+ * (Zusätzlich trägt `applyLetterhead` einen Riegel gegen einen dennoch
+ * leeren Bereich — die Rückversicherung, nicht die Behebung selbst.)
  */
 function wholeParagraph(field: LetterheadField, paragraph: ParagraphSlice): LetterheadMatch {
-  const newline = paragraph.text.indexOf('\n')
-  const end = newline === -1 ? paragraph.end : paragraph.start + newline
-  const previous = newline === -1 ? paragraph.text : paragraph.text.slice(0, newline)
-  return {
-    field,
-    range: { from: paragraph.start, to: end },
-    paragraph: paragraph.index,
-    previous,
+  const text = paragraph.text
+  let lineStart = 0
+  for (;;) {
+    const newlineAt = text.indexOf('\n', lineStart)
+    const lineEnd = newlineAt === -1 ? text.length : newlineAt
+    const line = text.slice(lineStart, lineEnd)
+    // Die letzte Zeile wird in jedem Fall genommen, auch wenn sie (gegen
+    // die Erwartung des Aufrufers) selbst nur Leerraum trüge — `findSalutation`
+    // und `findSubject` prüfen vorab, dass der Absatz als Ganzes nicht nur
+    // aus Leerraum besteht, also gibt es immer eine inhaltliche Zeile.
+    if (line.trim() !== '' || newlineAt === -1) {
+      return {
+        field,
+        range: { from: paragraph.start + lineStart, to: paragraph.start + lineEnd },
+        paragraph: paragraph.index,
+        previous: line,
+      }
+    }
+    lineStart = newlineAt + 1
   }
 }
 

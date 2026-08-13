@@ -64,9 +64,18 @@ export function applyLetterhead(
   knownCompanies: readonly string[],
   currentCompany: string | null,
 ): LetterheadApplication {
-  const found = matchLetterhead(docx.paragraphs, knownCompanies, currentCompany).filter(
-    (match) => letterhead[match.field].trim() !== '',
-  )
+  const found = matchLetterhead(docx.paragraphs, knownCompanies, currentCompany)
+    .filter((match) => letterhead[match.field].trim() !== '')
+    // Schaden 1, Riegel: `replaceRange` behandelt `range.from === range.to`
+    // als reine Einfügestelle statt als Ersetzung — der neue Text würde
+    // eingefügt, die alte Zeile bliebe zusätzlich stehen (neue und alte
+    // Anrede untereinander im Brief). Die eigentliche Behebung sitzt in
+    // `wholeParagraph` (`letterheadMatch.ts`), das seither die erste
+    // NICHT-LEERE Zeile wählt; dieser Riegel ist die Rückversicherung,
+    // falls die Erkennung dennoch einmal einen leeren Bereich liefert. Ein
+    // so übersprungenes Feld gilt als nicht sicher gefunden und fällt
+    // zurück auf `missing` (Hand-Einsetzen bleibt der sichere Weg).
+    .filter((match) => match.range.from !== match.range.to)
   const missing = ALL_FIELDS.filter((field) => !found.some((match) => match.field === field))
 
   const notFound: LetterheadApplication = {

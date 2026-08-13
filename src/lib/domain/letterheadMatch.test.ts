@@ -173,4 +173,34 @@ describe('matchLetterhead', () => {
     expect(salutation?.previous).toBe('Sehr geehrte Damen und Herren,')
     expect(salutation?.range).toEqual({ from: 0, to: 'Sehr geehrte Damen und Herren,'.length })
   })
+
+  /**
+   * Schaden 1 (Regression aus der ersten Fixrunde): Beginnt der Absatz MIT
+   * einem `\n` (in Word der übliche Shift+Enter-Abstand vor der Anrede),
+   * ist die erste Zeile leer — `wholeParagraph` darf dann nicht diese
+   * leere erste Zeile nehmen (`range.from === range.to`), sondern muss zur
+   * ersten NICHT-LEEREN Zeile weitergehen. Ein leerer Bereich ist für
+   * `replaceRange` eine reine Einfügestelle, keine Ersetzung — die alte
+   * Zeile bliebe stehen (siehe `letterheadApply.test.ts` für den Beweis am
+   * Dokumenttext).
+   */
+  it('überspringt eine leere erste Zeile und nimmt die erste inhaltliche Zeile', () => {
+    const brief = slices('\nSehr geehrte Damen und Herren,', 'mit großem Interesse …')
+
+    const [salutation] = matchLetterhead(brief, [], null)
+
+    expect(salutation?.previous).toBe('Sehr geehrte Damen und Herren,')
+    expect(salutation?.range).toEqual({ from: 1, to: 1 + 'Sehr geehrte Damen und Herren,'.length })
+  })
+
+  // Auch eine erste Zeile aus reinem Leerraum (Tabulator, Leerzeichen) zählt
+  // als leer, nicht nur eine vollständig leere Zeile.
+  it('überspringt eine erste Zeile aus reinem Leerraum', () => {
+    const brief = slices('  \t\nSehr geehrte Damen und Herren,', 'mit großem Interesse …')
+
+    const [salutation] = matchLetterhead(brief, [], null)
+
+    expect(salutation?.previous).toBe('Sehr geehrte Damen und Herren,')
+    expect(salutation?.range.from).toBe('  \t\n'.length)
+  })
 })
