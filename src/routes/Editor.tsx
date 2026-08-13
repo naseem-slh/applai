@@ -388,6 +388,38 @@ function EditorWorkspace({ session }: { session: StartSession }) {
    * Briefkopf (samt alter Firma) übernommen, und der Ref oben markierte die
    * neue Anzeige fälschlich als erledigt, sodass der richtige Briefkopf nie
    * mehr zum Zug käme.
+   *
+   * **Befund 2 — „einmal je Anzeige" gilt nur je Mount.** `appliedFor` ist
+   * ein Ref und stirbt mit der Komponente. Über „zuletzt bearbeitet"
+   * (`Start.handleUseRecent`) lädt die Anwendung `draft.docxBase` — den
+   * Arbeitsstand, in dem der Briefkopf schon steht — und
+   * `useLetterAnalysis` liefert dieselbe Anzeige aus dem Auswertungsspeicher
+   * als FRISCHES Objekt zurück (inhaltsgleich, aber eine neue Identität).
+   * Der Ref ist beim neuen Mount `null`, `appliedFor.current === jobAd`
+   * greift also nicht, und die Übernahme liefe ein zweites Mal — und
+   * überschriebe dabei jede Korrektur, die der Nutzer in der vorigen
+   * Sitzung von Hand an Anrede oder Betreff vorgenommen hat.
+   *
+   * Zwei denkbare Gegenmittel:
+   * 1. Nur Treffer überspringen, deren `previous` bereits zeichengleich mit
+   *    dem neuen Wert ist (Befund 4, `letterheadApply.ts`). Das fängt den
+   *    Regelfall (Vorschlag = das, was beim ersten Mal eingesetzt wurde),
+   *    aber NICHT den Fall, in dem der Nutzer die Stelle danach von Hand
+   *    geändert hat — dann weicht `previous` vom neuen Vorschlag ab, und
+   *    die Handkorrektur würde trotzdem überschrieben.
+   * 2. Erkennen, dass ein fortgesetzter Entwurf geladen wurde, und die
+   *    Übernahme dafür ganz auslassen.
+   *
+   * Gewählt ist (2), weil nur das den unter (1) offenen Fall wirklich
+   * schließt. Das Merkmal dafür liegt bereits im Übergabestand und
+   * verlangt keinen Eingriff in die Speicherschicht:
+   * `LoadedDocument.source === 'draft'` (`appContext.ts`) wird einzig in
+   * `Start.handleUseRecent` gesetzt — „aus dem Speicher zurückgeholt",
+   * exakt der hier fragliche Fall. Ein neu hochgeladenes `.docx` oder eine
+   * PDF-Umwandlung tragen `'docx'`/`'pdf'` und lösen die Übernahme wie
+   * bisher aus. (1) bleibt trotzdem sinnvoll — es verhindert einen
+   * überflüssigen Verlaufsschritt auch innerhalb EINES Mounts, siehe
+   * `letterheadApply.ts`.
    */
   const appliedFor = useRef<JobAd | null>(null)
   const [application, setApplication] = useState<LetterheadApplication | null>(null)
@@ -397,11 +429,15 @@ function EditorWorkspace({ session }: { session: StartSession }) {
     if (letterheadFor !== jobAd) return
     if (appliedFor.current === jobAd) return
     appliedFor.current = jobAd
+    // Fortgesetzter Entwurf: Der Briefkopf steht im geladenen Arbeitsstand
+    // schon, eine erneute Übernahme sähe hier keinen Unterschied zum ersten
+    // Mal und überschriebe stillschweigend jede Handkorrektur (siehe oben).
+    if (session.letter?.source === 'draft') return
 
     const result = applyLetterhead(docx, letterhead, marks, knownCompanies, jobAd.company)
     setApplication(result)
     if (result.changes.length > 0) commit(result.document, result.marks)
-  }, [docx, jobAd, letterhead, letterheadFor, marks, knownCompanies, companiesLoaded, commit])
+  }, [docx, jobAd, letterhead, letterheadFor, marks, knownCompanies, companiesLoaded, commit, session.letter])
 
   /**
    * Rückgängig nimmt auch den Bericht mit: Er bezeichnet Änderungen, die es

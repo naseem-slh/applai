@@ -98,4 +98,109 @@ describe('matchLetterhead', () => {
 
     expect(matchLetterhead(lang, [], null)).toEqual([])
   })
+
+  /**
+   * Befund 3: `SALUTATION_WINDOW` (25) ist bewusst weiter als
+   * `FALLBACK_WINDOW` (15) — die Präfixprüfung kennt keine Wortgrenze, und
+   * „Liebe Grüße" oder „Liebe Kolleginnen" im Fließtext genügt, um fälschlich
+   * als Anrede erkannt zu werden. Auch jenseits von Absatz 15 wird eine
+   * Anrede also noch gefunden.
+   */
+  it('findet eine Anrede noch jenseits von Absatz 15', () => {
+    const brief = slices(
+      ...Array.from({ length: 18 }, (_, index) => `Absatz ${index}`),
+      'Liebe Kolleginnen',
+    )
+
+    const matches = matchLetterhead(brief, [], null)
+
+    expect(matches.map((match) => match.field)).toEqual(['salutation'])
+    expect(matches[0]?.paragraph).toBe(18)
+  })
+
+  /**
+   * Genau dieses weite Anrede-Fenster darf aber nicht das Suchfenster für
+   * Empfänger, Datum und Betreff mit aufreißen: Wird eine Anrede erst in
+   * Absatz 20 (fälschlich) erkannt, dürfen Empfänger/Datum/Betreff trotzdem
+   * höchstens `FALLBACK_WINDOW` Absätze weit oberhalb gesucht werden — sonst
+   * öffnet sich das Fenster weiter, als die Rückfallgrenze es je zuließe.
+   */
+  it('begrenzt das Suchfenster für Empfänger, Datum und Betreff auch bei später Anrede auf die Rückfallgrenze', () => {
+    const brief = slices(
+      'Alte Muster GmbH', // Absatz 0 — innerhalb der Rückfallgrenze
+      ...Array.from({ length: 14 }, (_, index) => `Absatz ${index}`), // 1..14
+      '01.02.2026', // Absatz 15 — genau AN der Rückfallgrenze, darf nicht mehr zählen
+      ...Array.from({ length: 4 }, (_, index) => `Weiterer Absatz ${index}`), // 16..19
+      'Liebe Kolleginnen', // Absatz 20 — fälschlich als Anrede erkannt
+    )
+
+    const matches = matchLetterhead(brief, ['Alte Muster GmbH'], null)
+
+    expect(matches.some((match) => match.field === 'recipient')).toBe(true)
+    expect(matches.some((match) => match.field === 'date')).toBe(false)
+  })
+
+  /**
+   * Befund 1: Ein Word-Absatz mit manuellem Zeilenumbruch (Shift+Enter) ist
+   * EIN Absatz mit mehreren durch `\n` getrennten Zeilen (siehe
+   * `src/lib/docx/parse.ts`). Ein Betreffblock „Bewerbung als
+   * Disponentin⏎Ihre Anzeige vom 05.08.2026" ist also ein einziger Absatz —
+   * die Ersetzung darf nur die erste Zeile treffen, sonst verschwindet die
+   * Bezugszeile darunter mit.
+   */
+  it('ersetzt bei einem mehrzeiligen Betreff nur die erste Zeile', () => {
+    const brief = slices(
+      'Bewerbung als Disponentin\nIhre Anzeige vom 05.08.2026',
+      '',
+      'Sehr geehrte Damen und Herren,',
+    )
+
+    const [subject] = matchLetterhead(brief, [], null)
+
+    expect(subject?.field).toBe('subject')
+    expect(subject?.previous).toBe('Bewerbung als Disponentin')
+    expect(subject?.range).toEqual({ from: 0, to: 'Bewerbung als Disponentin'.length })
+  })
+
+  // Dasselbe Bild bei einer Anrede mit angehängter Leerzeile — auch das ist
+  // strukturell ein Absatz mit `\n` darin, nicht ein zweiter Absatz.
+  it('ersetzt bei einer Anrede mit angehängter Leerzeile nur die erste Zeile', () => {
+    const brief = slices('Sehr geehrte Damen und Herren,\n', 'mit großem Interesse …')
+
+    const [salutation] = matchLetterhead(brief, [], null)
+
+    expect(salutation?.field).toBe('salutation')
+    expect(salutation?.previous).toBe('Sehr geehrte Damen und Herren,')
+    expect(salutation?.range).toEqual({ from: 0, to: 'Sehr geehrte Damen und Herren,'.length })
+  })
+
+  /**
+   * Schaden 1 (Regression aus der ersten Fixrunde): Beginnt der Absatz MIT
+   * einem `\n` (in Word der übliche Shift+Enter-Abstand vor der Anrede),
+   * ist die erste Zeile leer — `wholeParagraph` darf dann nicht diese
+   * leere erste Zeile nehmen (`range.from === range.to`), sondern muss zur
+   * ersten NICHT-LEEREN Zeile weitergehen. Ein leerer Bereich ist für
+   * `replaceRange` eine reine Einfügestelle, keine Ersetzung — die alte
+   * Zeile bliebe stehen (siehe `letterheadApply.test.ts` für den Beweis am
+   * Dokumenttext).
+   */
+  it('überspringt eine leere erste Zeile und nimmt die erste inhaltliche Zeile', () => {
+    const brief = slices('\nSehr geehrte Damen und Herren,', 'mit großem Interesse …')
+
+    const [salutation] = matchLetterhead(brief, [], null)
+
+    expect(salutation?.previous).toBe('Sehr geehrte Damen und Herren,')
+    expect(salutation?.range).toEqual({ from: 1, to: 1 + 'Sehr geehrte Damen und Herren,'.length })
+  })
+
+  // Auch eine erste Zeile aus reinem Leerraum (Tabulator, Leerzeichen) zählt
+  // als leer, nicht nur eine vollständig leere Zeile.
+  it('überspringt eine erste Zeile aus reinem Leerraum', () => {
+    const brief = slices('  \t\nSehr geehrte Damen und Herren,', 'mit großem Interesse …')
+
+    const [salutation] = matchLetterhead(brief, [], null)
+
+    expect(salutation?.previous).toBe('Sehr geehrte Damen und Herren,')
+    expect(salutation?.range.from).toBe('  \t\n'.length)
+  })
 })
