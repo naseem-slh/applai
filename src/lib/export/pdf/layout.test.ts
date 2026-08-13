@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 import type {
   CharacterFormat,
   DocumentFormat,
+  FloatingObject,
   FormattedParagraph,
   ParagraphItem,
 } from '../../docx/format'
@@ -232,6 +233,206 @@ describe('layoutDocument — Bildschriften', () => {
     expect(written).toHaveLength(1)
     expect(written[0].text).toBe('•')
     expect(written[0].face.key).toBe('LiberationSans-Regular')
+  })
+})
+
+/** Ein schwebendes Objekt mit den Vorgaben, die Word ohne Angabe setzt. */
+function float(overrides: Partial<FloatingObject> = {}): FloatingObject {
+  return {
+    anchor: {
+      fromH: 'page',
+      fromV: 'page',
+      xPt: 0,
+      yPt: 0,
+      alignH: null,
+      alignV: null,
+      paragraphIndex: null,
+    },
+    widthPt: 100,
+    heightPt: 50,
+    content: { kind: 'shape', fill: '000000', stroke: null, strokePt: 0 },
+    ...overrides,
+  }
+}
+
+describe('layoutDocument — schwebende Objekte', () => {
+  /**
+   * Die Empfängeranschrift steht in einem Anschreiben nach DIN 5008 im
+   * Anschriftenfeld — und das ist in Word regelmäßig ein Textfeld. Fehlt es
+   * im PDF, fehlt dem Brief der Empfänger.
+   */
+  it('setzt den Text eines Textfelds in dessen Kasten', async () => {
+    const result = await layout({
+      ...document([paragraph([text('Fließtext')])]),
+      floats: [
+        float({
+          anchor: {
+            fromH: 'page',
+            fromV: 'page',
+            xPt: 70,
+            yPt: 200,
+            alignH: null,
+            alignV: null,
+            paragraphIndex: null,
+          },
+          widthPt: 186,
+          heightPt: 110,
+          content: {
+            kind: 'textbox',
+            paragraphs: [paragraph([text('HyCARE GmbH')])],
+            insets: { leftPt: 7.2, topPt: 3.6, rightPt: 7.2, bottomPt: 3.6 },
+          },
+        }),
+      ],
+    })
+
+    const written = texts(result).find((item) => item.text.startsWith('HyCARE'))
+    expect(written).toBeDefined()
+    expect(written?.xPt).toBeCloseTo(70 + 7.2, 1)
+    expect(written?.yPt).toBeGreaterThan(200)
+    expect(written?.yPt).toBeLessThan(200 + 110)
+  })
+
+  it('bricht den Text an der Breite des Kastens um, nicht an der der Seite', async () => {
+    const long = 'Ein Anschriftenfeld ist schmal und zwingt den Satz früh zum Umbruch'
+    const result = await layout({
+      ...document([]),
+      floats: [
+        float({
+          widthPt: 120,
+          heightPt: 200,
+          content: {
+            kind: 'textbox',
+            paragraphs: [paragraph([text(long)])],
+            insets: { leftPt: 0, topPt: 0, rightPt: 0, bottomPt: 0 },
+          },
+        }),
+      ],
+    })
+
+    // Auf Satzspiegelbreite stünde der Satz in einer Zeile.
+    const baselines = new Set(texts(result).map((item) => item.yPt))
+    expect(baselines.size).toBeGreaterThan(1)
+    for (const item of texts(result)) {
+      expect(item.xPt).toBeLessThan(120)
+    }
+  })
+
+  /**
+   * Die Linie unter dem Briefkopf ist eine Form der Höhe null. Ohne eigene
+   * Höhe wäre sie unsichtbar; gezeichnet wird sie mit ihrer Strichstärke.
+   */
+  it('zeichnet eine Linie mit ihrer Strichstärke', async () => {
+    const result = await layout({
+      ...document([]),
+      floats: [
+        float({
+          anchor: {
+            fromH: 'page',
+            fromV: 'page',
+            xPt: 68,
+            yPt: 127.5,
+            alignH: null,
+            alignV: null,
+            paragraphIndex: null,
+          },
+          widthPt: 452.9,
+          heightPt: 0,
+          content: { kind: 'shape', fill: null, stroke: '000000', strokePt: 0.67 },
+        }),
+      ],
+    })
+
+    const rects = result.pages[0].items.filter((item) => item.kind === 'rect')
+    expect(rects).toHaveLength(1)
+    expect(rects[0].xPt).toBeCloseTo(68, 1)
+    expect(rects[0].yPt).toBeCloseTo(127.5, 1)
+    expect(rects[0].widthPt).toBeCloseTo(452.9, 1)
+    expect(rects[0].heightPt).toBeCloseTo(0.67, 2)
+  })
+
+  it('misst den Bezug „Rand" vom Satzspiegel, nicht vom Blattrand', async () => {
+    const result = await layout({
+      ...document([]),
+      floats: [
+        float({
+          anchor: {
+            fromH: 'margin',
+            fromV: 'margin',
+            xPt: 10,
+            yPt: 20,
+            alignH: null,
+            alignV: null,
+            paragraphIndex: null,
+          },
+          content: { kind: 'shape', fill: '000000', stroke: null, strokePt: 0 },
+        }),
+      ],
+    })
+
+    const rect = result.pages[0].items.find((item) => item.kind === 'rect')
+    expect(rect?.xPt).toBeCloseTo(56.7 + 10, 1)
+    expect(rect?.yPt).toBeCloseTo(56.7 + 20, 1)
+  })
+
+  /**
+   * Eine Unterschrift hängt an der Grußformel. Rutscht die auf die zweite
+   * Seite, muss die Unterschrift mit — sonst steht sie allein auf Seite eins.
+   */
+  it('lässt ein am Absatz hängendes Objekt auf dessen Seite wandern', async () => {
+    const filler = Array.from({ length: 60 }, (_ignored, index) => ({
+      ...paragraph([text(`Zeile ${index}`)]),
+      index,
+    }))
+    const greeting = { ...paragraph([text('Mit freundlichen Grüßen')]), index: 60 }
+
+    const result = await layout({
+      ...document([...filler, greeting]),
+      floats: [
+        float({
+          anchor: {
+            fromH: 'page',
+            fromV: 'paragraph',
+            xPt: 70,
+            yPt: 10,
+            alignH: null,
+            alignV: null,
+            paragraphIndex: 60,
+          },
+          content: { kind: 'shape', fill: '000000', stroke: null, strokePt: 0 },
+        }),
+      ],
+    })
+
+    expect(result.pages.length).toBeGreaterThan(1)
+    const withGreeting = result.pages.findIndex((laidOut) =>
+      laidOut.items.some((item) => item.kind === 'text' && item.text.startsWith('Grüßen')),
+    )
+    const withRect = result.pages.findIndex((laidOut) =>
+      laidOut.items.some((item) => item.kind === 'rect'),
+    )
+    expect(withRect).toBe(withGreeting)
+  })
+
+  it('lässt ein Objekt weg, dessen Absatz gar nicht gesetzt wurde', async () => {
+    const result = await layout({
+      ...document([paragraph([text('Fließtext')])]),
+      floats: [
+        float({
+          anchor: {
+            fromH: 'page',
+            fromV: 'paragraph',
+            xPt: 0,
+            yPt: 0,
+            alignH: null,
+            alignV: null,
+            paragraphIndex: 99,
+          },
+        }),
+      ],
+    })
+
+    expect(result.pages[0].items.filter((item) => item.kind === 'rect')).toHaveLength(0)
   })
 })
 

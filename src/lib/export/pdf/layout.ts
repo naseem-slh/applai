@@ -2,6 +2,7 @@ import type {
   CharacterFormat,
   DocumentFormat,
   DocumentImage,
+  FloatingObject,
   FormattedParagraph,
   PageFormat,
   ParagraphFormat,
@@ -11,7 +12,9 @@ import { translateSymbolText } from './symbols'
 
 /**
  * Setzt den ausgelesenen Brief auf Seiten: Zeilenumbruch, Tabulatoren,
- * Ausrichtung, Zeilen- und Absatzabstände, Seitenumbruch, Kopf- und Fußzeile.
+ * Ausrichtung, Zeilen- und Absatzabstände, Seitenumbruch, Kopf- und Fußzeile
+ * sowie die schwebenden Objekte — Textfelder, Linien und Unterschriften an
+ * ihrer Blattkoordinate.
  *
  * **Warum das hier und nicht im Browser passiert.** Der Zeilenumbruch
  * bestimmt, wo der Brief auf die zweite Seite rutscht — die auffälligste
@@ -28,8 +31,11 @@ import { translateSymbolText } from './symbols'
  * ist eine Näherung, und sie wird auch so benannt — nicht als „identisch".
  *
  * Was bewusst fehlt: Tabellen, Aufzählungszeichen aus `numbering.xml`,
- * Textfelder (die stehen schon im Textmodell nicht) und
- * Absatzzusammenhalt (`w:keepNext`). Siehe `docs/spec.md`.
+ * Absatzzusammenhalt (`w:keepNext`) und der Textumfluss um schwebende
+ * Objekte (`w:wrap`) — die liegen über dem Text, statt ihn zu verdrängen.
+ * Für ein Anschreiben ist das folgenlos: Anschriftenfeld, Linie und
+ * Unterschrift stehen dort, wo ohnehin kein Fließtext steht.
+ * Siehe `docs/spec.md`.
  */
 
 /** Ein Stück gesetzter Text an seinem Platz auf dem Blatt. */
@@ -140,6 +146,15 @@ export function layoutDocument(format: DocumentFormat, fonts: FontProvider): Lai
   }
   flow.finish()
 
+  // Zweiter Durchgang für die schwebenden Objekte. Er ist zulässig, weil sie
+  // den Fluss nicht verschieben: Textumfluss (`w:wrap`) ist nicht umgesetzt,
+  // sie liegen über dem Text. Umgekehrt geht es nicht — wo ein Absatz zu
+  // stehen kommt, weiß man erst nach dem Umbruch.
+  for (const float of format.floats) {
+    const placed = placeFloat(float, format, fonts, flow)
+    if (placed) pages[placed.pageIndex]?.push(...placed.items)
+  }
+
   // Kopf- und Fußzeile stehen auf **jeder** Seite und werden deshalb erst
   // gesetzt, wenn feststeht, wie viele es sind.
   pages.forEach((items, index) => {
@@ -163,6 +178,10 @@ export function requiredFontKeys(format: DocumentFormat): string[] {
   }
 
   collect(format.paragraphs)
+  // Auch die Absätze in Textfeldern — sonst fehlt beim Setzen die Datei.
+  for (const float of format.floats) {
+    if (float.content.kind === 'textbox') collect(float.content.paragraphs)
+  }
   for (const parts of [format.header, format.footer]) {
     collect(parts.default)
     collect(parts.first)
@@ -186,6 +205,14 @@ class PageFlow {
   private y: number
   private readonly top: number
   private readonly bottom: number
+  /**
+   * Wo jeder Absatz des Fließtextes zu stehen kam.
+   *
+   * Ein schwebendes Objekt hängt in Word regelmäßig an einem Absatz — die
+   * Unterschrift an der Grußformel. Auf welcher Seite und in welcher Höhe
+   * der landet, steht erst nach dem Umbruch fest.
+   */
+  private readonly anchors = new Map<number, { pageIndex: number; topPt: number }>()
 
   constructor(
     private readonly format: DocumentFormat,
@@ -207,6 +234,11 @@ class PageFlow {
     this.y = this.top
   }
 
+  /** Seite und Oberkante eines Absatzes des Fließtextes. */
+  anchorOf(index: number): { pageIndex: number; topPt: number } | null {
+    return this.anchors.get(index) ?? null
+  }
+
   private breakPage(): void {
     this.pages.push(this.items)
     this.items = []
@@ -225,6 +257,10 @@ class PageFlow {
 
     if (paragraph.format.pageBreakBefore && this.items.length > 0) this.breakPage()
     this.y += paragraph.format.spaceBeforePt
+
+    if (paragraph.index !== null) {
+      this.anchors.set(paragraph.index, { pageIndex: this.pages.length, topPt: this.y })
+    }
 
     lines.forEach((line, index) => {
       if (line.pageBreakBefore && this.items.length > 0) this.breakPage()
@@ -256,19 +292,117 @@ class PageFlow {
 // Kopf- und Fußzeile
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Schwebende Objekte
+// ---------------------------------------------------------------------------
+
+/** Die Stärke, mit der eine Linie ohne eigene Angabe gezeichnet wird. */
+const DEFAULT_STROKE_PT = 0.75
+
+/**
+ * Setzt ein schwebendes Objekt auf seine Seite.
+ *
+ * `null`, wenn der Absatz, an dem es hängt, gar nicht gesetzt wurde — dann
+ * gibt es keine Stelle, auf die es gehörte, und es wegzulassen ist ehrlicher
+ * als es zu raten.
+ */
+function placeFloat(
+  float: FloatingObject,
+  format: DocumentFormat,
+  fonts: FontProvider,
+  flow: PageFlow,
+): { pageIndex: number; items: DrawItem[] } | null {
+  const page = format.page
+  const { anchor } = float
+
+  const originX = anchor.fromH === 'page' ? 0 : page.marginLeftPt
+  const spanX =
+    anchor.fromH === 'page' ? page.widthPt : page.widthPt - page.marginLeftPt - page.marginRightPt
+  const xPt =
+    anchor.alignH === 'center'
+      ? originX + (spanX - float.widthPt) / 2
+      : anchor.alignH === 'right'
+        ? originX + spanX - float.widthPt
+        : anchor.alignH === 'left'
+          ? originX
+          : originX + anchor.xPt
+
+  let pageIndex = 0
+  let originY = 0
+  if (anchor.fromV === 'paragraph') {
+    if (anchor.paragraphIndex === null) return null
+    const at = flow.anchorOf(anchor.paragraphIndex)
+    if (!at) return null
+    pageIndex = at.pageIndex
+    originY = at.topPt
+  } else if (anchor.fromV === 'margin') {
+    originY = page.marginTopPt
+  }
+
+  // Eine Ausrichtung am Absatz ergibt keinen Sinn — dort zählt der Versatz.
+  const spanY = anchor.fromV === 'page' ? page.heightPt : page.heightPt - page.marginTopPt - page.marginBottomPt
+  const yPt =
+    anchor.fromV !== 'paragraph' && anchor.alignV === 'center'
+      ? originY + (spanY - float.heightPt) / 2
+      : anchor.fromV !== 'paragraph' && anchor.alignV === 'bottom'
+        ? originY + spanY - float.heightPt
+        : anchor.fromV !== 'paragraph' && anchor.alignV === 'top'
+          ? originY
+          : originY + anchor.yPt
+
+  switch (float.content.kind) {
+    case 'image':
+      return {
+        pageIndex,
+        items: [
+          {
+            kind: 'image',
+            xPt,
+            yPt,
+            widthPt: float.widthPt,
+            heightPt: float.heightPt,
+            image: float.content.image,
+          },
+        ],
+      }
+
+    case 'shape': {
+      // Eine Linie hat die Höhe null; gezeichnet wird sie mit ihrer Stärke.
+      const heightPt =
+        float.heightPt > 0
+          ? float.heightPt
+          : float.content.strokePt > 0
+            ? float.content.strokePt
+            : DEFAULT_STROKE_PT
+      const color = float.content.fill ?? float.content.stroke
+      if (float.widthPt <= 0) return null
+      return { pageIndex, items: [{ kind: 'rect', xPt, yPt, widthPt: float.widthPt, heightPt, color }] }
+    }
+
+    case 'textbox': {
+      const { insets } = float.content
+      const block = layoutBlock(float.content.paragraphs, format, fonts, yPt + insets.topPt, {
+        leftPt: xPt + insets.leftPt,
+        rightPt: xPt + float.widthPt - insets.rightPt,
+      })
+      return { pageIndex, items: block.items }
+    }
+  }
+}
+
 function runningItems(format: DocumentFormat, fonts: FontProvider, pageIndex: number): DrawItem[] {
   const header = choosePart(format.header, format.page.titlePage, pageIndex)
   const footer = choosePart(format.footer, format.page.titlePage, pageIndex)
   const items: DrawItem[] = []
 
   if (header) {
-    items.push(...layoutBlock(header, format, fonts, format.page.headerDistancePt))
+    items.push(...layoutBlock(header, format, fonts, format.page.headerDistancePt).items)
   }
   if (footer) {
     // Erst messen, dann so setzen, dass die Fußzeile unten am Abstand endet.
     const height = blockHeight(footer, format, fonts)
     const top = format.page.heightPt - format.page.footerDistancePt - height
-    items.push(...layoutBlock(footer, format, fonts, top))
+    items.push(...layoutBlock(footer, format, fonts, top).items)
   }
   return items
 }
@@ -283,19 +417,38 @@ function choosePart(
   return parts.default
 }
 
-/** Setzt einen Block Absätze ab einer festen Höhe, ohne Seitenumbruch. */
+/** Eine gesetzte Gruppe Absätze samt der Höhe, die sie einnimmt. */
+interface LaidOutBlock {
+  items: DrawItem[]
+  heightPt: number
+}
+
+/**
+ * Setzt einen Block Absätze ab einer festen Höhe, ohne Seitenumbruch.
+ *
+ * Setzen und Messen in **einer** Funktion: Beides lief früher in zwei
+ * getrennten Schleifen, und eine Änderung an der einen konnte die andere
+ * stillschweigend überholen. Die Fußzeile wird gemessen, um sie unten
+ * bündig zu setzen, ein Textfeld, um seine Höhe zu kennen — beide Male
+ * müssen es dieselben Zahlen sein.
+ *
+ * `column` gibt die Spalte vor; `null` heißt Satzspiegel der Seite.
+ */
 function layoutBlock(
   paragraphs: FormattedParagraph[],
   format: DocumentFormat,
   fonts: FontProvider,
   topPt: number,
-): DrawItem[] {
+  column: { leftPt: number; rightPt: number } | null = null,
+): LaidOutBlock {
   const items: DrawItem[] = []
   let y = topPt
 
   for (const paragraph of paragraphs) {
     const atoms = buildAtoms(paragraph, fonts, format.defaultTabStopPt)
-    const geometry = geometryOf(format.page, paragraph.format)
+    const geometry = column
+      ? geometryIn(column.leftPt, column.rightPt, paragraph.format)
+      : geometryOf(format.page, paragraph.format)
     const lines = breakIntoLines(atoms, paragraph.format, geometry)
 
     y += paragraph.format.spaceBeforePt
@@ -313,7 +466,7 @@ function layoutBlock(
     })
     y += paragraph.format.spaceAfterPt
   }
-  return items
+  return { items, heightPt: y - topPt }
 }
 
 /**
@@ -338,15 +491,7 @@ function blockHeight(
   format: DocumentFormat,
   fonts: FontProvider,
 ): number {
-  let height = 0
-  for (const paragraph of paragraphs) {
-    const atoms = buildAtoms(paragraph, fonts, format.defaultTabStopPt)
-    height += paragraph.format.spaceBeforePt + paragraph.format.spaceAfterPt
-    for (const line of breakIntoLines(atoms, paragraph.format, geometryOf(format.page, paragraph.format))) {
-      height += lineMetrics(line, paragraph, fonts).heightPt
-    }
-  }
-  return height
+  return layoutBlock(paragraphs, format, fonts, 0).heightPt
 }
 
 // ---------------------------------------------------------------------------
@@ -608,10 +753,19 @@ interface Geometry {
 }
 
 function geometryOf(page: PageFormat, format: ParagraphFormat): Geometry {
+  return geometryIn(page.marginLeftPt, page.widthPt - page.marginRightPt, format)
+}
+
+/**
+ * Dieselbe Rechnung für eine beliebige Spalte — den Innenraum eines
+ * Textfelds etwa. Alles unterhalb von hier (Umbruch, Ausrichtung,
+ * Tabulatoren) kennt nur noch `Geometry` und braucht keine Änderung.
+ */
+function geometryIn(leftPt: number, rightPt: number, format: ParagraphFormat): Geometry {
   return {
-    marginLeft: page.marginLeftPt,
-    textLeft: page.marginLeftPt + format.indentLeftPt,
-    textRight: page.widthPt - page.marginRightPt - format.indentRightPt,
+    marginLeft: leftPt,
+    textLeft: leftPt + format.indentLeftPt,
+    textRight: rightPt - format.indentRightPt,
   }
 }
 

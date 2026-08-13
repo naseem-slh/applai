@@ -118,3 +118,51 @@ describe('writePdf', () => {
     expect(bytes.length).toBeLessThan(100_000)
   })
 })
+
+/**
+ * Der Nachweis am schwierigsten Fall: ein Anschreiben aus einer
+ * PDF-Umwandlung, dessen Empfängeranschrift in einem schwebenden Textfeld
+ * steht. Was hier bei pdfjs ankommt, kommt auch beim Bewerbungsportal an.
+ */
+describe('writePdf — schwebende Objekte', () => {
+  it('bringt die Empfängeranschrift in die Datei', async () => {
+    const { pages } = await roundTrip('anschreiben-schwebend.docx')
+
+    const text = pages.flatMap((page) => page.items).map((item) => item.text).join(' ')
+    expect(text).toContain('Musterwerk GmbH')
+    expect(text).toContain('10827 Berlin')
+  })
+
+  it('setzt sie an ihre Blattkoordinate, nicht in den Fluss', async () => {
+    const { pages } = await roundTrip('anschreiben-schwebend.docx')
+
+    const company = pages[0].items.find((item) => item.text.startsWith('Musterwerk'))
+    expect(company).toBeDefined()
+    // Kastenrand 70 pt plus 7,2 pt Innenabstand.
+    expect(company?.x).toBeCloseTo(77.2, 0)
+  })
+
+  it('nimmt die Anschrift genau einmal auf', async () => {
+    const { pages } = await roundTrip('anschreiben-schwebend.docx')
+
+    const hits = pages
+      .flatMap((page) => page.items)
+      .filter((item) => item.text.includes('Musterwerk'))
+    expect(hits).toHaveLength(1)
+  })
+
+  it('macht aus dem Wingdings-Trenner einen Aufzählungspunkt', async () => {
+    const { pages } = await roundTrip('anschreiben-schwebend.docx')
+
+    const text = pages.flatMap((page) => page.items).map((item) => item.text).join(' ')
+    expect(text).toContain('•')
+    expect(text).not.toContain('\uF09F')
+  })
+
+  it('bricht „meine" nicht zwischen den Läufen um', async () => {
+    const { pages } = await roundTrip('anschreiben-schwebend.docx')
+
+    const text = pages.flatMap((page) => page.items).map((item) => item.text).join(' ')
+    expect(text).toContain('meine Mitarbeit')
+  })
+})

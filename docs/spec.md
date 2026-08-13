@@ -61,7 +61,7 @@ Die 29. Entscheidung („Vorgemerkte Stellen") kam später dazu:
 | Thema | Entscheidung |
 |---|---|
 | Word-Export | Das Original mit gepatchten Textstellen — Schrift, Ränder, Kopfzeile unverändert |
-| PDF-Export | Im Browser aus dem Original neu gesetzt: Schrift, Grade, Ränder, Ausrichtung, Kopf- und Fußzeile samt Bildern. Metrikgleiche Schriften (Carlito, Liberation) halten den Zeilenumbruch. Ohne Tabellen, Aufzählungszeichen und Textfelder |
+| PDF-Export | Im Browser aus dem Original neu gesetzt: Schrift, Grade, Ränder, Ausrichtung, Kopf- und Fußzeile samt Bildern. Schwebende Textfelder, Linien und Unterschriften stehen an ihrer Blattkoordinate; Bildschriften (Wingdings, Symbol) werden auf Unicode abgebildet. Metrikgleiche Schriften (Carlito, Liberation) halten den Zeilenumbruch. Ohne Tabellen, Aufzählungszeichen und Textumfluss |
 | Kopierfeld | Reintext für Online-Formulare |
 | PDF→Word | **Beta**, einspaltig, sichtbar gekennzeichnet mit Prüfhinweis. Originaltreue folgt im zweiten Abschnitt |
 | Bewerbungsliste | Firma, Stelle, Datum. Nur im Browser. Hinweis bei doppelter Bewerbung |
