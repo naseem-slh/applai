@@ -43,7 +43,12 @@ test.describe('Der ganze Weg', () => {
       'Musterwerk Solutions',
     )
     // Und die Anforderung der Anzeige ist einsehbar, ohne dass jemand gefragt
-    // hätte (docs/spec.md: „Sichtbarer Zwischenschritt").
+    // hätte (docs/spec.md: „Sichtbarer Zwischenschritt"): Die Liste steht
+    // ohne Modellaufruf bereit. Seit „Vorgemerkte Stellen über die
+    // Anforderungen" beginnt der Bereich zugeklappt — er ist Nachschlagestoff,
+    // nicht das Werkzeug. „Einsehbar" heißt deshalb einen Klick entfernt und
+    // nicht ungefragt aufgeschlagen; die Überschrift im `summary` klappt auf.
+    await page.getByRole('heading', { name: t('editor.gaps.heading') }).click()
     await expect(page.getByText('Sehr gute Kenntnisse in TypeScript')).toBeVisible()
 
     // 4. Eine Textstelle markieren und umformulieren lassen.
