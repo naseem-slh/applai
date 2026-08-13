@@ -104,6 +104,27 @@ export function paragraphNodesOf(root: XMLDocument | Element): Element[] {
   return Array.from(root.getElementsByTagName('w:p')).filter((node) => !isNestedContent(node))
 }
 
+/**
+ * Die Absätze **innerhalb** eines Textfelds.
+ *
+ * `paragraphNodesOf` lässt sie aus, und das zu Recht: Sie stehen nicht im
+ * Fließtext, ihre Zeichen gehören nicht in die Offsets, an denen die
+ * Markierungen des Nutzers hängen. Für den PDF-Satz werden sie trotzdem
+ * gebraucht — in einem Anschreiben steht die Empfängeranschrift regelmäßig
+ * in einem Textfeld, und ohne sie ist der Brief keiner.
+ *
+ * Gezählt wird relativ zu `root`: Ein Textfeld in einem Textfeld bleibt
+ * wieder außen vor und wird beim Setzen dieses Kastens erneut aufgesammelt.
+ */
+export function nestedParagraphNodesOf(root: Element): Element[] {
+  return Array.from(root.getElementsByTagName('w:p')).filter((node) => {
+    for (let parent = node.parentElement; parent && parent !== root; parent = parent.parentElement) {
+      if (parent.tagName === 'w:p' || parent.tagName === 'w:txbxContent') return false
+    }
+    return true
+  })
+}
+
 /** Die Läufe eines Absatzes, ohne die verschachtelter Absätze und Textfelder. */
 export function runNodesOf(paragraphNode: Element): Element[] {
   return Array.from(paragraphNode.getElementsByTagName('w:r')).filter((runNode) =>

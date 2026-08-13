@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { readDocumentFormat, type FormattedParagraph } from './format'
+import { readDocumentFormat, type DocumentFormat, type FormattedParagraph } from './format'
 import type { DocxDocument } from './model'
 import { buildTextModel, parseDocx } from './parse'
 
@@ -199,6 +199,7 @@ describe('readDocumentFormat — Zeichengleichheit mit dem Textmodell', () => {
     'anschreiben-kopf-fuss.docx',
     'anschreiben-sonderfaelle.docx',
     'anschreiben-formatiert.docx',
+    'anschreiben-schwebend.docx',
   ])('stimmt für %s Zeichen für Zeichen mit parseDocx überein', async (fileName) => {
     const docx = await loadDocx(fileName)
     const format = readDocumentFormat(docx)
@@ -239,6 +240,7 @@ describe('readDocumentFormat — Absatzmarke', () => {
     expect(paragraph.markFormat.sizePt).toBe(20)
   })
 })
+
 /**
  * Word legt ein eingefügtes Objekt zweimal ab: unter `mc:Choice` in der
  * neueren Form und unter `mc:Fallback` als VML, damit ältere Fassungen es
@@ -304,5 +306,70 @@ describe('readDocumentFormat — mc:AlternateContent', () => {
     const images = format.paragraphs[0].items.filter((item) => item.kind === 'image')
     expect(images).toHaveLength(1)
     expect(images[0].image.widthPt).toBeCloseTo(88.5, 1)
+  })
+})
+
+/**
+ * Ein Anschreiben, das aus einer PDF-Umwandlung kommt, besteht in weiten
+ * Teilen aus schwebenden Kästen statt aus Fließtext: Die Empfängeranschrift
+ * steht im Anschriftenfeld, unter dem Briefkopf liegt eine Linie, die
+ * Unterschrift hängt an der Grußformel. Alle drei stehen nicht im
+ * Textmodell — und fehlten deshalb im PDF ganz.
+ */
+describe('readDocumentFormat — schwebende Objekte', () => {
+  /** Das Textfeld samt seinem eingegrenzten Inhalt. */
+  function textboxOf(format: DocumentFormat) {
+    const box = format.floats.find((float) => float.content.kind === 'textbox')
+    if (box?.content.kind !== 'textbox') throw new Error('Kein Textfeld gelesen.')
+    return { box, content: box.content }
+  }
+
+  it('liest Textfeld, Linie und Unterschrift je einmal', async () => {
+    const format = readDocumentFormat(await loadDocx('anschreiben-schwebend.docx'))
+
+    expect(format.floats).toHaveLength(3)
+    expect(format.floats.map((float) => float.content.kind)).toEqual([
+      'shape',
+      'textbox',
+      'image',
+    ])
+  })
+
+  it('setzt die Empfängeranschrift an ihre Blattkoordinate', async () => {
+    const format = readDocumentFormat(await loadDocx('anschreiben-schwebend.docx'))
+
+    const { box, content } = textboxOf(format)
+    expect(box.anchor.fromH).toBe('page')
+    expect(box.anchor.fromV).toBe('page')
+    expect(box.anchor.xPt).toBeCloseTo(70, 1)
+    expect(box.anchor.yPt).toBeCloseTo(200, 1)
+    expect(box.widthPt).toBeCloseTo(185.9, 1)
+    expect(content.insets.leftPt).toBeCloseTo(7.2, 1)
+  })
+
+  it('hängt die Unterschrift an den Absatz der Grußformel', async () => {
+    const docx = await loadDocx('anschreiben-schwebend.docx')
+    const format = readDocumentFormat(docx)
+
+    const signature = format.floats.find((float) => float.content.kind === 'image')
+    expect(signature?.anchor.fromV).toBe('paragraph')
+    const greeting = docx.paragraphs.findIndex((paragraph) =>
+      paragraph.text.startsWith('Mit freundlichen'),
+    )
+    expect(signature?.anchor.paragraphIndex).toBe(greeting)
+  })
+
+  /**
+   * Die Absätze eines Textfelds dürfen **nicht** im Fließtext auftauchen —
+   * daran hängen die Zeichen-Offsets der Markierungen des Nutzers.
+   */
+  it('lässt den Textfeldinhalt aus dem Fließtext heraus', async () => {
+    const docx = await loadDocx('anschreiben-schwebend.docx')
+    const format = readDocumentFormat(docx)
+
+    expect(docx.text).not.toContain('Musterwerk GmbH')
+    const { content } = textboxOf(format)
+    expect(content.paragraphs).toHaveLength(3)
+    expect(content.paragraphs.every((paragraph) => paragraph.index === null)).toBe(true)
   })
 })

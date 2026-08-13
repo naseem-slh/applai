@@ -67,6 +67,7 @@ function document(paragraphs: FormattedParagraph[]): DocumentFormat {
   return {
     page: page(),
     paragraphs,
+    floats: [],
     header: { default: null, first: null, even: null },
     footer: { default: null, first: null, even: null },
     defaultTabStopPt: 35.45,

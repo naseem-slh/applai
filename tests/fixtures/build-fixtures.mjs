@@ -341,6 +341,117 @@ function writeDocx(fileName, files) {
  * Zeile mit vorangestelltem Filterbyte — `zlibSync` aus fflate, das ohnehin
  * für die Zip-Dateien gebraucht wird, erledigt den Rest.
  */
+// --- Fixture 6: schwebende Objekte und Symbolschrift ---
+// Der Nachbau eines echten Anschreibens, das aus einer PDF-Umwandlung kam:
+// Empfängeranschrift in einem Textfeld, Linie unter dem Briefkopf,
+// eingescannte Unterschrift — alle drei schwebend, also mit `wp:anchor` an
+// einer Blattkoordinate statt im Textfluss. Dazu ein Wingdings-Trenner in
+// der Kontaktzeile und ein Wort, das über zwei `w:t`-Läufe verteilt ist.
+// Verbraucht von layout.test.ts, write.test.ts und format.test.ts.
+{
+  const NAMESPACES = [
+    W_NS,
+    'xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"',
+    'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"',
+    'xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"',
+    'xmlns:wps="http://schemas.microsoft.com/office/word/2010/wordprocessingShape"',
+    'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"',
+    'xmlns:v="urn:schemas-microsoft-com:vml"',
+  ].join(' ')
+
+  // Textfeld mit der Empfängeranschrift, an der Blattkoordinate 70/200 pt.
+  const addressBox = [
+    '<mc:AlternateContent><mc:Choice Requires="wps">',
+    '<w:drawing><wp:anchor>',
+    '<wp:positionH relativeFrom="page"><wp:posOffset>889000</wp:posOffset></wp:positionH>',
+    '<wp:positionV relativeFrom="page"><wp:posOffset>2540000</wp:posOffset></wp:positionV>',
+    '<wp:extent cx="2360930" cy="1404620"/>',
+    '<a:graphic><a:graphicData><wps:wsp><wps:txbx><w:txbxContent>',
+    '<w:p><w:r><w:t>Musterwerk GmbH</w:t></w:r></w:p>',
+    '<w:p><w:r><w:t>Musterstraße 8</w:t></w:r></w:p>',
+    '<w:p><w:r><w:t>10827 Berlin</w:t></w:r></w:p>',
+    '</w:txbxContent></wps:txbx>',
+    '<wps:bodyPr lIns="91440" tIns="45720" rIns="91440" bIns="45720"/>',
+    '</wps:wsp></a:graphicData></a:graphic>',
+    '</wp:anchor></w:drawing>',
+    '</mc:Choice><mc:Fallback>',
+    // Dieselbe Anschrift noch einmal als VML. Wer beide liest, setzt sie
+    // doppelt — genau das prüft format.test.ts.
+    '<w:pict><v:shape style="position:absolute;margin-left:70pt;margin-top:200pt;width:186pt;height:110pt">',
+    '<v:textbox><w:txbxContent><w:p><w:r><w:t>Musterwerk GmbH</w:t></w:r></w:p></w:txbxContent></v:textbox>',
+    '</v:shape></w:pict>',
+    '</mc:Fallback></mc:AlternateContent>',
+  ].join('')
+
+  // Linie unter dem Briefkopf: Höhe null, sichtbar nur durch ihre Stärke.
+  const rule = [
+    '<w:drawing><wp:anchor>',
+    '<wp:positionH relativeFrom="page"><wp:posOffset>863600</wp:posOffset></wp:positionH>',
+    '<wp:positionV relativeFrom="page"><wp:posOffset>1619250</wp:posOffset></wp:positionV>',
+    '<wp:extent cx="5753100" cy="0"/>',
+    '<a:graphic><a:graphicData><wps:wsp><wps:spPr>',
+    '<a:ln w="8508"><a:solidFill><a:srgbClr val="000000"/></a:solidFill></a:ln>',
+    '</wps:spPr></wps:wsp></a:graphicData></a:graphic>',
+    '</wp:anchor></w:drawing>',
+  ].join('')
+
+  // Unterschrift, am Absatz der Grußformel hängend.
+  const signature = [
+    '<w:drawing><wp:anchor>',
+    '<wp:positionH relativeFrom="page"><wp:posOffset>882650</wp:posOffset></wp:positionH>',
+    '<wp:positionV relativeFrom="paragraph"><wp:posOffset>132558</wp:posOffset></wp:positionV>',
+    '<wp:extent cx="1123950" cy="578484"/>',
+    '<a:graphic><a:graphicData><a:blip r:embed="rIdImage"/></a:graphicData></a:graphic>',
+    '</wp:anchor></w:drawing>',
+  ].join('')
+
+  const body = [
+    '    <w:p><w:r><w:t>Erika Mustermann</w:t></w:r></w:p>',
+    // Wingdings als Trenner — im PDF muss daraus ein Aufzählungspunkt werden.
+    '    <w:p><w:r><w:t xml:space="preserve">Musterstraße 1 </w:t></w:r>' +
+      '<w:r><w:rPr><w:rFonts w:ascii="Wingdings" w:hAnsi="Wingdings"/></w:rPr><w:t></w:t></w:r>' +
+      '<w:r><w:t xml:space="preserve"> 10827 Berlin</w:t></w:r></w:p>',
+    `    <w:p><w:r>${rule}</w:r></w:p>`,
+    `    <w:p><w:r>${addressBox}</w:r></w:p>`,
+    '    <w:p><w:r><w:t>Sehr geehrte Damen und Herren,</w:t></w:r></w:p>',
+    // „meine" über zwei Läufe: hier darf nicht umbrochen werden.
+    '    <w:p><w:r><w:t xml:space="preserve">Ich würde mich freuen, Ihr Team durch mei</w:t></w:r>' +
+      '<w:r><w:t>ne Mitarbeit zu unterstützen.</w:t></w:r></w:p>',
+    `    <w:p><w:r><w:t>Mit freundlichen Grüßen</w:t></w:r><w:r>${signature}</w:r></w:p>`,
+  ].join('\n')
+
+  const documentXmlWithNamespaces = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document ${NAMESPACES}>
+  <w:body>
+${body}
+  </w:body>
+</w:document>
+`
+
+  const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Default Extension="png" ContentType="image/png"/>
+  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+</Types>
+`
+
+  const documentRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rIdImage" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/unterschrift.png"/>
+</Relationships>
+`
+
+  writeDocx('anschreiben-schwebend.docx', {
+    '[Content_Types].xml': contentTypes,
+    '_rels/.rels': PACKAGE_RELS,
+    'word/document.xml': documentXmlWithNamespaces,
+    'word/_rels/document.xml.rels': documentRels,
+    'word/media/unterschrift.png': pngFixture(),
+  })
+}
+
 function pngFixture() {
   const width = 6
   const height = 3

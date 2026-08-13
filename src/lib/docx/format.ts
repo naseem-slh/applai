@@ -1,5 +1,5 @@
 import type { DocxDocument } from './model'
-import { paragraphNodesOf, runChildText, runNodesOf } from './parse'
+import { nestedParagraphNodesOf, paragraphNodesOf, runChildText, runNodesOf } from './parse'
 
 /**
  * Liest die **Formatierung** einer `.docx` aus — Schrift, Grade, Ausrichtung,
@@ -90,6 +90,61 @@ export interface DocumentImage {
 }
 
 /**
+ * Ein schwebendes Objekt: ein Textfeld, ein Bild oder eine Form, die Word
+ * nicht in den Textfluss stellt, sondern an eine Stelle des Blattes heftet.
+ *
+ * In einem Anschreiben ist das der Regelfall für die Empfängeranschrift
+ * (Textfeld im Anschriftenfeld nach DIN 5008), für die Linie unter dem
+ * Briefkopf und für die eingescannte Unterschrift.
+ */
+export interface FloatingObject {
+  anchor: FloatAnchor
+  widthPt: number
+  heightPt: number
+  content: FloatContent
+}
+
+/**
+ * Woran das Objekt hängt.
+ *
+ * Word misst waagerecht vom Blattrand oder vom Satzspiegel, senkrecht
+ * zusätzlich vom Absatz, in dem das Objekt verankert ist. Der letzte Fall
+ * lässt sich erst beim Setzen auflösen — vorher steht nicht fest, auf
+ * welcher Seite und in welcher Höhe der Absatz landet.
+ */
+export interface FloatAnchor {
+  fromH: 'page' | 'margin'
+  fromV: 'page' | 'margin' | 'paragraph'
+  xPt: number
+  yPt: number
+  /** Statt eines Maßes eine Ausrichtung — dann ist der Versatz null. */
+  alignH: 'left' | 'center' | 'right' | null
+  alignV: 'top' | 'center' | 'bottom' | null
+  /** Der Absatz, an dem es hängt; `null` außerhalb des Fließtextes. */
+  paragraphIndex: number | null
+}
+
+/**
+ * Der Innenabstand eines Textfelds.
+ *
+ * Words Vorgaben sind 0,1 Zoll seitlich und 0,05 Zoll oben und unten. Sie
+ * hier zu übergehen verschöbe die Empfängeranschrift um gut sieben Punkt
+ * nach links — im Anschriftenfeld eines Briefes sichtbar.
+ */
+export interface BoxInsets {
+  leftPt: number
+  topPt: number
+  rightPt: number
+  bottomPt: number
+}
+
+export type FloatContent =
+  | { kind: 'textbox'; paragraphs: FormattedParagraph[]; insets: BoxInsets }
+  | { kind: 'image'; image: DocumentImage }
+  /** Linie oder Fläche. Eine Linie hat die Höhe null und eine Strichstärke. */
+  | { kind: 'shape'; fill: string | null; stroke: string | null; strokePt: number }
+
+/**
  * Ein Stück Absatzinhalt. Die Zeichenbeiträge (`text`, `\t`, `\n`) ergeben
  * aneinandergehängt genau den Absatztext aus `parse.ts`.
  */
@@ -143,6 +198,8 @@ export interface RunningParts {
 export interface DocumentFormat {
   page: PageFormat
   paragraphs: FormattedParagraph[]
+  /** Schwebende Objekte des Fließtextes, in Lesereihenfolge. */
+  floats: FloatingObject[]
   header: RunningParts
   footer: RunningParts
   defaultTabStopPt: number
@@ -160,6 +217,15 @@ interface FormatContext {
   relationships: Map<string, string>
   /** Verzeichnis des Teils, auf das relative Beziehungsziele zeigen. */
   partDirectory: string
+  /**
+   * Sammelstelle für schwebende Objekte — oder `null`, wenn dieser Teil
+   * keine eigene Ebene hat.
+   *
+   * Kopf- und Fußzeile bekommen `null`: Sie werden ohnehin an einer festen
+   * Stelle gesetzt, und ein Logo darin soll weiterhin im Fluss stehen statt
+   * auf eine Blattkoordinate zu springen, die für den Fließtext gilt.
+   */
+  floats: FloatingObject[] | null
 }
 
 interface StyleDefinition {
@@ -173,6 +239,7 @@ export function readDocumentFormat(docx: DocxDocument): DocumentFormat {
   const theme = readTheme(docx)
   const relationships = readRelationships(docx, 'word/document.xml')
 
+  const floats: FloatingObject[] = []
   const context: FormatContext = {
     zip: docx.zip,
     styles: styles.byId,
@@ -182,6 +249,7 @@ export function readDocumentFormat(docx: DocxDocument): DocumentFormat {
     theme,
     relationships,
     partDirectory: 'word/',
+    floats,
   }
 
   const paragraphs = paragraphNodesOf(docx.doc).map((node, index) =>
@@ -192,8 +260,10 @@ export function readDocumentFormat(docx: DocxDocument): DocumentFormat {
   return {
     page: readPageFormat(section),
     paragraphs,
-    header: readRunningParts(docx, context, section, 'w:headerReference'),
-    footer: readRunningParts(docx, context, section, 'w:footerReference'),
+    floats,
+    // Kopf- und Fußzeile sammeln nicht mit: siehe `FormatContext.floats`.
+    header: readRunningParts(docx, { ...context, floats: null }, section, 'w:headerReference'),
+    footer: readRunningParts(docx, { ...context, floats: null }, section, 'w:footerReference'),
     defaultTabStopPt: readDefaultTabStop(docx) / TWIPS_PER_POINT,
   }
 }
@@ -420,7 +490,7 @@ function readParagraph(
   for (const runNode of runNodesOf(node)) {
     const characterFormat = readCharacterFormat(runNode, characterBase, context)
     for (const runChild of Array.from(runNode.children)) {
-      appendItem(items, runChild, characterFormat, context)
+      appendItem(items, runChild, characterFormat, context, index)
     }
   }
 
@@ -455,6 +525,7 @@ function appendItem(
   runChild: Element,
   format: CharacterFormat,
   context: FormatContext,
+  paragraphIndex: number | null,
 ): void {
   switch (runChild.tagName) {
     case 'w:t': {
@@ -471,6 +542,14 @@ function appendItem(
       return
     case 'w:drawing':
     case 'w:pict': {
+      // Schwebt das Objekt, gehört es auf die eigene Ebene und nicht in den
+      // Fluss. `readFloating` gibt `null` zurück, wenn es im Text steht —
+      // dann bleibt alles wie gehabt.
+      const float = context.floats ? readFloating(runChild, context, paragraphIndex) : null
+      if (float) {
+        context.floats?.push(float)
+        return
+      }
       const image = readImage(runChild, context)
       if (image) items.push({ kind: 'image', image, format })
       return
@@ -481,14 +560,22 @@ function appendItem(
       // die sie nicht lesen können. Beide zu nehmen setzte das Bild doppelt.
       // Genommen wird deshalb die erste Fassung, die etwas beiträgt — die
       // Reihenfolge im Dokument ist Words Rangfolge.
+      // Gezählt wird beides: Ein schwebendes Objekt landet nicht in `items`,
+      // sondern auf der eigenen Ebene. Sähe man nur `items`, hielte man den
+      // Zweig für leer und läse die zweite Fassung obendrauf — die
+      // Empfängeranschrift stünde zweimal im Brief.
       const before = items.length
+      const floatsBefore = context.floats?.length ?? 0
+      const contributed = (): boolean =>
+        items.length > before || (context.floats?.length ?? 0) > floatsBefore
+
       for (const branchName of ['mc:Choice', 'mc:Fallback']) {
         const branch = child(runChild, branchName)
         if (!branch) continue
         for (const branchChild of Array.from(branch.children)) {
-          appendItem(items, branchChild, format, context)
+          appendItem(items, branchChild, format, context, paragraphIndex)
         }
-        if (items.length > before) return
+        if (contributed()) return
       }
       return
     }
@@ -496,6 +583,210 @@ function appendItem(
       // Alles Übrige trägt keine Zeichen bei (`w:rPr`, Feldbefehle,
       // Kommentarmarken) und erscheint auch im Satz nicht.
       return
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Schwebende Objekte
+// ---------------------------------------------------------------------------
+
+/**
+ * Ein schwebendes Objekt — oder `null`, wenn das Objekt im Textfluss steht
+ * und der Aufrufer es wie bisher als Bild im Absatz behandeln soll.
+ */
+function readFloating(
+  node: Element,
+  context: FormatContext,
+  paragraphIndex: number | null,
+): FloatingObject | null {
+  const anchorNode = child(node, 'wp:anchor')
+  if (anchorNode) {
+    const content = readFloatContent(node, context)
+    if (!content) return null
+    const extent = anchorNode.getElementsByTagName('wp:extent')[0]
+    return {
+      anchor: readAnchor(anchorNode, paragraphIndex),
+      widthPt: (attribute(extent, 'cx') ?? 0) / EMU_PER_POINT,
+      heightPt: (attribute(extent, 'cy') ?? 0) / EMU_PER_POINT,
+      content,
+    }
+  }
+  return readVmlFloat(node, context, paragraphIndex)
+}
+
+function readAnchor(anchorNode: Element, paragraphIndex: number | null): FloatAnchor {
+  const horizontal = child(anchorNode, 'wp:positionH')
+  const vertical = child(anchorNode, 'wp:positionV')
+  return {
+    fromH: horizontal?.getAttribute('relativeFrom') === 'page' ? 'page' : 'margin',
+    fromV: verticalFrom(vertical?.getAttribute('relativeFrom')),
+    xPt: posOffset(horizontal),
+    yPt: posOffset(vertical),
+    alignH: alignment(horizontal, ['left', 'center', 'right']),
+    alignV: alignment(vertical, ['top', 'center', 'bottom']),
+    paragraphIndex,
+  }
+}
+
+/**
+ * Ohne Angabe hängt ein Objekt senkrecht am Absatz — das ist Words Vorgabe
+ * und der Grund, warum eine Unterschrift beim Umbruch mitwandert.
+ */
+function verticalFrom(value: string | null | undefined): FloatAnchor['fromV'] {
+  if (value === 'page') return 'page'
+  if (value === 'margin' || value === 'topMargin' || value === 'bottomMargin') return 'margin'
+  return 'paragraph'
+}
+
+function posOffset(position: Element | null): number {
+  const raw = Number(child(position, 'wp:posOffset')?.textContent ?? Number.NaN)
+  return Number.isFinite(raw) ? raw / EMU_PER_POINT : 0
+}
+
+function alignment<T extends string>(position: Element | null, allowed: T[]): T | null {
+  const value = child(position, 'wp:align')?.textContent?.trim()
+  return allowed.find((candidate) => candidate === value) ?? null
+}
+
+function readFloatContent(node: Element, context: FormatContext): FloatContent | null {
+  const textbox = node.getElementsByTagName('w:txbxContent')[0]
+  if (textbox) {
+    // Ein Textfeld im Textfeld bekommt keine eigene Ebene: `floats: null`
+    // lässt sein Inneres im Fluss des Kastens stehen.
+    const inner: FormatContext = { ...context, floats: null }
+    return {
+      kind: 'textbox',
+      paragraphs: nestedParagraphNodesOf(textbox).map((paragraph) =>
+        readParagraph(paragraph, inner, null),
+      ),
+      insets: readInsets(node.getElementsByTagName('wps:bodyPr')[0] ?? null),
+    }
+  }
+
+  const image = readImage(node, context)
+  if (image) return { kind: 'image', image }
+
+  return readShape(node)
+}
+
+/**
+ * Linie oder Fläche.
+ *
+ * Gelesen werden Füllung und Strich; alles Weitere — Rundungen, Verläufe,
+ * Schatten, Freiformen — bleibt außen vor und das Objekt damit ungezeichnet.
+ * Eine erfundene Form wäre schlimmer als eine fehlende.
+ */
+function readShape(node: Element): FloatContent | null {
+  const properties =
+    node.getElementsByTagName('wps:spPr')[0] ?? node.getElementsByTagName('pic:spPr')[0] ?? null
+  if (!properties) return null
+
+  const line = child(properties, 'a:ln')
+  const fill = solidColor(child(properties, 'a:solidFill'))
+  const stroke = solidColor(child(line, 'a:solidFill'))
+  const strokePt = (attribute(line, 'w') ?? 0) / EMU_PER_POINT
+
+  if (fill === null && stroke === null) return null
+  return { kind: 'shape', fill, stroke, strokePt }
+}
+
+/** Words Vorgaben: 0,1 Zoll seitlich, 0,05 Zoll oben und unten. */
+const DEFAULT_INSETS: BoxInsets = { leftPt: 7.2, topPt: 3.6, rightPt: 7.2, bottomPt: 3.6 }
+
+function readInsets(bodyPr: Element | null): BoxInsets {
+  if (!bodyPr) return DEFAULT_INSETS
+  const inset = (name: string, fallback: number): number => {
+    const value = attribute(bodyPr, name)
+    return value === null ? fallback : value / EMU_PER_POINT
+  }
+  return {
+    leftPt: inset('lIns', DEFAULT_INSETS.leftPt),
+    topPt: inset('tIns', DEFAULT_INSETS.topPt),
+    rightPt: inset('rIns', DEFAULT_INSETS.rightPt),
+    bottomPt: inset('bIns', DEFAULT_INSETS.bottomPt),
+  }
+}
+
+/** VML schreibt die vier Maße als eine Liste: `inset="0.1in,0.05in,0.1in,0.05in"`. */
+function vmlInsets(textbox: Element | null): BoxInsets {
+  const raw = textbox?.getAttribute('inset')
+  if (!raw) return DEFAULT_INSETS
+  const parts = raw.split(',')
+  const at = (index: number, fallback: number): number =>
+    parts[index] === undefined || parts[index].trim() === ''
+      ? fallback
+      : lengthToPoints(parts[index])
+  return {
+    leftPt: at(0, DEFAULT_INSETS.leftPt),
+    topPt: at(1, DEFAULT_INSETS.topPt),
+    rightPt: at(2, DEFAULT_INSETS.rightPt),
+    bottomPt: at(3, DEFAULT_INSETS.bottomPt),
+  }
+}
+
+function solidColor(node: Element | null): string | null {
+  const value = child(node, 'a:srgbClr')?.getAttribute('val')
+  return value === null || value === undefined ? null : value.replace('#', '').toUpperCase()
+}
+
+/**
+ * Dasselbe in der älteren Schreibweise (VML).
+ *
+ * Word legt sie als Rückfall neben die neuere; erreicht wird sie nur, wenn
+ * ein Dokument ausschließlich VML führt — bei geerbten Briefköpfen kommt das
+ * vor.
+ */
+function readVmlFloat(
+  node: Element,
+  context: FormatContext,
+  paragraphIndex: number | null,
+): FloatingObject | null {
+  const shape =
+    node.getElementsByTagName('v:shape')[0] ??
+    node.getElementsByTagName('v:rect')[0] ??
+    node.getElementsByTagName('v:line')[0] ??
+    null
+  const style = shape?.getAttribute('style') ?? ''
+  if (!shape || !/position\s*:\s*absolute/.test(style)) return null
+
+  const textbox = shape.getElementsByTagName('w:txbxContent')[0]
+  const image = readImage(node, context)
+  const fill = shape.getAttribute('fillcolor')
+  const stroke = shape.getAttribute('strokecolor')
+
+  const content: FloatContent | null = textbox
+    ? {
+        kind: 'textbox',
+        paragraphs: nestedParagraphNodesOf(textbox).map((paragraph) =>
+          readParagraph(paragraph, { ...context, floats: null }, null),
+        ),
+        insets: vmlInsets(shape.getElementsByTagName('v:textbox')[0] ?? null),
+      }
+    : image
+      ? { kind: 'image', image }
+      : fill !== null || stroke !== null
+        ? {
+            kind: 'shape',
+            fill: fill?.replace('#', '').toUpperCase() ?? null,
+            stroke: stroke?.replace('#', '').toUpperCase() ?? null,
+            strokePt: lengthToPoints(shape.getAttribute('strokeweight') ?? ''),
+          }
+        : null
+  if (!content) return null
+
+  return {
+    anchor: {
+      fromH: /mso-position-horizontal-relative\s*:\s*page/.test(style) ? 'page' : 'margin',
+      fromV: /mso-position-vertical-relative\s*:\s*page/.test(style) ? 'page' : 'paragraph',
+      xPt: cssLength(style, 'margin-left'),
+      yPt: cssLength(style, 'margin-top'),
+      alignH: null,
+      alignV: null,
+      paragraphIndex,
+    },
+    widthPt: cssLength(style, 'width'),
+    heightPt: cssLength(style, 'height'),
+    content,
   }
 }
 
@@ -541,9 +832,16 @@ function loadImage(
 
 /** Eine Längenangabe aus einem VML-`style`-Attribut, z. B. `width:170.25pt`. */
 function cssLength(style: string, property: string): number {
-  const match = new RegExp(`(?:^|;)\\s*${property}\\s*:\\s*([0-9.]+)\\s*(pt|px|in|cm|mm)?`).exec(style)
+  const match = new RegExp(`(?:^|;)\\s*${property}\\s*:\\s*(-?[0-9.]+\\s*(?:pt|px|in|cm|mm)?)`).exec(style)
+  return match ? lengthToPoints(match[1]) : 0
+}
+
+/** Eine einzelne Längenangabe mit Einheit, z. B. `0.1in` oder `170.25pt`. */
+function lengthToPoints(raw: string): number {
+  const match = /(-?[0-9.]+)\s*(pt|px|in|cm|mm)?/.exec(raw.trim())
   if (!match) return 0
   const value = Number(match[1])
+  if (!Number.isFinite(value)) return 0
   switch (match[2]) {
     case 'px':
       return value / PIXELS_PER_POINT
