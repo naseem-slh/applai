@@ -10,7 +10,7 @@ import { LETTER_DRAFT_ID } from '@/components/app/appContext'
 import type { DocxDocument } from '@/lib/docx/model'
 import { parseDocx } from '@/lib/docx/parse'
 import { replaceRange } from '@/lib/docx/replace'
-import { AUTOSAVE_INTERVAL_MS, useDraftAutosave } from './useDraftAutosave'
+import { AUTOSAVE_INTERVAL_MS, useDraftAutosave, type DraftSaveState } from './useDraftAutosave'
 
 const FIXTURES_DIR = join(dirname(fileURLToPath(import.meta.url)), '../../../tests/fixtures')
 
@@ -26,11 +26,25 @@ async function tick(times = 1): Promise<void> {
   })
 }
 
-function mount(storage: FakeStorage, document: DocxDocument | null) {
-  return renderHook(
-    (props: { document: DocxDocument | null }) =>
-      useDraftAutosave({ storage, draftId: LETTER_DRAFT_ID, document: props.document }),
-    { initialProps: { document } },
+/**
+ * `letterheadAppliedFor` optional, nicht `string | null` unbedingt: So
+ * müssen bestehende `rerender({ document })`-Aufrufe (ohne diese Kennung)
+ * nicht angefasst werden — sie behalten stillschweigend die zuletzt
+ * gesetzte Kennung bei, wie `useDraftAutosave` es für den Standardwert
+ * `null` ohnehin täte.
+ */
+type MountProps = { document: DocxDocument | null; letterheadAppliedFor?: string | null }
+
+function mount(storage: FakeStorage, document: DocxDocument | null, letterheadAppliedFor: string | null = null) {
+  return renderHook<DraftSaveState, MountProps>(
+    (props) =>
+      useDraftAutosave({
+        storage,
+        draftId: LETTER_DRAFT_ID,
+        document: props.document,
+        letterheadAppliedFor: props.letterheadAppliedFor,
+      }),
+    { initialProps: { document, letterheadAppliedFor } },
   )
 }
 
@@ -92,6 +106,58 @@ describe('useDraftAutosave', () => {
     await tick(2)
 
     expect(storage.saveDraft).toHaveBeenCalledTimes(1)
+  })
+
+  // Schaden 2: Die Kennung der Anzeige, für die die selbsttätige
+  // Briefkopf-Übernahme gelaufen ist, muss beim Sichern mitgeführt werden —
+  // sie ist die Sperre über Sitzungen hinweg (`Editor.tsx`).
+  it('führt die Kennung der bereits übernommenen Anzeige beim Sichern mit', async () => {
+    const storage = createFakeStorage()
+    const letter = await loadLetter()
+    const { rerender } = mount(storage, letter)
+
+    rerender({
+      document: replaceRange(letter, { from: 0, to: 4 }, 'Hallo'),
+      letterheadAppliedFor: 'fingerabdruck-x',
+    })
+    await tick()
+
+    expect(storage.state.drafts.get(LETTER_DRAFT_ID)?.letterheadAppliedFor).toBe('fingerabdruck-x')
+  })
+
+  /**
+   * Genau der Fall, für den diese Kennung existiert: Die Übernahme lief
+   * für eine Anzeige, hat aber (weil z. B. schon alles passte) NICHTS am
+   * Dokument geändert. Ohne besondere Behandlung würde `save()` gar nicht
+   * erst schreiben (`current === savedRef.current`) — und die Kennung
+   * bliebe unsicherbar, weil sie an eine Dokumentänderung gekoppelt wäre,
+   * die es hier gar nicht gibt.
+   */
+  it('sichert eine neue Kennung auch dann, wenn sich das Dokument selbst nicht geändert hat', async () => {
+    const storage = createFakeStorage()
+    const letter = await loadLetter()
+    const { rerender } = mount(storage, letter)
+
+    rerender({ document: letter, letterheadAppliedFor: 'fingerabdruck-ohne-aenderung' })
+    await tick()
+
+    expect(storage.saveDraft).toHaveBeenCalledTimes(1)
+    expect(storage.state.drafts.get(LETTER_DRAFT_ID)?.letterheadAppliedFor).toBe(
+      'fingerabdruck-ohne-aenderung',
+    )
+  })
+
+  // Die anfängliche Kennung (aus einem fortgesetzten Entwurf) gilt bereits
+  // als gesichert — sie erneut zu schreiben, obwohl sich nichts geändert
+  // hat, wäre derselbe unnötige Schreibzugriff wie beim Dokument selbst.
+  it('sichert die anfängliche Kennung nicht erneut, solange sie sich nicht ändert', async () => {
+    const storage = createFakeStorage()
+    const letter = await loadLetter()
+    mount(storage, letter, 'schon-bekannt')
+
+    await tick(2)
+
+    expect(storage.saveDraft).not.toHaveBeenCalled()
   })
 
   it('behauptet keinen Zwischenstand, wenn das Sichern fehlschlägt', async () => {

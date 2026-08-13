@@ -36,6 +36,26 @@ export interface Draft {
   text: string
   /** Zeitpunkt des letzten Speicherns, `Date.now()`-Millisekunden. */
   savedAt: number
+  /**
+   * Kennung der Stellenanzeige, für die die selbsttätige
+   * Briefkopf-Übernahme (`src/routes/Editor.tsx`) beim Brief-Entwurf
+   * zuletzt gelaufen ist — ein `textFingerprint` (`lib/text/fingerprint.ts`)
+   * des Anzeigentexts. Diese Schicht kennt weder den Fingerabdruck-Algorithmus
+   * noch, wofür er steht; sie legt den Wert nur ab und gibt ihn unverändert
+   * zurück (dieselbe Zurückhaltung wie bei `CachedAnalysis.key`).
+   *
+   * Ausschließlich beim Brief-Entwurf gesetzt (`LETTER_DRAFT_ID`), nie beim
+   * Lebenslauf — der hat keinen Briefkopf.
+   *
+   * **Ein fehlender Wert bedeutet „noch nie übernommen"**, nicht „für jede
+   * Anzeige schon erledigt". Das ist die einzig sichere Richtung: Ein
+   * älterer Entwurf aus der Zeit vor diesem Feld (oder ein über eine ältere
+   * Sicherungsdatei wiederhergestellter) trägt es nicht, und die
+   * Arbeitsfläche muss die Übernahme dafür trotzdem einmal versuchen dürfen
+   * — sonst bliebe genau der Fall, für den es die selbsttätige Übernahme
+   * gibt, für immer ohne sie.
+   */
+  letterheadAppliedFor?: string
 }
 
 /**

@@ -204,6 +204,11 @@ export default function Start({ loaders = DEFAULT_LOADERS }: StartProps) {
       docxBase: draft.docxBase,
       text: draft.text,
       multiColumn: false,
+      // Unverändert weitergereicht (Schaden 2): Die Arbeitsfläche erkennt
+      // daran, für welche Anzeige die selbsttätige Briefkopf-Übernahme in
+      // einer vorigen Sitzung schon lief — ohne diesen Wert liefe sie ein
+      // zweites Mal und überschriebe jede Handkorrektur des Nutzers.
+      letterheadAppliedFor: draft.letterheadAppliedFor,
     }
     setSlots((current) => ({ ...current, [slot]: { document: loaded, busy: false, error: null } }))
     setRecent((current) => ({ ...current, [slot]: null }))
@@ -263,6 +268,14 @@ export default function Start({ loaders = DEFAULT_LOADERS }: StartProps) {
               docxBase: entry.document.docxBase,
               text: entry.document.text,
               savedAt,
+              // Bei einem fortgesetzten Entwurf (`source === 'draft'`) trägt
+              // `entry.document` diese Kennung bereits aus `handleUseRecent`
+              // — sie muss auch dieses (erste, noch vor der Arbeitsfläche
+              // laufende) Ablegen überstehen, sonst wäre sie kurzzeitig
+              // verloren, bis die Arbeitsfläche selbst das nächste Mal
+              // sichert. Bei einem frisch geladenen Dokument ist der Wert
+              // `undefined` — korrekt, denn dafür lief noch nichts.
+              letterheadAppliedFor: entry.document.letterheadAppliedFor,
             }),
           ),
       )

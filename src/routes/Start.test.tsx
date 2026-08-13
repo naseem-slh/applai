@@ -436,6 +436,38 @@ describe('Start — Übergabe an die Arbeitsfläche', () => {
     expect(storage.state.drafts.has(CV_DRAFT_ID)).toBe(false)
   })
 
+  // Schaden 2: Ein fortgesetzter Entwurf trägt bereits die Kennung der
+  // Anzeige, für die die selbsttätige Briefkopf-Übernahme lief — sie darf
+  // beim erneuten Ablegen (unmittelbar nach „Weiter") nicht verloren gehen,
+  // sonst liefe die Arbeitsfläche die Übernahme fälschlich ein zweites Mal.
+  it('führt die Kennung der bereits übernommenen Anzeige eines fortgesetzten Entwurfs weiter', async () => {
+    const storage = createFakeStorage({
+      drafts: new Map([
+        [
+          LETTER_DRAFT_ID,
+          {
+            id: LETTER_DRAFT_ID,
+            docxBase: new ArrayBuffer(4),
+            text: LETTER_TEXT,
+            savedAt: Date.UTC(2026, 7, 10),
+            letterheadAppliedFor: 'fingerabdruck-alte-anzeige',
+          },
+        ],
+      ]),
+    })
+    const { user } = setup({ storage })
+
+    await screen.findByRole('heading', { name: t('start.recent.heading') })
+    await user.click(screen.getByRole('button', { name: t('start.recent.use') }))
+    await user.type(screen.getByLabelText(t('start.jobAd.label')), 'Wir suchen eine Entwicklerin.')
+    await user.click(continueButton())
+
+    await waitFor(() => expect(storage.saveDraft).toHaveBeenCalledTimes(1))
+    expect(storage.state.drafts.get(LETTER_DRAFT_ID)).toMatchObject({
+      letterheadAppliedFor: 'fingerabdruck-alte-anzeige',
+    })
+  })
+
   it('nimmt einen bereits übergebenen Stand beim Zurückkommen wieder auf', () => {
     setup({
       session: {

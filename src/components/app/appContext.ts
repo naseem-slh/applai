@@ -49,6 +49,18 @@ export interface LoadedDocument {
   text: string
   /** Nur bei `source === 'pdf'` aussagekräftig: mindestens eine Seite war mehrspaltig. */
   multiColumn: boolean
+  /**
+   * Bei `source === 'draft'` (aus dem Speicher zurückgeholt) unverändert aus
+   * `Draft.letterheadAppliedFor` übernommen — bei `'docx'`/`'pdf'` immer
+   * `undefined`, ein frisch geladenes Dokument hat naturgemäß noch keine
+   * selbsttätige Übernahme hinter sich.
+   *
+   * Die Arbeitsfläche liest diesen Wert genau einmal, beim Aufbau ihres
+   * eigenen Anfangszustands (siehe `Editor.tsx`) — sie schreibt nie
+   * hierher zurück, das übernimmt `useDraftAutosave` direkt über die
+   * Speicherschicht.
+   */
+  letterheadAppliedFor?: string
 }
 
 /**
