@@ -851,9 +851,17 @@ function EditorWorkspace({ session }: { session: StartSession }) {
         >
           <aside
             aria-label={t('editor.sidePanel.reference')}
+              // `[&>*]:shrink-0`: In einer Spalte mit eigenem Blättern
+              // dürfen die Kinder standardmäßig schrumpfen — und sie tun es,
+              // statt die Spalte blättern zu lassen. Sichtbar war das daran,
+              // dass „Briefkopf" zu einem Streifen gequetscht unter
+              // „Schreibstil" lag und dessen Textfeld unten abgeschnitten
+              // war. Ein Bereich muss seine natürliche Höhe behalten; scrollen
+              // soll die Spalte.
             className={cn(
               'flex flex-col gap-3 border-t border-[var(--color-border)] p-4 lg:border-t-0',
               'xl:col-start-1 xl:row-start-1 xl:min-h-0 xl:overflow-y-auto xl:border-r',
+              '[&>*]:shrink-0',
             )}
           >
             {analysis.jobAd !== null && (
@@ -898,6 +906,9 @@ function EditorWorkspace({ session }: { session: StartSession }) {
             className={cn(
               'flex flex-col gap-3 border-t border-[var(--color-border)] p-4',
               'xl:col-start-3 xl:row-start-1 xl:min-h-0 xl:overflow-y-auto xl:border-t-0 xl:border-l',
+              // Siehe die Spalte links: sonst quetschen sich die Bereiche
+              // gegenseitig, statt dass die Spalte blättert.
+              '[&>*]:shrink-0',
             )}
           >
             {/* Der Wahrheitsmodus stand bisher unter der Markierungsleiste.
