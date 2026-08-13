@@ -4,8 +4,8 @@
 import { readFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { zipSync } from 'fflate'
 import { afterEach, describe, expect, it } from 'vitest'
+import { buildDocx as buildDocxArchive, paragraphXml } from '@/lib/docx/docx.testutils'
 import type { DocxDocument } from '@/lib/docx/model'
 import { parseDocx } from '@/lib/docx/parse'
 import {
@@ -28,22 +28,14 @@ async function loadFixture(fileName: string): Promise<DocxDocument> {
   return parseDocx(buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength))
 }
 
-const W_NS = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"'
-
-/** Ein minimales `.docx` im Speicher, für Texte, die keine Fixture wert sind. */
+/**
+ * Ein minimales `.docx` im Speicher, für Texte, die keine Fixture wert sind
+ * — ein Absatz je Eintrag. Das Zusammensetzen von Archiv und XML übernimmt
+ * der geteilte Helfer aus `docx.testutils`; hier bleibt nur die für diese
+ * Datei bequeme Form (Absatztexte statt fertiges Body-XML).
+ */
 async function buildDocx(paragraphTexts: string[]): Promise<DocxDocument> {
-  const encoder = new TextEncoder()
-  const body = paragraphTexts
-    .map((text) => `<w:p><w:r><w:t xml:space="preserve">${text}</w:t></w:r></w:p>`)
-    .join('')
-  const zipped = zipSync({
-    '[Content_Types].xml': encoder.encode('<?xml version="1.0"?><Types/>'),
-    '_rels/.rels': encoder.encode('<?xml version="1.0"?><Relationships/>'),
-    'word/document.xml': encoder.encode(
-      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document ${W_NS}><w:body>${body}</w:body></w:document>`,
-    ),
-  })
-  return parseDocx(zipped.buffer.slice(zipped.byteOffset, zipped.byteOffset + zipped.byteLength))
+  return parseDocx(buildDocxArchive(paragraphTexts.map(paragraphXml).join('')))
 }
 
 /**

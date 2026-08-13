@@ -4,8 +4,8 @@
 import { readFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { zipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
+import { buildDocx } from './docx.testutils'
 import type { DocxDocument, Run } from './model'
 import { parseDocx } from './parse'
 import { inspectRange, replaceRange } from './replace'
@@ -17,28 +17,6 @@ async function loadFixture(fileName: string): Promise<DocxDocument> {
   const buffer = await readFile(join(FIXTURES_DIR, fileName))
   const arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength)
   return parseDocx(arrayBuffer)
-}
-
-const W_NS = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"'
-
-// Baut für Sonderfälle (Abschnittswechsel, leerer Absatz) ein minimales
-// .docx im Speicher. Die drei regulären Fixtures unter tests/fixtures/
-// decken die Fälle der Aufgabenstellung ab; für diese Randfälle wäre eine
-// eigene Binärdatei unverhältnismäßig.
-function buildDocx(bodyInner: string): ArrayBuffer {
-  const encoder = new TextEncoder()
-  const zipped = zipSync({
-    '[Content_Types].xml': encoder.encode(
-      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>',
-    ),
-    '_rels/.rels': encoder.encode(
-      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>',
-    ),
-    'word/document.xml': encoder.encode(
-      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document ${W_NS}><w:body>${bodyInner}</w:body></w:document>`,
-    ),
-  })
-  return zipped.buffer.slice(zipped.byteOffset, zipped.byteOffset + zipped.byteLength) as ArrayBuffer
 }
 
 // Der eigentliche Beweis: erst serialisieren, dann wieder einlesen. Nur so
