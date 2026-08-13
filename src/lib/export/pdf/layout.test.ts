@@ -133,6 +133,74 @@ describe('layoutDocument — Zeilenumbruch', () => {
   })
 })
 
+describe('layoutDocument — Wörter über Laufgrenzen', () => {
+  /**
+   * Word zerteilt einen Absatz in Läufe, wo es ihm gerade passt: bei einem
+   * Formatwechsel, aber ebenso mitten im Wort, wo nur eine Rechtschreibmarke
+   * sitzt. Bricht der Satz an einer solchen Grenze um, steht im fertigen
+   * Brief „Ihre Rück / meldung" — der Fehler, den ein Leser als Ersten sieht
+   * und der ihn den ganzen Brief für schludrig halten lässt.
+   */
+  it('bricht nicht zwischen zwei Läufen desselben Wortes um', async () => {
+    // Wortlaut, Aufteilung und Spaltenbreite eines echten Anschreibens, in
+    // dem „meine" über zwei w:t-Läufe verteilt stand.
+    const result = await layout(
+      document([
+        paragraph(
+          [
+            text('Ich bin ab sofort verfügbar und würde mich über die Möglichkeit freuen, Ihr Team durch mei'),
+            text('ne Mitarbeit und mein Engagement zu unterstützen.'),
+          ],
+          { indentRightPt: 60 },
+        ),
+      ]),
+    )
+
+    const written = lines(result)
+    expect(written.length).toBeGreaterThan(1)
+    for (const line of written) {
+      expect(line.text.endsWith('mei')).toBe(false)
+      expect(line.text.startsWith('ne ')).toBe(false)
+    }
+    expect(written.map((line) => line.text).join(' ')).toContain('meine Mitarbeit')
+  })
+
+  /**
+   * Zusammenhalten heißt nicht verschmelzen: „Vertrag" mit fettem zweiten
+   * Teil bleibt ein Wort, wird aber weiterhin aus zwei Stücken gesetzt.
+   */
+  it('behält bei einem Formatwechsel im Wort beide Schnitte', async () => {
+    const result = await layout(
+      document([paragraph([text('Ver'), text('trag', { bold: true })])]),
+    )
+
+    const written = texts(result)
+    expect(written.map((item) => item.text).join('')).toBe('Vertrag')
+    expect(written).toHaveLength(2)
+    expect(written[0].face.key).toBe('Carlito-Regular')
+    expect(written[1].face.key).toBe('Carlito-Bold')
+  })
+
+  /**
+   * Ein Leerzeichen am Laufwechsel bleibt eine Umbruchstelle — sonst wäre
+   * die Kur schlimmer als das Leiden und ein Absatz liefe über den Rand.
+   */
+  it('bricht am Leerzeichen zwischen zwei Läufen weiterhin um', async () => {
+    const result = await layout(
+      document([
+        paragraph([text('Ihre Antwort '), text('folgt umgehend')], { indentRightPt: 380 }),
+      ]),
+    )
+
+    const written = lines(result)
+    expect(written.length).toBeGreaterThan(1)
+    // Der Umbruch sitzt an einer Wortgrenze, nicht in einem Wort.
+    for (const line of written) {
+      expect(['Ihre', 'Antwort', 'folgt', 'umgehend']).toContain(line.text.split(' ').at(-1))
+    }
+  })
+})
+
 describe('layoutDocument — Ausrichtung', () => {
   it('setzt zentriert und rechtsbündig an die richtige Stelle', async () => {
     const centered = await layout(

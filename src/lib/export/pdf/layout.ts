@@ -360,22 +360,38 @@ function buildAtoms(
   const atoms: Atom[] = []
   const stops = tabTargets(paragraph.format, defaultTabStopPt)
 
+  // Aufeinanderfolgende Textstücke werden **gemeinsam** zerlegt. Word teilt
+  // einen Absatz in Läufe, wo es ihm passt — bei einem Formatwechsel, aber
+  // auch mitten im Wort, wo nur eine Rechtschreibmarke steht. Zerlegte man
+  // Lauf für Lauf, dürfte der Umbruch zwischen zwei Läufen greifen, und aus
+  // „meine Mitarbeit" würde „mei / ne Mitarbeit".
+  let segments: TextSegment[] = []
+  const flushText = (): void => {
+    if (segments.length === 0) return
+    atoms.push(...textAtoms(segments, fonts))
+    segments = []
+  }
+
   for (const item of paragraph.items) {
     switch (item.kind) {
       case 'text':
-        atoms.push(...textAtoms(item.text, item.format, fonts))
+        segments.push({ text: item.text, format: item.format })
         break
       case 'tab':
+        flushText()
         atoms.push({ kind: 'tab', stops })
         break
       case 'break':
+        flushText()
         atoms.push({ kind: 'break', page: item.page })
         break
       case 'image':
+        flushText()
         atoms.push({ kind: 'image', image: item.image })
         break
     }
   }
+  flushText()
   return atoms
 }
 
@@ -414,24 +430,52 @@ function tabTargets(format: ParagraphFormat, defaultTabStopPt: number): TabTarge
  */
 const BREAKABLE_SPACE = /[^\S\u00A0]/
 
-function textAtoms(text: string, format: CharacterFormat, fonts: FontProvider): Atom[] {
+/** Ein Stück Text mit einheitlicher Auszeichnung, so wie es im Lauf stand. */
+interface TextSegment {
+  text: string
+  format: CharacterFormat
+}
+
+/**
+ * Zerlegt zusammenhängenden Text in Wörter und Leerräume — über Laufgrenzen
+ * hinweg.
+ *
+ * Die Grenze zwischen zwei Läufen ist keine Stelle, an der umbrochen werden
+ * darf: Sie sagt nur, dass sich dort die Auszeichnung ändert oder Word beim
+ * Tippen einen Schnitt gesetzt hat. Ein Wort, das über zwei Läufe reicht,
+ * wird deshalb **ein** Atom mit mehreren Stücken — `Atom.pieces` ist genau
+ * dafür ein Feld.
+ */
+function textAtoms(segments: readonly TextSegment[], fonts: FontProvider): Atom[] {
   const atoms: Atom[] = []
-  let token = ''
+  /** Die Teile des laufenden Tokens, je einer je Lauf, aus dem es stammt. */
+  let parts: TextSegment[] = []
   let tokenIsSpace = false
 
   const flush = (): void => {
-    if (token === '') return
-    const pieces = buildPieces(token, format, fonts)
+    if (parts.length === 0) return
+    const pieces = parts.flatMap((part) => buildPieces(part.text, part.format, fonts))
     const widthPt = pieces.reduce((sum, piece) => sum + piece.widthPt, 0)
     atoms.push({ kind: tokenIsSpace ? 'space' : 'word', pieces, widthPt })
-    token = ''
+    parts = []
   }
 
-  for (const character of text) {
-    const isSpace = BREAKABLE_SPACE.test(character)
-    if (token !== '' && isSpace !== tokenIsSpace) flush()
-    tokenIsSpace = isSpace
-    token += character
+  const append = (character: string, format: CharacterFormat): void => {
+    const last = parts[parts.length - 1]
+    // Verglichen wird die Kennung, nicht der Inhalt: Zwei Läufe mit gleicher
+    // Auszeichnung tragen verschiedene Objekte, und sie getrennt zu setzen
+    // kostet nichts.
+    if (last && last.format === format) last.text += character
+    else parts.push({ text: character, format })
+  }
+
+  for (const segment of segments) {
+    for (const character of segment.text) {
+      const isSpace = BREAKABLE_SPACE.test(character)
+      if (parts.length > 0 && isSpace !== tokenIsSpace) flush()
+      tokenIsSpace = isSpace
+      append(character, segment.format)
+    }
   }
   flush()
   return atoms
