@@ -134,6 +134,13 @@ export interface DocumentViewProps {
    */
   foreignParagraphs?: readonly number[]
   /**
+   * Absätze, in denen der Briefkopf selbsttätig übernommen wurde. Eigene
+   * Farbe, nicht die der Beanstandung: Hier ist nichts falsch, hier hat die
+   * Anwendung nur etwas getan, und der Nutzer soll sehen, was. Der Bericht
+   * mit Alt und Neu steht daneben in `LetterheadPanel`.
+   */
+  letterheadParagraphs?: readonly number[]
+  /**
    * Läufe von mehr als zwei leeren Zeilen in der Ansicht zusammenfalten.
    *
    * **Nur die Ansicht.** Die Absätze bleiben im Dokument, im DOM und im
@@ -163,6 +170,7 @@ export function DocumentView({
   retainedParagraphs = [],
   claimParagraphs = [],
   foreignParagraphs = [],
+  letterheadParagraphs = [],
   collapseBlankRuns = false,
   onParagraphInput,
   labelledBy,
@@ -173,6 +181,7 @@ export function DocumentView({
   const ownRef = useRef<HTMLDivElement>(null)
   const retained = new Set(retainedParagraphs)
   const flagged = new Set([...claimParagraphs, ...foreignParagraphs])
+  const applied = new Set(letterheadParagraphs)
 
   function host(): HTMLDivElement | null {
     return rootRef?.current ?? ownRef.current
@@ -317,6 +326,7 @@ export function DocumentView({
                 paragraph={paragraph}
                 retained={retained.has(paragraph.index)}
                 flagged={flagged.has(paragraph.index)}
+                applied={applied.has(paragraph.index)}
                 collapsed={collapsed.has(paragraph.index)}
               />
             )
@@ -396,12 +406,15 @@ interface DocumentParagraphProps {
   retained: boolean
   /** Eine unbestätigte unbelegte Aussage oder ein fremder Firmenname. */
   flagged: boolean
+  /** Hier wurde der Briefkopf selbsttätig übernommen. */
+  applied: boolean
 }
 
 function DocumentParagraph({
   paragraph,
   retained,
   flagged,
+  applied,
   collapsed = false,
 }: DocumentParagraphProps) {
   const ref = useRef<HTMLParagraphElement>(null)
@@ -436,11 +449,15 @@ function DocumentParagraph({
         // beides zusammentrifft — er hält den Export an oder nennt einen
         // falschen Firmennamen, die Verschiebungswarnung dagegen beschreibt
         // nur eine Nebenwirkung.
+        // Der Briefkopf steht hinten an: Ein falscher Firmenname hält den
+        // Export auf, „hier wurde etwas geändert" ist ein Hinweis.
         flagged
           ? 'border-[var(--color-error)]'
           : retained
             ? 'border-[var(--color-warning)]'
-            : 'border-transparent',
+            : applied
+              ? 'border-[var(--color-info)]'
+              : 'border-transparent',
       )}
     />
   )

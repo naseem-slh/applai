@@ -447,3 +447,22 @@ describe('DocumentView', () => {
     expect(boxes.every((box) => box.className.includes('min-h-[1.7em]'))).toBe(true)
   })
 })
+
+it('umrandet einen selbsttätig geänderten Absatz in eigener Farbe', () => {
+  setup({ letterheadParagraphs: [0] })
+
+  expect(paragraphElement(0).className).toContain('--color-info')
+})
+
+it('lässt eine Beanstandung der Briefkopf-Kontur vorgehen', () => {
+  setup({ letterheadParagraphs: [0], foreignParagraphs: [0] })
+
+  expect(paragraphElement(0).className).toContain('--color-error')
+  expect(paragraphElement(0).className).not.toContain('--color-info')
+})
+
+it('lässt einen unveränderten Absatz farblos', () => {
+  setup({ letterheadParagraphs: [0] })
+
+  expect(paragraphElement(1).className).toContain('border-transparent')
+})
