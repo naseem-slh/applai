@@ -16,16 +16,27 @@ import type { Paragraph } from '@/lib/docx/model'
  * DOM muss zeichengleich mit `Paragraph.text` bleiben (siehe
  * `documentSelection.ts`); ein über zwei Seitenkästen verteilter Absatz
  * wäre zwei Elemente, und jede Markierung zeigte danach auf die falsche
- * Stelle. Der Preis: Ein Absatz, der allein höher ist als eine Seite,
- * bekommt eine eigene Seite, die mitwächst. Lieber eine zu hohe Seite als
- * abgeschnittener Text — der Nutzer soll seinen Brief sehen.
+ * Stelle.
+ *
+ * Daraus folgt der eine Fall, in dem eine Seite ihr Maß überschreitet: ein
+ * Absatz, der allein höher ist als eine Seite. Er wird **nicht** auf ein
+ * frisches Blatt geschoben, sondern bleibt, wo er anfällt, und lässt seine
+ * Seite wachsen. Die erste Fassung tat das Gegenteil, und das Ergebnis war
+ * eine fast leere Seite davor — gemeldet als „warum ist der Text schon auf
+ * Seite 2, da ist doch noch Platz". Überlaufen muss er so oder so; dann
+ * lieber ohne verschenkten Platz.
  *
  * `pageHeight` ist die Höhe, die für Text zur Verfügung steht, also die
- * Seitenhöhe ohne Ränder. Ist sie 0 — vor der ersten Messung —, kommt alles
+ * Seitenhöhe ohne Ränder. `gap` ist der Abstand zwischen zwei Absätzen; er
+ * fällt nur zwischen ihnen an, nicht hinter dem letzten. Ist sie 0 — vor der ersten Messung —, kommt alles
  * auf eine Seite: Ohne Maß darf nicht getrennt werden, sonst bekäme jeder
  * Absatz sein eigenes Blatt.
  */
-export function splitIntoPages(heights: readonly number[], pageHeight: number): number[][] {
+export function splitIntoPages(
+  heights: readonly number[],
+  pageHeight: number,
+  gap = 0,
+): number[][] {
   if (heights.length === 0) return [[]]
   if (pageHeight <= 0) return [heights.map((_, index) => index)]
 
@@ -34,14 +45,22 @@ export function splitIntoPages(heights: readonly number[], pageHeight: number): 
   let used = 0
 
   for (const [index, height] of heights.entries()) {
-    const fits = used + height <= pageHeight
-    if (!fits && current.length > 0) {
+    // Der Abstand fällt nur **zwischen** zwei Absätzen an, nicht hinter dem
+    // letzten. Ihn jedem Absatz zuzuschlagen verschenkte je Seite einen
+    // Abstand.
+    const needed = (current.length > 0 ? gap : 0) + height
+    const fits = used + needed <= pageHeight
+    // Ein Absatz, der auch allein auf keine Seite passt, gewinnt durch ein
+    // frisches Blatt nichts — er liefe dort genauso über und ließe hier
+    // eine Lücke.
+    const fitsOnItsOwnPage = height <= pageHeight
+    if (!fits && current.length > 0 && fitsOnItsOwnPage) {
       pages.push(current)
       current = []
       used = 0
     }
     current.push(index)
-    used += height
+    used += used === 0 ? height : gap + height
   }
 
   pages.push(current)

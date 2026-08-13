@@ -24,14 +24,30 @@ describe('splitIntoPages', () => {
     ])
   })
 
-  // Sonst entstünde eine leere erste Seite, und der Absatz stünde trotzdem
-  // über den Rand hinaus — nur eine Seite weiter unten.
-  it('gibt einem Absatz, der allein höher als eine Seite ist, eine eigene Seite', () => {
+  it('beginnt mit einem übergroßen Absatz und trennt danach', () => {
     expect(splitIntoPages([1000, 100], 500)).toEqual([[0], [1]])
   })
 
-  it('setzt einen übergroßen Absatz nicht auf eine bereits begonnene Seite', () => {
-    expect(splitIntoPages([100, 1000], 500)).toEqual([[0], [1]])
+  // Der gemeldete Fehler: Ein frisches Blatt für den übergroßen Absatz ließ
+  // die Seite davor fast leer, und überlaufen wäre er dort genauso.
+  it('lässt einen übergroßen Absatz auf der angefangenen Seite und sie wachsen', () => {
+    expect(splitIntoPages([100, 1000], 500)).toEqual([[0, 1]])
+  })
+
+  it('trennt nach einem übergroßen Absatz wieder gewöhnlich', () => {
+    expect(splitIntoPages([100, 1000, 100], 500)).toEqual([[0, 1], [2]])
+  })
+
+  // Der Abstand fällt nur zwischen zwei Absätzen an. Ihn jedem zuzuschlagen
+  // verschenkte je Seite einen Abstand — bei zwanzig Seiten ein ganzer
+  // Absatz.
+  it('rechnet den Abstand zwischen Absätzen, nicht hinter dem letzten', () => {
+    // Drei Absätze zu 100 plus zwei Abstände zu 20 sind genau 340.
+    expect(splitIntoPages([100, 100, 100], 340, 20)).toEqual([[0, 1, 2]])
+  })
+
+  it('trennt, sobald der Abstand den nächsten Absatz nicht mehr hineinlässt', () => {
+    expect(splitIntoPages([100, 100, 100], 339, 20)).toEqual([[0, 1], [2]])
   })
 
   it('liefert für ein leeres Dokument eine einzige leere Seite', () => {

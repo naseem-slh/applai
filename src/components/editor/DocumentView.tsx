@@ -246,7 +246,7 @@ export function DocumentView({
   }
 
   const root = rootRef ?? ownRef
-  const pages = usePagination(root, paragraphs)
+  const { pages, pageHeight } = usePagination(root, paragraphs)
   const collapsed = useMemo(
     () => (collapseBlankRuns ? collapsedEmptyParagraphs(paragraphs) : new Set<number>()),
     [collapseBlankRuns, paragraphs],
@@ -277,26 +277,34 @@ export function DocumentView({
         <div
           key={page}
           data-page={page + 1}
-          // **Mindest**höhe statt `aspect-ratio`. Ein Element mit
+          // Die Höhe kommt aus der **gemessenen** Breite, nicht aus CSS.
+          //
+          // Erst stand hier `aspect-[210/297]`: Ein Element mit
           // Seitenverhältnis und bestimmter Breite nimmt als automatische
           // Mindestgröße die übertragene Größe statt der Inhaltsgröße — es
-          // klemmt also auf genau eine Seitenhöhe, und der Text läuft
-          // heraus. Genau das war der gemeldete Fehler.
+          // klemmte auf eine Seitenhöhe, und der Text lief heraus.
           //
-          // `100cqw` braucht `@container` an derselben Stelle, sonst
-          // rechnet es gegen einen fremden Vorfahren.
+          // Dann `min-h-[calc(100cqw*297/210)]`. Auch falsch, und
+          // nachgemessen: `100cqw` löste sich gegen das **Fenster** auf
+          // (1280 px) statt gegen die Seite (576 px), die Seiten wurden
+          // 1810 statt 815 px hoch, und der Umbruch trennte bei 705 px in
+          // einen Kasten, der 1700 px fasste. Genau daher der Sprung auf
+          // Seite 2 bei fast leerer Seite 1.
+          //
+          // Die Breite wird für die Aufteilung ohnehin gemessen. Aus
+          // derselben Zahl beides zu rechnen ist nicht nur einfacher — es
+          // ist die einzige Bauart, in der Kasten und Umbruch nicht
+          // auseinanderlaufen können.
           //
           // Kein `gap` zwischen den Seiten, sondern `mb`: Flex-Abstände
           // zwischen Kindern eines `contentEditable` sind heikel, weil der
           // Browser dort seinen Schreibcursor hineinsetzen können muss.
           //
-          // Beim Drucken fällt all das weg (siehe `lib/export/print.css`) —
-          // sonst erzwänge jede Bildschirmseite ihre Höhe auf Papier und
-          // die echten Seitenumbrüche verrutschten.
+          // Beim Drucken fällt all das weg (siehe `lib/export/print.css`).
+          style={pageHeight > 0 ? { minHeight: pageHeight } : undefined}
           className={cn(
-            '@container flex w-full flex-col gap-4 p-[9.5%]',
-            'min-h-[calc(100cqw*297/210)] rounded-lg',
-            'bg-[var(--color-surface-raised)] shadow-[var(--shadow-raised)]',
+            'flex w-full flex-col gap-4 p-[9.5%]',
+            'rounded-lg bg-[var(--color-surface-raised)] shadow-[var(--shadow-raised)]',
             'mb-5 last:mb-0',
           )}
         >
@@ -335,7 +343,7 @@ export function DocumentView({
 function usePagination(
   root: RefObject<HTMLDivElement | null>,
   paragraphs: readonly Paragraph[],
-): number[][] {
+): { pages: number[][]; pageHeight: number } {
   const [pages, setPages] = useState<number[][]>(() => [paragraphs.map((_, index) => index)])
   const [width, setWidth] = useState(0)
 
@@ -353,17 +361,21 @@ function usePagination(
     const element = root.current
     if (element === null) return
 
-    // Die Texthöhe einer Seite: A4-Verhältnis auf die Breite, abzüglich der
-    // beiden Ränder von je 9,5 % (2 cm auf 21 cm).
-    const pageHeight = width * (297 / 210 - 2 * 0.095)
+    // Außenmaß der Seite und Texthöhe darin kommen aus **derselben** Zahl:
+    // A4-Verhältnis auf die gemessene Breite, abzüglich der beiden Ränder
+    // von je 9,5 % (2 cm auf 21 cm). `box-sizing: border-box` heißt, dass
+    // die Mindesthöhe die Ränder einschließt — deshalb genau diese
+    // Differenz.
+    const outer = width * (297 / 210)
+    const text = outer - 2 * (0.095 * width)
     const boxes = Array.from(element.querySelectorAll<HTMLElement>(`[${PARAGRAPH_INDEX_ATTRIBUTE}]`))
-    const heights = boxes.map((box) => box.offsetHeight + PARAGRAPH_GAP)
+    const heights = boxes.map((box) => box.offsetHeight)
 
-    const next = splitIntoPages(heights, pageHeight)
+    const next = splitIntoPages(heights, text, PARAGRAPH_GAP)
     setPages((current) => (samePages(current, next) ? current : next))
   }, [root, paragraphs, width])
 
-  return pages
+  return { pages, pageHeight: width * (297 / 210) }
 }
 
 /** Der Abstand zwischen zwei Absätzen (`gap-4`), in die Höhe eingerechnet. */

@@ -38,14 +38,38 @@ test('der Brief läuft nicht über das Blatt hinaus, sondern auf eine zweite Sei
     .poll(() => page.locator('[data-page]').count(), { timeout: 10_000 })
     .toBeGreaterThan(1)
 
-  // Und keine Seite läuft über ihren eigenen Rand hinaus — das war der
-  // gemeldete Fehler.
-  const overflow = await page.evaluate(() =>
-    Array.from(document.querySelectorAll<HTMLElement>('[data-page]')).map(
-      (element) => element.scrollHeight - element.clientHeight,
-    ),
-  )
-  for (const spill of overflow) expect(spill).toBeLessThanOrEqual(2)
+  const measured = await page.evaluate(() => {
+    const boxes = Array.from(document.querySelectorAll<HTMLElement>('[data-page]'))
+    return boxes.map((box) => {
+      const style = getComputedStyle(box)
+      const padding = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom)
+      const texte = Array.from(box.querySelectorAll<HTMLElement>('[data-paragraph-index]'))
+      return {
+        breite: box.clientWidth,
+        höhe: box.clientHeight,
+        textraum: box.clientHeight - padding,
+        belegt: texte.reduce((sum, element) => sum + element.offsetHeight, 0),
+        überlauf: box.scrollHeight - box.clientHeight,
+      }
+    })
+  })
+
+  for (const [nummer, seite] of measured.entries()) {
+    // Keine Seite läuft über ihren eigenen Rand hinaus — der ursprünglich
+    // gemeldete Fehler.
+    expect(seite.überlauf).toBeLessThanOrEqual(2)
+
+    // Und jede Seite hat das A4-Verhältnis, solange sie nicht von einem
+    // übergroßen Absatz gedehnt wird. Vorher waren sie mehr als doppelt so
+    // hoch, weil `100cqw` sich gegen das Fenster auflöste.
+    expect(seite.höhe).toBeGreaterThanOrEqual(seite.breite * (297 / 210) - 2)
+
+    // Der gemeldete zweite Fehler: Umbruch, obwohl auf der Seite davor noch
+    // reichlich Platz war. Jede Seite außer der letzten muss gefüllt sein.
+    if (nummer < measured.length - 1) {
+      expect(seite.belegt).toBeGreaterThan(seite.textraum * 0.6)
+    }
+  }
 })
 
 test('mehr als zwei Leerzeilen hintereinander fallen in der Ansicht zusammen', async ({ page }) => {
