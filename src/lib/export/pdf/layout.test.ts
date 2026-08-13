@@ -201,6 +201,39 @@ describe('layoutDocument — Wörter über Laufgrenzen', () => {
   })
 })
 
+describe('layoutDocument — Bildschriften', () => {
+  /**
+   * Die Kontaktzeile eines echten Anschreibens: Straße, Ort und Telefon
+   * durch ein Wingdings-Zeichen getrennt. Ohne Übersetzung steht dort im
+   * PDF ein leerer Kasten — und weil `.notdef` eine eigene Breite hat, auch
+   * noch mit falschem Abstand.
+   */
+  it('setzt ein Wingdings-Zeichen als Aufzählungspunkt', async () => {
+    const result = await layout(
+      document([
+        paragraph([
+          text('Ebersstraße 58 '),
+          text('\uF09F', { fontFamily: 'Wingdings' }),
+          text(' 10827 Berlin'),
+        ]),
+      ]),
+    )
+
+    expect(lines(result)[0].text).toBe('Ebersstraße 58 • 10827 Berlin')
+  })
+
+  it('setzt das Zeichen mit der Ersatzschrift, nicht mit .notdef', async () => {
+    const result = await layout(
+      document([paragraph([text('\uF09F', { fontFamily: 'Wingdings' })])]),
+    )
+
+    const written = texts(result)
+    expect(written).toHaveLength(1)
+    expect(written[0].text).toBe('•')
+    expect(written[0].face.key).toBe('LiberationSans-Regular')
+  })
+})
+
 describe('layoutDocument — Ausrichtung', () => {
   it('setzt zentriert und rechtsbündig an die richtige Stelle', async () => {
     const centered = await layout(

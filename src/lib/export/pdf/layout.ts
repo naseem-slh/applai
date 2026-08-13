@@ -7,6 +7,7 @@ import type {
   ParagraphFormat,
 } from '../../docx/format'
 import { fontFileKey, type FontFace, type FontProvider } from './fonts'
+import { translateSymbolText } from './symbols'
 
 /**
  * Setzt den ausgelesenen Brief auf Seiten: Zeilenumbruch, Tabulatoren,
@@ -490,6 +491,10 @@ function textAtoms(segments: readonly TextSegment[], fonts: FontProvider): Atom[
  */
 function buildPieces(text: string, format: CharacterFormat, fonts: FontProvider): Piece[] {
   const face = fonts.face(format.fontFamily, format.bold, format.italic)
+  // Bildzeichen zuerst auf gewöhnliches Unicode bringen: Sie werden mit der
+  // Ersatzschrift gesetzt, und die kennt den Privatbereich nicht (siehe
+  // `symbols.ts`). Erst danach wird gemessen, sonst stimmte die Breite nicht.
+  const translated = translateSymbolText(format.fontFamily, text)
   const scale =
     format.vertAlign === 'baseline' ? 1 : SCRIPT_SCALE
   const risePt =
@@ -508,8 +513,8 @@ function buildPieces(text: string, format: CharacterFormat, fonts: FontProvider)
     risePt,
   })
 
-  if (format.caps) return [make(text.toUpperCase(), format.sizePt * scale)]
-  if (!format.smallCaps) return [make(text, format.sizePt * scale)]
+  if (format.caps) return [make(translated.toUpperCase(), format.sizePt * scale)]
+  if (!format.smallCaps) return [make(translated, format.sizePt * scale)]
 
   // Kapitälchen: zusammenhängende Läufe gleicher Herkunft, damit ein „GmbH"
   // sein großes G in voller Höhe behält.
@@ -521,7 +526,7 @@ function buildPieces(text: string, format: CharacterFormat, fonts: FontProvider)
     pieces.push(make(run.toUpperCase(), format.sizePt * scale * (runWasLower ? SMALL_CAPS_SCALE : 1)))
     run = ''
   }
-  for (const character of text) {
+  for (const character of translated) {
     const isLower = character !== character.toUpperCase()
     if (run !== '' && isLower !== runWasLower) flush()
     runWasLower = isLower
