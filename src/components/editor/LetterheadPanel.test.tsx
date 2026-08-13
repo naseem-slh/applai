@@ -24,6 +24,7 @@ const APPLICATION: LetterheadApplication = {
     { field: 'recipient', paragraph: 0, previous: 'Alte Muster GmbH', next: 'Neue Beispiel AG' },
   ],
   missing: ['subject'],
+  unchanged: [],
 }
 
 interface SetupOptions {
@@ -160,9 +161,51 @@ describe('LetterheadPanel', () => {
 
   it('sagt es, wenn gar kein Briefkopf zu finden war', () => {
     setup({
-      application: { document: {} as never, marks: [], changes: [], missing: ['recipient', 'date', 'subject', 'salutation'] },
+      application: {
+        document: {} as never,
+        marks: [],
+        changes: [],
+        missing: ['recipient', 'date', 'subject', 'salutation'],
+        unchanged: [],
+      },
     })
 
     expect(screen.getByText(t('editor.letterhead.applied.none'))).toBeInTheDocument()
+  })
+
+  /**
+   * Befund 4: Ein Feld, dessen alter Wortlaut schon zum Vorschlag passt,
+   * ist gefunden worden — es gehört nicht zu „nicht gefunden" (`missing`),
+   * sondern zeigt eigens an, dass nichts zu tun war.
+   */
+  it('nennt ein bereits richtiges Feld weder als geändert noch als fehlend', () => {
+    setup({
+      application: {
+        document: {} as never,
+        marks: [],
+        changes: [],
+        missing: [],
+        unchanged: ['salutation'],
+      },
+    })
+
+    expect(screen.getByText(t('editor.letterhead.applied.unchanged'))).toBeInTheDocument()
+    expect(screen.queryByText(t('editor.letterhead.applied.missing'))).not.toBeInTheDocument()
+  })
+
+  // Ist ein Feld gefunden worden (und sei es nur als „schon richtig"),
+  // war ein Briefkopf da — die „nichts gefunden"-Meldung wäre hier falsch.
+  it('zeigt nicht „nichts gefunden", wenn Felder nur unverändert blieben', () => {
+    setup({
+      application: {
+        document: {} as never,
+        marks: [],
+        changes: [],
+        missing: ['recipient', 'date', 'subject'],
+        unchanged: ['salutation'],
+      },
+    })
+
+    expect(screen.queryByText(t('editor.letterhead.applied.none'))).not.toBeInTheDocument()
   })
 })

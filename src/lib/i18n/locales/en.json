@@ -349,6 +349,7 @@
         "heading": "Applied automatically",
         "change": "{{previous}} → {{next}}",
         "missing": "not found, please insert",
+        "unchanged": "was already correct, nothing changed",
         "hint": "Check what stayed behind: an old postal address is not replaced along with the name.",
         "dismiss": "Got it",
         "none": "No letterhead was found in the letter. Please insert the fields by hand."

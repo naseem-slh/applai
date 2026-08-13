@@ -101,6 +101,41 @@ describe('applyLetterhead', () => {
     expect(result.changes.some((change) => change.field === 'recipient')).toBe(false)
   })
 
+  /**
+   * Befund 4: Ist der alte Wortlaut bereits zeichengleich mit dem neuen,
+   * ist nichts zu tun — ein Verlaufsschritt und ein Bericht „X → X" für
+   * nichts wären irreführend. Das Feld ist trotzdem gefunden worden
+   * (gehört also nicht nach `missing`, das hieße „nicht gefunden"), zählt
+   * aber auch nicht als `changes`, sondern eigens als `unchanged`.
+   */
+  it('überspringt ein Feld, dessen Wortlaut bereits zeichengleich mit dem Vorschlag ist', async () => {
+    const gleicheAnrede: Letterhead = { ...LETTERHEAD, salutation: 'Sehr geehrte Frau Klein,' }
+
+    const result = applyLetterhead(await brief(), gleicheAnrede, [], ['Alte Muster GmbH'], 'Neue Beispiel AG')
+
+    expect(result.changes.some((change) => change.field === 'salutation')).toBe(false)
+    expect(result.missing).not.toContain('salutation')
+    expect(result.unchanged).toContain('salutation')
+    expect(result.document.text).toContain('Sehr geehrte Frau Klein,')
+  })
+
+  it('meldet vollständig unveränderte Felder weder als geändert noch als fehlend', async () => {
+    const original = await brief()
+    const identisch: Letterhead = {
+      recipient: 'Alte Muster GmbH',
+      date: '14.03.2026',
+      subject: 'Bewerbung als Sachbearbeiterin',
+      salutation: 'Sehr geehrte Frau Klein,',
+    }
+
+    const result = applyLetterhead(original, identisch, [], ['Alte Muster GmbH'], null)
+
+    expect(result.document).toBe(original)
+    expect(result.changes).toEqual([])
+    expect(result.missing).toEqual([])
+    expect([...result.unchanged].sort()).toEqual(['date', 'recipient', 'salutation', 'subject'])
+  })
+
   it('lässt das Dokument unberührt, wenn nichts gefunden wurde', async () => {
     const nurText = await parseDocx(buildDocx(paragraphXml('Nur ein Satz ohne jeden Briefkopf.')))
 
