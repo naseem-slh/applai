@@ -91,12 +91,31 @@ const DATE_CONTEXT_LIMIT = 40
 
 const PRIORITY: readonly LetterheadField[] = ['salutation', 'date', 'subject', 'recipient']
 
+/**
+ * Nur die **erste Zeile** des Absatzes, nicht der ganze Absatz.
+ *
+ * `Paragraph.text` (`src/lib/docx/parse.ts`) trägt ein `\n` für jeden
+ * manuellen Zeilenumbruch (`w:br`/`w:cr`) — ein Word-Absatz mit
+ * Shift+Enter ist also EIN Absatz mit mehreren Zeilen, kein Absatz je
+ * Zeile. Ohne diese Grenze reißt eine Ersetzung an dieser Stelle die
+ * zweite Zeile mit: Ein Betreffblock „Bewerbung als
+ * Disponentin⏎Ihre Anzeige vom 05.08.2026" ist ein einziger Absatz, und
+ * `findSubject` träfe ihn als Ganzes — die Bezugszeile darunter verschwände
+ * mit dem neuen Betreff. Dieselbe Form trägt eine Anrede mit angehängter
+ * Leerzeile.
+ *
+ * Endet die erste Zeile am Absatzende (kein `\n` enthalten), bleibt das
+ * Verhalten wie zuvor — der Regelfall trifft weiterhin den ganzen Absatz.
+ */
 function wholeParagraph(field: LetterheadField, paragraph: ParagraphSlice): LetterheadMatch {
+  const newline = paragraph.text.indexOf('\n')
+  const end = newline === -1 ? paragraph.end : paragraph.start + newline
+  const previous = newline === -1 ? paragraph.text : paragraph.text.slice(0, newline)
   return {
     field,
-    range: { from: paragraph.start, to: paragraph.end },
+    range: { from: paragraph.start, to: end },
     paragraph: paragraph.index,
-    previous: paragraph.text,
+    previous,
   }
 }
 
@@ -206,10 +225,19 @@ export function matchLetterhead(
   currentCompany: string | null,
 ): LetterheadMatch[] {
   const salutation = findSalutation(paragraphs)
+  // Das Fenster für Empfänger, Datum und Betreff bleibt in jedem Fall auf
+  // `FALLBACK_WINDOW` Absätze begrenzt — auch wenn die Anrede (dank des
+  // weiteren `SALUTATION_WINDOW`) erst deutlich später erkannt wurde. Ohne
+  // dieses zweite Maß risse eine fälschlich spät erkannte Anrede (die
+  // Präfixprüfung kennt keine Wortgrenze, „Liebe Grüße" im Fließtext genügt)
+  // das Suchfenster bis in den Fließtext auf — weiter, als die
+  // Rückfallgrenze ohne Anrede je zuließe.
   const above =
     salutation === null
       ? paragraphs.slice(0, FALLBACK_WINDOW)
-      : paragraphs.filter((paragraph) => paragraph.index < salutation.paragraph)
+      : paragraphs.filter(
+          (paragraph) => paragraph.index < salutation.paragraph && paragraph.index < FALLBACK_WINDOW,
+        )
 
   const found = [
     salutation,
