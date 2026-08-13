@@ -53,6 +53,13 @@ export interface Letterhead {
  * `uiLanguage` deutsch) ist die bewusst kleinere Nebenwirkung gegenüber
  * einer erfundenen Anrede.
  *
+ * Einzige Ausnahme von der wörtlichen Übernahme ist das abschließende
+ * Satzzeichen: `withComma` (unten) vereinheitlicht es auf genau ein Komma
+ * (Entscheidung des Nutzers vom 13.08., siehe dort). Das ist kein Bruch
+ * dieser Zusicherung im Sinne von G10 – ein Satzzeichen ist kein Fakt, es
+ * wird dabei weiterhin keine Person und keine Anrede erfunden. Wortlaut,
+ * Anrede-Form und Titel aus `jobAd.salutation` bleiben unverändert.
+ *
  * **Die Fallentscheidung hängt bewusst an `jobAd.salutation`, nicht an
  * `jobAd.contactPerson`** (`suggestLetterhead` unten: `jobAd.salutation ??
  * SALUTATION_FALLBACK[...]`). `JobAdSchema` (Aufgabe 9) erzwingt nur EINE
@@ -143,18 +150,39 @@ function buildSubject(jobAd: JobAd, uiLanguage: 'de' | 'en'): string {
 }
 
 /**
+ * Die Anrede schließt immer mit genau einem Komma ab.
+ *
+ * Im deutschen wie im englischen Geschäftsbrief gehört es dorthin, und seit
+ * der selbsttätigen Übernahme (`letterheadApply.ts`) ersetzt der Vorschlag
+ * den Anredeabsatz des Briefes vollständig – ohne diese Regel verschwände
+ * das Komma des Originals in jedem Anschreiben.
+ *
+ * Ein bereits vorhandenes Satzzeichen wird ersetzt statt ergänzt: Ein
+ * Doppelpunkt, wie ihn amerikanische Anschreiben tragen, würde sonst zu
+ * „Dear Ms. Connolly:," werden.
+ *
+ * Das ist die einzige Stelle, an der `jobAd.salutation` nicht mehr
+ * unverändert durchgereicht wird (siehe den Kommentar über
+ * `SALUTATION_FALLBACK`). Ein Satzzeichen ist kein Fakt – G10 bleibt
+ * unberührt, es wird weiterhin keine Person und keine Anrede erfunden.
+ */
+function withComma(salutation: string): string {
+  return `${salutation.trimEnd().replace(/[,;:]+$/u, '')},`
+}
+
+/**
  * Schlägt Empfänger, Datum, Betreff und Anrede für den Briefkopf vor – rein
  * deterministisch aus den bereits bekannten `JobAd`-Feldern und `today`,
  * ohne KI-Aufruf. Siehe die Doc-Kommentare der einzelnen Bausteine oben für
  * die Begründung jeder einzelnen Entscheidung (Anrede-Fallback, leerer
- * Empfänger, generischer Betreff, Datumsformat).
+ * Empfänger, generischer Betreff, Datumsformat, Komma).
  */
 export function suggestLetterhead(jobAd: JobAd, uiLanguage: 'de' | 'en', today: Date): Letterhead {
   return {
     recipient: buildRecipient(jobAd),
     date: formatDate(today, uiLanguage),
     subject: buildSubject(jobAd, uiLanguage),
-    salutation: jobAd.salutation ?? SALUTATION_FALLBACK[uiLanguage],
+    salutation: withComma(jobAd.salutation ?? SALUTATION_FALLBACK[uiLanguage]),
   }
 }
 

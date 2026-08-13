@@ -36,19 +36,19 @@ const JOB_AD_LEER: JobAd = {
 const HEUTE = new Date(2026, 7, 12)
 
 describe('suggestLetterhead — Anrede (Checklisten-Fall)', () => {
-  it('erzeugt bei fehlendem Ansprechpartner "Sehr geehrte Damen und Herren" auf Deutsch', () => {
+  it('erzeugt bei fehlendem Ansprechpartner "Sehr geehrte Damen und Herren," auf Deutsch', () => {
     const brief = suggestLetterhead(JOB_AD_OHNE_ANSPRECHPARTNER, 'de', HEUTE)
-    expect(brief.salutation).toBe('Sehr geehrte Damen und Herren')
+    expect(brief.salutation).toBe('Sehr geehrte Damen und Herren,')
   })
 
-  it('erzeugt bei fehlendem Ansprechpartner "Dear Hiring Team" auf Englisch', () => {
+  it('erzeugt bei fehlendem Ansprechpartner "Dear Hiring Team," auf Englisch', () => {
     const brief = suggestLetterhead(JOB_AD_OHNE_ANSPRECHPARTNER, 'en', HEUTE)
-    expect(brief.salutation).toBe('Dear Hiring Team')
+    expect(brief.salutation).toBe('Dear Hiring Team,')
   })
 
-  it('übernimmt bei vorhandenem Ansprechpartner die Anrede der Anzeige wörtlich', () => {
+  it('übernimmt bei vorhandenem Ansprechpartner die Anrede der Anzeige wörtlich (bis auf das Komma)', () => {
     const brief = suggestLetterhead(JOB_AD_MIT_ANSPRECHPARTNER, 'de', HEUTE)
-    expect(brief.salutation).toBe('Sehr geehrter Herr Dr. Weber')
+    expect(brief.salutation).toBe('Sehr geehrter Herr Dr. Weber,')
   })
 
   /**
@@ -63,7 +63,33 @@ describe('suggestLetterhead — Anrede (Checklisten-Fall)', () => {
   it('greift auf die generische Anrede zurück, wenn ein Ansprechpartner bekannt ist, aber keine Anrede ableitbar war', () => {
     const jobAdOhneAnrede: JobAd = { ...JOB_AD_MIT_ANSPRECHPARTNER, salutation: null }
     const brief = suggestLetterhead(jobAdOhneAnrede, 'de', HEUTE)
-    expect(brief.salutation).toBe('Sehr geehrte Damen und Herren')
+    expect(brief.salutation).toBe('Sehr geehrte Damen und Herren,')
+  })
+})
+
+describe('Anrede mit Komma', () => {
+  it('hängt der allgemeinen Formel ein Komma an', () => {
+    const brief = suggestLetterhead(JOB_AD_OHNE_ANSPRECHPARTNER, 'de', HEUTE)
+
+    expect(brief.salutation).toBe('Sehr geehrte Damen und Herren,')
+  })
+
+  it('hängt der Anrede aus der Anzeige ein Komma an', () => {
+    const brief = suggestLetterhead(JOB_AD_MIT_ANSPRECHPARTNER, 'de', HEUTE)
+
+    expect(brief.salutation).toBe('Sehr geehrter Herr Dr. Weber,')
+  })
+
+  it('verdoppelt ein bereits vorhandenes Komma nicht', () => {
+    const mitKomma = { ...JOB_AD_MIT_ANSPRECHPARTNER, salutation: 'Sehr geehrter Herr Dr. Weber,' }
+
+    expect(suggestLetterhead(mitKomma, 'de', HEUTE).salutation).toBe('Sehr geehrter Herr Dr. Weber,')
+  })
+
+  it('ersetzt einen Doppelpunkt englischer Prägung durch das Komma', () => {
+    const mitDoppelpunkt = { ...JOB_AD_MIT_ANSPRECHPARTNER, salutation: 'Dear Ms. Connolly:' }
+
+    expect(suggestLetterhead(mitDoppelpunkt, 'en', HEUTE).salutation).toBe('Dear Ms. Connolly,')
   })
 })
 

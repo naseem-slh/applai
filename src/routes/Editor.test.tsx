@@ -747,7 +747,7 @@ describe('Editor — Seitenspalte und Sprache (14c)', () => {
     )
     // Ohne Ansprechpartner die übliche Formel, keine erfundene Person.
     expect(screen.getByLabelText(t('editor.letterhead.fields.salutation'))).toHaveValue(
-      'Sehr geehrte Damen und Herren',
+      'Sehr geehrte Damen und Herren,',
     )
   })
 
