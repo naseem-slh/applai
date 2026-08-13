@@ -135,15 +135,22 @@ export function AppLayout() {
           to="/"
           className="focus-ring flex shrink-0 items-center gap-2.5 rounded-md font-semibold tracking-[-0.01em] text-[var(--color-ink-strong)]"
         >
-          <span
-            aria-hidden="true"
-            className="grid size-[26px] place-items-center rounded-full bg-[var(--color-accent)] text-[13px] font-bold text-[var(--color-accent-contrast)]"
-          >
-            A
-          </span>
-          {/* Ebenfalls `sr-only` statt `hidden`, aus demselben Grund: Die
-              Marke „A" davor ist `aria-hidden`, also trüge der Verweis auf
-              die Einstiegsseite sonst gar keinen Namen. */}
+          {/* Feste Masse am Bild, damit die Kopfzeile nicht springt, sobald
+              es eintrifft. `alt=""`, weil der Schriftzug daneben denselben
+              Namen schon traegt: zweimal „Applai" waere fuer Hilfsmittel
+              nur Laerm. Die Datei liegt im Projekt (G2), nicht bei einem
+              fremden Host. */}
+          <img
+            src="/logo.webp"
+            alt=""
+            width={28}
+            height={26}
+            className="h-[26px] w-[28px] shrink-0"
+          />
+          {/* `sr-only` statt `hidden`: Das Logo davor traegt keine
+              Textalternative, also truege der Verweis auf die Einstiegsseite
+              sonst gar keinen Namen. Sichtbar wird der Schriftzug erst ab
+              `md`, wo die Kopfzeile den Platz dafuer hat. */}
           <span className="sr-only md:not-sr-only md:inline">{t('app.name')}</span>
         </Link>
 
