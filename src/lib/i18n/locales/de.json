@@ -228,8 +228,6 @@
     "continue": "Weiter zur Arbeitsfläche"
   },
   "editor": {
-    "intro": "Markieren Sie mit der Maus die Textstelle, die angepasst werden soll. Tippen können Sie überall im Text; Formatierung und Absatzfolge Ihrer Word-Datei bleiben dabei, wie sie sind, und die Eingabetaste legt deshalb keinen neuen Absatz an.",
-    "introTouch": "Mit dem Finger lässt sich keine einzelne Stelle genau markieren; wählbar ist hier das ganze Dokument. Tippen können Sie trotzdem überall im Text, und Formatierung und Absatzfolge Ihrer Word-Datei bleiben dabei, wie sie sind.",
     "loading": "Das Anschreiben wird gelesen.",
     "undo": "Rückgängig",
     "backToStart": "Zurück zur Einstiegsseite",
@@ -248,8 +246,8 @@
       "wholeDocument": "Ganzes Dokument",
       "currentParagraph": "Aktueller Absatz",
       "clear": "Markierung aufheben",
-      "none": "Nichts markiert. Ziehen Sie mit der Maus über die Stelle, die geändert werden soll.",
-      "touch": "Die Feinmarkierung ist auf einem Gerät mit Fingerbedienung abgeschaltet. Wählbar ist das ganze Dokument.",
+      "none": "Ziehen Sie über eine Textstelle.",
+      "touch": "Mit dem Finger ist nur das ganze Dokument wählbar.",
       "summary": "{{chars}} Zeichen markiert.",
       "preview": "„{{text}}“"
     },
@@ -257,7 +255,7 @@
       "heading": "Vorgemerkte Stellen",
       "count_one": "1 Stelle",
       "count_other": "{{count}} Stellen",
-      "none": "Noch nichts vorgemerkt. Markieren Sie eine Textstelle im Brief, dann steht sie hier.",
+      "none": "Markierte Textstellen stehen hier.",
       "progress": "{{done}} von {{total}} erledigt",
       "entry": "{{number}}. „{{text}}“",
       "select": "Diese Stelle markieren",
@@ -269,7 +267,7 @@
       "restoredOther": "Aus einem früheren Anschreiben übernommen: {{restored}} von {{total}} Stellen wiedergefunden.",
       "unresolved": {
         "heading": "Nicht wiedergefunden",
-        "body": "Diese Stellen stehen so nicht mehr im Brief. Merken Sie sie neu vor, wenn Sie sie brauchen.",
+        "body": "Diese Stellen stehen so nicht mehr im Brief.",
         "dismiss": "Verwerfen"
       },
       "keep": "Für die nächste Bewerbung behalten"
@@ -282,14 +280,14 @@
         "tableCell": "die letzte Zeile einer Tabellenzelle, zum Beispiel ein Adressblock",
         "embeddedContent": "eingebetteter Inhalt, zum Beispiel die Unterschriftsgrafik"
       },
-      "body": "Applai löscht solche Absätze nie, sie behalten ihren Platz. Fällt der neue Text kürzer aus als der markierte, rückt der Text davor zusammen und der feste Inhalt steht danach an einer anderen Stelle im Brief. Verkleinern Sie die Markierung, wenn das nicht passieren soll. Das Layout Ihrer Word-Datei bleibt in jedem Fall unangetastet."
+      "body": "Solche Absätze bleiben stehen. Wird der neue Text kürzer, rutscht fester Inhalt sichtbar nach oben. Verkleinern Sie die Markierung, wenn das stört."
     },
     "draft": {
-      "idle": "Der Zwischenstand wird alle 20 Sekunden gesichert.",
+      "idle": "Wird alle 20 Sekunden gesichert.",
       "saving": "Zwischenstand wird gesichert.",
       "savedJustNow": "Zwischenstand gerade gesichert.",
       "saved": "Zwischenstand gesichert {{when}}.",
-      "failed": "Der Zwischenstand konnte nicht gesichert werden. Ihre Änderungen stehen nur in dieser Ansicht."
+      "failed": "Nicht gesichert. Ihre Änderungen stehen nur in dieser Ansicht."
     },
     "variants": {
       "trigger": "Umformulieren lassen",
@@ -311,7 +309,7 @@
       "label": "Wahrheitsgrenze",
       "free": {
         "heading": "Freier Modus einschalten?",
-        "intro": "Im freien Modus darf die KI Aussagen formulieren, die in Ihrem Lebenslauf und Ihrem Anschreiben nicht belegt sind. In allen anderen Modi tut sie das nicht.",
+        "intro": "Die KI darf Aussagen formulieren, die Ihre Unterlagen nicht belegen.",
         "marked": "Jede solche Aussage wird im Text farbig hervorgehoben.",
         "confirm": "Sie bestätigen jede Aussage einzeln, bevor es weitergeht.",
         "export": "Der Export bleibt gesperrt, solange eine Aussage unbestätigt im Brief steht.",
@@ -328,10 +326,10 @@
       "location_other": "Steht in den Absätzen {{paragraphs}}.",
       "confirm": "Aussage bestätigen",
       "confirmed": "Von Ihnen bestätigt.",
-      "hint": "Bestätigen ändert den Text nicht. Wer eine Aussage nicht bestätigen möchte, löscht oder überschreibt sie im Brief. Dann verschwindet sie auch aus dieser Liste."
+      "hint": "Bestätigen ändert den Text nicht. Wer nicht bestätigen will, löscht die Aussage im Brief."
     },
     "analysis": {
-      "loading": "Stellenanzeige und Schreibstil werden gelesen.",
+      "loading": "Anzeige und Schreibstil werden gelesen.",
       "retry": "Erneut versuchen"
     },
     "letterhead": {
@@ -343,15 +341,15 @@
         "salutation": "Anrede"
       },
       "insert": "Einsetzen",
-      "insertHint": "Einsetzen ersetzt die markierte Stelle im Brief. Mit Strg+Z zurückzunehmen.",
-      "insertHintNoSelection": "Markieren Sie im Brief die Stelle, die ersetzt werden soll. Danach lässt sich ein Feld dort einsetzen.",
+      "insertHint": "Ersetzt die markierte Stelle. Strg+Z nimmt es zurück.",
+      "insertHintNoSelection": "Markieren Sie zuerst eine Stelle im Brief.",
       "foreign": {
         "badge_one": "1 fremde Firma",
         "badge_other": "{{count}} fremde Firmen",
         "heading_one": "Im Brief steht der Name einer anderen Firma.",
         "heading_other": "Im Brief stehen die Namen anderer Firmen.",
         "entry": "{{name}}, in Absatz {{number}}",
-        "body": "Der Name stammt aus einer früheren Bewerbung und gehört nicht zu dieser Anzeige. Die betroffenen Absätze sind im Brief hervorgehoben."
+        "body": "Der Name stammt aus einer früheren Bewerbung. Die Absätze sind hervorgehoben."
       }
     },
     "gaps": {
@@ -375,13 +373,13 @@
       "run": "Mit meinen Unterlagen abgleichen",
       "again": "Abgleich wiederholen",
       "running": "Abgleich läuft",
-      "hint": "Der Abgleich vergleicht die Anforderungen mit Ihrem Lebenslauf und Ihrem Anschreiben. Er kostet eine Anfrage bei Ihrem Anbieter.",
-      "assessment": "Die Bewertung ist eine Einschätzung der KI, kein Zitat aus Ihren Unterlagen. Bitte selbst nachsehen."
+      "hint": "Vergleicht die Anforderungen mit Ihren Unterlagen. Kostet eine Anfrage.",
+      "assessment": "Eine Einschätzung der KI, kein Zitat. Bitte nachsehen."
     },
     "style": {
       "heading": "Schreibstil",
       "formalityLabel": "Förmlichkeit",
-      "formalityHint": "Aus Ihrem Anschreiben abgeleitet: {{measured}} von 100.",
+      "formalityHint": "Gemessen: {{measured}} von 100.",
       "formalitySteps": {
         "0": "sehr locker",
         "1": "eher locker",
@@ -390,7 +388,6 @@
         "4": "sehr förmlich"
       },
       "lengthLabel": "Umfang",
-      "lengthHint": "Wie ausführlich eine umformulierte Stelle werden soll.",
       "lengthSteps": {
         "0": "deutlich kürzer",
         "1": "etwas kürzer",
@@ -399,7 +396,7 @@
         "4": "deutlich länger"
       },
       "traitsLabel": "Merkmale Ihres Stils",
-      "traitsHint": "Ein Merkmal je Zeile. Was hier steht, geht in jede Umformulierung ein, also gerne berichtigen.",
+      "traitsHint": "Ein Merkmal je Zeile. Geht in jede Umformulierung ein.",
       "measured": {
         "address": "Anredeform im Brief",
         "sentenceLength": "Gemessene Satzlänge",
@@ -437,12 +434,12 @@
       "copy": "Text",
       "pdfHint": "PDF entsteht über den Druckdialog.",
       "working": "Die Word-Datei wird erzeugt.",
-      "docxDone": "Die Word-Datei wurde erzeugt. Die Bewerbung steht jetzt in Ihrer Liste, der Zwischenstand ist gelöscht.",
+      "docxDone": "Word-Datei erzeugt. Die Bewerbung steht in Ihrer Liste.",
       "docxFailed": "Die Word-Datei konnte nicht erzeugt werden.",
       "copyDone": "Der Text liegt in der Zwischenablage.",
       "copyFailed": "Der Text konnte nicht kopiert werden. Der Browser hat den Zugriff auf die Zwischenablage abgelehnt.",
-      "pdfTooltip": "Öffnet den Druckdialog. Dort „Als PDF sichern\" wählen. Gedruckt wird nur der Brief, ohne Bedienelemente.",
-      "copyTooltip": "Legt den Brief als reinen Text in die Zwischenablage, etwa für ein Online-Formular."
+      "pdfTooltip": "Öffnet den Druckdialog. Dort „Als PDF sichern“ wählen.",
+      "copyTooltip": "Legt den Brief als reinen Text in die Zwischenablage."
     }
   },
   "settings": {

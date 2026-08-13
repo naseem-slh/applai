@@ -228,8 +228,6 @@
     "continue": "Continue to the workspace"
   },
   "editor": {
-    "intro": "Use the mouse to select the passage you want to adapt. You can type anywhere in the text; the formatting and the paragraph order of your Word file stay as they are, which is why the Enter key does not start a new paragraph.",
-    "introTouch": "A finger cannot select a single passage precisely, so this device offers the whole document. You can still type anywhere in the text, and the formatting and the paragraph order of your Word file stay as they are.",
     "loading": "Reading the cover letter.",
     "undo": "Undo",
     "backToStart": "Back to the start page",
@@ -248,8 +246,8 @@
       "wholeDocument": "Whole document",
       "currentParagraph": "Current paragraph",
       "clear": "Clear selection",
-      "none": "Nothing selected. Drag the mouse across the passage you want to change.",
-      "touch": "Fine selection is switched off on a touch device. You can still choose the whole document.",
+      "none": "Drag across a passage.",
+      "touch": "With touch, only the whole document can be selected.",
       "summary": "{{chars}} characters selected.",
       "preview": "“{{text}}”"
     },
@@ -257,7 +255,7 @@
       "heading": "Marked passages",
       "count_one": "1 passage",
       "count_other": "{{count}} passages",
-      "none": "Nothing marked yet. Select a passage in the letter and it appears here.",
+      "none": "Passages you mark appear here.",
       "progress": "{{done}} of {{total}} done",
       "entry": "{{number}}. “{{text}}”",
       "select": "Select this passage",
@@ -269,7 +267,7 @@
       "restoredOther": "Carried over from an earlier letter: {{restored}} of {{total}} passages found again.",
       "unresolved": {
         "heading": "Not found again",
-        "body": "These passages are no longer in the letter as they were. Mark them again if you need them.",
+        "body": "These passages are no longer in the letter.",
         "dismiss": "Discard"
       },
       "keep": "Keep for the next application"
@@ -282,14 +280,14 @@
         "tableCell": "the last line of a table cell, an address block for instance",
         "embeddedContent": "embedded content, the signature image for instance"
       },
-      "body": "Applai never deletes such paragraphs, they keep their place. If the new text turns out shorter than the selected one, the text before it moves up and the fixed content ends up somewhere else in the letter. Make the selection smaller if that is not what you want. The layout of your Word file stays untouched either way."
+      "body": "Such paragraphs stay put. If the new text is shorter, fixed content visibly moves up. Shrink the selection if that bothers you."
     },
     "draft": {
-      "idle": "The draft is saved every 20 seconds.",
+      "idle": "Saved every 20 seconds.",
       "saving": "Saving the draft.",
       "savedJustNow": "Draft saved just now.",
       "saved": "Draft saved {{when}}.",
-      "failed": "The draft could not be saved. Your changes exist in this view only."
+      "failed": "Not saved. Your changes exist only in this view."
     },
     "variants": {
       "trigger": "Suggest rewordings",
@@ -311,7 +309,7 @@
       "label": "Truthfulness",
       "free": {
         "heading": "Turn on free mode?",
-        "intro": "In free mode the AI may write statements that your CV and cover letter do not back up. In every other mode it will not.",
+        "intro": "The AI may write claims your documents do not support.",
         "marked": "Every such statement is highlighted in the text.",
         "confirm": "You confirm each statement individually before moving on.",
         "export": "Export stays locked while an unconfirmed statement is in the letter.",
@@ -328,7 +326,7 @@
       "location_other": "Found in paragraphs {{paragraphs}}.",
       "confirm": "Confirm statement",
       "confirmed": "Confirmed by you.",
-      "hint": "Confirming does not change the text. If you would rather not confirm a statement, delete or rewrite it in the letter. It then disappears from this list too."
+      "hint": "Confirming does not change the text. To reject a claim, delete it in the letter."
     },
     "analysis": {
       "loading": "Reading the job ad and your writing style.",
@@ -343,15 +341,15 @@
         "salutation": "Salutation"
       },
       "insert": "Insert",
-      "insertHint": "Inserting replaces the selected passage in the letter. Undo with Ctrl+Z.",
-      "insertHintNoSelection": "Select the passage in the letter you want replaced. A field can then be inserted there.",
+      "insertHint": "Replaces the marked passage. Ctrl+Z undoes it.",
+      "insertHintNoSelection": "Mark a passage in the letter first.",
       "foreign": {
         "badge_one": "1 other company",
         "badge_other": "{{count}} other companies",
         "heading_one": "The letter names another company.",
         "heading_other": "The letter names other companies.",
         "entry": "{{name}}, in paragraph {{number}}",
-        "body": "The name comes from an earlier application and does not belong to this job ad. The paragraphs concerned are highlighted in the letter."
+        "body": "The name comes from an earlier application. The paragraphs are highlighted."
       }
     },
     "gaps": {
@@ -375,13 +373,13 @@
       "run": "Compare with my documents",
       "again": "Compare again",
       "running": "Comparing",
-      "hint": "The comparison checks the requirements against your CV and cover letter. It costs one request to your provider.",
-      "assessment": "The verdict is the AI's assessment, not a quote from your documents. Please check it yourself."
+      "hint": "Compares the requirements with your documents. Costs one request.",
+      "assessment": "The AI's assessment, not a quote. Please check."
     },
     "style": {
       "heading": "Writing style",
       "formalityLabel": "Formality",
-      "formalityHint": "Derived from your cover letter: {{measured}} out of 100.",
+      "formalityHint": "Measured: {{measured}} of 100.",
       "formalitySteps": {
         "0": "very casual",
         "1": "fairly casual",
@@ -390,7 +388,6 @@
         "4": "very formal"
       },
       "lengthLabel": "Length",
-      "lengthHint": "How expansive a reworded passage should be.",
       "lengthSteps": {
         "0": "much shorter",
         "1": "a little shorter",
@@ -399,7 +396,7 @@
         "4": "much longer"
       },
       "traitsLabel": "Traits of your style",
-      "traitsHint": "One trait per line. Whatever stands here feeds into every rewording, so do correct it.",
+      "traitsHint": "One trait per line. Used in every rewrite.",
       "measured": {
         "address": "How the letter addresses the reader",
         "sentenceLength": "Measured sentence length",
@@ -437,12 +434,12 @@
       "copy": "Text",
       "pdfHint": "A PDF comes out of the print dialog.",
       "working": "Creating the Word file.",
-      "docxDone": "The Word file has been created. The application is now in your list and the draft has been deleted.",
+      "docxDone": "Word file created. The application is now in your list.",
       "docxFailed": "The Word file could not be created.",
       "copyDone": "The text is in your clipboard.",
       "copyFailed": "The text could not be copied. The browser denied access to the clipboard.",
-      "pdfTooltip": "Opens the print dialog. Choose “Save as PDF” there. Only the letter is printed, without any controls.",
-      "copyTooltip": "Puts the letter into the clipboard as plain text, for an online form for instance."
+      "pdfTooltip": "Opens the print dialog. Choose “Save as PDF” there.",
+      "copyTooltip": "Puts the letter into the clipboard as plain text."
     }
   },
   "settings": {

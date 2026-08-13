@@ -82,12 +82,11 @@ export function StyleProfilePanel({
           )}
         </Field>
 
-        <Field
-          id={`${prefix}-length`}
-          label={t('editor.style.lengthLabel')}
-          hint={t('editor.style.lengthHint')}
-          labelledBy
-        >
+        {/* Ohne Hinweis: Die Beschriftung heißt „Umfang", und die Skala
+            darunter sagt „deutlich kürzer", „etwa gleich", „deutlich
+            länger". Ein Satz, der dasselbe noch einmal sagt, ist Text, den
+            der Nutzer liest und der ihm nichts gibt. */}
+        <Field id={`${prefix}-length`} label={t('editor.style.lengthLabel')} labelledBy>
           {({ id, ...aria }) => (
             <Slider
               id={id}
