@@ -475,6 +475,23 @@ function appendItem(
       if (image) items.push({ kind: 'image', image, format })
       return
     }
+    case 'mc:AlternateContent': {
+      // Word legt dasselbe Objekt zweimal ab: unter `mc:Choice` in der
+      // neueren Form (DrawingML), unter `mc:Fallback` als VML für Fassungen,
+      // die sie nicht lesen können. Beide zu nehmen setzte das Bild doppelt.
+      // Genommen wird deshalb die erste Fassung, die etwas beiträgt — die
+      // Reihenfolge im Dokument ist Words Rangfolge.
+      const before = items.length
+      for (const branchName of ['mc:Choice', 'mc:Fallback']) {
+        const branch = child(runChild, branchName)
+        if (!branch) continue
+        for (const branchChild of Array.from(branch.children)) {
+          appendItem(items, branchChild, format, context)
+        }
+        if (items.length > before) return
+      }
+      return
+    }
     default:
       // Alles Übrige trägt keine Zeichen bei (`w:rPr`, Feldbefehle,
       // Kommentarmarken) und erscheint auch im Satz nicht.

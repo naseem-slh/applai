@@ -239,3 +239,70 @@ describe('readDocumentFormat — Absatzmarke', () => {
     expect(paragraph.markFormat.sizePt).toBe(20)
   })
 })
+/**
+ * Word legt ein eingefügtes Objekt zweimal ab: unter `mc:Choice` in der
+ * neueren Form und unter `mc:Fallback` als VML, damit ältere Fassungen es
+ * auch anzeigen können. Wer beide liest, setzt Briefkopf-Grafik und
+ * Unterschrift doppelt; wer keinen von beiden liest, lässt sie ganz weg —
+ * und genau das tat der Export vorher.
+ */
+describe('readDocumentFormat — mc:AlternateContent', () => {
+  const IMAGE_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+  xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+  xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"
+  xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
+  xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+  xmlns:v="urn:schemas-microsoft-com:vml">
+  <w:body>
+    <w:p><w:r>
+      <mc:AlternateContent>
+        <mc:Choice Requires="wps">
+          <w:drawing><wp:inline><wp:extent cx="1123950" cy="578484"/>
+            <a:graphic><a:graphicData><a:blip r:embed="rId1"/></a:graphicData></a:graphic>
+          </wp:inline></w:drawing>
+        </mc:Choice>
+        <mc:Fallback>
+          <w:pict><v:shape style="width:88.5pt;height:45.55pt">
+            <v:imagedata r:id="rId1"/>
+          </v:shape></w:pict>
+        </mc:Fallback>
+      </mc:AlternateContent>
+    </w:r></w:p>
+  </w:body>
+</w:document>`
+
+  const RELS = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/unterschrift.png"/>
+</Relationships>`
+
+  function read(xml: string) {
+    const encoder = new TextEncoder()
+    const zip = {
+      'word/document.xml': encoder.encode(xml),
+      'word/_rels/document.xml.rels': encoder.encode(RELS),
+      'word/media/unterschrift.png': new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
+    }
+    const doc = new DOMParser().parseFromString(xml, 'application/xml')
+    return readDocumentFormat({ zip, doc, ...buildTextModel(doc) })
+  }
+
+  it('nimmt das Objekt genau einmal auf', () => {
+    const format = read(IMAGE_XML)
+
+    const images = format.paragraphs[0].items.filter((item) => item.kind === 'image')
+    expect(images).toHaveLength(1)
+    expect(images[0].image.path).toBe('word/media/unterschrift.png')
+  })
+
+  it('weicht auf die ältere Fassung aus, wenn die neuere nichts trägt', () => {
+    // `mc:Choice` ohne verwertbaren Inhalt — Word schreibt das, wenn die
+    // neuere Form die Form gar nicht ausdrücken kann.
+    const format = read(IMAGE_XML.replace(/<w:drawing>[\s\S]*?<\/w:drawing>/, '<w:drawing/>'))
+
+    const images = format.paragraphs[0].items.filter((item) => item.kind === 'image')
+    expect(images).toHaveLength(1)
+    expect(images[0].image.widthPt).toBeCloseTo(88.5, 1)
+  })
+})
