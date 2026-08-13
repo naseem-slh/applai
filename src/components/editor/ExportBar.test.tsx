@@ -37,7 +37,9 @@ function fakeDocument(texts: string[]): DocxDocument {
 
 const DOCX = fakeDocument(['Sehr geehrte Damen und Herren,', '', 'ich bewerbe mich.'])
 
-function setup(options: { blocked?: boolean; company?: string | null } = {}) {
+function setup(
+  options: { blocked?: boolean; company?: string | null; onNextPosting?: () => void } = {},
+) {
   const onExported = vi.fn()
   render(
     <ExportBar
@@ -45,6 +47,7 @@ function setup(options: { blocked?: boolean; company?: string | null } = {}) {
       company={options.company === undefined ? 'Musterwerk' : options.company}
       blocked={options.blocked ?? false}
       onExported={onExported}
+      onNextPosting={options.onNextPosting ?? null}
     />,
   )
   return { onExported }

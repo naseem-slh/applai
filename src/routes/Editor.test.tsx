@@ -1258,3 +1258,79 @@ describe('Editor — vorgemerkte Stellen', () => {
   })
 })
 
+// ---------------------------------------------------------------------------
+// Nächste Anzeige — der Durchlauf über die vorgemerkten Stellen
+// ---------------------------------------------------------------------------
+
+describe('Editor — nächste Anzeige', () => {
+  it('bietet den Durchlauf erst an, wenn etwas vorgemerkt ist', async () => {
+    setup({ vault: unlockedVault() })
+    await documentSurface()
+
+    expect(
+      screen.queryByRole('button', { name: t('editor.reapply.trigger') }),
+    ).not.toBeInTheDocument()
+
+    markParagraph(1)
+
+    expect(
+      await screen.findByRole('button', { name: t('editor.reapply.trigger') }),
+    ).toBeInTheDocument()
+  })
+
+  it('nennt im Dialog die Zahl der Stellen und die Kosten', async () => {
+    stubFetch()
+    setup({ vault: unlockedVault() })
+    await documentSurface()
+    markParagraph(1)
+
+    fireEvent.click(screen.getByRole('button', { name: t('editor.reapply.trigger') }))
+
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
+    expect(screen.getByText(t('editor.reapply.marks', { count: 1 }))).toBeInTheDocument()
+    expect(screen.getByText(t('editor.reapply.cost', { count: 2 }))).toBeInTheDocument()
+  })
+
+  // Der ganze Zweck des Knopfes: Anzeige hinein, Brief fertig heraus.
+  it('schreibt die vorgemerkte Stelle auf die neue Anzeige um', async () => {
+    stubFetch()
+    setup({ vault: unlockedVault() })
+    await documentSurface()
+    markParagraph(1)
+
+    fireEvent.click(screen.getByRole('button', { name: t('editor.reapply.trigger') }))
+    const feld = await screen.findByLabelText(t('editor.reapply.jobAdLabel'))
+    fireEvent.change(feld, {
+      target: { value: 'Gesucht: Projektleiterin für ein Team von zehn Personen.' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: t('editor.reapply.fast') }))
+
+    expect(
+      await screen.findByText(t('editor.reapply.done', { count: 1 }), undefined, {
+        timeout: 5000,
+      }),
+    ).toBeInTheDocument()
+    expect(await documentSurface()).toHaveTextContent(VARIANT_TEXTS[0]!)
+  })
+
+  it('hält im Wählen-Modus an, statt selbsttätig zu übernehmen', async () => {
+    stubFetch()
+    setup({ vault: unlockedVault() })
+    await documentSurface()
+    const original = paragraphElement(1).textContent ?? ''
+    markParagraph(1)
+
+    fireEvent.click(screen.getByRole('button', { name: t('editor.reapply.trigger') }))
+    const feld = await screen.findByLabelText(t('editor.reapply.jobAdLabel'))
+    fireEvent.change(feld, {
+      target: { value: 'Gesucht: Projektleiterin für ein Team von zehn Personen.' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: t('editor.reapply.choose') }))
+
+    expect(
+      await screen.findByText(t('editor.reapply.halt.wahl'), undefined, { timeout: 5000 }),
+    ).toBeInTheDocument()
+    expect(await documentSurface()).toHaveTextContent(original.slice(0, 30))
+  })
+})
+

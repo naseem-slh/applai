@@ -334,6 +334,37 @@
       "loading": "Anzeige und Schreibstil werden gelesen.",
       "retry": "Erneut versuchen"
     },
+    "reapply": {
+      "trigger": "Nächste Anzeige",
+      "heading": "Nächste Stellenausschreibung",
+      "description": "Der Brief entsteht neu aus Ihrem hochgeladenen Anschreiben. Die vorgemerkten Stellen werden auf die neue Anzeige umgeschrieben.",
+      "jobAdLabel": "Stellenausschreibung",
+      "marks_one": "1 vorgemerkte Stelle",
+      "marks_other": "{{count}} vorgemerkte Stellen",
+      "unresolved_one": "1 Stelle wurde nicht wiedergefunden und bleibt unverändert.",
+      "unresolved_other": "{{count}} Stellen wurden nicht wiedergefunden und bleiben unverändert.",
+      "cost_one": "Kostet 1 Anfrage.",
+      "cost_other": "Kostet {{count}} Anfragen.",
+      "fast": "Schnell übernehmen",
+      "choose": "Varianten zeigen",
+      "cancel": "Abbrechen",
+      "reading": "Die Anzeige wird ausgewertet.",
+      "progress": "Stelle {{current}} von {{total}}",
+      "halt": {
+        "wahl": "Bitte wählen Sie eine Formulierung.",
+        "unbelegteAussagen": "Diese Formulierung enthält Aussagen, die Ihre Unterlagen nicht decken. Bitte einzeln bestätigen.",
+        "anbieterfehler": "Die Anfrage ist fehlgeschlagen.",
+        "antwortVerworfen": "Die Antwort der KI war nicht verwertbar."
+      },
+      "retry": "Erneut versuchen",
+      "skip": "Stelle überspringen",
+      "stop": "Durchlauf abbrechen",
+      "done_one": "1 Stelle übernommen.",
+      "done_other": "{{count}} Stellen übernommen.",
+      "skipped_one": "1 Stelle blieb unverändert.",
+      "skipped_other": "{{count}} Stellen blieben unverändert.",
+      "stopped": "Abgebrochen. Was übernommen wurde, steht im Brief."
+    },
     "letterhead": {
       "heading": "Briefkopf",
       "fields": {

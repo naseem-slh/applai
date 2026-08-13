@@ -161,11 +161,15 @@ test.describe('Die Zusagen der Seite', () => {
     expect(blocked).toBe(true)
   })
 
-  test('die Seite lädt nichts von einem fremden Host', async ({ page }) => {
+  // Die eigene Herkunft kommt aus der Konfiguration, nicht aus einer festen
+  // Zeichenkette: Der Port des Vorschau-Servers ist über `PLAYWRIGHT_PORT`
+  // wählbar, damit mehrere Arbeitsbäume nebeneinander prüfen können.
+  test('die Seite lädt nichts von einem fremden Host', async ({ page, baseURL }) => {
+    const own = new URL(baseURL ?? 'http://localhost:4173').origin
     const foreign: string[] = []
     page.on('request', (request) => {
       const url = new URL(request.url())
-      if (url.origin !== 'http://localhost:4173') foreign.push(request.url())
+      if (url.origin !== own) foreign.push(request.url())
     })
 
     await page.goto('/')
