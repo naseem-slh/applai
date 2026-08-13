@@ -4,6 +4,7 @@ import type { Letterhead } from '@/lib/domain/letterhead'
 import i18n from '@/lib/i18n/i18n'
 import { LetterheadPanel } from './LetterheadPanel'
 import type { ForeignCompanies } from './foreignCompanies'
+import type { LetterheadApplication } from './letterheadApply'
 
 const t = i18n.getFixedT(i18n.resolvedLanguage ?? 'de')
 
@@ -16,10 +17,21 @@ const LETTERHEAD: Letterhead = {
 
 const NO_FOREIGN: ForeignCompanies = { hits: [], paragraphs: [] }
 
+const APPLICATION: LetterheadApplication = {
+  document: {} as never,
+  marks: [],
+  changes: [
+    { field: 'recipient', paragraph: 0, previous: 'Alte Muster GmbH', next: 'Neue Beispiel AG' },
+  ],
+  missing: ['subject'],
+}
+
 interface SetupOptions {
   letterhead?: Letterhead
   onInsert?: ((value: string) => void) | null
   foreign?: ForeignCompanies
+  application?: LetterheadApplication | null
+  onDismissApplication?: () => void
 }
 
 function setup(options: SetupOptions = {}) {
@@ -31,6 +43,8 @@ function setup(options: SetupOptions = {}) {
       onChange={onChange}
       onInsert={onInsert}
       foreign={options.foreign ?? NO_FOREIGN}
+      application={options.application ?? null}
+      onDismissApplication={options.onDismissApplication ?? vi.fn()}
       defaultOpen
     />,
   )
@@ -115,5 +129,40 @@ describe('LetterheadPanel', () => {
     expect(
       screen.getByText(t('editor.letterhead.foreign.entry', { name: 'Bosch', number: 4 })),
     ).toBeInTheDocument()
+  })
+
+  it('nennt für jedes übernommene Feld den alten und den neuen Wortlaut', () => {
+    setup({ application: APPLICATION })
+
+    expect(screen.getByText('Alte Muster GmbH → Neue Beispiel AG')).toBeInTheDocument()
+  })
+
+  it('nennt die nicht übernommenen Felder', () => {
+    setup({ application: APPLICATION })
+
+    expect(screen.getByText(t('editor.letterhead.applied.missing'))).toBeInTheDocument()
+  })
+
+  it('meldet den Bericht ab, wenn der Nutzer ihn wegklickt', () => {
+    const onDismissApplication = vi.fn()
+    setup({ application: APPLICATION, onDismissApplication })
+
+    fireEvent.click(screen.getByRole('button', { name: t('editor.letterhead.applied.dismiss') }))
+
+    expect(onDismissApplication).toHaveBeenCalledTimes(1)
+  })
+
+  it('zeigt ohne Übernahme keinen Bericht', () => {
+    setup()
+
+    expect(screen.queryByText(t('editor.letterhead.applied.heading'))).not.toBeInTheDocument()
+  })
+
+  it('sagt es, wenn gar kein Briefkopf zu finden war', () => {
+    setup({
+      application: { document: {} as never, marks: [], changes: [], missing: ['recipient', 'date', 'subject', 'salutation'] },
+    })
+
+    expect(screen.getByText(t('editor.letterhead.applied.none'))).toBeInTheDocument()
   })
 })

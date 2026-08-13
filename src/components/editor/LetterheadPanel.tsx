@@ -7,6 +7,7 @@ import type { Letterhead } from '@/lib/domain/letterhead'
 import { cn } from '@/lib/utils'
 import { SidePanel } from './SidePanel'
 import type { ForeignCompanies } from './foreignCompanies'
+import type { LetterheadApplication } from './letterheadApply'
 
 /**
  * Der Briefkopf: Empfänger, Datum, Betreff und Anrede — vorgeschlagen,
@@ -32,6 +33,13 @@ import type { ForeignCompanies } from './foreignCompanies'
  * (`findForeignCompanyNames`, Aufgabe 12) und fängt den klassischen
  * Kopierfehler ab — eine frühere Bewerbung als Vorlage, der alte Firmenname
  * blieb stehen. Markiert wird im Text der Absatz, hier steht der Name.
+ *
+ * **Seit der selbsttätigen Übernahme** setzt die Arbeitsfläche die sicher
+ * gefundenen Felder selbst ein (`letterheadApply.ts`). Der Einsetzen-Knopf
+ * bleibt trotzdem: Er ist der Weg für jedes Feld, das nicht sicher gefunden
+ * wurde — die oben beschriebene Begründung gegen das Raten gilt unverändert.
+ * Der Bericht darunter nennt Alt und Neu je Feld und macht damit einen
+ * Teilersatz sichtbar, den die Absatzkontur allein nicht zeigen kann.
  */
 
 export interface LetterheadPanelProps {
@@ -44,6 +52,12 @@ export interface LetterheadPanelProps {
    */
   onInsert: ((value: string) => void) | null
   foreign: ForeignCompanies
+  /**
+   * Das Ergebnis der selbsttätigen Übernahme, `null`, solange keine
+   * stattfand oder der Nutzer den Bericht weggeklickt hat.
+   */
+  application: LetterheadApplication | null
+  onDismissApplication: () => void
   defaultOpen: boolean
 }
 
@@ -54,6 +68,8 @@ export function LetterheadPanel({
   onChange,
   onInsert,
   foreign,
+  application,
+  onDismissApplication,
   defaultOpen,
 }: LetterheadPanelProps) {
   const { t } = useTranslation()
@@ -104,6 +120,44 @@ export function LetterheadPanel({
             ? t('editor.letterhead.insertHintNoSelection')
             : t('editor.letterhead.insertHint')}
         </p>
+
+        {application !== null && (
+          <div className="flex flex-col gap-2 border-t border-[var(--color-border)] pt-4">
+            <p className="text-[length:var(--text-body-sm-size)] font-medium text-[var(--color-info)]">
+              {t('editor.letterhead.applied.heading')}
+            </p>
+            {application.changes.length === 0 ? (
+              <p className={FIELD_HINT_CLASS}>{t('editor.letterhead.applied.none')}</p>
+            ) : (
+              <ul className="flex flex-col gap-1">
+                {application.changes.map((change) => (
+                  <li key={change.field} className="text-[length:var(--text-body-sm-size)]">
+                    <span className="font-medium">{t(`editor.letterhead.fields.${change.field}`)}</span>{' '}
+                    {t('editor.letterhead.applied.change', {
+                      previous: change.previous,
+                      next: change.next,
+                    })}
+                  </li>
+                ))}
+                {application.missing.map((field) => (
+                  <li
+                    key={field}
+                    className="text-[length:var(--text-body-sm-size)] text-[var(--color-muted)]"
+                  >
+                    <span className="font-medium">{t(`editor.letterhead.fields.${field}`)}</span>{' '}
+                    {t('editor.letterhead.applied.missing')}
+                  </li>
+                ))}
+              </ul>
+            )}
+            <p className={FIELD_HINT_CLASS}>{t('editor.letterhead.applied.hint')}</p>
+            <div>
+              <Button variant="secondary" size="md" onClick={onDismissApplication}>
+                {t('editor.letterhead.applied.dismiss')}
+              </Button>
+            </div>
+          </div>
+        )}
 
         {foreign.hits.length > 0 && (
           <div className="flex flex-col gap-2 border-t border-[var(--color-border)] pt-4">

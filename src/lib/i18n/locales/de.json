@@ -343,6 +343,14 @@
       "insert": "Einsetzen",
       "insertHint": "Ersetzt die markierte Stelle. Strg+Z nimmt es zurück.",
       "insertHintNoSelection": "Markieren Sie zuerst eine Stelle im Brief.",
+      "applied": {
+        "heading": "Selbsttätig übernommen",
+        "change": "{{previous}} → {{next}}",
+        "missing": "nicht gefunden, bitte einsetzen",
+        "hint": "Prüfen Sie, was daneben stehen blieb: eine alte Anschrift etwa wird nicht mitgetauscht.",
+        "dismiss": "Verstanden",
+        "none": "Im Brief war kein Briefkopf zu finden. Setzen Sie die Felder von Hand ein."
+      },
       "foreign": {
         "badge_one": "1 fremde Firma",
         "badge_other": "{{count}} fremde Firmen",
