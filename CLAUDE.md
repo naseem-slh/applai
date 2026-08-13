@@ -23,7 +23,7 @@ Implementierungsplan: [`docs/superpowers/plans/`](docs/superpowers/plans/).
 | G3 | CSP `connect-src` ist auf drei Ziele begrenzt: `https://generativelanguage.googleapis.com`, `https://api.openai.com`, `https://api.anthropic.com`. |
 | G4 | Kein API-Schlüssel im Code oder Repository. Ausschließlich Nutzereingabe zur Laufzeit. Das Repository ist öffentlich. |
 | G5 | Keine Dokumentinhalte in `localStorage` im Klartext. Entwürfe liegen in IndexedDB. |
-| G6 | Node ≥ 20, npm als Paketmanager, `package-lock.json` eingecheckt. |
+| G6 | Node ≥ 22.22.2 (Untergrenze von `jsdom`, siehe `.nvmrc`), npm als Paketmanager, `package-lock.json` eingecheckt. |
 | G7 | Lint mit `--max-warnings=0` als Pre-Commit-Hook und in CI. TypeScript strict. |
 | G8 | Alle Oberflächentexte über i18next, niemals hartkodiert. Sprachen `de` und `en`, Vorauswahl nach Browsersprache. |
 | G9 | Minimale Abhängigkeiten. Jede neue Bibliothek braucht eine Begründung im Commit. `npm audit` läuft gatend in CI. |
