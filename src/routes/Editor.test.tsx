@@ -751,6 +751,37 @@ describe('Editor — Seitenspalte und Sprache (14c)', () => {
     )
   })
 
+  it('übernimmt den Briefkopf selbsttätig, sobald die Analyse fertig ist', async () => {
+    await ready()
+
+    expect(await screen.findByText(t('editor.letterhead.applied.heading'))).toBeInTheDocument()
+    await waitFor(() =>
+      expect(paragraphElement(0).textContent).not.toContain('Sehr geehrte Damen und Herren,'),
+    )
+  })
+
+  it('nimmt die gesamte Übernahme mit einem einzigen Schritt zurück', async () => {
+    await ready()
+    await screen.findByText(t('editor.letterhead.applied.heading'))
+    const vorher = (await documentSurface()).textContent
+
+    undoShortcut()
+
+    await waitFor(async () => expect((await documentSurface()).textContent).not.toBe(vorher))
+    expect(screen.queryByText(t('editor.letterhead.applied.heading'))).not.toBeInTheDocument()
+  })
+
+  it('übernimmt nicht ein zweites Mal, wenn der Nutzer den Brief bearbeitet', async () => {
+    await ready()
+    await screen.findByText(t('editor.letterhead.applied.heading'))
+    fireEvent.click(screen.getByRole('button', { name: t('editor.letterhead.applied.dismiss') }))
+
+    type(1, 'Ein neuer Satz im Brief.')
+
+    await waitFor(() => expect(paragraphElement(1).textContent).toBe('Ein neuer Satz im Brief.'))
+    expect(screen.queryByText(t('editor.letterhead.applied.heading'))).not.toBeInTheDocument()
+  })
+
   it('setzt ein Briefkopf-Feld an der Markierung ein und macht das mit Strg+Z rückgängig', async () => {
     await ready()
     const original = paragraphElement(0).textContent

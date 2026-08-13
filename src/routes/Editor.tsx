@@ -12,6 +12,7 @@ import { ExportBar } from '@/components/editor/ExportBar'
 import { GapList } from '@/components/editor/GapList'
 import { LanguagePrompt } from '@/components/editor/LanguagePrompt'
 import { LetterheadPanel } from '@/components/editor/LetterheadPanel'
+import { applyLetterhead, type LetterheadApplication } from '@/components/editor/letterheadApply'
 import { MarkPanel } from '@/components/editor/MarkPanel'
 import { SelectionLayer } from '@/components/editor/SelectionLayer'
 import { StyleProfilePanel } from '@/components/editor/StyleProfilePanel'
@@ -48,6 +49,7 @@ import { FIELD_HINT_CLASS } from '@/components/ui/Field'
 import { providerFor, withSignal } from '@/lib/ai/provider'
 import { isoDate } from '@/lib/export/docx'
 import { parseDocx } from '@/lib/docx/parse'
+import type { JobAd } from '@/lib/domain/jobAd'
 import { detectLanguage } from '@/lib/domain/language'
 import { suggestLetterhead, type Letterhead } from '@/lib/domain/letterhead'
 import { rewriteSelection, type Variant } from '@/lib/domain/rewrite'
@@ -323,22 +325,67 @@ function EditorWorkspace({ session }: { session: StartSession }) {
    * verschwinden, sobald der Name berichtigt ist.
    */
   const [knownCompanies, setKnownCompanies] = useState<string[]>([])
+  // Abgeschlossen, gleich ob mit oder ohne Ergebnis: Die selbsttätige
+  // Übernahme des Briefkopfs wartet darauf, sonst fände sie nie einen
+  // Empfänger — siehe der Effekt weiter unten.
+  const [companiesLoaded, setCompaniesLoaded] = useState(false)
   useEffect(() => {
     let cancelled = false
     void storage
       .listApplications()
       .then((applications) => {
-        if (!cancelled) setKnownCompanies(applications.map((entry) => entry.company))
+        if (!cancelled) {
+          setKnownCompanies(applications.map((entry) => entry.company))
+          setCompaniesLoaded(true)
+        }
       })
       .catch(() => {
         // Ein nicht erreichbarer Speicher ist bereits über
         // `storageUnavailable` sichtbar (siehe `AppProvider`). Ohne Liste
-        // gibt es hier schlicht nichts zu warnen.
+        // gibt es hier schlicht nichts zu warnen — geladen ist der Zustand
+        // trotzdem, sonst bliebe die selbsttätige Übernahme für immer aus.
+        if (!cancelled) setCompaniesLoaded(true)
       })
     return () => {
       cancelled = true
     }
   }, [storage])
+
+  /**
+   * Die selbsttätige Übernahme des Briefkopfs.
+   *
+   * **Einmal je Stellenanzeige**, nicht einmal überhaupt: Der Ref merkt sich
+   * die `jobAd`, für die bereits übernommen wurde. Analysiert der Nutzer zu
+   * demselben Brief eine zweite Anzeige, soll erneut übernommen werden —
+   * dann steht im Briefkopf ja die vorige Firma und er ist selbst der alte
+   * Briefkopf geworden. Dass `docx`, `marks` und `letterhead` in der
+   * Abhängigkeitsliste stehen, ist unschädlich: Der Ref-Vergleich lässt den
+   * Rumpf je Anzeige nur einmal durchlaufen, und dann mit den Werten dieses
+   * Rendervorgangs.
+   *
+   * Gewartet wird auf `companiesLoaded`: Ohne die Liste früherer Firmen gibt
+   * es keinen Anker für den Empfänger, und ein zu früher Lauf fände ihn nie.
+   */
+  const appliedFor = useRef<JobAd | null>(null)
+  const [application, setApplication] = useState<LetterheadApplication | null>(null)
+  useEffect(() => {
+    if (docx === null || jobAd === null || letterhead === null || !companiesLoaded) return
+    if (appliedFor.current === jobAd) return
+    appliedFor.current = jobAd
+
+    const result = applyLetterhead(docx, letterhead, marks, knownCompanies, jobAd.company)
+    setApplication(result)
+    if (result.changes.length > 0) commit(result.document, result.marks)
+  }, [docx, jobAd, letterhead, marks, knownCompanies, companiesLoaded, commit])
+
+  /**
+   * Rückgängig nimmt auch den Bericht mit: Er bezeichnet Änderungen, die es
+   * danach nicht mehr gibt.
+   */
+  const undoAll = useCallback(() => {
+    undo()
+    setApplication(null)
+  }, [undo])
 
   const foreign = useMemo(
     () => findForeignCompanies(docx, jobAd?.company ?? null, knownCompanies),
@@ -555,11 +602,11 @@ function EditorWorkspace({ session }: { session: StartSession }) {
       const target = event.target
       if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) return
       event.preventDefault()
-      undo()
+      undoAll()
     }
     window.addEventListener('keydown', handle)
     return () => window.removeEventListener('keydown', handle)
-  }, [undo])
+  }, [undoAll])
 
   /** Die Vormerkung, die gerade markiert ist — für `aria-current` in der Liste. */
   const activeMarkId = useMemo(() => {
@@ -741,7 +788,7 @@ function EditorWorkspace({ session }: { session: StartSession }) {
                   Auskünfte nebeneinander sind in der schmalen Mittelspalte
                   breiter als die Spalte selbst. */}
               <div className="flex shrink-0 flex-wrap items-center justify-end gap-x-3 gap-y-1">
-                <Button variant="ghost" size="sm" disabled={!canUndo} onClick={undo}>
+                <Button variant="ghost" size="sm" disabled={!canUndo} onClick={undoAll}>
                   {t('editor.undo')}
                 </Button>
                 <DraftStatus state={draft} />
@@ -814,6 +861,9 @@ function EditorWorkspace({ session }: { session: StartSession }) {
                 // Fremdfirmen-Treffer bekommen dieselbe Behandlung wie die
                 // unbelegten Aussagen (siehe `foreignCompanies.ts`).
                 foreignParagraphs={foreign.paragraphs}
+                // Absätze, in denen der Briefkopf selbsttätig übernommen
+                // wurde. Eigene Farbe, kein Fehler.
+                letterheadParagraphs={application?.changes.map((change) => change.paragraph) ?? []}
                 onParagraphInput={handleParagraphInput}
                 // `rounded-lg` statt der Vorgabe `rounded-md`: Der Fokusring
                 // folgt dem Radius seines Elements und soll dem Blatt folgen,
@@ -925,6 +975,8 @@ function EditorWorkspace({ session }: { session: StartSession }) {
                 onChange={setLetterhead}
                 onInsert={insertAtSelection}
                 foreign={foreign}
+                application={application}
+                onDismissApplication={() => setApplication(null)}
                 defaultOpen={wide}
               />
             )}
