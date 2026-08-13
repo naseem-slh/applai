@@ -312,12 +312,24 @@ function EditorWorkspace({ session }: { session: StartSession }) {
    * bewusst, mitten in der Arbeit am Brief so gut wie nie.
    */
   const [letterhead, setLetterhead] = useState<Letterhead | null>(null)
+  /**
+   * Zu welcher `jobAd` der aktuelle `letterhead`-Stand gehört — eigener
+   * Zustand statt eines Refs, damit er sich mit `letterhead` in **demselben**
+   * Rendervorgang aktualisiert (React fasst beide `setState`-Aufrufe im
+   * Effekt unten zu einem einzigen Nachrendern zusammen). Ein Ref wäre hier
+   * zu schnell: Er änderte sich schon im selben Durchlauf, in dem dieser
+   * Effekt läuft, während `letterhead` selbst erst beim nächsten Rendern den
+   * neuen Vorschlag trüge — die Übernahme unten läse dann eine `jobAd`, die
+   * nicht mehr zu ihrem `letterhead` passt.
+   */
+  const [letterheadFor, setLetterheadFor] = useState<JobAd | null>(null)
 
   const { jobAd } = analysis
   const uiLanguage = settings.uiLanguage
   useEffect(() => {
     if (jobAd === null) return
     setLetterhead(suggestLetterhead(jobAd, uiLanguage, new Date()))
+    setLetterheadFor(jobAd)
   }, [jobAd, uiLanguage])
 
   /**
@@ -365,18 +377,28 @@ function EditorWorkspace({ session }: { session: StartSession }) {
    *
    * Gewartet wird auf `companiesLoaded`: Ohne die Liste früherer Firmen gibt
    * es keinen Anker für den Empfänger, und ein zu früher Lauf fände ihn nie.
+   *
+   * **Und auf `letterheadFor`**: Der Vorschlagseffekt oben setzt `letterhead`
+   * und `letterheadFor` zusammen, aber erst beim **nächsten** Rendern. Ändert
+   * sich `jobAd`, läuft dieser Effekt schon einmal mit der neuen `jobAd` und
+   * dem noch alten `letterhead` — ohne die Wache würde der veraltete
+   * Briefkopf (samt alter Firma) übernommen, und der Ref oben markierte die
+   * neue Anzeige fälschlich als erledigt, sodass der richtige Briefkopf nie
+   * mehr zum Zug käme.
    */
   const appliedFor = useRef<JobAd | null>(null)
   const [application, setApplication] = useState<LetterheadApplication | null>(null)
   useEffect(() => {
     if (docx === null || jobAd === null || letterhead === null || !companiesLoaded) return
+    // Siehe oben: `letterhead` muss zur laufenden `jobAd` gehören.
+    if (letterheadFor !== jobAd) return
     if (appliedFor.current === jobAd) return
     appliedFor.current = jobAd
 
     const result = applyLetterhead(docx, letterhead, marks, knownCompanies, jobAd.company)
     setApplication(result)
     if (result.changes.length > 0) commit(result.document, result.marks)
-  }, [docx, jobAd, letterhead, marks, knownCompanies, companiesLoaded, commit])
+  }, [docx, jobAd, letterhead, letterheadFor, marks, knownCompanies, companiesLoaded, commit])
 
   /**
    * Rückgängig nimmt auch den Bericht mit: Er bezeichnet Änderungen, die es

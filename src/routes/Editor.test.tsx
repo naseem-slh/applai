@@ -763,12 +763,25 @@ describe('Editor — Seitenspalte und Sprache (14c)', () => {
   it('nimmt die gesamte Übernahme mit einem einzigen Schritt zurück', async () => {
     await ready()
     await screen.findByText(t('editor.letterhead.applied.heading'))
-    const vorher = (await documentSurface()).textContent
+    // Die Übernahme hat tatsächlich stattgefunden: Absatz 0 trägt die neue
+    // Anrede ohne Komma, nicht mehr die der Fixture.
+    expect(paragraphElement(0).textContent).toBe('Sehr geehrte Damen und Herren')
+    expect(screen.getByRole('button', { name: t('editor.undo') })).toBeEnabled()
 
     undoShortcut()
 
-    await waitFor(async () => expect((await documentSurface()).textContent).not.toBe(vorher))
+    // Der Ursprungszustand, nicht bloß irgendein anderer Text: Absatz 0
+    // trägt wieder exakt die Anrede der Fixture, mitsamt Komma.
+    await waitFor(() =>
+      expect(paragraphElement(0).textContent).toBe('Sehr geehrte Damen und Herren,'),
+    )
     expect(screen.queryByText(t('editor.letterhead.applied.heading'))).not.toBeInTheDocument()
+    // Ein einziger Schritt für die ganze Übernahme: Nach genau einem Undo
+    // bleibt nichts mehr rückgängig zu machen. Vier einzelne commit()-Aufrufe
+    // (einer je Feld, im Auftrag ausdrücklich verboten) hinterließen hier
+    // noch weitere Schritte in der Historie, und dieser Knopf bliebe
+    // aktiviert.
+    expect(screen.getByRole('button', { name: t('editor.undo') })).toBeDisabled()
   })
 
   it('übernimmt nicht ein zweites Mal, wenn der Nutzer den Brief bearbeitet', async () => {
