@@ -347,7 +347,23 @@
       "cost_other": "Costs {{count}} requests.",
       "fast": "Apply automatically",
       "choose": "Show variants",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "reading": "Reading the job posting.",
+      "progress": "Passage {{current}} of {{total}}",
+      "halt": {
+        "wahl": "Please pick a wording.",
+        "unbelegteAussagen": "This wording contains claims your documents do not back up. Please confirm them one by one.",
+        "anbieterfehler": "The request failed.",
+        "antwortVerworfen": "The AI's answer was not usable."
+      },
+      "retry": "Try again",
+      "skip": "Skip this passage",
+      "stop": "Stop the run",
+      "done_one": "1 passage rewritten.",
+      "done_other": "{{count}} passages rewritten.",
+      "skipped_one": "1 passage stayed unchanged.",
+      "skipped_other": "{{count}} passages stayed unchanged.",
+      "stopped": "Stopped. What was applied stays in the letter."
     },
     "letterhead": {
       "heading": "Letterhead",

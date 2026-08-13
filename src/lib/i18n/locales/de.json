@@ -347,7 +347,23 @@
       "cost_other": "Kostet {{count}} Anfragen.",
       "fast": "Schnell übernehmen",
       "choose": "Varianten zeigen",
-      "cancel": "Abbrechen"
+      "cancel": "Abbrechen",
+      "reading": "Die Anzeige wird ausgewertet.",
+      "progress": "Stelle {{current}} von {{total}}",
+      "halt": {
+        "wahl": "Bitte wählen Sie eine Formulierung.",
+        "unbelegteAussagen": "Diese Formulierung enthält Aussagen, die Ihre Unterlagen nicht decken. Bitte einzeln bestätigen.",
+        "anbieterfehler": "Die Anfrage ist fehlgeschlagen.",
+        "antwortVerworfen": "Die Antwort der KI war nicht verwertbar."
+      },
+      "retry": "Erneut versuchen",
+      "skip": "Stelle überspringen",
+      "stop": "Durchlauf abbrechen",
+      "done_one": "1 Stelle übernommen.",
+      "done_other": "{{count}} Stellen übernommen.",
+      "skipped_one": "1 Stelle blieb unverändert.",
+      "skipped_other": "{{count}} Stellen blieben unverändert.",
+      "stopped": "Abgebrochen. Was übernommen wurde, steht im Brief."
     },
     "letterhead": {
       "heading": "Briefkopf",
