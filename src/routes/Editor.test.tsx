@@ -824,6 +824,53 @@ describe('Editor — Seitenspalte und Sprache (14c)', () => {
     expect(screen.queryByText(t('editor.letterhead.applied.heading'))).not.toBeInTheDocument()
   })
 
+  /**
+   * Befund 2: `appliedFor` ist ein `useRef` und stirbt mit der Komponente.
+   * Über „zuletzt bearbeitet" (`Start.handleUseRecent`) lädt die Anwendung
+   * `draft.docxBase` — den Arbeitsstand, in dem der Briefkopf schon steht —
+   * und `useLetterAnalysis` liefert dieselbe Anzeige aus dem
+   * Auswertungsspeicher als FRISCHES Objekt (neue Identität, aber
+   * inhaltsgleich). Ohne Schutz liefe die Übernahme ein zweites Mal und
+   * überschriebe eine Korrektur, die der Nutzer von Hand an der Anrede
+   * vorgenommen hat — genau das prüft dieser Fall: Der Brief trägt bereits
+   * eine ANDERE Anrede als die, die `suggestLetterhead` erneut vorschlagen
+   * würde (der Nutzer hat sie also bewusst geändert), und sie muss stehen
+   * bleiben.
+   *
+   * `LoadedDocument.source === 'draft'` ist das Merkmal, an dem sich ein
+   * fortgesetzter Entwurf erkennen lässt (gesetzt einzig in
+   * `Start.handleUseRecent`, siehe `appContext.ts`) — die selbsttätige
+   * Übernahme unterbleibt dafür ganz, statt sich auf einen reinen
+   * Text-Vergleich (Befund 4) zu verlassen, der genau diesen
+   * Handkorrektur-Fall nicht abfinge (der neue Vorschlag unterscheidet sich
+   * ja bewusst von dem, was jetzt im Brief steht).
+   */
+  it('übernimmt den Briefkopf nicht noch einmal, wenn ein fortgesetzter Entwurf geladen wird', async () => {
+    await ready(
+      { jobAd: JOB_AD_MIT_ANSPRECHPARTNER },
+      {
+        session: {
+          letter: letterDocument({ source: 'draft' }),
+          cv: null,
+          jobAdText: 'Wir suchen eine Entwicklerin.',
+          userName: 'Marlene Ostwald',
+        },
+      },
+    )
+
+    // Beweis, dass Auswertung und Vorschlag durchgelaufen sind — und damit
+    // auch der Renderzyklus, in dem die selbsttätige Übernahme liefe, wenn
+    // sie nicht unterbunden wäre.
+    await waitFor(() =>
+      expect(screen.getByLabelText(t('editor.letterhead.fields.salutation'))).toHaveValue(
+        'Sehr geehrter Herr Dr. Weber,',
+      ),
+    )
+
+    expect(screen.queryByText(t('editor.letterhead.applied.heading'))).not.toBeInTheDocument()
+    expect(paragraphElement(0).textContent).toBe('Sehr geehrte Damen und Herren,')
+  })
+
   it('setzt ein Briefkopf-Feld an der Markierung ein und macht das mit Strg+Z rückgängig', async () => {
     await ready()
     const original = paragraphElement(0).textContent
