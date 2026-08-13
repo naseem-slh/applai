@@ -334,6 +334,21 @@
       "loading": "Reading the job ad and your writing style.",
       "retry": "Try again"
     },
+    "reapply": {
+      "trigger": "Next posting",
+      "heading": "Next job posting",
+      "description": "The letter is rebuilt from your uploaded cover letter. The marked passages are rewritten for the new posting.",
+      "jobAdLabel": "Job posting",
+      "marks_one": "1 marked passage",
+      "marks_other": "{{count}} marked passages",
+      "unresolved_one": "1 passage could not be found again and stays unchanged.",
+      "unresolved_other": "{{count}} passages could not be found again and stay unchanged.",
+      "cost_one": "Costs 1 request.",
+      "cost_other": "Costs {{count}} requests.",
+      "fast": "Apply automatically",
+      "choose": "Show variants",
+      "cancel": "Cancel"
+    },
     "letterhead": {
       "heading": "Letterhead",
       "fields": {

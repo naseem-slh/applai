@@ -334,6 +334,21 @@
       "loading": "Anzeige und Schreibstil werden gelesen.",
       "retry": "Erneut versuchen"
     },
+    "reapply": {
+      "trigger": "Nächste Anzeige",
+      "heading": "Nächste Stellenausschreibung",
+      "description": "Der Brief entsteht neu aus Ihrem hochgeladenen Anschreiben. Die vorgemerkten Stellen werden auf die neue Anzeige umgeschrieben.",
+      "jobAdLabel": "Stellenausschreibung",
+      "marks_one": "1 vorgemerkte Stelle",
+      "marks_other": "{{count}} vorgemerkte Stellen",
+      "unresolved_one": "1 Stelle wurde nicht wiedergefunden und bleibt unverändert.",
+      "unresolved_other": "{{count}} Stellen wurden nicht wiedergefunden und bleiben unverändert.",
+      "cost_one": "Kostet 1 Anfrage.",
+      "cost_other": "Kostet {{count}} Anfragen.",
+      "fast": "Schnell übernehmen",
+      "choose": "Varianten zeigen",
+      "cancel": "Abbrechen"
+    },
     "letterhead": {
       "heading": "Briefkopf",
       "fields": {
