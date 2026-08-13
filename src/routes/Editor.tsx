@@ -864,9 +864,6 @@ function EditorWorkspace({ session }: { session: StartSession }) {
               '[&>*]:shrink-0',
             )}
           >
-            {analysis.jobAd !== null && (
-              <GapList requirements={analysis.jobAd.requirements} gaps={gaps} defaultOpen={wide} />
-            )}
             <MarkPanel
               marks={marks}
               unresolved={markHandle.unresolved}
@@ -899,6 +896,13 @@ function EditorWorkspace({ session }: { session: StartSession }) {
               // nichts vorgemerkt" steht, kostet auf einem Telefon nur Platz.
               defaultOpen={wide || marks.length > 0 || markHandle.unresolved.length > 0}
             />
+            {analysis.jobAd !== null && (
+              // Beginnt immer zugeklappt, auch auf breiten Geräten: Die
+              // Anforderungen sind Nachschlagestoff für zwischendurch, nicht
+              // der Einstieg in die Arbeit. Aufgeklappt schöben sie die
+              // Merkliste nach unten, mit der man tatsächlich arbeitet.
+              <GapList requirements={analysis.jobAd.requirements} gaps={gaps} defaultOpen={false} />
+            )}
           </aside>
 
           <aside
