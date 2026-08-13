@@ -2,6 +2,7 @@ import type { MouseEvent, ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/Button'
 import { FIELD_HINT_CLASS } from '@/components/ui/Field'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/Popover'
 import { cn } from '@/lib/utils'
 import type { EditorSelection } from './documentSelection'
 
@@ -13,6 +14,26 @@ import type { EditorSelection } from './documentSelection'
  * Das Rechnen selbst steht in `documentSelection.ts`, das Nachhalten in
  * `useDocumentSelection.ts`. Diese Datei zeigt nur an und löst aus — so
  * bleibt die Offset-Abbildung ohne Oberfläche prüfbar.
+ *
+ * **Eine Zeile mit fester Hoehe (Variante A).** Die Leiste waechst und
+ * schrumpft nicht mehr, waehrend markiert wird: Sie stand vorher zwischen 87
+ * und 237 px, je nach Zustand, und schob den Brief bei jeder Markierung ein
+ * Stueck nach unten. Deshalb steht hier genau eine Reihe, deren Hoehe die
+ * Knopfreihe bestimmt. Was zustandsabhaengig ist, wechselt seinen Inhalt,
+ * nicht sein Mass:
+ *
+ * - Der Umfang ist eine Umschaltgruppe, ein Bedienelement statt zweier
+ *   gleichrangiger Knoepfe.
+ * - Aus zwei Zeilen Prosa wird ein Zaehler. Was markiert ist, zeigt der Brief
+ *   selbst; die Leiste hat es nur wiederholt. Der volle Satz bleibt fuer
+ *   Hilfsmittel erhalten (`sr-only`), damit die Ansage nicht auf eine nackte
+ *   Zahl zusammenfaellt.
+ * - Der Hinweis auf festgehaltene Absaetze steht als kurzer Vermerk in der
+ *   Zeile; die Einzelheiten kommen im Popover dazu (siehe `RetainedNote`).
+ * - Es gibt keinen Knopf zum Aufheben. Ein Klick in die vorgemerkte Stelle
+ *   nimmt sie weg, ein Klick woanders im Brief verlegt die Markierung; der
+ *   Knopf war derselbe zweite Handgriff, den schon das Vormerken losgeworden
+ *   ist, und er kostete die Breite, die der Rest der Zeile braucht.
  *
  * **Es gibt keinen Knopf zum Vormerken mehr.** Eine markierte Stelle *ist*
  * vorgemerkt — das Markieren selbst ist die Geste. Ein Klick in eine
@@ -44,7 +65,6 @@ export interface SelectionLayerProps {
   caretParagraph: number | null
   onSelectWholeDocument: () => void
   onSelectParagraph: (index: number) => void
-  onClear: () => void
   /**
    * Anbau für Aufgabe 14b: Was mit der Markierung geschehen soll
    * (`VariantPopover` samt Auslöser). Steht am Ende der Knopfreihe und
@@ -58,16 +78,12 @@ export interface SelectionLayerProps {
   actions?: ReactNode
 }
 
-/** Wie viele Zeichen der Markierung in der Leiste zitiert werden. */
-const PREVIEW_LENGTH = 90
-
 export function SelectionLayer({
   selection,
   fineSelection,
   caretParagraph,
   onSelectWholeDocument,
   onSelectParagraph,
-  onClear,
   actions,
 }: SelectionLayerProps) {
   const { t } = useTranslation()
@@ -84,74 +100,113 @@ export function SelectionLayer({
   const showsShiftWarning = selection?.inspection.mayShiftContent === true && retained.length > 0
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center gap-3">
-        <Button variant="secondary" size="sm" onMouseDown={keepSelection} onClick={onSelectWholeDocument}>
+    // `min-h-8` haelt das Mass der Zeile auch dann, wenn rechts nichts steht:
+    // Die Knopfreihe ist 2rem hoch, und genau so hoch bleibt die Leiste.
+    <div className="flex min-h-8 items-center gap-3">
+      {/* Der Umfang als eine Umschaltgruppe. Die Aussenkontur sitzt am
+          Rahmen, die Knoepfe darin geben ihre eigene ab, damit die Gruppe
+          als ein Bedienelement gelesen wird und nicht als zwei. */}
+      <div className="flex shrink-0 overflow-hidden rounded-md border border-[var(--color-control-border)]">
+        <Button
+          variant="secondary"
+          size="sm"
+          className="rounded-none border-0"
+          onMouseDown={keepSelection}
+          onClick={onSelectWholeDocument}
+        >
           {t('editor.selection.wholeDocument')}
         </Button>
         {fineSelection && caretParagraph !== null && (
+          // Sichtbar steht „Absatz", der Name bleibt „Aktueller Absatz":
+          // In der Zeile zaehlt jede Breite, vorgelesen zaehlt die Bedeutung.
           <Button
             variant="secondary"
             size="sm"
+            className="rounded-none border-0 border-l border-[var(--color-control-border)]"
+            aria-label={t('editor.selection.currentParagraph')}
             onMouseDown={keepSelection}
             onClick={() => onSelectParagraph(caretParagraph)}
           >
-            {t('editor.selection.currentParagraph')}
+            {t('editor.selection.paragraphShort')}
           </Button>
         )}
-        {selection !== null && (
-          <Button variant="ghost" size="sm" onMouseDown={keepSelection} onClick={onClear}>
-            {t('editor.selection.clear')}
-          </Button>
-        )}
-        {actions}
       </div>
 
+      <span aria-hidden="true" className="h-5 w-px shrink-0 bg-[var(--color-border)]" />
+
       {/* Dauerhafte Zustandsauskunft, deshalb `role="status"` und kein
-          `role="alert"`: Sie steht schon da, bevor der Nutzer etwas tut. */}
-      <div role="status" className="flex flex-col gap-1">
+          `role="alert"`: Sie steht schon da, bevor der Nutzer etwas tut.
+          `min-w-0` ist noetig, damit der Hinweis kuerzen darf statt die
+          Zeile aufzublaehen. */}
+      <div role="status" className="flex min-w-0 flex-1 items-center gap-2">
         {selection === null ? (
-          <p className={FIELD_HINT_CLASS}>
+          <p className={cn(FIELD_HINT_CLASS, 'truncate')}>
             {fineSelection ? t('editor.selection.none') : t('editor.selection.touch')}
           </p>
         ) : (
           <>
-            <p className={cn(FIELD_HINT_CLASS, 'text-[var(--color-ink)]')}>
-              {t('editor.selection.summary', { chars: selection.text.length })}
+            <p className="inline-flex h-6 shrink-0 items-center rounded-sm bg-[var(--color-accent-soft)] px-2 text-[length:var(--text-body-sm-size)] font-medium text-[var(--color-accent-text)] tabular-nums">
+              <span aria-hidden="true">
+                {t('editor.selection.chars', { chars: selection.text.length })}
+              </span>
+              {/* Vorgelesen bleibt es der ganze Satz. Eine nackte Zahl waere
+                  als Ansage nicht zu verstehen. */}
+              <span className="sr-only">
+                {t('editor.selection.summary', { chars: selection.text.length })}
+              </span>
             </p>
-            <p className={FIELD_HINT_CLASS}>
-              {t('editor.selection.preview', { text: preview(selection.text) })}
-            </p>
+            {showsShiftWarning && <RetainedNote retained={retained} />}
           </>
         )}
-
-        {showsShiftWarning && (
-          // In `--color-error`, nicht in `--color-warning`: Letzteres
-          // erreicht auf keiner hellen Fläche 4,5:1 (siehe DESIGN.md). Als
-          // Konturfarbe am hervorgehobenen Absatz bleibt es zulässig.
-          <div className="mt-2 flex flex-col gap-1">
-            <p className="text-[length:var(--text-body-sm-size)] leading-[var(--text-body-sm-leading)] font-medium text-[var(--color-error)]">
-              {t('editor.retained.heading')}
-            </p>
-            <ul className={FIELD_HINT_CLASS}>
-              {retained.map((entry) => (
-                <li key={entry.index}>
-                  {t('editor.retained.entry', {
-                    number: entry.index + 1,
-                    reason: t(`editor.retained.reason.${entry.reason}`),
-                  })}
-                </li>
-              ))}
-            </ul>
-            <p className={FIELD_HINT_CLASS}>{t('editor.retained.body')}</p>
-          </div>
-        )}
       </div>
+
+      {actions}
     </div>
   )
 }
 
-function preview(text: string): string {
-  const single = text.replace(/\s+/g, ' ').trim()
-  return single.length <= PREVIEW_LENGTH ? single : `${single.slice(0, PREVIEW_LENGTH)}…`
+/**
+ * Der Vermerk auf festgehaltene Absaetze.
+ *
+ * In der Zeile steht nur, **dass** etwas stehen bleibt, damit die Leiste ihr
+ * Mass behaelt. Welcher Absatz es ist, warum, und was man dagegen tun kann,
+ * steht im Popover: Das ist die Auskunft, die vor stillem Datenverlust
+ * schuetzt, und sie darf nicht verlorengehen, nur weil die Zeile kurz sein
+ * soll.
+ */
+function RetainedNote({ retained }: { retained: EditorSelection['inspection']['retained'] }) {
+  const { t } = useTranslation()
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          // In `--color-error`, nicht in `--color-warning`: Letzteres
+          // erreicht auf keiner hellen Flaeche 4,5:1 (siehe DESIGN.md). Als
+          // Konturfarbe am hervorgehobenen Absatz bleibt es zulaessig.
+          className="focus-ring shrink-0 truncate rounded-sm text-[length:var(--text-body-sm-size)] leading-[var(--text-body-sm-leading)] font-medium text-[var(--color-error)] underline decoration-dotted underline-offset-2"
+          onMouseDown={(event) => event.preventDefault()}
+        >
+          {t('editor.retained.short', { count: retained.length })}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="flex flex-col gap-2">
+        <p className="text-[length:var(--text-body-sm-size)] leading-[var(--text-body-sm-leading)] font-medium text-[var(--color-error)]">
+          {t('editor.retained.heading')}
+        </p>
+        <ul className={FIELD_HINT_CLASS}>
+          {retained.map((entry) => (
+            <li key={entry.index}>
+              {t('editor.retained.entry', {
+                number: entry.index + 1,
+                reason: t(`editor.retained.reason.${entry.reason}`),
+              })}
+            </li>
+          ))}
+        </ul>
+        <p className={FIELD_HINT_CLASS}>{t('editor.retained.body')}</p>
+      </PopoverContent>
+    </Popover>
+  )
 }

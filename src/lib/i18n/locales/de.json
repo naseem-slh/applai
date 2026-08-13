@@ -153,8 +153,8 @@
       "retryIn": "Erneut versuchen in {{seconds}} s"
     },
     "usage": {
-      "requests_one": "1 Anfrage in dieser Sitzung",
-      "requests_other": "{{count}} Anfragen in dieser Sitzung"
+      "requests_one": "1 Anfrage",
+      "requests_other": "{{count}} Anfragen"
     }
   },
   "start": {
@@ -245,11 +245,11 @@
     "selection": {
       "wholeDocument": "Ganzes Dokument",
       "currentParagraph": "Aktueller Absatz",
-      "clear": "Markierung aufheben",
+      "paragraphShort": "Absatz",
       "none": "Ziehen Sie über eine Textstelle.",
       "touch": "Mit dem Finger ist nur das ganze Dokument wählbar.",
       "summary": "{{chars}} Zeichen markiert.",
-      "preview": "„{{text}}“"
+      "chars": "{{chars}} Zeichen"
     },
     "marks": {
       "heading": "Vorgemerkte Stellen",
@@ -274,6 +274,8 @@
     },
     "retained": {
       "heading": "Ihre Markierung reicht über festen Inhalt hinweg.",
+      "short_one": "Ein Absatz bleibt stehen",
+      "short_other": "{{count}} Absätze bleiben stehen",
       "entry": "Absatz {{number}}: {{reason}}",
       "reason": {
         "sectionBreak": "ein Abschnittswechsel, der Seitenränder sowie Kopf- und Fußzeile trägt",
@@ -283,10 +285,10 @@
       "body": "Solche Absätze bleiben stehen. Wird der neue Text kürzer, rutscht fester Inhalt sichtbar nach oben. Verkleinern Sie die Markierung, wenn das stört."
     },
     "draft": {
-      "idle": "Wird alle 20 Sekunden gesichert.",
-      "saving": "Zwischenstand wird gesichert.",
-      "savedJustNow": "Zwischenstand gerade gesichert.",
-      "saved": "Zwischenstand gesichert {{when}}.",
+      "idle": "Sichert automatisch",
+      "saving": "Wird gesichert …",
+      "savedJustNow": "Gerade gesichert",
+      "saved": "Gesichert {{when}}",
       "failed": "Nicht gesichert. Ihre Änderungen stehen nur in dieser Ansicht."
     },
     "variants": {

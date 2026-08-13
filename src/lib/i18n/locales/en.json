@@ -153,8 +153,8 @@
       "retryIn": "Retry in {{seconds}} s"
     },
     "usage": {
-      "requests_one": "1 request this session",
-      "requests_other": "{{count}} requests this session"
+      "requests_one": "{{count}} request",
+      "requests_other": "{{count}} requests"
     }
   },
   "start": {
@@ -245,11 +245,11 @@
     "selection": {
       "wholeDocument": "Whole document",
       "currentParagraph": "Current paragraph",
-      "clear": "Clear selection",
+      "paragraphShort": "Paragraph",
       "none": "Drag across a passage.",
       "touch": "With touch, only the whole document can be selected.",
       "summary": "{{chars}} characters selected.",
-      "preview": "“{{text}}”"
+      "chars": "{{chars}} characters"
     },
     "marks": {
       "heading": "Marked passages",
@@ -274,6 +274,8 @@
     },
     "retained": {
       "heading": "Your selection reaches across fixed content.",
+      "short_one": "One paragraph stays put",
+      "short_other": "{{count}} paragraphs stay put",
       "entry": "Paragraph {{number}}: {{reason}}",
       "reason": {
         "sectionBreak": "a section break carrying page margins, header and footer",
@@ -283,10 +285,10 @@
       "body": "Such paragraphs stay put. If the new text is shorter, fixed content visibly moves up. Shrink the selection if that bothers you."
     },
     "draft": {
-      "idle": "Saved every 20 seconds.",
-      "saving": "Saving the draft.",
-      "savedJustNow": "Draft saved just now.",
-      "saved": "Draft saved {{when}}.",
+      "idle": "Saves automatically",
+      "saving": "Saving …",
+      "savedJustNow": "Saved just now",
+      "saved": "Saved {{when}}",
       "failed": "Not saved. Your changes exist only in this view."
     },
     "variants": {

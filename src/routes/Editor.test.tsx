@@ -427,6 +427,13 @@ describe('Editor', () => {
 
     fireEvent.click(screen.getByRole('button', { name: t('editor.selection.wholeDocument') }))
 
+    // Der Vermerk steht sofort in der Leiste. Die Einzelheiten kommen auf
+    // Nachfrage dazu, damit die Zeile ihre Hoehe behaelt (Variante A).
+    // Die Vorlage haelt drei solche Absaetze fest; der Vermerk zaehlt sie.
+    fireEvent.click(
+      await screen.findByRole('button', { name: t('editor.retained.short', { count: 3 }) }),
+    )
+
     expect(await screen.findByText(t('editor.retained.heading'))).toBeInTheDocument()
     expect(
       screen.getByText(
@@ -463,11 +470,13 @@ describe('Editor', () => {
     expect(
       await screen.findByText(t('editor.selection.summary', { chars: 'Zelle'.length })),
     ).toBeInTheDocument()
-    expect(screen.queryByText(t('editor.retained.heading'))).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: t('editor.retained.short', { count: 1 }) }),
+    ).not.toBeInTheDocument()
     expect(paragraphElement(2).className).toContain('border-transparent')
   })
 
-  it('sagt vor dem ersten Zwischenstand, dass alle 20 Sekunden gesichert wird', async () => {
+  it('sagt vor dem ersten Zwischenstand, dass von selbst gesichert wird', async () => {
     setup()
     await documentSurface()
 

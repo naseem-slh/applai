@@ -5,16 +5,24 @@ import { cn } from '@/lib/utils'
 import type { DraftSaveState } from './useDraftAutosave'
 
 /**
- * „Zwischenstand gesichert vor …" — und die drei anderen Sätze, die
- * dieselbe Zeile sagen kann.
+ * „Gesichert vor …" — und die drei anderen Sätze, die dieselbe Zeile sagen
+ * kann.
  *
  * Die Anzeige folgt genau dem, was `useDraftAutosave` beobachtet hat, und
  * behauptet nichts darüber hinaus. Vor dem ersten Sichern steht dort die
- * Zusage („alle 20 Sekunden"), während des Sicherns der Vorgang, danach die
- * Zeit **seit dem erfolgreichen** Schreiben — und wenn es fehlschlägt, steht
- * die Zeitangabe nicht mehr da. Eine relative Zeit, die weiterläuft,
+ * Zusage („sichert automatisch"), während des Sicherns der Vorgang, danach
+ * die Zeit **seit dem erfolgreichen** Schreiben — und wenn es fehlschlägt,
+ * steht die Zeitangabe nicht mehr da. Eine relative Zeit, die weiterläuft,
  * während nichts mehr gespeichert wird, wäre schlimmer als gar keine
  * Anzeige: Sie beruhigt genau dann, wenn Anlass zur Sorge besteht.
+ *
+ * **Warum die Sätze kurz sind.** Sie stehen in der Leiste über dem Brief,
+ * neben der Markierung. Ausgeschrieben („Wird alle 20 Sekunden gesichert.",
+ * „7 Anfragen in dieser Sitzung") brauchte die rechte Gruppe 533 px und
+ * zwang die Reihe unterhalb von etwa 1600 px Fensterbreite zum Umbruch. Der
+ * genaue Abstand von 20 Sekunden ist dabei aus der Oberfläche verschwunden;
+ * er stand dort als Zusage, nicht als Zustand. Die Fehlermeldung bleibt
+ * ausgeschrieben: Sie ist selten und muss vollständig dastehen.
  */
 
 /** Wie oft die relative Zeitangabe nachgezogen wird. */

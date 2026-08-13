@@ -765,23 +765,27 @@ function EditorWorkspace({ session }: { session: StartSession }) {
               Bereich darunter blättert für sich, also braucht sie kein
               `sticky` mehr. */}
           <div className="flex flex-none flex-col gap-2 border-b border-[var(--color-border)] bg-[var(--color-surface-raised)] px-4 py-2.5 lg:px-6">
-            {/* `items-start`, damit Rückgängig und Sicherungsstand auf der
-                Höhe der Knopfreihe stehen und nicht auf der Höhe des
-                Hinweises, den die Markierungsleiste darunter setzt.
+            {/* **Eine Zeile (Variante A).** Vorher wuchs die Leiste beim
+                Markieren von 87 auf bis zu 237 px, weil Knoepfe und Zeilen je
+                nach Zustand kamen und gingen; der Brief darunter sprang bei
+                jeder Markierung. Jetzt wechselt der Inhalt seinen Zustand,
+                nicht sein Mass (siehe `SelectionLayer`).
 
-                **Warum die Reihe umbrechen darf.** Rechts standen zwei
-                Auskünfte, seit dem Anfragenzähler sind es drei. Gemessen
-                bei 1280 px Fensterbreite: Die rechte Gruppe braucht 652 px
-                in einer Zeile von 592 px. Sie ist `shrink-0`, die linke
-                trug `min-w-0` — also gab die linke nach, bis auf **null**.
-                Der Statusabsatz der Markierungsleiste stand danach mit dem
-                richtigen Text im Baum und war nicht mehr zu sehen; genau
-                das hat `a11y.spec.ts` gemeldet.
+                **Warum der Umbruch trotzdem bleibt.** Gemessen im Browser:
+                Die Markierungsleiste braucht 630 px, die Mittelspalte hat bei
+                einem Fenster von 1280 px aber nur 592 px. In einer Zeile geht
+                das nicht auf, und beide Auswege waren schlechter als ein
+                Umbruch: Laesst man die linke Seite nachgeben (`flex-1` setzt
+                die Basis auf 0), wird sie auf 47 px zusammengedrueckt und ihre
+                Knoepfe schieben sich unter die rechte Gruppe, die dann Klicks
+                abfaengt. Blendet man die Auskuenfte aus, fehlt dem Nutzer die
+                Bestaetigung, dass sein Zwischenstand gesichert ist.
 
-                Jetzt bricht die Reihe um, statt eine Seite zu zerdrücken,
-                und die linke behält mit `min-w-[16rem]` so viel Breite, dass
-                „124 Zeichen markiert." in eine Zeile passt. */}
-            <div className="flex flex-wrap items-start gap-x-3 gap-y-2">
+                Also bricht die Reihe um, wenn der Platz nicht reicht: eine
+                Zeile ab etwa 1330 px Fensterbreite, darunter zwei. Das Mass
+                haengt dann an der Breite, nicht mehr am Zustand der
+                Markierung — und genau darum ging es. */}
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
               <div className="min-w-[16rem] flex-1">
                 <SelectionLayer
                   selection={selection}
@@ -795,7 +799,6 @@ function EditorWorkspace({ session }: { session: StartSession }) {
                       markHandle.toggle(range)
                     }
                   }}
-                  onClear={clear}
                         actions={
                     <VariantPopover
                       selection={selection}
@@ -806,15 +809,24 @@ function EditorWorkspace({ session }: { session: StartSession }) {
                   }
                 />
               </div>
-              {/* Auch die rechte Gruppe darf in sich umbrechen: Drei
-                  Auskünfte nebeneinander sind in der schmalen Mittelspalte
-                  breiter als die Spalte selbst. */}
-              <div className="flex shrink-0 flex-wrap items-center justify-end gap-x-3 gap-y-1">
+              {/* „Rueckgaengig" ist eine Handlung und behaelt ihre Breite.
+                  Sicherungsstand und Anfragenzaehler sind leise Auskuenfte und
+                  geben als einzige nach, wenn die Spalte eng wird: Sie kuerzen
+                  mit Auslassungspunkten, statt die Zeile umbrechen zu lassen.
+
+                  **Warum sie nicht einfach verschwinden.** Der erste Versuch
+                  blendete sie unterhalb von 48rem aus. Das nimmt dem Nutzer
+                  die Bestaetigung, dass sein Zwischenstand gesichert ist —
+                  `happy-path.spec.ts` hat genau das gemeldet. Gekuerzt bleibt
+                  der Text im Baum, sichtbar und auffindbar. */}
+              <div className="flex shrink-0 items-center gap-3">
                 <Button variant="ghost" size="sm" disabled={!canUndo} onClick={undoAll}>
                   {t('editor.undo')}
                 </Button>
-                <DraftStatus state={draft} />
-                <ApiUsageStatus />
+                <span className="flex min-w-0 items-center gap-3 [&>p]:truncate">
+                  <DraftStatus state={draft} />
+                  <ApiUsageStatus />
+                </span>
               </div>
             </div>
 

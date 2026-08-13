@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import i18n from '@/lib/i18n/i18n'
 import { SelectionLayer } from './SelectionLayer'
@@ -25,7 +25,6 @@ function setup(overrides: Partial<Parameters<typeof SelectionLayer>[0]> = {}) {
     caretParagraph: null,
     onSelectWholeDocument: vi.fn(),
     onSelectParagraph: vi.fn(),
-    onClear: vi.fn(),
     ...overrides,
   }
   render(<SelectionLayer {...props} />)
@@ -71,34 +70,37 @@ describe('SelectionLayer', () => {
     setup()
 
     expect(screen.getByText(t('editor.selection.none'))).toBeInTheDocument()
-    expect(
-      screen.queryByRole('button', { name: t('editor.selection.clear') }),
-    ).not.toBeInTheDocument()
   })
 
-  it('nennt Umfang und Anfang der Markierung', () => {
+  it('zeigt den Umfang der Markierung als Zähler', () => {
+    setup({ selection: selection({ text: 'Sehr geehrte Damen und Herren' }) })
+
+    expect(screen.getByText(t('editor.selection.chars', { chars: 29 }))).toBeInTheDocument()
+  })
+
+  // Die Leiste behaelt eine feste Hoehe, also traegt sie den vollen Satz nur
+  // fuer Hilfsmittel; sichtbar bleibt der Zaehler.
+  it('nennt den Umfang auch im vollen Satz, für Hilfsmittel', () => {
     setup({ selection: selection({ text: 'Sehr geehrte Damen und Herren' }) })
 
     expect(screen.getByText(t('editor.selection.summary', { chars: 29 }))).toBeInTheDocument()
-    expect(
-      screen.getByText(t('editor.selection.preview', { text: 'Sehr geehrte Damen und Herren' })),
-    ).toBeInTheDocument()
   })
 
-  it('kürzt eine lange Markierung in der Vorschau', () => {
-    setup({ selection: selection({ text: 'a'.repeat(200) }) })
+  // Was markiert ist, zeigt der Brief selbst. Die Leiste wiederholt es nicht.
+  it('zitiert den Wortlaut der Markierung nicht mehr', () => {
+    setup({ selection: selection({ text: 'Sehr geehrte Damen und Herren' }) })
 
-    expect(
-      screen.getByText(t('editor.selection.preview', { text: `${'a'.repeat(90)}…` })),
-    ).toBeInTheDocument()
+    expect(screen.queryByText(/Sehr geehrte Damen und Herren/)).not.toBeInTheDocument()
   })
 
-  it('lässt die Markierung wieder aufheben', () => {
-    const props = setup({ selection: selection() })
+  // Ein Klick in die vorgemerkte Stelle nimmt sie weg, ein Klick woanders im
+  // Brief verlegt die Markierung. Ein eigener Knopf dafuer war ein zweiter
+  // Handgriff fuer etwas, das der erste schon sagt — und er kostete in der
+  // einen Zeile die Breite, die der Rest braucht.
+  it('bietet keinen Knopf zum Aufheben der Markierung an', () => {
+    setup({ selection: selection() })
 
-    screen.getByRole('button', { name: t('editor.selection.clear') }).click()
-
-    expect(props.onClear).toHaveBeenCalledTimes(1)
+    expect(screen.getAllByRole('button')).toHaveLength(1)
   })
 
   // Weitergabe aus Aufgabe 3: Der Nutzer erfährt es, bevor etwas verrutscht.
@@ -113,7 +115,25 @@ describe('SelectionLayer', () => {
       }),
     })
 
-    expect(screen.getByText(t('editor.retained.heading'))).toBeInTheDocument()
+    // In der Zeile steht nur der kurze Vermerk, damit sie ihre Hoehe behaelt.
+    expect(screen.getByRole('button', { name: t('editor.retained.short', { count: 1 }) })).toBeInTheDocument()
+    expect(screen.queryByText(t('editor.retained.body'))).not.toBeInTheDocument()
+  })
+
+  it('nennt den festgehaltenen Absatz samt Grund, sobald man den Vermerk öffnet', async () => {
+    setup({
+      selection: selection({
+        inspection: {
+          affected: [4, 5, 6],
+          retained: [{ index: 5, position: 1, reason: 'embeddedContent' }],
+          mayShiftContent: true,
+        },
+      }),
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: t('editor.retained.short', { count: 1 }) }))
+
+    expect(await screen.findByText(t('editor.retained.heading'))).toBeInTheDocument()
     expect(
       screen.getByText(
         t('editor.retained.entry', {
@@ -136,7 +156,9 @@ describe('SelectionLayer', () => {
       }),
     })
 
-    expect(screen.queryByText(t('editor.retained.heading'))).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: t('editor.retained.short', { count: 1 }) }),
+    ).not.toBeInTheDocument()
   })
 
   // Anbaustelle für 14b.
