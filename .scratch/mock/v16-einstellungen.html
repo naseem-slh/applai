@@ -1,0 +1,1035 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Applai Einstellungen</title>
+    <style>
+      /* =====================================================================
+         Attrappe: Einstellungen, im Thema der Vorbereiten-Seite.
+
+         Token, Blattlage und Kritzeleien wörtlich aus
+         v11-vorbereiten-verspielt.html, damit alle Seiten im selben Farbraum
+         stehen und nicht in nachgebauten.
+
+         **Eine Einstellungsseite ist fast nur Beschriftung.** Kürzen heißt
+         hier deshalb nicht Sätze streichen, sondern Erklärungen an den Ort
+         der Entscheidung holen: Von den drei Wahrheitsgrenzen steht nur die
+         Erklärung der gewählten da, die Warnung zur Anonymisierung nur, wenn
+         sie aus ist, und die lange Begründung zum Modell liegt auf der
+         Datenschutzseite, nicht hier.
+
+         **Zwei Farben, zwei Aussagen.** Tangerine markiert die getroffene
+         Wahl in einer Reihe. Minze steht am Schalter für „ist an" und an der
+         Marke „Schlüssel hinterlegt", also für einen guten Zustand. Rot
+         kommt nur an zwei Stellen vor: bei abgeschalteter Anonymisierung und
+         beim Löschen.
+
+         Formen: Karte 34px · Kacheln 24px · Bedienelemente 16px · Knöpfe Pille
+         ===================================================================== */
+
+      @font-face {
+        font-family: 'Fredoka';
+        font-style: normal;
+        font-display: swap;
+        font-weight: 400 700;
+        src: url('../../public/fonts/fredoka-variable-latin.woff2') format('woff2-variations');
+        unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+          U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191,
+          U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+      }
+
+      @font-face {
+        font-family: 'Inter Variable';
+        font-style: normal;
+        font-display: swap;
+        font-weight: 100 900;
+        src: url('../../public/fonts/inter-variable-latin.woff2') format('woff2-variations');
+      }
+
+      /* --- Farbe ---------------------------------------------------------
+         Helle Voreinstellung. Der Raum ist auch hier dunkel: Er ist die
+         Bühne, nicht die Arbeitsfläche. Was zwischen hell und dunkel
+         umschaltet, ist die Karte. */
+      :root {
+        color-scheme: light;
+
+        /* Der Raum ist ein liniertes DIN-A4-Blatt: papierweißer Grund,
+           Zeilen im klassischen Blassblau, links der rote Rand. Der
+           Zeilenabstand ist der von Lineatur 27, also 9mm, in CSS-Pixeln
+           bei 96dpi rund 34px. Der Rand steht bei 14% der Fensterbreite,
+           damit er auf jedem Fenster an derselben Stelle sitzt.
+
+           Kein Farbverlauf: Papier ist flach. Die Tiefe kommt allein aus
+           der leichten Abdunklung zu den Rändern hin. */
+        --paper: #ffffff;
+        --rule-step: 34px;
+        --rule: #c3d8ea;
+        --margin: #aecbe5;
+        --room-edge: transparent;
+        /* Bleistiftgrau für die Kritzeleien am Rand. Bewusst schwach: Sie
+           sind Papierspur, kein Inhalt. Wer sie liest, statt sie zu
+           bemerken, hat zu viel Aufmerksamkeit daran verloren. */
+        --doodle: rgb(23 27 60 / 0.18);
+        /* Der weiche Schatten unter der harten Kante. Er trägt die
+           Ablösung, die der Helligkeitsunterschied allein nicht schafft. */
+        --card-shadow: 0 16px 30px rgb(13 27 75 / 0.13);
+        --btn-shadow: 0 10px 18px rgb(13 27 75 / 0.14);
+
+        /* Die eine Kontur und die eine harte Kante. */
+        --line: #0d1b4b;
+        --line-soft: #3a4680;
+        --pop: #0d1b4b;
+
+        /* Die Karte ist beige, nicht weiß. Das Blatt darunter ist das
+           Papier und bleibt hell; abheben soll sich das, was daraufliegt.
+           1,08:1 gegen den Grund. Bei diesem Wert trägt nicht mehr die
+           Helligkeit, sondern der Farbton: warm gegen neutralweiß. Die
+           Ablösung machen die Tintenkontur, die harte Kante und der
+           Schatten darunter. */
+        --card: #fbf6ec;
+        --ink: #16205c;
+        --ink-strong: #0d1b4b;
+        --muted: #4e5885;
+
+        --field: #ffffff;
+
+        --accent: #ff7a45;
+        --accent-line: #c9531f;
+        --accent-deep: #b8461a;
+        --accent-ink: #2b1004;
+        --accent-text: #c9531f;
+        --accent-wash: #fff0e8;
+
+        --done: #22c98f;
+        --done-line: #0f8f64;
+        --done-deep: #0f8f64;
+        --done-ink: #06301f;
+        --done-text: #0b7050;
+        --done-wash: #ddf7ec;
+
+        --error: #d6293e;
+
+
+        --focus: var(--accent-deep);
+
+        --r-card: 34px;
+        --r-tile: 24px;
+        --r-control: 16px;
+        --pop-height: 6px;
+
+        --bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+        --font-display: 'Fredoka', system-ui, sans-serif;
+        --font-body: 'Inter Variable', system-ui, sans-serif;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme='light']) {
+          color-scheme: dark;
+
+          --paper: #04061f;
+          --rule: rgb(255 255 255 / 0.075);
+          --margin: rgb(255 255 255 / 0.14);
+          --card-shadow: 0 16px 34px rgb(0 0 0 / 0.5);
+          --btn-shadow: 0 10px 20px rgb(0 0 0 / 0.45);
+          --room-edge: rgb(0 0 0 / 0.45);
+          --doodle: rgb(255 255 255 / 0.085);
+
+          --line: #3b4794;
+          --line-soft: #5d66bd;
+          --pop: #2a3382;
+
+          --card: #1a2158;
+          --ink: #e7e9ff;
+          --ink-strong: #ffffff;
+          --muted: #9aa1d4;
+
+          --field: #0d1238;
+
+          --accent: #ff8f5e;
+          --accent-line: #ff8f5e;
+          --accent-deep: #b8461a;
+          --accent-ink: #2a0f05;
+          --accent-text: #ffa87e;
+          --accent-wash: #3a1f28;
+
+          --done: #2fd9a0;
+          --done-line: #2fd9a0;
+          --done-deep: #12996b;
+          --done-ink: #04281a;
+          --done-text: #46e0ae;
+          --done-wash: #0e3140;
+
+          --error: #ff8a7a;
+
+
+          --focus: var(--accent-text);
+        }
+      }
+
+      :root[data-theme='dark'] {
+        color-scheme: dark;
+
+        --paper: #04061f;
+        --rule: rgb(255 255 255 / 0.075);
+        --margin: rgb(255 255 255 / 0.14);
+        --card-shadow: 0 16px 34px rgb(0 0 0 / 0.5);
+        --btn-shadow: 0 10px 20px rgb(0 0 0 / 0.45);
+        --room-edge: rgb(0 0 0 / 0.45);
+        --doodle: rgb(255 255 255 / 0.085);
+
+        --line: #3b4794;
+        --line-soft: #5d66bd;
+        --pop: #2a3382;
+
+        --card: #1a2158;
+        --ink: #e7e9ff;
+        --ink-strong: #ffffff;
+        --muted: #9aa1d4;
+
+        --field: #0d1238;
+
+        --accent: #ff8f5e;
+        --accent-line: #ff8f5e;
+        --accent-deep: #b8461a;
+        --accent-ink: #2a0f05;
+        --accent-text: #ffa87e;
+        --accent-wash: #3a1f28;
+
+        --done: #2fd9a0;
+        --done-line: #2fd9a0;
+        --done-deep: #12996b;
+        --done-ink: #04281a;
+        --done-text: #46e0ae;
+        --done-wash: #0e3140;
+
+        --error: #ff8a7a;
+
+
+        --focus: var(--accent-text);
+      }
+
+      /* --- Grundlage ----------------------------------------------------- */
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        min-height: 100dvh;
+        background-color: var(--paper);
+        color: var(--ink);
+        font-family: var(--font-body);
+        font-size: 1rem;
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      button,
+      input,
+      textarea {
+        font: inherit;
+        color: inherit;
+      }
+
+      :focus-visible {
+        outline: 3px solid var(--focus);
+        outline-offset: 3px;
+      }
+
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+        border: 0;
+      }
+
+      /* --- Der Raum ------------------------------------------------------
+         Zwei Lagen: ein feines Punktraster über die ganze Fläche und eine
+         Handvoll Kritzeleien an den Rändern, wie sie beim Warten am Rand
+         eines Blattes entstehen: Spirale, Gesicht, Schlaufe, Stern, Wolke,
+         Pfeil, Bleistift.
+
+         **Sie bewegen sich nicht.** Das Konfetti vorher schwebte, weil es
+         über dem Blatt lag. Diese hier sind auf das Blatt gezeichnet, und
+         Bleistift wandert nicht.
+
+         Sie sind Zier, tragen deshalb aria-hidden und nehmen keine
+         Zeigerereignisse an. Unter 1024px fallen sie weg: Dort steht die
+         Karte über die ganze Breite und hätte sie ohnehin verdeckt. */
+      .room {
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        overflow: hidden;
+        pointer-events: none;
+        background-image:
+          radial-gradient(circle at center, transparent 58%, var(--room-edge) 100%),
+          linear-gradient(
+            90deg,
+            transparent 0 14%,
+            var(--margin) 14% calc(14% + 2px),
+            transparent calc(14% + 2px)
+          ),
+          linear-gradient(var(--rule) 1.5px, transparent 1.5px);
+        background-size:
+          100% 100%,
+          100% 100%,
+          100% var(--rule-step);
+      }
+
+      .doodle {
+        position: absolute;
+        display: none;
+        fill: none;
+        stroke: var(--doodle);
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      @media (min-width: 1024px) {
+        .doodle {
+          display: block;
+        }
+      }
+
+      /* Von Hand gesetzt, nicht gewürfelt: Der Rand eines Blattes ist nicht
+         gleichmäßig bekritzelt, aber er sieht in jeder Sitzung gleich aus.
+         Die leichten Drehungen nehmen den Formen die Werkzeugsauberkeit.
+
+         Verteilt wird über die ganze Fläche, nicht nur an den Seitenrändern:
+         Über und unter der Karte liegt genauso viel freies Blatt, und ein
+         Blatt, das nur links und rechts bekritzelt ist, sieht gerahmt aus
+         statt benutzt. Was hinter der Karte landet, verdeckt sie einfach. */
+      .doodle:nth-of-type(1) {
+        top: 6%;
+        left: 13%;
+        width: 74px;
+        rotate: -6deg;
+      }
+      .doodle:nth-of-type(2) {
+        top: 61%;
+        left: 11%;
+        width: 82px;
+        rotate: -3deg;
+      }
+      .doodle:nth-of-type(3) {
+        bottom: 9%;
+        left: 27%;
+        width: 64px;
+        rotate: 8deg;
+      }
+      .doodle:nth-of-type(4) {
+        top: 5%;
+        right: 29%;
+        width: 56px;
+        rotate: 11deg;
+      }
+      .doodle:nth-of-type(5) {
+        top: 40%;
+        right: 4%;
+        width: 84px;
+        rotate: -5deg;
+      }
+      .doodle:nth-of-type(6) {
+        bottom: 14%;
+        right: 13%;
+        width: 72px;
+        rotate: 6deg;
+      }
+
+      /* Der Krakelkopf sitzt in der Ecke und läuft über den Blattrand
+         hinaus, wie in der Vorlage. Angeschnitten sieht eine Kritzelei
+         gezeichnet aus; mittig und vollständig sieht sie platziert aus. */
+      .doodle:nth-of-type(7) {
+        bottom: 3%;
+        left: -26px;
+        width: 116px;
+        rotate: -4deg;
+      }
+
+
+      /* Die harte Kante unter dem Löschknopf. Rot gibt es im gemeinsamen
+         Tokensatz nur einfarbig, weil es dort nie als Fläche vorkommt. */
+      :root {
+        --error-deep: #a01d2e;
+        --error-ink: #ffffff;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme='light']) {
+          --error-deep: #b8503f;
+          --error-ink: #2a0a06;
+        }
+      }
+
+      :root[data-theme='dark'] {
+        --error-deep: #b8503f;
+        --error-ink: #2a0a06;
+      }
+
+      /* --- Aufbau ---------------------------------------------------------- */
+      .shell {
+        position: relative;
+        z-index: 1;
+        min-height: 100dvh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 22px;
+        padding: 22px 16px 64px;
+      }
+
+      .topbar {
+        width: 100%;
+        max-width: 940px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+      }
+
+      .wordmark {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-family: var(--font-display);
+        font-size: 1.5rem;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        color: var(--ink-strong);
+      }
+
+      .wordmark b {
+        font-weight: 600;
+        color: var(--accent);
+      }
+
+      .wordmark img {
+        flex: none;
+        height: 38px;
+        width: auto;
+      }
+
+      .stage {
+        width: 100%;
+        max-width: 940px;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+
+      .title {
+        margin: 0;
+        padding: 0 6px;
+        font-family: var(--font-display);
+        font-size: clamp(1.75rem, 2.4vw + 1rem, 2.25rem);
+        font-weight: 600;
+        letter-spacing: -0.02em;
+        color: var(--ink-strong);
+      }
+
+      /* --- Karten ------------------------------------------------------------
+         Zwei je Zeile, gleich hoch. Die Löschkarte steht allein und ganz
+         unten, mit Abstand davor: Sie gehört zur Seite, aber nicht in die
+         Reihe der übrigen. */
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 20px;
+      }
+
+      @media (min-width: 860px) {
+        .grid {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+
+      .card {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        padding: 20px 22px 22px;
+        background: var(--card);
+        border: 3px solid var(--line);
+        border-radius: var(--r-card);
+        box-shadow: 0 10px 0 var(--pop), var(--card-shadow);
+      }
+
+      .card__head {
+        margin: 0 0 8px;
+        font-family: var(--font-display);
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: var(--ink-strong);
+      }
+
+      .card--center > .row:first-of-type {
+        margin-top: auto;
+      }
+
+      .card--center > .row:last-of-type {
+        margin-bottom: auto;
+      }
+
+      .card--danger {
+        border-color: var(--error);
+      }
+
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px 16px;
+        padding: 13px 0;
+        border-top: 2px solid var(--line-soft);
+      }
+
+      .row:first-of-type {
+        border-top: 0;
+      }
+
+      .row--stack {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .label {
+        font-family: var(--font-display);
+        font-size: 0.9375rem;
+        font-weight: 600;
+        color: var(--ink-strong);
+      }
+
+      .note {
+        margin: 0;
+        font-size: 0.8125rem;
+        line-height: 1.5;
+        color: var(--muted);
+      }
+
+      .warn {
+        margin: 0;
+        font-size: 0.8125rem;
+        line-height: 1.5;
+        font-weight: 500;
+        color: var(--error);
+      }
+
+      /* --- Reihenauswahl -----------------------------------------------------
+         Eine Pille mit Abschnitten. Die getroffene Wahl ist gefüllt und trägt
+         eine eigene Kontur, damit sie nicht nur über die Farbe erkennbar ist. */
+      .seg {
+        display: inline-flex;
+        padding: 3px;
+        gap: 3px;
+        background: var(--field);
+        border: 3px solid var(--line-soft);
+        border-radius: 999px;
+      }
+
+      .seg--block {
+        display: flex;
+      }
+
+      .seg button {
+        flex: 1;
+        padding: 7px 15px 8px;
+        border: 3px solid transparent;
+        border-radius: 999px;
+        background: none;
+        font-family: var(--font-display);
+        font-size: 0.875rem;
+        font-weight: 600;
+        white-space: nowrap;
+        color: var(--muted);
+        cursor: pointer;
+        transition:
+          background-color 140ms ease-out,
+          color 140ms ease-out;
+      }
+
+      .seg button:hover {
+        color: var(--ink-strong);
+      }
+
+      .seg button[aria-checked='true'] {
+        background: var(--accent);
+        border-color: var(--line);
+        color: var(--accent-ink);
+      }
+
+      /* --- Schalter ----------------------------------------------------------
+         Dieselbe Mechanik wie die Knöpfe: dicke Kontur, harte Kante, der
+         Griff rastet hörbar sichtbar ein. Minze heißt an. */
+      .switch {
+        flex: none;
+        width: 62px;
+        height: 34px;
+        padding: 0;
+        position: relative;
+        border: 3px solid var(--line);
+        border-radius: 999px;
+        background: var(--field);
+        cursor: pointer;
+        transition: background-color 180ms ease-out;
+      }
+
+      .switch::after {
+        content: '';
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 24px;
+        height: 24px;
+        border-radius: 999px;
+        border: 3px solid var(--line);
+        background: var(--card);
+        transition: translate 220ms var(--bounce);
+      }
+
+      .switch[aria-checked='true'] {
+        background: var(--done);
+      }
+
+      .switch[aria-checked='true']::after {
+        translate: 28px 0;
+      }
+
+      /* --- Modellkette -------------------------------------------------------
+         Eine nummerierte Reihe. Was die Reihenfolge bedeutet, sagt eine Zeile
+         darunter und nicht ein Absatz darüber. */
+      .chain {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        list-style: none;
+        margin: 0 0 4px;
+        padding: 0;
+      }
+
+      .chain li {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 7px 10px 7px 12px;
+        background: var(--field);
+        border: 3px solid var(--line-soft);
+        border-radius: var(--r-control);
+        font-size: 0.875rem;
+      }
+
+      .chain__pos {
+        flex: none;
+        display: grid;
+        place-items: center;
+        width: 22px;
+        height: 22px;
+        border-radius: 999px;
+        background: var(--accent);
+        border: 2px solid var(--line);
+        font-family: var(--font-display);
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--accent-ink);
+      }
+
+      .chain__name {
+        flex: 1;
+        min-width: 0;
+        overflow-wrap: anywhere;
+      }
+
+      .icon-button {
+        flex: none;
+        display: grid;
+        place-items: center;
+        width: 28px;
+        height: 28px;
+        padding: 0;
+        border-radius: 999px;
+        border: 2px solid var(--line-soft);
+        background: var(--card);
+        color: var(--ink);
+        cursor: pointer;
+      }
+
+      .icon-button:hover {
+        border-color: var(--accent-line);
+        background: var(--accent-wash);
+      }
+
+      .icon-button svg {
+        width: 14px;
+        height: 14px;
+        fill: currentColor;
+      }
+
+      /* --- Marken und Knöpfe -------------------------------------------------- */
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 4px 12px 5px;
+        border-radius: 999px;
+        background: var(--done-wash);
+        border: 2px solid var(--done-line);
+        font-size: 0.8125rem;
+        font-weight: 600;
+        color: var(--done-text);
+      }
+
+      .chip svg {
+        width: 13px;
+        height: 13px;
+        fill: currentColor;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        padding-top: 4px;
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 9px;
+        padding: 9px 18px 10px;
+        background: var(--field);
+        border: 3px solid var(--line);
+        border-radius: 999px;
+        box-shadow: 0 4px 0 var(--pop);
+        font-family: var(--font-display);
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--ink-strong);
+        cursor: pointer;
+        transition:
+          transform 180ms var(--bounce),
+          box-shadow 140ms ease-out,
+          background-color 140ms ease-out;
+      }
+
+      .btn:hover {
+        background: var(--accent-wash);
+        border-color: var(--accent-line);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 0 var(--pop);
+      }
+
+      .btn:active {
+        transform: translateY(4px);
+        box-shadow: 0 0 0 var(--pop);
+      }
+
+      .btn svg {
+        width: 15px;
+        height: 15px;
+        fill: currentColor;
+      }
+
+      .btn--danger {
+        background: var(--error);
+        border-color: var(--line);
+        color: var(--error-ink);
+        box-shadow: 0 4px 0 var(--error-deep);
+      }
+
+      .btn--danger:hover {
+        background: var(--error-deep);
+        border-color: var(--line);
+        box-shadow: 0 6px 0 var(--error-deep);
+      }
+
+      .btn--danger:active {
+        box-shadow: 0 0 0 var(--error-deep);
+      }
+
+      /* --- Rückfrage vor dem Löschen ----------------------------------------- */
+      dialog {
+        max-width: 460px;
+        width: calc(100vw - 32px);
+        padding: 24px;
+        background: var(--card);
+        border: 3px solid var(--line);
+        border-radius: var(--r-card);
+        box-shadow: 0 10px 0 var(--pop), var(--card-shadow);
+        color: var(--ink);
+      }
+
+      dialog::backdrop {
+        background: rgb(10 14 45 / 0.5);
+      }
+
+      dialog h2 {
+        margin: 0 0 10px;
+        font-family: var(--font-display);
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: var(--ink-strong);
+      }
+
+      dialog p {
+        margin: 0 0 18px;
+        font-size: 0.9375rem;
+        line-height: 1.6;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="room" aria-hidden="true">
+      <!-- 1 · Spirale -->
+      <svg class="doodle" viewBox="0 0 60 60" stroke-width="2.1">
+        <path d="M31 30c0-4-5-5-7-1s3 10 10 9 12-10 8-19S24 8 15 15" />
+      </svg>
+
+      <!-- 2 · Schlaufe -->
+      <svg class="doodle" viewBox="0 0 60 60" stroke-width="2">
+        <path d="M4 34c6-14 15-15 17-4 1 7-7 9-8 2s8-12 17-6c6 4 8 12 16 7" />
+      </svg>
+
+      <!-- 3 · Bleistift -->
+      <svg class="doodle" viewBox="0 0 60 60" stroke-width="2.1">
+        <path d="M43 10l8 8-27 29-12 4 4-12z" />
+        <path d="M36 17l8 8" />
+        <path d="M16 39l8 8" />
+      </svg>
+
+      <!-- 4 · Stern -->
+      <svg class="doodle" viewBox="0 0 60 60" stroke-width="2.3">
+        <path d="M30 8c0 12 1 30 0 43" />
+        <path d="M13 18c10 6 25 15 34 21" />
+        <path d="M47 18c-9 6-24 15-34 21" />
+      </svg>
+
+      <!-- 5 · Wolke -->
+      <svg class="doodle" viewBox="0 0 60 60" stroke-width="2">
+        <path d="M14 40c-7 0-8-10-1-11-1-10 13-13 17-5 5-7 17-2 15 7 7 1 6 9-1 9z" />
+      </svg>
+
+      <!-- 6 · Pfeil -->
+      <svg class="doodle" viewBox="0 0 60 60" stroke-width="2.2">
+        <path d="M8 20c11 24 33 24 44 6" />
+        <path d="M52 26l-9 3" />
+        <path d="M52 26l-3 9" />
+      </svg>
+
+      <!-- 7 · Krakelkopf. Das Motiv aus der Vorlage: ein Gesicht in einer
+           krakeligen Umrandung, angeschnitten von der Blattkante. -->
+      <svg class="doodle" viewBox="0 0 64 64" stroke-width="2.1">
+        <path
+          d="M52 32a7.5 7.5 0 0 1-5 13.4 6.8 6.8 0 0 1-11.5 6.3 7.2 7.2 0 0 1-14.1-2.7 7 7 0 0 1-8.2-10.2 6.6 6.6 0 0 1 .6-13.8 7.4 7.4 0 0 1 8.2-10.3 7 7 0 0 1 14-2.7 7.2 7.2 0 0 1 11.3 7.1A6.9 6.9 0 0 1 52 32z"
+        />
+        <path d="M25 28v4.5" />
+        <path d="M39 28v4.5" />
+        <path d="M24 38c4 6 12 6 16 0" />
+      </svg>
+    </div>
+
+    <div class="shell">
+      <header class="topbar">
+        <div class="wordmark">
+          <img src="../../public/logo.webp" alt="" width="114" height="104" />
+          <span>appl<b>ai</b></span>
+        </div>
+        <button type="button" class="btn">
+          <svg viewBox="0 0 256 256" aria-hidden="true" focusable="false" style="rotate:-90deg"><path d="M205.66,117.66a8,8,0,0,1-11.32,0L136,59.31V216a8,8,0,0,1-16,0V59.31L61.66,117.66a8,8,0,0,1-11.32-11.32l72-72a8,8,0,0,1,11.32,0l72,72A8,8,0,0,1,205.66,117.66Z" /></svg>
+          Zurück
+        </button>
+      </header>
+
+      <main class="stage">
+        <h1 class="title">Einstellungen</h1>
+
+        <div class="grid">
+          <!-- Oberfläche. Die Darstellung schaltet die Seite wirklich um. -->
+          <section class="card card--center" aria-labelledby="h-ui">
+            <h2 class="card__head" id="h-ui">Oberfläche</h2>
+
+            <div class="row">
+              <span class="label" id="l-theme">Darstellung</span>
+              <div class="seg" role="radiogroup" aria-labelledby="l-theme" data-group="theme">
+                <button type="button" role="radio" aria-checked="false" data-value="light">Hell</button>
+                <button type="button" role="radio" aria-checked="false" data-value="dark">Dunkel</button>
+                <button type="button" role="radio" aria-checked="true" data-value="system">System</button>
+              </div>
+            </div>
+
+            <div class="row">
+              <span class="label" id="l-lang">Sprache</span>
+              <div class="seg" role="radiogroup" aria-labelledby="l-lang" data-group="lang">
+                <button type="button" role="radio" aria-checked="true" data-value="de">Deutsch</button>
+                <button type="button" role="radio" aria-checked="false" data-value="en">English</button>
+              </div>
+            </div>
+          </section>
+
+          <!-- Privatsphäre. Die Warnung steht nur da, wenn der Schalter aus
+               ist; die Erklärung nur zur gewählten Wahrheitsgrenze. -->
+          <section class="card" aria-labelledby="h-privacy">
+            <h2 class="card__head" id="h-privacy">Privatsphäre</h2>
+
+            <div class="row">
+              <div>
+                <span class="label" id="l-anon">Persönliche Daten ersetzen</span>
+                <p class="note" id="d-anon">Name, Anschrift, Geburtsdatum, Telefon und E-Mail gehen als Platzhalter.</p>
+              </div>
+              <button
+                type="button"
+                class="switch"
+                id="anon"
+                role="switch"
+                aria-checked="true"
+                aria-labelledby="l-anon"
+                aria-describedby="d-anon"
+              ></button>
+            </div>
+
+            <p class="warn" id="anonOff" hidden>
+              Ihre persönlichen Daten gehen im Klartext an den Anbieter.
+            </p>
+
+            <div class="row row--stack">
+              <span class="label" id="l-truth">Wahrheitsgrenze</span>
+              <div class="seg seg--block" role="radiogroup" aria-labelledby="l-truth" data-group="truth">
+                <button type="button" role="radio" aria-checked="true" data-value="strict">Streng</button>
+                <button type="button" role="radio" aria-checked="false" data-value="bridge">Brücken</button>
+                <button type="button" role="radio" aria-checked="false" data-value="free">Frei</button>
+              </div>
+              <p class="note" id="truthNote">Nur umformulieren, was in Ihren Unterlagen steht.</p>
+            </div>
+          </section>
+
+          <!-- Anbieter. Der Schlüssel selbst steht nie da. -->
+          <section class="card" aria-labelledby="h-key">
+            <h2 class="card__head" id="h-key">Anbieter</h2>
+
+            <div class="row">
+              <span class="label">Google Gemini</span>
+              <span class="chip"><svg viewBox="0 0 256 256" aria-hidden="true" focusable="false"><path d="M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z" /></svg> Schlüssel hinterlegt</span>
+            </div>
+
+            <div class="row row--stack">
+              <span class="label">Modelle</span>
+              <ol class="chain">
+                <li>
+                  <span class="chain__pos">1</span>
+                  <span class="chain__name">gemini-2.5-flash</span>
+                  <button type="button" class="icon-button" aria-label="Nach oben"><svg viewBox="0 0 256 256" aria-hidden="true" focusable="false"><path d="M205.66,117.66a8,8,0,0,1-11.32,0L136,59.31V216a8,8,0,0,1-16,0V59.31L61.66,117.66a8,8,0,0,1-11.32-11.32l72-72a8,8,0,0,1,11.32,0l72,72A8,8,0,0,1,205.66,117.66Z" /></svg></button>
+                  <button type="button" class="icon-button" aria-label="Aus der Kette nehmen"><svg viewBox="0 0 256 256" aria-hidden="true" focusable="false"><path d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z" /></svg></button>
+                </li>
+                <li>
+                  <span class="chain__pos">2</span>
+                  <span class="chain__name">gemini-2.5-pro</span>
+                  <button type="button" class="icon-button" aria-label="Nach oben"><svg viewBox="0 0 256 256" aria-hidden="true" focusable="false"><path d="M205.66,117.66a8,8,0,0,1-11.32,0L136,59.31V216a8,8,0,0,1-16,0V59.31L61.66,117.66a8,8,0,0,1-11.32-11.32l72-72a8,8,0,0,1,11.32,0l72,72A8,8,0,0,1,205.66,117.66Z" /></svg></button>
+                  <button type="button" class="icon-button" aria-label="Aus der Kette nehmen"><svg viewBox="0 0 256 256" aria-hidden="true" focusable="false"><path d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z" /></svg></button>
+                </li>
+              </ol>
+              <p class="note">Ist eines erschöpft, übernimmt das nächste.</p>
+            </div>
+
+            <div class="actions">
+              <button type="button" class="btn">Modelle laden</button>
+              <button type="button" class="btn">Schlüssel ersetzen</button>
+            </div>
+          </section>
+
+          <!-- Sicherung. -->
+          <section class="card" aria-labelledby="h-backup">
+            <h2 class="card__head" id="h-backup">Sicherung</h2>
+            <p class="note">Bewerbungen, Zwischenstände und Einstellungen als Datei. Ohne Schlüssel.</p>
+            <div class="actions">
+              <button type="button" class="btn"><svg viewBox="0 0 256 256" aria-hidden="true" focusable="false"><path d="M224,144v64a8,8,0,0,1-8,8H40a8,8,0,0,1-8-8V144a8,8,0,0,1,16,0v56H208V144a8,8,0,0,1,16,0Zm-101.66,5.66a8,8,0,0,0,11.32,0l40-40a8,8,0,0,0-11.32-11.32L136,124.69V32a8,8,0,0,0-16,0v92.69L93.66,98.34a8,8,0,0,0-11.32,11.32Z" /></svg> Herunterladen</button>
+              <button type="button" class="btn">Einspielen</button>
+            </div>
+            <p class="note" style="margin-top: 10px">Einspielen ersetzt den Bestand vollständig.</p>
+          </section>
+        </div>
+
+        <!-- Löschen. Steht allein, mit rotem Rand und Abstand zur Reihe. -->
+        <section class="card card--danger" aria-labelledby="h-delete">
+          <h2 class="card__head" id="h-delete">Löschen</h2>
+          <p class="note">Entfernt alles von diesem Gerät, auch den hinterlegten Schlüssel.</p>
+          <div class="actions">
+            <button type="button" class="btn btn--danger" id="askDelete">Alle Daten löschen</button>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <dialog id="confirm" aria-labelledby="confirmTitle">
+      <h2 id="confirmTitle">Wirklich alles löschen?</h2>
+      <p>
+        Bewerbungsliste, Zwischenstände, Einstellungen und der Schlüssel werden entfernt.
+        Das lässt sich nicht rückgängig machen.
+      </p>
+      <div class="actions">
+        <button type="button" class="btn btn--danger">Ja, alles löschen</button>
+        <button type="button" class="btn" id="cancelDelete">Abbrechen</button>
+      </div>
+    </dialog>
+
+    <script>
+      /* Reihenauswahl: eine Wahl je Gruppe. Die Darstellung schaltet die
+         Seite wirklich um, damit sich die Auswahl an sich selbst prüfen
+         lässt und nicht nur behauptet wird. */
+      const TRUTH_NOTES = {
+        strict: 'Nur umformulieren, was in Ihren Unterlagen steht.',
+        bridge: 'Verallgemeinerungen erlaubt, solange Ihre Angaben sie decken.',
+        free: 'Nicht Belegtes wird markiert, einzeln bestätigt, und sperrt bis dahin den Export.',
+      }
+
+      document.querySelectorAll('.seg').forEach((group) => {
+        group.addEventListener('click', (event) => {
+          const button = event.target.closest('button')
+          if (button === null) return
+          group
+            .querySelectorAll('button')
+            .forEach((other) => other.setAttribute('aria-checked', String(other === button)))
+
+          if (group.dataset.group === 'theme') {
+            const value = button.dataset.value
+            if (value === 'system') document.documentElement.removeAttribute('data-theme')
+            else document.documentElement.setAttribute('data-theme', value)
+          }
+
+          if (group.dataset.group === 'truth') {
+            document.getElementById('truthNote').textContent = TRUTH_NOTES[button.dataset.value]
+          }
+        })
+      })
+
+      /* Der Schalter. Die Warnung erscheint nur im abgeschalteten Zustand:
+         Ein dauerhafter Hinweis neben einem eingeschalteten Schutz erklärt
+         etwas, das gerade nicht passiert. */
+      const anon = document.getElementById('anon')
+      const anonOff = document.getElementById('anonOff')
+      anon.addEventListener('click', () => {
+        const on = anon.getAttribute('aria-checked') === 'true'
+        anon.setAttribute('aria-checked', String(!on))
+        anonOff.hidden = !on ? true : false
+      })
+
+      const confirm = document.getElementById('confirm')
+      document.getElementById('askDelete').addEventListener('click', () => confirm.showModal())
+      document.getElementById('cancelDelete').addEventListener('click', () => confirm.close())
+    </script>
+  </body>
+</html>
