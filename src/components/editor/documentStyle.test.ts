@@ -53,9 +53,16 @@ describe('characterStyle — Zeichenformatierung', () => {
     expect(characterStyle(character()).textDecorationLine).toBeUndefined()
   })
 
-  it('setzt eine Farbe als Doppelkreuz-Wert, Schwarz gar nicht', () => {
+  /**
+   * Ohne Farbe heißt in Word `auto`, und `auto` ist auf Papier schwarz — so
+   * steht es am Modell (`CharacterFormat.color`) und so setzt es die Ausfuhr
+   * (`color ?? '000000'` in `write.ts`). Bliebe die Farbe hier offen, erbte
+   * der Text die Tinte der Oberfläche: Der Brief stünde auf dem Schirm in
+   * Marineblau und in der Datei in Schwarz.
+   */
+  it('setzt eine Farbe als Doppelkreuz-Wert, ohne Farbe Schwarz', () => {
     expect(characterStyle(character({ color: '1F4E79' })).color).toBe('#1F4E79')
-    expect(characterStyle(character()).color).toBeUndefined()
+    expect(characterStyle(character()).color).toBe('#000000')
   })
 
   /**

@@ -36,6 +36,20 @@ function renderFloats(format: DocumentFormat, pageCount = 1) {
 
 describe('DocumentFloats', () => {
   /**
+   * Die Ebene hängt **neben** der Schreibfläche, nicht darin — und `--pt`,
+   * der Maßstab des Blattes, steht auf der Schreibfläche. Ohne eigenen
+   * Maßstab liefe hier jedes `calc(var(--pt) * n)` ins Leere: Der Browser
+   * verwirft die ungültige Rechnung stillschweigend, und das Anschriftenfeld
+   * stünde in der Schriftgröße der Oberfläche statt in der des Dokuments.
+   */
+  it('bringt den Maßstab des Blattes selbst mit', () => {
+    const { container } = renderFloats(withFloats([]))
+
+    const layer = container.querySelector<HTMLElement>('[data-document-floats]')
+    expect(layer?.style.getPropertyValue('--pt')).toBe('2px')
+  })
+
+  /**
    * Die Empfängeranschrift steht in einem Anschreiben nach DIN 5008 in einem
    * Textfeld — außerhalb des Fließtexts und damit außerhalb des
    * Offset-Modells. Ohne diese Ebene fehlte sie auf dem Schirm ganz.

@@ -104,7 +104,11 @@ export function characterStyle(format: CharacterFormat): CSSProperties {
     fontWeight: format.bold ? 700 : 400,
     fontStyle: format.italic ? 'italic' : 'normal',
     ...(decorations.length > 0 ? { textDecorationLine: decorations.join(' ') } : {}),
-    ...(format.color === null ? {} : { color: `#${format.color}` }),
+    // Keine Farbe heißt in Word `auto`, und `auto` ist auf Papier schwarz
+    // (siehe `CharacterFormat.color`) — dieselbe Wahl trifft die Ausfuhr mit
+    // `color ?? '000000'`. Offen gelassen erbte der Text stattdessen die
+    // Tinte der Oberfläche.
+    color: format.color === null ? '#000000' : `#${format.color}`,
     // Über CSS, nicht über den Text — siehe die Kopfnotiz.
     ...(format.caps ? { textTransform: 'uppercase' as const } : {}),
     ...(format.smallCaps ? { fontVariantCaps: 'small-caps' as const } : {}),

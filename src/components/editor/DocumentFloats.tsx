@@ -57,7 +57,15 @@ export function DocumentFloats({
   const topOfPage = (index: number): number => index * (pageHeight + pageGap)
 
   return (
-    <div className="pointer-events-none absolute inset-0" data-document-floats>
+    <div
+      className="pointer-events-none absolute inset-0"
+      data-document-floats
+      // Der Maßstab des Blattes, noch einmal: Diese Ebene ist ein Geschwister
+      // der Schreibfläche, auf der `--pt` steht, und erbt ihn deshalb nicht.
+      // Ohne ihn verwirft der Browser jedes `calc(var(--pt) * n)` stumm — das
+      // Anschriftenfeld stünde in der Schriftgröße der Oberfläche.
+      style={{ '--pt': `${pxPerPt}px` } as CSSProperties}
+    >
       {format.floats.map((float, index) => {
         const anchor =
           float.anchor.paragraphIndex === null
