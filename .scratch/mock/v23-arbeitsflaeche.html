@@ -485,6 +485,22 @@
         gap: 18px;
       }
 
+      /* Platz für den Kopf der Spähenden. Sie steht 134px über der
+         Blattkante (175px Breite × 538/640 × 0,9131); über dem Blatt waren
+         aber nur 105px frei, also fehlten 27px und die Mütze war ab.
+
+         Die Bühne rückt darum nach unten, mitsamt den Karten links und
+         rechts — nicht die Kopfzeile: Die Figur schaut über das Blatt, nicht
+         über die Marke.
+
+         Erst ab 560px nötig. Darunter bricht die Kopfzeile auf zwei Zeilen
+         um und schafft den Platz von allein. */
+      @media (min-width: 560px) {
+        .stage {
+          margin-top: 44px;
+        }
+      }
+
       @media (min-width: 1180px) {
         .stage {
           grid-template-columns: 16rem minmax(0, 1fr) 16rem;
