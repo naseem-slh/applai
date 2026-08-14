@@ -364,6 +364,31 @@
 
 
       /* --- Aufbau ---------------------------------------------------------- */
+      /* Die Seite trägt keine Tintenkontur mehr. Die harte Kante gehört zu
+         dem, was man drückt; ein Blatt Papier liegt nur da. Statt Linie und
+         Kante also eine graue Haarlinie und ein weicher Schatten, wie ihn
+         ein Blatt auf einer Unterlage wirft. Das Vorschlagsfenster darüber
+         behält die volle Behandlung, die verspielte Sprache bleibt also da,
+         wo bedient wird. */
+      :root {
+        --page-line: #d5d9e8;
+        --page-shadow:
+          0 1px 2px rgb(13 27 75 / 0.07), 0 12px 28px rgb(13 27 75 / 0.13),
+          0 34px 68px rgb(13 27 75 / 0.1);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme='light']) {
+          --page-line: #b9bfd4;
+          --page-shadow: 0 12px 32px rgb(0 0 0 / 0.55), 0 34px 76px rgb(0 0 0 / 0.45);
+        }
+      }
+
+      :root[data-theme='dark'] {
+        --page-line: #b9bfd4;
+        --page-shadow: 0 12px 32px rgb(0 0 0 / 0.55), 0 34px 76px rgb(0 0 0 / 0.45);
+      }
+
       .shell {
         position: relative;
         z-index: 1;
@@ -375,13 +400,43 @@
         padding: 18px 16px 56px;
       }
 
+      /* Die Marke steht in der Mitte, der Umschalter links, Ablauf und
+         Einstellungen rechts. Dafür ein Raster mit drei Spalten statt einer
+         Flexzeile: Nur so sitzt die Marke wirklich mittig und nicht dort, wo
+         die beiden Nachbarn sie gerade hinlassen. Unter 720px fällt das
+         Raster weg, dort stehen die drei Teile untereinander und zentriert. */
       .topbar {
         width: 100%;
-        max-width: 1320px;
+        max-width: 1680px;
         display: flex;
+        flex-wrap: wrap;
         align-items: center;
-        justify-content: space-between;
-        gap: 16px;
+        justify-content: center;
+        gap: 12px 18px;
+      }
+
+      @media (min-width: 720px) {
+        .topbar {
+          display: grid;
+          grid-template-columns: 1fr auto 1fr;
+        }
+
+        .topbar > .seg {
+          grid-column: 1;
+          grid-row: 1;
+          justify-self: start;
+        }
+
+        .topbar .wordmark {
+          grid-column: 2;
+          grid-row: 1;
+        }
+
+        .topbar__right {
+          grid-column: 3;
+          grid-row: 1;
+          justify-self: end;
+        }
       }
 
       .wordmark {
@@ -436,7 +491,7 @@
 
       .stage {
         width: 100%;
-        max-width: 1320px;
+        max-width: 1680px;
         display: grid;
         grid-template-columns: 1fr;
         gap: 18px;
@@ -444,7 +499,7 @@
 
       @media (min-width: 1180px) {
         .stage {
-          grid-template-columns: 19rem minmax(0, 1fr) 20rem;
+          grid-template-columns: 16rem minmax(0, 1fr) 16rem;
           align-items: start;
         }
       }
@@ -666,6 +721,87 @@
         color: var(--accent-ink);
       }
 
+      /* --- Die Kopfzeile ------------------------------------------------------
+         Der Umschalter der Unterlage steht jetzt oben links neben der Marke.
+         Er gehört zur Anwendung, nicht zum Blatt: Er sagt, woran man
+         arbeitet, und nicht, was man damit macht. Die Mittelspalte trägt
+         dadurch nur noch die Seite, und die beginnt auf derselben Höhe wie
+         die beiden Seitenspalten.
+         --------------------------------------------------------------------- */
+      /* --- Aufklappbare Karten ------------------------------------------------
+         Stellen und Anforderungen sind Nachschlagelisten, keine Dauerauskunft.
+         Zugeklappt bleibt der Zähler stehen, und der ist das, was man im
+         Vorbeigehen wissen will. */
+      details.card > summary {
+        display: flex;
+        align-items: baseline;
+        gap: 10px;
+        cursor: pointer;
+        list-style: none;
+        margin: 0;
+        font-family: var(--font-display);
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--ink-strong);
+      }
+
+      details.card > summary::-webkit-details-marker {
+        display: none;
+      }
+
+      details.card > summary:hover {
+        color: var(--accent-text);
+      }
+
+      details.card > summary > span:first-child {
+        flex: 1;
+      }
+
+      details.card > summary svg {
+        flex: none;
+        align-self: center;
+        width: 16px;
+        height: 16px;
+        fill: var(--accent-line);
+        transition: rotate 200ms var(--bounce);
+      }
+
+      details.card[open] > summary {
+        margin-bottom: 12px;
+      }
+
+      details.card[open] > summary svg {
+        rotate: 180deg;
+      }
+
+      /* --- Die Auswahl in der linken Spalte ------------------------------------ */
+      .stack {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .btn--quiet {
+        margin-top: 6px;
+        border-color: var(--line-soft);
+        box-shadow: 0 3px 0 var(--line-soft);
+        color: var(--muted);
+      }
+
+      .btn--quiet:hover {
+        color: var(--ink-strong);
+        box-shadow: 0 5px 0 var(--line-soft);
+      }
+
+      .btn--quiet:active {
+        box-shadow: 0 0 0 var(--line-soft);
+      }
+
+      .btn--block {
+        width: 100%;
+        justify-content: center;
+      }
+
       /* --- Das Blatt ----------------------------------------------------------
          Weiß, nicht cremefarben: Es ist das Dokument, nicht die Oberfläche.
          Und als Einziges mit 8px Radius, siehe Kopf. */
@@ -681,18 +817,27 @@
         --mark-active: #ff7a45;
         --mark-active-ink: #2b1004;
         --mark-active-line: #0d1b4b;
-        /* Das Blatt ist so hoch wie eine A4-Seite bei dieser Spaltenbreite
-           (Verhältnis 1:1,414). Das ist nicht nur Zier: Ohne diese Höhe
-           ragte das Vorschlagsfenster unten aus dem Blatt heraus, und wer
-           ein Anschreiben anpasst, will sehen, wie viel Seite noch kommt. */
-        min-height: 940px;
-        padding: 34px 38px 44px;
+        /* Die Seite hat das Verhältnis von A4 (1:1,414) und wird so groß
+           gezeigt, wie die Mittelspalte es zulässt: 860px statt der 794px
+           einer A4-Seite bei 96dpi, also leicht vergrößert. Das ist dasselbe,
+           was ein Textprogramm mit seiner Zoomstufe macht, und es hilft beim
+           Markieren. Die Ränder und die Schriftgröße wachsen mit, damit der
+           Zeilenumbruch der bleibt, den die Word-Datei später hat.
+
+           1080px sind das 1,36-fache einer A4-Seite und füllen die
+           Mittelspalte (1164px) bis auf einen schmalen Rand. Weiter geht es
+           nicht, ohne die Seitenspalten zu opfern, und die tragen den Stand
+           der Arbeit. */
+        max-width: 1080px;
+        margin: 0 auto;
+        min-height: 1527px;
+        padding: 55px 65px 71px;
         background: #ffffff;
-        border: 3px solid var(--line);
+        border: 2px solid var(--page-line);
         border-radius: 8px;
-        box-shadow: 0 8px 0 var(--pop), var(--card-shadow);
+        box-shadow: var(--page-shadow);
         color: #16205c;
-        font-size: 0.9375rem;
+        font-size: 1.26rem;
         line-height: 1.75;
       }
 
@@ -702,7 +847,7 @@
       }
 
       .sheet p {
-        margin: 0 0 14px;
+        margin: 0 0 21px;
       }
 
       .sheet p:last-of-type {
@@ -710,9 +855,17 @@
       }
 
       .sheet__head {
-        margin-bottom: 22px;
-        font-size: 0.875rem;
+        margin-bottom: 37px;
+        font-size: 1.18rem;
         color: #5c6494;
+      }
+
+      .sheet__head p {
+        margin: 0 0 33px;
+      }
+
+      .sheet__date {
+        text-align: right;
       }
 
       /* Hinterlegte Stellen. Offen tangerine, erledigt minzfarben, jeweils
@@ -737,19 +890,21 @@
       }
 
       /* --- Das Vorschlagsfenster ----------------------------------------------
-         Der Moment, für den es die Anwendung gibt. Es hängt an der Stelle im
-         Brief und nicht am Rand, damit Auswahl und Vorschlag zusammen im Bild
-         stehen. */
+         Ein Vorschlag zur Zeit. Drei nebeneinander zwingen zum Vergleichen
+         von drei Sätzen, die sich in Nuancen unterscheiden; das ist mehr
+         Arbeit als das Umschreiben selbst. Die beiden anderen liegen
+         sichtbar darunter, damit klar bleibt, dass es sie gibt.
+         --------------------------------------------------------------------- */
       .popover {
         position: absolute;
-        left: 38px;
-        width: min(540px, calc(100% - 76px));
-        top: 366px;
+        left: 65px;
+        width: min(540px, calc(100% - 130px));
+        top: 0;
         z-index: 3;
         display: flex;
         flex-direction: column;
-        gap: 10px;
-        padding: 16px 18px 18px;
+        gap: 12px;
+        padding: 14px 16px 16px;
         background: var(--card);
         border: 3px solid var(--line);
         border-radius: var(--r-card);
@@ -774,46 +929,105 @@
         color: var(--ink-strong);
       }
 
-      .variants {
+      /* Der Stapel. Die hinteren Karten sind versetzt, gedreht und blasser;
+         sie sind Auskunft über die Menge, nicht zum Lesen da. */
+      .deck {
+        position: relative;
+        list-style: none;
+        margin: 0;
+        padding: 0 0 34px;
+      }
+
+      .deck li {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 0;
         display: flex;
         flex-direction: column;
         gap: 10px;
-        list-style: none;
-        margin: 0;
-        padding: 0;
-      }
-
-      .variant {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        padding: 11px 13px 12px;
+        padding: 13px 15px 14px;
         background: var(--field);
         border: 3px solid var(--line-soft);
         border-radius: var(--r-tile);
+        transition:
+          translate 280ms var(--bounce),
+          rotate 280ms var(--bounce),
+          scale 280ms var(--bounce),
+          opacity 200ms ease-out;
       }
 
-      .variant:hover {
-        border-color: var(--accent-line);
+      .deck li[data-pos='0'] {
+        position: relative;
+        z-index: 3;
+        border-color: var(--line);
       }
 
-      .variant p {
+      .deck li[data-pos='1'] {
+        z-index: 2;
+        translate: 0 15px;
+        rotate: 1.5deg;
+        scale: 0.96;
+        opacity: 0.6;
+      }
+
+      .deck li[data-pos='2'] {
+        z-index: 1;
+        translate: 0 30px;
+        rotate: -1.8deg;
+        scale: 0.92;
+        opacity: 0.35;
+      }
+
+      /* Die hinteren Karten zeigen nur ihre Kante. Durchscheinender Text
+         unter der vorderen Karte sieht nach Fehler aus, nicht nach Stapel. */
+      .deck li:not([data-pos='0']) > * {
+        visibility: hidden;
+      }
+
+      .deck p {
         margin: 0;
-        font-size: 0.875rem;
-        line-height: 1.5;
+        font-size: 0.9375rem;
+        line-height: 1.55;
       }
 
-      .variant__foot {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-      }
-
-      .variant__len {
+      .deck__len {
         font-size: 0.75rem;
         color: var(--muted);
         font-variant-numeric: tabular-nums;
+      }
+
+      .nav {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .dots {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        list-style: none;
+        margin: 0 4px;
+        padding: 0;
+      }
+
+      .dots li {
+        width: 9px;
+        height: 9px;
+        border-radius: 999px;
+        border: 2px solid var(--line);
+        background: var(--field);
+      }
+
+      .dots li[aria-current='true'] {
+        width: 22px;
+        background: var(--accent);
+      }
+
+      .nav__spacer {
+        flex: 1;
       }
 
       /* Auf schmalen Fenstern schwebt nichts: Das Fenster reiht sich hinter
@@ -1017,6 +1231,18 @@
         box-shadow: 0 0 0 var(--accent-deep);
       }
 
+      /* Ein gesperrter Knopf sah aus wie ein bedienbarer: Die Attrappe
+         hatte für .btn keinen gesperrten Zustand. */
+      .btn[disabled],
+      .btn[disabled]:hover {
+        cursor: not-allowed;
+        background: var(--field);
+        border-color: var(--line-soft);
+        color: var(--muted);
+        transform: none;
+        box-shadow: 0 4px 0 var(--line-soft);
+      }
+
       .btn--sm {
         padding: 6px 13px 7px;
         font-size: 0.8125rem;
@@ -1106,6 +1332,10 @@
           <img src="../../public/logo.webp" alt="" width="114" height="104" />
           <span>appl<b>ai</b></span>
         </div>
+        <div class="seg" role="radiogroup" aria-label="Unterlage">
+          <button type="button" role="radio" aria-checked="true">Anschreiben</button>
+          <button type="button" role="radio" aria-checked="false">Lebenslauf</button>
+        </div>
         <div class="topbar__right">
           <ol class="steps" aria-label="Ablauf">
             <li><span class="sr-only">Schritt 1, Vorbereiten</span></li>
@@ -1121,16 +1351,24 @@
         <!-- Das Dokument steht zuerst im Aufbau, damit Tastatur und
              Vorlesesoftware zuerst an es kommen. -->
         <div class="col-doc">
-          <div class="seg" role="radiogroup" aria-label="Unterlage">
-            <button type="button" role="radio" aria-checked="true">Anschreiben</button>
-            <button type="button" role="radio" aria-checked="false">Lebenslauf</button>
-          </div>
-
           <div class="sheet">
-            <p class="sheet__head">
-              Jonna Bredereck · Wilhelmshöher Allee 12 · 34117 Kassel<br />
-              Nutzfahrzeuge Kassel GmbH · 34123 Kassel · 4. Mai 2026
-            </p>
+            <!-- Briefkopf nach DIN 5008: Absender, Anschriftfeld, Ort und
+                 Datum rechts, dann der Betreff. Er füllt das obere Drittel
+                 der Seite, und genau dafür ist es da. -->
+            <div class="sheet__head">
+              <p>
+                Jonna Bredereck<br />
+                Wilhelmshöher Allee 12<br />
+                34117 Kassel
+              </p>
+              <p>
+                Nutzfahrzeuge Kassel GmbH<br />
+                Frau Reinshagen<br />
+                Am Werkhof 8<br />
+                34123 Kassel
+              </p>
+              <p class="sheet__date">Kassel, 4. Mai 2026</p>
+            </div>
 
             <p><strong>Bewerbung als Mechatronikerin für Nutzfahrzeuge</strong></p>
 
@@ -1157,7 +1395,19 @@
             <p>
               Neue Diagnosesysteme arbeite ich mir selbst an, zuletzt beim Wechsel auf die
               Software eines anderen Herstellers. Was ich dabei lerne, gebe ich an die
-              Auszubildenden im Betrieb weiter.
+              Auszubildenden im Betrieb weiter; zwei von ihnen habe ich im vergangenen Jahr
+              durch die Zwischenprüfung begleitet.
+            </p>
+
+            <p>
+              Hydraulik ist bisher nicht mein Schwerpunkt gewesen, wohl aber die Pneumatik der
+              Bremsanlagen. Ich gehe davon aus, dass ich mich dort ähnlich zügig einarbeite,
+              und würde eine Weiterbildung dazu gerne belegen.
+            </p>
+
+            <p>
+              Ein Wechsel nach Kassel wäre für mich ohne Umzug möglich. Frei bin ich zum
+              1. Juli, kurzfristiger nach Absprache.
             </p>
 
             <p>
@@ -1169,42 +1419,45 @@
             <!-- Das Vorschlagsfenster hängt an der Stelle im Brief. -->
             <div class="popover" role="dialog" aria-labelledby="vh">
               <div class="popover__head">
-                <h3 id="vh">Drei Vorschläge</h3>
+                <h3 id="vh">Vorschlag</h3>
                 <button type="button" class="icon-button" aria-label="Schließen"><svg viewBox="0 0 256 256" aria-hidden="true" focusable="false"><path d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z" /></svg></button>
               </div>
 
-              <ul class="variants">
-                <li class="variant">
+              <ul class="deck" id="deck">
+                <li data-pos="0">
                   <p>
-                    Ihre Ausschreibung spricht mich an, weil ich Aufträge gerne selbstständig von der
-                    Annahme bis zur Abnahme führe
+                    Ihre Ausschreibung spricht mich an, weil ich Aufträge gerne selbstständig von
+                    der Annahme bis zur Abnahme führe
                   </p>
-                  <div class="variant__foot">
-                    <span class="variant__len">118 Zeichen</span>
-                    <button type="button" class="btn btn--sm btn--accent">Übernehmen</button>
-                  </div>
+                  <span class="deck__len">118 Zeichen</span>
                 </li>
-                <li class="variant">
+                <li data-pos="1">
                   <p>
                     An Ihrer Ausschreibung reizt mich, dass ich eigenverantwortlich an Fahrzeugen
                     arbeiten kann, für die ich die Verantwortung trage
                   </p>
-                  <div class="variant__foot">
-                    <span class="variant__len">137 Zeichen</span>
-                    <button type="button" class="btn btn--sm btn--accent">Übernehmen</button>
-                  </div>
+                  <span class="deck__len">137 Zeichen</span>
                 </li>
-                <li class="variant">
+                <li data-pos="2">
                   <p>
                     Ihre Stelle passt zu mir, weil ich selbstständiges Arbeiten schätze und Befunde
                     lieber selbst zu Ende bringe
                   </p>
-                  <div class="variant__foot">
-                    <span class="variant__len">109 Zeichen</span>
-                    <button type="button" class="btn btn--sm btn--accent">Übernehmen</button>
-                  </div>
+                  <span class="deck__len">109 Zeichen</span>
                 </li>
               </ul>
+
+              <div class="nav">
+                <button type="button" class="icon-button" id="prev" aria-label="Voriger Vorschlag"><svg viewBox="0 0 256 256" aria-hidden="true" focusable="false" style="rotate:-90deg"><path d="M205.66,117.66a8,8,0,0,1-11.32,0L136,59.31V216a8,8,0,0,1-16,0V59.31L61.66,117.66a8,8,0,0,1-11.32-11.32l72-72a8,8,0,0,1,11.32,0l72,72A8,8,0,0,1,205.66,117.66Z" /></svg></button>
+                <ol class="dots" id="dots" aria-label="Vorschlag 1 von 3">
+                  <li aria-current="true"></li>
+                  <li></li>
+                  <li></li>
+                </ol>
+                <button type="button" class="icon-button" id="next" aria-label="Nächster Vorschlag"><svg viewBox="0 0 256 256" aria-hidden="true" focusable="false" style="rotate:90deg"><path d="M205.66,117.66a8,8,0,0,1-11.32,0L136,59.31V216a8,8,0,0,1-16,0V59.31L61.66,117.66a8,8,0,0,1-11.32-11.32l72-72a8,8,0,0,1,11.32,0l72,72A8,8,0,0,1,205.66,117.66Z" /></svg></button>
+                <span class="nav__spacer"></span>
+                <button type="button" class="btn btn--sm btn--accent">Übernehmen</button>
+              </div>
 
               <div class="btns">
                 <button type="button" class="btn btn--sm">Neu erzeugen</button>
@@ -1213,12 +1466,42 @@
           </div>
         </div>
 
-        <!-- Links: was vorgemerkt ist und was die Anzeige verlangt. -->
+        <!-- Links: was gerade markiert ist, was vorgemerkt ist, was die
+             Anzeige verlangt. -->
         <div class="col-left">
-          <section class="card" aria-labelledby="h-marks">
-            <h2 class="card__head" id="h-marks">
-              Stellen <span class="card__count">1 / 3</span>
+          <section class="card" aria-labelledby="h-sel">
+            <h2 class="card__head" id="h-sel">
+              Auswahl <span class="card__count" id="selCount"></span>
             </h2>
+            <p class="note" id="selStatus">Ziehen Sie über eine Textstelle.</p>
+            <div class="stack">
+              <button
+                type="button"
+                class="btn btn--accent btn--block"
+                id="rewrite"
+                aria-haspopup="dialog"
+                aria-expanded="true"
+                disabled
+              >
+                Umformulieren
+              </button>
+              <button type="button" class="btn btn--block">Ganzes Dokument</button>
+              <!-- Rückgängig gehört zur Auswahl, ist aber die Gegenbewegung
+                   zum Übernehmen und nicht Teil davon. Deshalb abgesetzt. -->
+              <button type="button" class="btn btn--block btn--quiet">Rückgängig</button>
+            </div>
+          </section>
+
+          <details class="card" open aria-labelledby="h-marks">
+            <summary id="h-marks">
+              <span>Stellen</span>
+              <span class="card__count">1 / 3</span>
+              <svg viewBox="0 0 256 256" aria-hidden="true" focusable="false">
+                <path
+                  d="M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z"
+                />
+              </svg>
+            </summary>
             <ol class="marks">
               <li data-state="done">
                 <button type="button">
@@ -1239,12 +1522,18 @@
                 </button>
               </li>
             </ol>
-          </section>
+          </details>
 
-          <section class="card" aria-labelledby="h-reqs">
-            <h2 class="card__head" id="h-reqs">
-              Anforderungen <span class="card__count">4 / 6</span>
-            </h2>
+          <details class="card" open aria-labelledby="h-reqs">
+            <summary id="h-reqs">
+              <span>Anforderungen</span>
+              <span class="card__count">4 / 6</span>
+              <svg viewBox="0 0 256 256" aria-hidden="true" focusable="false">
+                <path
+                  d="M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z"
+                />
+              </svg>
+            </summary>
             <ul class="reqs">
               <li data-covered="yes"><svg viewBox="0 0 256 256" aria-hidden="true" focusable="false"><path d="M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z" /></svg> Nutzfahrzeuge</li>
               <li data-covered="yes"><svg viewBox="0 0 256 256" aria-hidden="true" focusable="false"><path d="M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z" /></svg> Fehlerspeicher</li>
@@ -1253,7 +1542,7 @@
               <li>Hydraulik</li>
               <li>Führerschein CE</li>
             </ul>
-          </section>
+          </details>
         </div>
 
         <!-- Rechts: hinaus damit, und die Stellschrauben davor. -->
@@ -1317,6 +1606,91 @@
         })
       })
 
+      /* Das Fenster hängt sich unter die gerade aktive Stelle, statt auf
+         einem festen Wert zu stehen. Sobald sich der Text ändert oder eine
+         andere Stelle gewählt wird, sitzt es weiter richtig. Auf schmalen
+         Fenstern steht es im Fluss, dort ist nichts zu setzen. */
+      const popover = document.querySelector('.popover')
+      const sheet = document.querySelector('.sheet')
+
+      function anchorPopover() {
+        if (getComputedStyle(popover).position !== 'absolute') return
+        const active = sheet.querySelector('mark[data-state="active"]')
+        if (active === null) return
+        const box = sheet.getBoundingClientRect()
+        const mark = active.getBoundingClientRect()
+        const height = popover.offsetHeight
+        const below = mark.bottom - box.top + 14
+        // Passt es unter der Stelle nicht mehr aufs Blatt, klappt es
+        // darüber. Ein Fenster, das unten aus der Seite ragt, sagt entweder
+        // nichts mehr oder verschiebt die ganze Seite.
+        const fits = below + height <= box.height - 24
+        const top = fits ? below : mark.top - box.top - height - 14
+        popover.style.top = `${Math.round(Math.max(24, top))}px`
+      }
+
+      anchorPopover()
+      window.addEventListener('resize', anchorPopover)
+
+      /* Die Auswahlleiste hängt am selben Zustand wie das Fenster: Was
+         markiert ist, sagt sie in Zeichen; ist nichts markiert, sagt sie,
+         wie man markiert. Der Hauptknopf ist genau dann bedienbar. */
+      const selStatus = document.getElementById('selStatus')
+      const selCount = document.getElementById('selCount')
+      const rewrite = document.getElementById('rewrite')
+
+      function syncToolbar() {
+        const active = sheet.querySelector('mark[data-state="active"]')
+        if (active === null) {
+          selCount.textContent = ''
+          selStatus.hidden = false
+          rewrite.disabled = true
+          return
+        }
+        // Der Zähler steht in der Überschrift, wie bei „Stellen 1 / 3" auch.
+        // Der Hinweis, wie man markiert, verschwindet dafür: Er erklärt eine
+        // Handlung, die gerade erledigt ist.
+        const count = active.textContent.replace(/\s+/g, ' ').trim().length
+        selCount.textContent = `${count} Zeichen`
+        selStatus.hidden = true
+        rewrite.disabled = false
+      }
+
+      syncToolbar()
+
+      /* Der Stapel. Blättern heißt: Die Karten bekommen neue Plätze, nicht
+         neuen Inhalt. So bleibt die Reihenfolge erhalten und die Bewegung
+         zeigt, woher der nächste Vorschlag kommt. */
+      const deck = document.getElementById('deck')
+      const cards = Array.from(deck.children)
+      const dots = Array.from(document.getElementById('dots').children)
+      let front = 0
+
+      function showCard(index) {
+        front = (index + cards.length) % cards.length
+        cards.forEach((card, i) => {
+          card.dataset.pos = String((i - front + cards.length) % cards.length)
+        })
+        dots.forEach((dot, i) => {
+          if (i === front) dot.setAttribute('aria-current', 'true')
+          else dot.removeAttribute('aria-current')
+        })
+        document
+          .getElementById('dots')
+          .setAttribute('aria-label', `Vorschlag ${front + 1} von ${cards.length}`)
+      }
+
+      popover.querySelector('.icon-button').addEventListener('click', () => {
+        sheet.querySelectorAll('mark').forEach((mark) => {
+          if (mark.dataset.state !== 'done') mark.dataset.state = ''
+        })
+        popover.hidden = true
+        syncToolbar()
+      })
+
+      document.getElementById('prev').addEventListener('click', () => showCard(front - 1))
+      document.getElementById('next').addEventListener('click', () => showCard(front + 1))
+
       /* Eine Stelle in der Liste anwählen setzt sie im Brief aktiv. Mehr
          Zustandsführung braucht die Attrappe nicht. */
       const sheetMarks = Array.from(document.querySelectorAll('.sheet mark'))
@@ -1326,6 +1700,9 @@
             if (mark.dataset.state === 'done') return
             mark.dataset.state = other === index ? 'active' : ''
           })
+          popover.hidden = false
+          anchorPopover()
+          syncToolbar()
         })
       })
     </script>
