@@ -442,6 +442,15 @@
         --breite: 400px;
         width: var(--breite);
         line-height: 0;
+        /* Rein bildlicher Versatz nach unten: Er verschiebt die Zeichnung,
+           nicht ihren Kasten. Die Karte bleibt deshalb, wo sie ist.
+
+           Polster über der Marke hätte sie mitgenommen: Die Bühne setzt
+           sich mit ihren auto-Rändern in den verbleibenden Platz neu
+           mittig, ein Pixel oben verschiebt sie also um einen halben. Auch
+           den Zwischenraum darunter zu kürzen ginge, aber nur so weit, wie
+           er reicht — auf flachen Fenstern sind das keine 14px. */
+        translate: 0 var(--tiefer, 30px);
         /* Rechts im Bild stehen 11,4% leer: der Platz, in den die Arme des
            Bleistifts ausschlagen. Links sind es 0,6%. Zentriert man den
            Rahmen, sitzt der Schriftzug darum sichtbar links der Mitte. Der
@@ -1136,6 +1145,7 @@
          Zustand: Datei da, Anzeige da, Namensfeld ausgeklappt. */
       @media (max-height: 840px) {
         .wordmark {
+          --tiefer: 22px;
           --breite: 290px;
         }
 
@@ -1154,6 +1164,7 @@
 
       @media (max-height: 730px) {
         .wordmark {
+          --tiefer: 18px;
           --breite: 225px;
         }
 
@@ -1180,6 +1191,7 @@
       /* Noch flacher — etwa ein 1366x768-Bildschirm mit Fensterrahmen. */
       @media (max-height: 680px) {
         .wordmark {
+          --tiefer: 18px;
           --breite: 190px;
         }
 
