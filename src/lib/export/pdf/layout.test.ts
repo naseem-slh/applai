@@ -9,7 +9,8 @@ import type {
   ParagraphItem,
 } from '../../docx/format'
 import { loadFixtureFormat, loadFontProvider } from './fonts.testutils'
-import { layoutDocument, requiredFontKeys, type DrawnText, type LaidOutDocument } from './layout'
+import { layoutDocument, type DrawnText, type LaidOutDocument } from './layout'
+import { requiredFontKeys } from '../../fonts/required'
 
 const CHARACTER: CharacterFormat = {
   fontFamily: 'Calibri',

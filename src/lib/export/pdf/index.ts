@@ -1,7 +1,8 @@
 import { readDocumentFormat } from '../../docx/format'
 import type { DocxDocument } from '../../docx/model'
 import { loadFonts } from './fonts'
-import { layoutDocument, requiredFontKeys } from './layout'
+import { requiredFontKeys } from '../../fonts/required'
+import { layoutDocument } from './layout'
 import { writePdf } from './write'
 
 /**

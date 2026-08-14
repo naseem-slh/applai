@@ -4,9 +4,15 @@ import { readFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { readDocumentFormat, type DocumentFormat, type FormattedParagraph } from './format'
+import {
+  readDocumentFormat,
+  readFormatContext,
+  type DocumentFormat,
+  type FormattedParagraph,
+} from './format'
 import type { DocxDocument } from './model'
 import { buildTextModel, parseDocx } from './parse'
+import { replaceRange } from './replace'
 
 const FIXTURES_DIR = join(dirname(fileURLToPath(import.meta.url)), '../../../tests/fixtures')
 
@@ -371,5 +377,41 @@ describe('readDocumentFormat — schwebende Objekte', () => {
     const { content } = textboxOf(format)
     expect(content.paragraphs).toHaveLength(3)
     expect(content.paragraphs.every((paragraph) => paragraph.index === null)).toBe(true)
+  })
+})
+
+/**
+ * Der beständige Teil der Formatierung darf nicht bei jedem Tastendruck neu
+ * geparst werden — die Arbeitsfläche liest das Format nach **jeder**
+ * Bearbeitung neu, und `styles.xml` wiegt in einem gewöhnlichen Brief
+ * 29 kB.
+ */
+describe('readFormatContext — beständiger Teil am Archiv', () => {
+  it('liest Vorlagen und Design für dasselbe Archiv nur einmal', async () => {
+    const docx = await loadDocx('anschreiben-formatiert.docx')
+
+    expect(readFormatContext(docx)).toBe(readFormatContext(docx))
+  })
+
+  /**
+   * `replaceRange` klont den XML-Baum, teilt `zip` aber bewusst. Genau daran
+   * hängt der Zwischenspeicher: Ein bearbeiteter Stand ist ein neues
+   * `DocxDocument` mit demselben Archiv.
+   */
+  it('behält den Kontext über eine Bearbeitung hinweg', async () => {
+    const docx = await loadDocx('anschreiben-formatiert.docx')
+    const before = readFormatContext(docx)
+
+    const edited = replaceRange(docx, { from: 0, to: 1 }, 'X')
+
+    expect(edited.doc).not.toBe(docx.doc)
+    expect(readFormatContext(edited)).toBe(before)
+  })
+
+  it('gibt einem anderen Archiv einen eigenen Kontext', async () => {
+    const one = readFormatContext(await loadDocx('anschreiben-formatiert.docx'))
+    const other = readFormatContext(await loadDocx('anschreiben-kopf-fuss.docx'))
+
+    expect(other).not.toBe(one)
   })
 })

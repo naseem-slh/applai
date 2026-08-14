@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url'
 import { parseDocx } from '../../docx/parse'
 import { readDocumentFormat, type DocumentFormat } from '../../docx/format'
 import { createFontProvider, type FontProvider } from './fonts'
-import { requiredFontKeys } from './layout'
+import { requiredFontKeys } from '../../fonts/required'
 import { readTrueType, type TrueTypeFont } from '../../fonts/truetype'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '../../../..')

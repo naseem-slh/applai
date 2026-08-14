@@ -8,7 +8,6 @@ import type {
   ParagraphFormat,
 } from '../../docx/format'
 import { translateSymbolText } from '../../docx/symbols'
-import { fontFileKey } from '../../fonts/bundled'
 import type { FontFace, FontProvider } from './fonts'
 
 /**
@@ -163,38 +162,6 @@ export function layoutDocument(format: DocumentFormat, fonts: FontProvider): Lai
   })
 
   return { page: format.page, pages: pages.map((items) => ({ items })) }
-}
-
-/**
- * Sammelt die Schnitte, die ein Dokument braucht — damit der Aufrufer sie
- * laden kann, bevor gesetzt wird. Der Satz selbst greift nie ins Netz.
- */
-export function requiredFontKeys(format: DocumentFormat): string[] {
-  const keys = new Set<string>()
-  const collect = (paragraphs: FormattedParagraph[] | null): void => {
-    for (const paragraph of paragraphs ?? []) {
-      keys.add(fontKeyOf(paragraph.markFormat))
-      for (const item of paragraph.items) keys.add(fontKeyOf(item.format))
-    }
-  }
-
-  collect(format.paragraphs)
-  // Auch die Absätze in Textfeldern — sonst fehlt beim Setzen die Datei.
-  for (const float of format.floats) {
-    if (float.content.kind === 'textbox') collect(float.content.paragraphs)
-  }
-  for (const parts of [format.header, format.footer]) {
-    collect(parts.default)
-    collect(parts.first)
-    collect(parts.even)
-  }
-  return [...keys]
-}
-
-// Dieselbe Herleitung, die `fonts.ts` beim Nachschlagen benutzt — sonst lädt
-// der Aufrufer andere Dateien, als der Satz später verlangt.
-function fontKeyOf(format: CharacterFormat): string {
-  return fontFileKey(format.fontFamily, format.bold, format.italic)
 }
 
 // ---------------------------------------------------------------------------

@@ -234,10 +234,56 @@ interface StyleDefinition {
   runProperties: Element | null
 }
 
+/**
+ * Der Teil der Formatierung, der über alle Bearbeitungsstände derselbe
+ * bleibt: Formatvorlagen, Design, Beziehungen, Vorgabe-Tabulator.
+ *
+ * Alles darin kommt aus Nebenteilen des Archivs, die nie gepatcht werden —
+ * `replaceRange` fasst ausschließlich `word/document.xml` an.
+ */
+export interface FormatContextBase {
+  styles: ReturnType<typeof readStyles>
+  theme: { minor: string | null; major: string | null }
+  relationships: Map<string, string>
+  defaultTabStopTwips: number
+}
+
+/**
+ * Zwischenspeicher am **Archiv**, nicht am Dokument.
+ *
+ * `replaceRange` klont den XML-Baum tief, teilt `zip` aber bewusst
+ * (`replace.ts`). Ein bearbeiteter Stand ist deshalb ein neues
+ * `DocxDocument` mit demselben Archivobjekt — der richtige Schlüssel für
+ * alles, was die Bearbeitung nicht berührt.
+ */
+const BASE_BY_ZIP = new WeakMap<DocxDocument['zip'], FormatContextBase>()
+
+/**
+ * Liest den beständigen Teil, höchstens einmal je Archiv.
+ *
+ * **Warum das nicht in `readDocumentFormat` bleiben durfte.** Die
+ * Arbeitsfläche liest das Format nach jeder Bearbeitung neu, um den Brief
+ * originalgetreu zu zeigen. Ohne diese Trennung würden bei jedem Tastendruck
+ * `styles.xml` (in einem gewöhnlichen Brief 29 kB) und `theme1.xml` erneut
+ * geparst — das Teuerste am ganzen Vorgang, für ein Ergebnis, das sich nicht
+ * ändern kann.
+ */
+export function readFormatContext(docx: DocxDocument): FormatContextBase {
+  const cached = BASE_BY_ZIP.get(docx.zip)
+  if (cached) return cached
+
+  const base: FormatContextBase = {
+    styles: readStyles(docx),
+    theme: readTheme(docx),
+    relationships: readRelationships(docx, 'word/document.xml'),
+    defaultTabStopTwips: readDefaultTabStop(docx),
+  }
+  BASE_BY_ZIP.set(docx.zip, base)
+  return base
+}
+
 export function readDocumentFormat(docx: DocxDocument): DocumentFormat {
-  const styles = readStyles(docx)
-  const theme = readTheme(docx)
-  const relationships = readRelationships(docx, 'word/document.xml')
+  const { styles, theme, relationships, defaultTabStopTwips } = readFormatContext(docx)
 
   const floats: FloatingObject[] = []
   const context: FormatContext = {
@@ -264,7 +310,7 @@ export function readDocumentFormat(docx: DocxDocument): DocumentFormat {
     // Kopf- und Fußzeile sammeln nicht mit: siehe `FormatContext.floats`.
     header: readRunningParts(docx, { ...context, floats: null }, section, 'w:headerReference'),
     footer: readRunningParts(docx, { ...context, floats: null }, section, 'w:footerReference'),
-    defaultTabStopPt: readDefaultTabStop(docx) / TWIPS_PER_POINT,
+    defaultTabStopPt: defaultTabStopTwips / TWIPS_PER_POINT,
   }
 }
 
