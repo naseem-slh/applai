@@ -1,0 +1,801 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Applai Bildmarken</title>
+    <style>
+      /* =====================================================================
+         Sechs Vorschläge für eine neue Bildmarke.
+
+         Alle sechs sind in derselben Sprache gezeichnet wie die Oberfläche:
+         dicke Tintenkontur, runde Enden, gefüllte Flächen in Tangerine und
+         Minze. Sie sind aus Rechtecken, Linien und Dreiecken gebaut, nicht
+         aus freien Kurven: Was aus geraden Kanten und einem Radius besteht,
+         bleibt bei 16px genauso gut lesbar wie bei 96px.
+
+         Jede Marke ist dreimal zu sehen: groß, im Kopfbereich neben dem
+         Schriftzug und in 20px. Die dritte Größe entscheidet. Eine Marke,
+         die als Reiter-Symbol zu Brei wird, ist keine.
+         ===================================================================== */
+
+      @font-face {
+        font-family: 'Fredoka';
+        font-style: normal;
+        font-display: swap;
+        font-weight: 400 700;
+        src: url('../../public/fonts/fredoka-variable-latin.woff2') format('woff2-variations');
+      }
+
+      @font-face {
+        font-family: 'Inter Variable';
+        font-style: normal;
+        font-display: swap;
+        font-weight: 100 900;
+        src: url('../../public/fonts/inter-variable-latin.woff2') format('woff2-variations');
+      }
+
+      :root {
+        color-scheme: light;
+
+        --paper: #ffffff;
+        --rule-step: 34px;
+        --rule: #c3d8ea;
+        --margin: #aecbe5;
+
+        --line: #0d1b4b;
+        --line-soft: #3a4680;
+        --pop: #0d1b4b;
+
+        --card: #fbf6ec;
+        --ink: #16205c;
+        --ink-strong: #0d1b4b;
+        --muted: #4e5885;
+        --field: #ffffff;
+
+        --accent: #ff7a45;
+        --accent-line: #c9531f;
+        --accent-ink: #2b1004;
+        --accent-wash: #fff0e8;
+
+        --done: #22c98f;
+        --done-line: #0f8f64;
+
+        --card-shadow: 0 16px 30px rgb(13 27 75 / 0.13);
+
+        /* Die Marken tragen eigene Token: Ihre Kontur muss auf dem Blatt
+           stehen, nicht auf der Karte, und im Nachtthema hell werden. */
+        --mark-ink: #0d1b4b;
+        --mark-paper: #ffffff;
+
+        --r-card: 24px;
+        --bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+        --font-display: 'Fredoka', system-ui, sans-serif;
+        --font-body: 'Inter Variable', system-ui, sans-serif;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme='light']) {
+          color-scheme: dark;
+          --paper: #04061f;
+          --rule: rgb(255 255 255 / 0.075);
+          --margin: rgb(255 255 255 / 0.14);
+          --line: #3b4794;
+          --line-soft: #5d66bd;
+          --pop: #2a3382;
+          --card: #1a2158;
+          --ink: #e7e9ff;
+          --ink-strong: #ffffff;
+          --muted: #9aa1d4;
+          --field: #0d1238;
+          --accent: #ff8f5e;
+          --accent-line: #ff8f5e;
+          --accent-ink: #2a0f05;
+          --accent-wash: #3a1f28;
+          --done: #2fd9a0;
+          --done-line: #2fd9a0;
+          --card-shadow: 0 16px 34px rgb(0 0 0 / 0.5);
+          --mark-ink: #e9ecff;
+          --mark-paper: #1b2360;
+        }
+      }
+
+      :root[data-theme='dark'] {
+        color-scheme: dark;
+        --paper: #04061f;
+        --rule: rgb(255 255 255 / 0.075);
+        --margin: rgb(255 255 255 / 0.14);
+        --line: #3b4794;
+        --line-soft: #5d66bd;
+        --pop: #2a3382;
+        --card: #1a2158;
+        --ink: #e7e9ff;
+        --ink-strong: #ffffff;
+        --muted: #9aa1d4;
+        --field: #0d1238;
+        --accent: #ff8f5e;
+        --accent-line: #ff8f5e;
+        --accent-ink: #2a0f05;
+        --accent-wash: #3a1f28;
+        --done: #2fd9a0;
+        --done-line: #2fd9a0;
+        --card-shadow: 0 16px 34px rgb(0 0 0 / 0.5);
+        --mark-ink: #e9ecff;
+        --mark-paper: #1b2360;
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        min-height: 100dvh;
+        background-color: var(--paper);
+        background-image:
+          linear-gradient(
+            90deg,
+            transparent 0 14%,
+            var(--margin) 14% calc(14% + 2px),
+            transparent calc(14% + 2px)
+          ),
+          linear-gradient(var(--rule) 1.5px, transparent 1.5px);
+        background-size:
+          100% 100%,
+          100% var(--rule-step);
+        background-attachment: fixed;
+        color: var(--ink);
+        font-family: var(--font-body);
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      button {
+        font: inherit;
+        color: inherit;
+      }
+
+      :focus-visible {
+        outline: 3px solid var(--accent-line);
+        outline-offset: 3px;
+      }
+
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+        border: 0;
+      }
+
+      .shell {
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 28px 20px 96px;
+        display: flex;
+        flex-direction: column;
+        gap: 26px;
+      }
+
+      /* --- Der Kopfbereich als Probe ------------------------------------- */
+      .preview {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        padding: 16px 22px;
+        background: var(--card);
+        border: 3px solid var(--line);
+        border-radius: var(--r-card);
+        box-shadow: 0 8px 0 var(--pop), var(--card-shadow);
+      }
+
+      .wordmark {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        font-family: var(--font-display);
+        font-size: 1.5rem;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        color: var(--ink-strong);
+      }
+
+      .wordmark b {
+        font-weight: 600;
+        color: var(--accent);
+      }
+
+      .wordmark svg {
+        width: 38px;
+        height: 38px;
+        flex: none;
+      }
+
+      .steps {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+
+      .steps li {
+        width: 12px;
+        height: 12px;
+        border-radius: 999px;
+        border: 3px solid var(--line);
+        background: var(--field);
+      }
+
+      .steps li:first-child {
+        width: 34px;
+        background: var(--accent);
+      }
+
+      /* --- Die sechs Karten ---------------------------------------------- */
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 18px;
+      }
+
+      @media (min-width: 620px) {
+        .grid {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+
+      @media (min-width: 940px) {
+        .grid {
+          grid-template-columns: 1fr 1fr 1fr;
+        }
+      }
+
+      .pick {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+        padding: 20px 18px 18px;
+        text-align: left;
+        cursor: pointer;
+        background: var(--card);
+        border: 3px solid var(--line);
+        border-radius: var(--r-card);
+        box-shadow: 0 6px 0 var(--pop);
+        transition:
+          transform 200ms var(--bounce),
+          box-shadow 140ms ease-out;
+      }
+
+      .pick:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 9px 0 var(--pop);
+      }
+
+      .pick:active {
+        transform: translateY(4px);
+        box-shadow: 0 1px 0 var(--pop);
+      }
+
+      .pick[aria-pressed='true'] {
+        background: var(--accent-wash);
+      }
+
+      .pick__stage {
+        display: grid;
+        place-items: center;
+        min-height: 132px;
+        border-radius: 16px;
+        background: var(--field);
+        border: 2px solid var(--line-soft);
+      }
+
+      .pick__stage svg {
+        width: 96px;
+        height: 96px;
+      }
+
+      .pick__foot {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .pick__name {
+        font-family: var(--font-display);
+        font-size: 1.0625rem;
+        font-weight: 600;
+        color: var(--ink-strong);
+      }
+
+      /* Die Kleinstprobe. 20px ist die Größe im Reiter des Browsers und in
+         der Kopfzeile eines Telefons. Was hier zerfällt, taugt nicht. */
+      .pick__small {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .pick__small svg {
+        width: 20px;
+        height: 20px;
+      }
+
+      .pick__small span {
+        font-size: 0.6875rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      .pick__note {
+        margin: 0;
+        font-size: 0.8125rem;
+        line-height: 1.5;
+        color: var(--muted);
+      }
+
+      /* --- Steuerung der Attrappe ---------------------------------------- */
+      .mockbar {
+        position: fixed;
+        left: 50%;
+        translate: -50% 0;
+        bottom: 12px;
+        z-index: 9;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 7px 10px;
+        border-radius: 999px;
+        background: var(--card);
+        border: 2px solid var(--line-soft);
+        font-size: 0.75rem;
+        color: var(--muted);
+      }
+
+      .mockbar strong {
+        padding: 0 4px;
+        font-family: var(--font-display);
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        font-size: 0.6875rem;
+      }
+
+      .mockbar button {
+        padding: 4px 11px;
+        border-radius: 999px;
+        border: 2px solid var(--line-soft);
+        background: var(--field);
+        color: var(--ink);
+        font-size: 0.75rem;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      .mockbar button:hover {
+        border-color: var(--accent-line);
+        background: var(--accent-wash);
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="shell">
+      <h1 class="sr-only">Bildmarken für Applai</h1>
+
+      <!-- Der Kopfbereich der Seite als Probe. Die gewählte Marke steht hier
+           in ihrer echten Größe neben dem Schriftzug. -->
+      <div class="preview">
+        <div class="wordmark">
+          <span id="previewMark"></span>
+          <span>appl<b>ai</b></span>
+        </div>
+        <ol class="steps" aria-label="Ablauf">
+          <li><span class="sr-only">Schritt 1</span></li>
+          <li><span class="sr-only">Schritt 2</span></li>
+        </ol>
+      </div>
+
+      <div class="grid" id="grid">
+        <!-- A · Eselsohr ------------------------------------------------- -->
+        <button type="button" class="pick" data-mark="eselsohr" aria-pressed="true">
+          <span class="pick__stage">
+            <svg viewBox="0 0 64 64" fill="none" aria-hidden="true">
+              <path
+                d="M18 7h21l13 13v33a6 6 0 0 1-6 6H18a6 6 0 0 1-6-6V13a6 6 0 0 1 6-6Z"
+                fill="var(--mark-paper)"
+                stroke="var(--mark-ink)"
+                stroke-width="4.5"
+                stroke-linejoin="round"
+              />
+              <path
+                d="M39 7v13h13"
+                fill="var(--accent)"
+                stroke="var(--mark-ink)"
+                stroke-width="4.5"
+                stroke-linejoin="round"
+              />
+              <path
+                d="M22 32h20M22 42h13"
+                stroke="var(--mark-ink)"
+                stroke-width="4.5"
+                stroke-linecap="round"
+              />
+            </svg>
+          </span>
+          <div class="pick__foot">
+            <span class="pick__name">Eselsohr</span>
+            <span class="pick__small"
+              ><svg viewBox="0 0 64 64" fill="none" aria-hidden="true">
+                <path
+                  d="M18 7h21l13 13v33a6 6 0 0 1-6 6H18a6 6 0 0 1-6-6V13a6 6 0 0 1 6-6Z"
+                  fill="var(--mark-paper)"
+                  stroke="var(--mark-ink)"
+                  stroke-width="4.5"
+                  stroke-linejoin="round"
+                />
+                <path
+                  d="M39 7v13h13"
+                  fill="var(--accent)"
+                  stroke="var(--mark-ink)"
+                  stroke-width="4.5"
+                  stroke-linejoin="round"
+                />
+                <path
+                  d="M22 32h20M22 42h13"
+                  stroke="var(--mark-ink)"
+                  stroke-width="4.5"
+                  stroke-linecap="round"
+                /></svg
+              ><span>20px</span></span
+            >
+          </div>
+          <p class="pick__note">
+            Das Blatt mit umgeschlagener Ecke. Sagt „Dokument" ohne Umweg und nimmt das
+            linierte Papier der Seite auf.
+          </p>
+        </button>
+
+        <!-- B · Textmarker ----------------------------------------------- -->
+        <button type="button" class="pick" data-mark="marker" aria-pressed="false">
+          <span class="pick__stage">
+            <svg viewBox="0 0 64 64" fill="none" aria-hidden="true">
+              <rect
+                x="11"
+                y="24"
+                width="42"
+                height="17"
+                rx="8.5"
+                fill="var(--accent)"
+                stroke="var(--mark-ink)"
+                stroke-width="4.5"
+              />
+              <path
+                d="M8 12h48M18 32.5h28M8 52h30"
+                stroke="var(--mark-ink)"
+                stroke-width="4.5"
+                stroke-linecap="round"
+              />
+            </svg>
+          </span>
+          <div class="pick__foot">
+            <span class="pick__name">Textmarker</span>
+            <span class="pick__small"
+              ><svg viewBox="0 0 64 64" fill="none" aria-hidden="true">
+                <rect
+                  x="11"
+                  y="24"
+                  width="42"
+                  height="17"
+                  rx="8.5"
+                  fill="var(--accent)"
+                  stroke="var(--mark-ink)"
+                  stroke-width="4.5"
+                />
+                <path
+                  d="M8 12h48M18 32.5h28M8 52h30"
+                  stroke="var(--mark-ink)"
+                  stroke-width="4.5"
+                  stroke-linecap="round"
+                /></svg
+              ><span>20px</span></span
+            >
+          </div>
+          <p class="pick__note">
+            Drei Zeilen, eine davon markiert. Zeigt nicht das Dokument, sondern die eine
+            Handlung, um die es in Applai geht.
+          </p>
+        </button>
+
+        <!-- C · Zwei Blätter --------------------------------------------- -->
+        <button type="button" class="pick" data-mark="zweiblatt" aria-pressed="false">
+          <span class="pick__stage">
+            <svg viewBox="0 0 64 64" fill="none" aria-hidden="true">
+              <g transform="rotate(9 40 30)">
+                <rect
+                  x="26"
+                  y="8"
+                  width="30"
+                  height="42"
+                  rx="6"
+                  fill="var(--accent)"
+                  stroke="var(--mark-ink)"
+                  stroke-width="4.5"
+                />
+              </g>
+              <g transform="rotate(-7 24 36)">
+                <rect
+                  x="9"
+                  y="15"
+                  width="30"
+                  height="42"
+                  rx="6"
+                  fill="var(--mark-paper)"
+                  stroke="var(--mark-ink)"
+                  stroke-width="4.5"
+                />
+                <path
+                  d="M17 29h14M17 39h9"
+                  stroke="var(--mark-ink)"
+                  stroke-width="4.5"
+                  stroke-linecap="round"
+                />
+              </g>
+            </svg>
+          </span>
+          <div class="pick__foot">
+            <span class="pick__name">Zwei Blätter</span>
+            <span class="pick__small"
+              ><svg viewBox="0 0 64 64" fill="none" aria-hidden="true">
+                <g transform="rotate(9 40 30)">
+                  <rect
+                    x="26"
+                    y="8"
+                    width="30"
+                    height="42"
+                    rx="6"
+                    fill="var(--accent)"
+                    stroke="var(--mark-ink)"
+                    stroke-width="4.5"
+                  />
+                </g>
+                <g transform="rotate(-7 24 36)">
+                  <rect
+                    x="9"
+                    y="15"
+                    width="30"
+                    height="42"
+                    rx="6"
+                    fill="var(--mark-paper)"
+                    stroke="var(--mark-ink)"
+                    stroke-width="4.5"
+                  />
+                  <path
+                    d="M17 29h14M17 39h9"
+                    stroke="var(--mark-ink)"
+                    stroke-width="4.5"
+                    stroke-linecap="round"
+                  />
+                </g></svg
+              ><span>20px</span></span
+            >
+          </div>
+          <p class="pick__note">
+            Zwei versetzte Blätter: das eigene und die daraus angepasste Fassung. Der
+            einzige Vorschlag, der den Vorgang selbst zeigt.
+          </p>
+        </button>
+
+        <!-- D · Sprechblase ---------------------------------------------- -->
+        <button type="button" class="pick" data-mark="blase" aria-pressed="false">
+          <span class="pick__stage">
+            <svg viewBox="0 0 64 64" fill="none" aria-hidden="true">
+              <path
+                d="M17 9h30a9 9 0 0 1 9 9v18a9 9 0 0 1-9 9H33L20 58V45h-3a9 9 0 0 1-9-9V18a9 9 0 0 1 9-9Z"
+                fill="var(--mark-paper)"
+                stroke="var(--mark-ink)"
+                stroke-width="4.5"
+                stroke-linejoin="round"
+              />
+              <path
+                d="M19 22h26"
+                stroke="var(--accent)"
+                stroke-width="5"
+                stroke-linecap="round"
+              />
+              <path
+                d="M19 33h17"
+                stroke="var(--mark-ink)"
+                stroke-width="4.5"
+                stroke-linecap="round"
+              />
+            </svg>
+          </span>
+          <div class="pick__foot">
+            <span class="pick__name">Sprechblase</span>
+            <span class="pick__small"
+              ><svg viewBox="0 0 64 64" fill="none" aria-hidden="true">
+                <path
+                  d="M17 9h30a9 9 0 0 1 9 9v18a9 9 0 0 1-9 9H33L20 58V45h-3a9 9 0 0 1-9-9V18a9 9 0 0 1 9-9Z"
+                  fill="var(--mark-paper)"
+                  stroke="var(--mark-ink)"
+                  stroke-width="4.5"
+                  stroke-linejoin="round"
+                />
+                <path
+                  d="M19 22h26"
+                  stroke="var(--accent)"
+                  stroke-width="5"
+                  stroke-linecap="round"
+                />
+                <path
+                  d="M19 33h17"
+                  stroke="var(--mark-ink)"
+                  stroke-width="4.5"
+                  stroke-linecap="round"
+                /></svg
+              ><span>20px</span></span
+            >
+          </div>
+          <p class="pick__note">
+            Eine Blase mit Zeilen darin. Steht für Formulierung statt für Papier, und die
+            Silhouette ist unter allen sechs die eigenständigste.
+          </p>
+        </button>
+
+        <!-- E · Monogramm ------------------------------------------------ -->
+        <button type="button" class="pick" data-mark="monogramm" aria-pressed="false">
+          <span class="pick__stage">
+            <svg viewBox="0 0 64 64" fill="none" aria-hidden="true">
+              <rect
+                x="6"
+                y="6"
+                width="52"
+                height="52"
+                rx="15"
+                fill="var(--accent)"
+                stroke="var(--mark-ink)"
+                stroke-width="4.5"
+              />
+              <text
+                x="32"
+                y="47"
+                text-anchor="middle"
+                font-family="Fredoka, system-ui, sans-serif"
+                font-size="40"
+                font-weight="600"
+                fill="var(--accent-ink)"
+              >
+                a
+              </text>
+            </svg>
+          </span>
+          <div class="pick__foot">
+            <span class="pick__name">Monogramm</span>
+            <span class="pick__small"
+              ><svg viewBox="0 0 64 64" fill="none" aria-hidden="true">
+                <rect
+                  x="6"
+                  y="6"
+                  width="52"
+                  height="52"
+                  rx="15"
+                  fill="var(--accent)"
+                  stroke="var(--mark-ink)"
+                  stroke-width="4.5"
+                />
+                <text
+                  x="32"
+                  y="47"
+                  text-anchor="middle"
+                  font-family="Fredoka, system-ui, sans-serif"
+                  font-size="40"
+                  font-weight="600"
+                  fill="var(--accent-ink)"
+                >
+                  a
+                </text></svg
+              ><span>20px</span></span
+            >
+          </div>
+          <p class="pick__note">
+            Das a aus Fredoka in einer Kachel. Sagt nichts über das Produkt, ist dafür in
+            jeder Größe eindeutig und funktioniert auch als Anwendungssymbol.
+          </p>
+        </button>
+
+        <!-- F · Papierflieger -------------------------------------------- -->
+        <button type="button" class="pick" data-mark="flieger" aria-pressed="false">
+          <span class="pick__stage">
+            <svg viewBox="0 0 64 64" fill="none" aria-hidden="true">
+              <path
+                d="M57 7 6 28l21 8Z"
+                fill="var(--mark-paper)"
+                stroke="var(--mark-ink)"
+                stroke-width="4.5"
+                stroke-linejoin="round"
+              />
+              <path
+                d="M57 7 27 36l6 21Z"
+                fill="var(--accent)"
+                stroke="var(--mark-ink)"
+                stroke-width="4.5"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </span>
+          <div class="pick__foot">
+            <span class="pick__name">Papierflieger</span>
+            <span class="pick__small"
+              ><svg viewBox="0 0 64 64" fill="none" aria-hidden="true">
+                <path
+                  d="M57 7 6 28l21 8Z"
+                  fill="var(--mark-paper)"
+                  stroke="var(--mark-ink)"
+                  stroke-width="4.5"
+                  stroke-linejoin="round"
+                />
+                <path
+                  d="M57 7 27 36l6 21Z"
+                  fill="var(--accent)"
+                  stroke="var(--mark-ink)"
+                  stroke-width="4.5"
+                  stroke-linejoin="round"
+                /></svg
+              ><span>20px</span></span
+            >
+          </div>
+          <p class="pick__note">
+            Gefaltetes Papier, das losfliegt. Der verspielteste der sechs, spricht aber
+            eher vom Abschicken als vom Anpassen.
+          </p>
+        </button>
+      </div>
+    </div>
+
+    <div class="mockbar">
+      <strong>Mock</strong>
+      <button type="button" id="mockTheme">Dunkel</button>
+    </div>
+
+    <script>
+      /* Die gewählte Marke wandert in den Kopfbereich oben. Geklont statt neu
+         geschrieben: So ist ausgeschlossen, dass die Probe und die Karte
+         auseinanderlaufen. */
+      const slot = document.getElementById('previewMark')
+      const picks = Array.from(document.querySelectorAll('.pick'))
+
+      function show(pick) {
+        slot.replaceChildren(pick.querySelector('.pick__stage svg').cloneNode(true))
+        picks.forEach((other) => other.setAttribute('aria-pressed', String(other === pick)))
+      }
+
+      picks.forEach((pick) => pick.addEventListener('click', () => show(pick)))
+      show(picks[0])
+
+      const themeButton = document.getElementById('mockTheme')
+      themeButton.addEventListener('click', () => {
+        const dark = document.documentElement.getAttribute('data-theme') === 'dark'
+        document.documentElement.setAttribute('data-theme', dark ? 'light' : 'dark')
+        themeButton.textContent = dark ? 'Dunkel' : 'Hell'
+      })
+    </script>
+  </body>
+</html>
