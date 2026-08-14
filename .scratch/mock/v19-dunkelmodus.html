@@ -1,0 +1,1655 @@
+<!doctype html>
+<html lang="de" data-theme="dark" data-dark="sepia">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Applai Dunkelmodus</title>
+    <style>
+      /* =====================================================================
+         Attrappe: Vorbereiten-Seite, verspielt. Dritter Durchgang.
+
+         Vorbild bleibt die Lobby von Gartic Phone. Der Raum ist ein
+         liniertes DIN-A4-Blatt, darauf liegt die Karte wie ein Aufkleber.
+
+         **Was hier die Formen trennt, ist die Kontur, nicht der Helligkeits-
+         unterschied.** Weiß auf Hellblau bringt von sich aus 1,7:1, davon
+         kann keine Karte leben. Deshalb bekommt jede Form eine dicke
+         Tintenlinie und darunter eine harte Kante in derselben Tinte, wie
+         bei einem Aufkleber. Genau das hält Zeichentrick-Oberflächen
+         zusammen und genau das fehlte dem ersten hellen Entwurf, der eine
+         weiße Karte ohne Kontur auf blasses Cyan gelegt hat.
+
+         Zwei Linienstärken, mehr nicht:
+           Tinte (--line) für Karte und Knöpfe, weiche Tinte (--line-soft)
+           für Kacheln und Eingabefelder. Daran hängt die ganze Hierarchie.
+
+         Farbe hat zwei Rollen, jede genau eine Farbe:
+           Tangerine heißt „hier ist etwas zu tun", Minze heißt „erledigt".
+         Deshalb braucht die Seite keine Worte, um ihren Stand mitzuteilen.
+
+         Schrift: Fredoka (rund, spielzeughaft) für Marke, Beschriftungen
+         und Knöpfe. Inter (liegt schon im Projekt) für alles, was gelesen
+         statt erkannt wird: Anzeigentext, Eingaben, Hinweise, Dateinamen.
+
+         Formen: Karte 34px · Kacheln 24px · Bedienelemente 16px · Knöpfe Pille
+
+         ---------------------------------------------------------------------
+         Diese Fassung dient der Wahl des Dunkelmodus.
+
+         **Das Problem des jetzigen.** Der helle Entwurf ist Papier: ein
+         liniertes Blatt, eine Karte darauf, alles mit Tinte gezeichnet. Der
+         Dunkelmodus wirft das weg und wird ein dunkelblaues Programm wie
+         jedes andere. Er ist nicht schlecht gemacht, er ist nur nicht mehr
+         dieselbe Anwendung.
+
+         Vier Antworten stehen zur Wahl, die Leiste oben schaltet um:
+
+         - Jetzt: der bisherige Stand, als Bezugspunkt.
+         - Sepia: Papier bei Nacht. Der Grund bleibt Papier, nur warm und
+           dunkel; die Tinte wird sepiabraun statt blau. Tangerine sitzt auf
+           warmem Dunkel besser als auf Marineblau.
+         - Dämmerung: nicht schwarz, nur gedimmt. Ein mittleres Blaugrau,
+           auf dem die hellen Linien weiterhin Linien sind.
+         - Nachttisch: nur der Raum wird dunkel, Karte und Felder bleiben
+           hell. Man arbeitet weiter auf Papier, alles drumherum tritt
+           zurück.
+         - Kein: gar kein Dunkelmodus, immer hell. Auch eine Antwort, und
+           für eine Anwendung, die ein Blatt Papier zeigt, keine schlechte.
+         ===================================================================== */
+
+      @font-face {
+        font-family: 'Fredoka';
+        font-style: normal;
+        font-display: swap;
+        font-weight: 400 700;
+        src: url('../../public/fonts/fredoka-variable-latin.woff2') format('woff2-variations');
+        unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+          U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191,
+          U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+      }
+
+      @font-face {
+        font-family: 'Inter Variable';
+        font-style: normal;
+        font-display: swap;
+        font-weight: 100 900;
+        src: url('../../public/fonts/inter-variable-latin.woff2') format('woff2-variations');
+      }
+
+      /* --- Farbe ---------------------------------------------------------
+         Helle Voreinstellung. Der Raum ist auch hier dunkel: Er ist die
+         Bühne, nicht die Arbeitsfläche. Was zwischen hell und dunkel
+         umschaltet, ist die Karte. */
+      :root {
+        color-scheme: light;
+
+        /* Der Raum ist ein liniertes DIN-A4-Blatt: papierweißer Grund,
+           Zeilen im klassischen Blassblau, links der rote Rand. Der
+           Zeilenabstand ist der von Lineatur 27, also 9mm, in CSS-Pixeln
+           bei 96dpi rund 34px. Der Rand steht bei 14% der Fensterbreite,
+           damit er auf jedem Fenster an derselben Stelle sitzt.
+
+           Kein Farbverlauf: Papier ist flach. Die Tiefe kommt allein aus
+           der leichten Abdunklung zu den Rändern hin. */
+        --paper: #ffffff;
+        --rule-step: 34px;
+        --rule: #c3d8ea;
+        --margin: #aecbe5;
+        --room-edge: transparent;
+        /* Bleistiftgrau für die Kritzeleien am Rand. Bewusst schwach: Sie
+           sind Papierspur, kein Inhalt. Wer sie liest, statt sie zu
+           bemerken, hat zu viel Aufmerksamkeit daran verloren. */
+        --doodle: rgb(23 27 60 / 0.18);
+        --on-room: var(--ink-strong);
+        /* Der weiche Schatten unter der harten Kante. Er trägt die
+           Ablösung, die der Helligkeitsunterschied allein nicht schafft. */
+        --card-shadow: 0 16px 30px rgb(13 27 75 / 0.13);
+        --btn-shadow: 0 10px 18px rgb(13 27 75 / 0.14);
+
+        /* Die eine Kontur und die eine harte Kante. */
+        --line: #0d1b4b;
+        --line-soft: #3a4680;
+        --pop: #0d1b4b;
+
+        /* Die Karte ist beige, nicht weiß. Das Blatt darunter ist das
+           Papier und bleibt hell; abheben soll sich das, was daraufliegt.
+           1,08:1 gegen den Grund. Bei diesem Wert trägt nicht mehr die
+           Helligkeit, sondern der Farbton: warm gegen neutralweiß. Die
+           Ablösung machen die Tintenkontur, die harte Kante und der
+           Schatten darunter. */
+        --card: #fbf6ec;
+        --ink: #16205c;
+        --ink-strong: #0d1b4b;
+        --muted: #4e5885;
+
+        --field: #ffffff;
+
+        --accent: #ff7a45;
+        --accent-line: #c9531f;
+        --accent-deep: #b8461a;
+        --accent-ink: #2b1004;
+        --accent-text: #c9531f;
+        --accent-wash: #fff0e8;
+
+        --done: #22c98f;
+        --done-line: #0f8f64;
+        --done-deep: #0f8f64;
+        --done-ink: #06301f;
+        --done-text: #0b7050;
+        --done-wash: #ddf7ec;
+
+        --error: #d6293e;
+
+
+        --focus: var(--accent-deep);
+
+        --r-card: 34px;
+        --r-tile: 24px;
+        --r-control: 16px;
+        --pop-height: 6px;
+
+        --bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+        --font-display: 'Fredoka', system-ui, sans-serif;
+        --font-body: 'Inter Variable', system-ui, sans-serif;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme='light']) {
+          color-scheme: dark;
+
+          --paper: #04061f;
+          --rule: rgb(255 255 255 / 0.075);
+          --margin: rgb(255 255 255 / 0.14);
+          --card-shadow: 0 16px 34px rgb(0 0 0 / 0.5);
+          --btn-shadow: 0 10px 20px rgb(0 0 0 / 0.45);
+          --room-edge: rgb(0 0 0 / 0.45);
+          --doodle: rgb(255 255 255 / 0.085);
+          --on-room: var(--ink-strong);
+
+          --line: #3b4794;
+          --line-soft: #5d66bd;
+          --pop: #2a3382;
+
+          --card: #1a2158;
+          --ink: #e7e9ff;
+          --ink-strong: #ffffff;
+          --muted: #9aa1d4;
+
+          --field: #0d1238;
+
+          --accent: #ff8f5e;
+          --accent-line: #ff8f5e;
+          --accent-deep: #b8461a;
+          --accent-ink: #2a0f05;
+          --accent-text: #ffa87e;
+          --accent-wash: #3a1f28;
+
+          --done: #2fd9a0;
+          --done-line: #2fd9a0;
+          --done-deep: #12996b;
+          --done-ink: #04281a;
+          --done-text: #46e0ae;
+          --done-wash: #0e3140;
+
+          --error: #ff8a7a;
+
+
+          --focus: var(--accent-text);
+        }
+      }
+
+      :root[data-theme='dark'] {
+        color-scheme: dark;
+
+        --paper: #04061f;
+        --rule: rgb(255 255 255 / 0.075);
+        --margin: rgb(255 255 255 / 0.14);
+        --card-shadow: 0 16px 34px rgb(0 0 0 / 0.5);
+        --btn-shadow: 0 10px 20px rgb(0 0 0 / 0.45);
+        --room-edge: rgb(0 0 0 / 0.45);
+        --doodle: rgb(255 255 255 / 0.085);
+        --on-room: var(--ink-strong);
+
+        --line: #3b4794;
+        --line-soft: #5d66bd;
+        --pop: #2a3382;
+
+        --card: #1a2158;
+        --ink: #e7e9ff;
+        --ink-strong: #ffffff;
+        --muted: #9aa1d4;
+
+        --field: #0d1238;
+
+        --accent: #ff8f5e;
+        --accent-line: #ff8f5e;
+        --accent-deep: #b8461a;
+        --accent-ink: #2a0f05;
+        --accent-text: #ffa87e;
+        --accent-wash: #3a1f28;
+
+        --done: #2fd9a0;
+        --done-line: #2fd9a0;
+        --done-deep: #12996b;
+        --done-ink: #04281a;
+        --done-text: #46e0ae;
+        --done-wash: #0e3140;
+
+        --error: #ff8a7a;
+
+
+        --focus: var(--accent-text);
+      }
+
+
+      /* =====================================================================
+         Die vier Fassungen. Sie stehen nach den Themablöcken, damit sie
+         gewinnen, und setzen nur die Werte, die sich unterscheiden.
+         ===================================================================== */
+
+      /* 1 · Sepia. Papier bei Nacht: warm statt blau, die Tinte sepiabraun.
+         Die Metapher überlebt, das Blatt bleibt ein Blatt. */
+      :root[data-dark='sepia'] {
+        --paper: #1c1815;
+        --rule: rgb(255 240 220 / 0.09);
+        --margin: rgb(255 240 220 / 0.15);
+        --doodle: rgb(255 240 220 / 0.09);
+        --on-room: var(--ink-strong);
+        --room-edge: rgb(0 0 0 / 0.4);
+
+        --line: #6b5c47;
+        --line-soft: #4e4437;
+        --pop: #0e0c0a;
+
+        --card: #2a241d;
+        --ink: #f0e6d6;
+        --ink-strong: #fffaf2;
+        --muted: #b3a894;
+        --field: #221d17;
+
+        --accent: #ff8f5e;
+        --accent-line: #ff8f5e;
+        --accent-deep: #b8461a;
+        --accent-ink: #2a1207;
+        --accent-text: #ffa87e;
+        --accent-wash: #3a2317;
+
+        --done: #4fd6a4;
+        --done-line: #4fd6a4;
+        --done-deep: #1c8f68;
+        --done-ink: #06301f;
+        --done-text: #6fe0b8;
+        --done-wash: #16332a;
+
+        --error: #ff8a7a;
+
+        --card-shadow: 0 16px 34px rgb(0 0 0 / 0.55);
+        --btn-shadow: 0 10px 20px rgb(0 0 0 / 0.5);
+      }
+
+      /* 2 · Dämmerung. Nicht schwarz, nur gedimmt. Für lange Sitzungen das
+         ruhigste; verliert dafür die Tiefe, die ein dunkler Grund gibt. */
+      :root[data-dark='daemmerung'] {
+        --paper: #3b4152;
+        --rule: rgb(255 255 255 / 0.1);
+        --margin: rgb(255 255 255 / 0.17);
+        --doodle: rgb(255 255 255 / 0.1);
+        --on-room: var(--ink-strong);
+        --room-edge: rgb(0 0 0 / 0.25);
+
+        --line: #aab3c9;
+        --line-soft: #808ba3;
+        --pop: #262b38;
+
+        --card: #4a5163;
+        --ink: #eef1f7;
+        --ink-strong: #ffffff;
+        --muted: #c2c9d8;
+        --field: #424959;
+
+        --accent: #ff8f5e;
+        --accent-line: #ff8f5e;
+        --accent-deep: #b8461a;
+        --accent-ink: #2a1207;
+        --accent-text: #ffa87e;
+        --accent-wash: #5a4a4c;
+
+        --done: #35d3a0;
+        --done-line: #35d3a0;
+        --done-deep: #12996b;
+        --done-ink: #04281a;
+        --done-text: #5fe0b6;
+        --done-wash: #3a5257;
+
+        --error: #ff8a7a;
+
+        --card-shadow: 0 16px 34px rgb(0 0 0 / 0.35);
+        --btn-shadow: 0 10px 20px rgb(0 0 0 / 0.3);
+      }
+
+      /* 3 · Nachttisch. Nur der Raum wird dunkel; Karte, Felder, Tinte und
+         Farben bleiben die hellen. Man arbeitet weiter auf Papier, alles
+         drumherum tritt zurück. Das ist der Modus, den Textprogramme mit
+         heller Seite fahren. Hell auf Dunkel blendet dafür stärker. */
+      :root[data-dark='nachttisch'] {
+        --paper: #12151f;
+        --rule: rgb(255 255 255 / 0.06);
+        --margin: rgb(255 255 255 / 0.11);
+        --doodle: rgb(255 255 255 / 0.08);
+        --on-room: #eef1f9;
+        --room-edge: rgb(0 0 0 / 0.4);
+
+        --line: #0d1b4b;
+        --line-soft: #3a4680;
+        --pop: #34406e;
+
+        --card: #fbf6ec;
+        --ink: #16205c;
+        --ink-strong: #0d1b4b;
+        --muted: #4e5885;
+        --field: #ffffff;
+
+        --accent: #ff7a45;
+        --accent-line: #c9531f;
+        --accent-deep: #b8461a;
+        --accent-ink: #2b1004;
+        --accent-text: #c9531f;
+        --accent-wash: #fff0e8;
+
+        --done: #22c98f;
+        --done-line: #0f8f64;
+        --done-deep: #0f8f64;
+        --done-ink: #06301f;
+        --done-text: #0b7050;
+        --done-wash: #dcf7ec;
+
+        --error: #d6293e;
+
+        --card-shadow: 0 16px 34px rgb(0 0 0 / 0.6);
+        --btn-shadow: 0 10px 20px rgb(0 0 0 / 0.5);
+      }
+
+      /* --- Die Umschaltleiste (gehört nicht zum Entwurf) ------------------- */
+      .darkbar {
+        position: relative;
+        z-index: 2;
+        max-width: calc(100vw - 24px);
+        margin: 0 auto 4px;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: center;
+        gap: 6px;
+        padding: 7px 10px;
+        border-radius: 22px;
+        background: var(--card);
+        border: 2px solid var(--line-soft);
+        font-size: 0.75rem;
+        color: var(--muted);
+      }
+
+      .darkbar strong {
+        padding: 0 4px;
+        font-family: var(--font-display);
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        font-size: 0.6875rem;
+      }
+
+      .darkbar button {
+        padding: 4px 12px;
+        border-radius: 999px;
+        border: 2px solid var(--line-soft);
+        background: var(--field);
+        color: var(--ink);
+        font-size: 0.75rem;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      .darkbar button:hover {
+        border-color: var(--accent-line);
+        background: var(--accent-wash);
+      }
+
+      .darkbar button[aria-pressed='true'] {
+        background: var(--accent);
+        border-color: var(--line);
+        color: var(--accent-ink);
+      }
+
+      /* --- Grundlage ----------------------------------------------------- */
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        min-height: 100dvh;
+        background-color: var(--paper);
+        color: var(--ink);
+        font-family: var(--font-body);
+        font-size: 1rem;
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      button,
+      input,
+      textarea {
+        font: inherit;
+        color: inherit;
+      }
+
+      :focus-visible {
+        outline: 3px solid var(--focus);
+        outline-offset: 3px;
+      }
+
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+        border: 0;
+      }
+
+      /* --- Der Raum ------------------------------------------------------
+         Zwei Lagen: ein feines Punktraster über die ganze Fläche und eine
+         Handvoll Kritzeleien an den Rändern, wie sie beim Warten am Rand
+         eines Blattes entstehen: Spirale, Gesicht, Schlaufe, Stern, Wolke,
+         Pfeil, Bleistift.
+
+         **Sie bewegen sich nicht.** Das Konfetti vorher schwebte, weil es
+         über dem Blatt lag. Diese hier sind auf das Blatt gezeichnet, und
+         Bleistift wandert nicht.
+
+         Sie sind Zier, tragen deshalb aria-hidden und nehmen keine
+         Zeigerereignisse an. Unter 1024px fallen sie weg: Dort steht die
+         Karte über die ganze Breite und hätte sie ohnehin verdeckt. */
+      .room {
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        overflow: hidden;
+        pointer-events: none;
+        background-image:
+          radial-gradient(circle at center, transparent 58%, var(--room-edge) 100%),
+          linear-gradient(
+            90deg,
+            transparent 0 14%,
+            var(--margin) 14% calc(14% + 2px),
+            transparent calc(14% + 2px)
+          ),
+          linear-gradient(var(--rule) 1.5px, transparent 1.5px);
+        background-size:
+          100% 100%,
+          100% 100%,
+          100% var(--rule-step);
+      }
+
+      .doodle {
+        position: absolute;
+        display: none;
+        fill: none;
+        stroke: var(--doodle);
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      @media (min-width: 1024px) {
+        .doodle {
+          display: block;
+        }
+      }
+
+      /* Von Hand gesetzt, nicht gewürfelt: Der Rand eines Blattes ist nicht
+         gleichmäßig bekritzelt, aber er sieht in jeder Sitzung gleich aus.
+         Die leichten Drehungen nehmen den Formen die Werkzeugsauberkeit.
+
+         Verteilt wird über die ganze Fläche, nicht nur an den Seitenrändern:
+         Über und unter der Karte liegt genauso viel freies Blatt, und ein
+         Blatt, das nur links und rechts bekritzelt ist, sieht gerahmt aus
+         statt benutzt. Was hinter der Karte landet, verdeckt sie einfach. */
+      .doodle:nth-of-type(1) {
+        top: 6%;
+        left: 13%;
+        width: 74px;
+        rotate: -6deg;
+      }
+      .doodle:nth-of-type(2) {
+        top: 61%;
+        left: 11%;
+        width: 82px;
+        rotate: -3deg;
+      }
+      .doodle:nth-of-type(3) {
+        bottom: 9%;
+        left: 27%;
+        width: 64px;
+        rotate: 8deg;
+      }
+      .doodle:nth-of-type(4) {
+        top: 5%;
+        right: 29%;
+        width: 56px;
+        rotate: 11deg;
+      }
+      .doodle:nth-of-type(5) {
+        top: 40%;
+        right: 4%;
+        width: 84px;
+        rotate: -5deg;
+      }
+      .doodle:nth-of-type(6) {
+        bottom: 14%;
+        right: 13%;
+        width: 72px;
+        rotate: 6deg;
+      }
+
+      /* Der Krakelkopf sitzt in der Ecke und läuft über den Blattrand
+         hinaus, wie in der Vorlage. Angeschnitten sieht eine Kritzelei
+         gezeichnet aus; mittig und vollständig sieht sie platziert aus. */
+      .doodle:nth-of-type(7) {
+        bottom: 3%;
+        left: -26px;
+        width: 116px;
+        rotate: -4deg;
+      }
+
+      /* --- Aufbau -------------------------------------------------------- */
+      .shell {
+        position: relative;
+        z-index: 1;
+        min-height: 100dvh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 22px;
+        padding: 22px 16px 100px;
+      }
+
+      .topbar {
+        width: 100%;
+        max-width: 780px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+      }
+
+      /* Marke: Bildmarke und Schriftzug nebeneinander. Das Bild trägt
+         `alt=""` und feste Maße, wie in der Anwendung auch: Den Namen sagt
+         der Schriftzug daneben schon, und feste Maße halten die Kopfzeile
+         still, bis die Datei eintrifft. Die Höhe steht in CSS, die Breite
+         ergibt sich aus dem Seitenverhältnis der Datei (114:104). */
+      .wordmark {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-family: var(--font-display);
+        font-size: 1.5rem;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        color: var(--on-room);
+      }
+
+      .wordmark img {
+        flex: none;
+        height: 38px;
+        width: auto;
+      }
+
+      .wordmark b {
+        font-weight: 600;
+        color: var(--accent);
+      }
+
+      .steps {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+
+      .steps li {
+        width: 12px;
+        height: 12px;
+        border-radius: 999px;
+        border: 3px solid var(--line);
+        background: var(--card);
+        transition: width 260ms var(--bounce);
+      }
+
+      .steps li[aria-current='step'] {
+        width: 34px;
+        background: var(--accent);
+      }
+
+      .stage {
+        width: 100%;
+        max-width: 780px;
+        display: flex;
+        flex-direction: column;
+        gap: 26px;
+        margin: auto 0;
+      }
+
+      /* --- Die Karte ------------------------------------------------------ */
+      .panel {
+        position: relative;
+        background: var(--card);
+        border: 3px solid var(--line);
+        border-radius: var(--r-card);
+        box-shadow: 0 10px 0 var(--pop), var(--card-shadow);
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+
+      @media (min-width: 640px) {
+        .panel {
+          padding: 30px;
+          gap: 24px;
+        }
+      }
+
+      /* --- Ablegekacheln --------------------------------------------------
+         Tangerine an der leeren Kachel heißt „hier fehlt noch etwas".
+         Minze an der vollen heißt „liegt vor". Mehr Auskunft gibt die
+         Kachel nicht, mehr braucht sie nicht zu geben. */
+      .tiles {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 20px;
+      }
+
+      @media (min-width: 640px) {
+        .tiles {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+
+      .tile-wrap {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .tile {
+        position: relative;
+        width: 100%;
+        min-height: 172px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        padding: 18px 16px;
+        overflow: hidden;
+        cursor: pointer;
+        background: var(--field);
+        border: 3px dashed var(--line-soft);
+        border-radius: var(--r-tile);
+        color: var(--ink);
+        text-align: center;
+        transition:
+          transform 220ms var(--bounce),
+          background-color 160ms ease-out,
+          border-color 160ms ease-out;
+      }
+
+      /* Die leichte Schräglage ist der Wartezustand: lose Blätter liegen
+         schief. Sobald etwas drin liegt, richtet sich die Kachel auf. */
+      .tile-wrap:nth-child(1) .tile:not(.is-loaded) {
+        transform: rotate(-1.5deg);
+      }
+      .tile-wrap:nth-child(2) .tile:not(.is-loaded) {
+        transform: rotate(1.5deg);
+      }
+
+      .tile:hover {
+        transform: rotate(0deg) translateY(-3px);
+        background: var(--accent-wash);
+        border-color: var(--accent-line);
+      }
+
+      .tile:active {
+        transform: rotate(0deg) translateY(2px);
+      }
+
+      .tile.is-over {
+        transform: rotate(0deg) scale(1.03);
+        background: var(--accent-wash);
+        border-style: solid;
+        border-color: var(--accent-line);
+      }
+
+      .tile.is-loaded {
+        transform: rotate(0deg);
+        cursor: pointer;
+        background: var(--done-wash);
+        border-style: solid;
+        border-color: var(--done-line);
+        /* Liniertes Blatt: eine Textur, kein Sinnbild. Sie sagt „hier liegt
+           etwas", ohne ein Wort dafür zu brauchen. */
+        background-image: repeating-linear-gradient(
+          to bottom,
+          transparent 0,
+          transparent 21px,
+          color-mix(in oklab, var(--done) 22%, transparent) 21px,
+          color-mix(in oklab, var(--done) 22%, transparent) 22px
+        );
+        background-position: 0 30px;
+      }
+
+      .tile.is-loaded:hover {
+        border-color: var(--done-deep);
+      }
+
+      /* Das dicke Plus ist reine Geometrie, kein gezeichnetes Sinnbild. */
+      .tile__plus {
+        position: relative;
+        width: 42px;
+        height: 42px;
+        color: var(--accent);
+        transition: transform 260ms var(--bounce);
+      }
+
+      .tile__plus::before,
+      .tile__plus::after {
+        content: '';
+        position: absolute;
+        background: currentColor;
+        border-radius: 999px;
+      }
+
+      .tile__plus::before {
+        inset: 0 41%;
+      }
+
+      .tile__plus::after {
+        inset: 41% 0;
+      }
+
+      .tile:hover .tile__plus {
+        transform: rotate(90deg) scale(1.08);
+      }
+
+      .tile.is-loaded .tile__plus {
+        display: none;
+      }
+
+      .tile__name {
+        font-family: var(--font-display);
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: var(--ink-strong);
+      }
+
+      .tile__file {
+        display: none;
+        max-width: 100%;
+        overflow-wrap: anywhere;
+        font-size: 0.8125rem;
+        font-weight: 500;
+        color: var(--done-text);
+      }
+
+      .tile.is-loaded .tile__file {
+        display: block;
+      }
+
+      .tile__flag {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        padding: 3px 11px;
+        border-radius: 999px;
+        background: var(--card);
+        border: 2px solid var(--line-soft);
+        font-family: var(--font-display);
+        font-size: 0.6875rem;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      .tile.is-loaded .tile__flag {
+        display: none;
+      }
+
+      .tile__drop {
+        position: absolute;
+        top: -13px;
+        right: -13px;
+        display: none;
+        place-items: center;
+        width: 36px;
+        height: 36px;
+        border-radius: 999px;
+        border: 3px solid var(--card);
+        background: var(--ink-strong);
+        color: var(--card);
+        cursor: pointer;
+        transition: transform 200ms var(--bounce);
+      }
+
+      .tile-wrap.is-loaded .tile__drop {
+        display: grid;
+      }
+
+      .tile__drop:hover {
+        transform: scale(1.14) rotate(90deg);
+      }
+
+      .tile__drop svg {
+        width: 16px;
+        height: 16px;
+      }
+
+      .tile-error {
+        display: none;
+        margin: 0;
+        padding: 0 4px;
+        font-size: 0.8125rem;
+        line-height: 1.5;
+        font-weight: 500;
+        color: var(--error);
+      }
+
+      .tile-wrap.is-error .tile-error {
+        display: block;
+      }
+
+      .tile-wrap.is-error .tile {
+        border-color: var(--error);
+        border-style: solid;
+      }
+
+      @media (prefers-reduced-motion: no-preference) {
+        .tile-wrap.is-error .tile {
+          animation: shake 420ms ease-out;
+        }
+      }
+
+      @keyframes shake {
+        0%,
+        100% {
+          transform: rotate(0) translateX(0);
+        }
+        20% {
+          transform: rotate(0) translateX(-8px);
+        }
+        40% {
+          transform: rotate(0) translateX(7px);
+        }
+        60% {
+          transform: rotate(0) translateX(-4px);
+        }
+        80% {
+          transform: rotate(0) translateX(3px);
+        }
+      }
+
+      /* Ladeanzeige: das Blatt füllt sich von unten. Kein kreisender
+         Zeiger, sondern dieselbe Form, die gleich das Ergebnis trägt. */
+      .tile.is-busy {
+        cursor: progress;
+        border-style: solid;
+        border-color: var(--accent-line);
+      }
+
+      .tile.is-busy .tile__plus {
+        opacity: 0.3;
+      }
+
+      .tile__fill {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 0;
+        background: var(--accent-wash);
+        pointer-events: none;
+      }
+
+      .tile.is-busy .tile__fill {
+        animation: fill 900ms ease-in-out infinite alternate;
+      }
+
+      @keyframes fill {
+        from {
+          height: 8%;
+        }
+        to {
+          height: 80%;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .tile.is-busy .tile__fill {
+          height: 45%;
+          animation: none;
+        }
+      }
+
+      /* --- Felder --------------------------------------------------------- */
+      .block {
+        display: flex;
+        flex-direction: column;
+        gap: 9px;
+      }
+
+      .block__head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 0 4px;
+      }
+
+      .label {
+        font-family: var(--font-display);
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: var(--ink-strong);
+      }
+
+      textarea {
+        width: 100%;
+        min-height: 136px;
+        resize: vertical;
+        padding: 14px 16px;
+        background: var(--field);
+        border: 3px solid var(--line-soft);
+        border-radius: var(--r-control);
+        line-height: 1.65;
+        transition:
+          border-color 160ms ease-out,
+          background-color 160ms ease-out;
+      }
+
+      textarea:hover,
+      input[type='text']:hover,
+      textarea:focus-visible,
+      input[type='text']:focus-visible {
+        border-color: var(--accent-line);
+      }
+
+      textarea::placeholder {
+        color: var(--muted);
+      }
+
+      input[type='text'] {
+        width: 100%;
+        padding: 12px 16px;
+        background: var(--field);
+        border: 3px solid var(--line-soft);
+        border-radius: var(--r-control);
+        font-weight: 500;
+        transition: border-color 160ms ease-out;
+      }
+
+      /* Kleiner Nebenknopf, dieselbe Mechanik wie der große. */
+      .mini {
+        flex: none;
+        padding: 7px 17px 8px;
+        background: var(--field);
+        border: 3px solid var(--line);
+        border-radius: 999px;
+        box-shadow: 0 4px 0 var(--pop);
+        font-family: var(--font-display);
+        font-size: 0.8125rem;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        color: var(--ink-strong);
+        cursor: pointer;
+        transition:
+          transform 180ms var(--bounce),
+          box-shadow 140ms ease-out,
+          background-color 140ms ease-out;
+      }
+
+      .mini:hover {
+        background: var(--accent-wash);
+        border-color: var(--accent-line);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 0 var(--pop);
+      }
+
+      .mini:active {
+        transform: translateY(4px);
+        box-shadow: 0 0 0 var(--pop);
+      }
+
+      /* Das Namensfeld klappt auf, sobald es einen Grund dafür gibt. */
+      .reveal {
+        display: grid;
+        grid-template-rows: 0fr;
+        opacity: 0;
+        transition:
+          grid-template-rows 300ms var(--bounce),
+          opacity 220ms ease-out;
+      }
+
+      .reveal > div {
+        overflow: hidden;
+        min-height: 0;
+      }
+
+      .reveal.is-open {
+        grid-template-rows: 1fr;
+        opacity: 1;
+      }
+
+      .hint {
+        margin: 0;
+        padding: 0 4px;
+        font-size: 0.8125rem;
+        line-height: 1.5;
+        color: var(--muted);
+      }
+
+      /* --- Weiter ---------------------------------------------------------
+         Erst die drei Perlen, dann der Weg. Die Perlen ersetzen die Liste
+         „Dafür fehlt noch:" der alten Seite: Sie füllen sich in der
+         Reihenfolge, in der die Seite gelesen wird, und tragen ihre Namen
+         für Vorlesesoftware und im Titel. */
+      .gobar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        gap: 22px;
+        padding: 0 6px;
+      }
+
+      .beads {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+
+      .beads li {
+        display: grid;
+        place-items: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 999px;
+        border: 3px solid var(--line);
+        background: var(--card);
+        color: transparent;
+        transition:
+          background-color 200ms ease-out,
+          border-color 200ms ease-out,
+          transform 320ms var(--bounce);
+      }
+
+      .beads li svg {
+        width: 16px;
+        height: 16px;
+      }
+
+      .beads li.is-done {
+        background: var(--done);
+        color: var(--done-ink);
+        transform: scale(1.14);
+      }
+
+      .go {
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+        padding: 15px 36px 17px;
+        background: var(--accent);
+        border: 3px solid var(--line);
+        border-radius: 999px;
+        box-shadow: 0 var(--pop-height) 0 var(--accent-deep), var(--btn-shadow);
+        color: var(--accent-ink);
+        font-family: var(--font-display);
+        font-size: 1.1875rem;
+        font-weight: 600;
+        white-space: nowrap;
+        cursor: pointer;
+        transition:
+          transform 200ms var(--bounce),
+          box-shadow 140ms ease-out,
+          background-color 160ms ease-out;
+      }
+
+      .go svg {
+        width: 20px;
+        height: 20px;
+        rotate: 90deg;
+        transition: translate 220ms var(--bounce);
+      }
+
+      .go:not([disabled]):hover {
+        transform: translateY(-3px);
+        box-shadow: 0 9px 0 var(--accent-deep), var(--btn-shadow);
+      }
+
+      .go:not([disabled]):hover svg {
+        translate: 5px 0;
+      }
+
+      .go:not([disabled]):active {
+        transform: translateY(var(--pop-height));
+        box-shadow: 0 0 0 var(--accent-deep);
+      }
+
+      .go[disabled] {
+        cursor: not-allowed;
+        background: var(--card);
+        color: var(--muted);
+        border-color: var(--line-soft);
+        box-shadow: 0 var(--pop-height) 0 var(--pop);
+      }
+
+      /* Sobald alles beisammen ist, wippt der Knopf einmal. Er ist ab da das
+         Einzige, was noch zu tun ist, und sagt das von selbst. */
+      @media (prefers-reduced-motion: no-preference) {
+        .go.is-ready {
+          animation: pop 480ms var(--bounce);
+        }
+      }
+
+      @keyframes pop {
+        0% {
+          transform: scale(1);
+        }
+        45% {
+          transform: scale(1.07);
+        }
+        100% {
+          transform: scale(1);
+        }
+      }
+
+      /* --- Konfetti als Rückmeldung, wenn etwas angenommen wurde ---------- */
+      .confetti {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 10px;
+        height: 10px;
+        border-radius: 3px;
+        background: var(--done);
+        pointer-events: none;
+        animation: burst 640ms ease-out forwards;
+      }
+
+      .confetti:nth-child(even) {
+        border-radius: 999px;
+        background: var(--accent);
+      }
+
+      @keyframes burst {
+        from {
+          translate: -50% -50%;
+          rotate: 0deg;
+          opacity: 1;
+        }
+        to {
+          translate: var(--dx) var(--dy);
+          rotate: 180deg;
+          opacity: 0;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .confetti {
+          display: none;
+        }
+      }
+
+      /* --- Steuerung der Attrappe (gehört nicht zum Entwurf) -------------- */
+      .mockbar {
+        position: fixed;
+        left: 50%;
+        translate: -50% 0;
+        bottom: 12px;
+        z-index: 9;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 8px;
+        border-radius: 999px;
+        background: var(--card);
+        border: 2px solid var(--line-soft);
+        font-size: 0.75rem;
+        color: var(--muted);
+      }
+
+      .mockbar strong {
+        padding: 0 4px;
+        font-family: var(--font-display);
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        font-size: 0.6875rem;
+      }
+
+      .mockbar button {
+        padding: 4px 11px;
+        border-radius: 999px;
+        border: 2px solid var(--line-soft);
+        background: var(--field);
+        color: var(--ink);
+        font-size: 0.75rem;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      .mockbar button:hover {
+        border-color: var(--accent-line);
+        background: var(--accent-wash);
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="room" aria-hidden="true">
+      <!-- 1 · Spirale -->
+      <svg class="doodle" viewBox="0 0 60 60" stroke-width="2.1">
+        <path d="M31 30c0-4-5-5-7-1s3 10 10 9 12-10 8-19S24 8 15 15" />
+      </svg>
+
+      <!-- 2 · Schlaufe -->
+      <svg class="doodle" viewBox="0 0 60 60" stroke-width="2">
+        <path d="M4 34c6-14 15-15 17-4 1 7-7 9-8 2s8-12 17-6c6 4 8 12 16 7" />
+      </svg>
+
+      <!-- 3 · Bleistift -->
+      <svg class="doodle" viewBox="0 0 60 60" stroke-width="2.1">
+        <path d="M43 10l8 8-27 29-12 4 4-12z" />
+        <path d="M36 17l8 8" />
+        <path d="M16 39l8 8" />
+      </svg>
+
+      <!-- 4 · Stern -->
+      <svg class="doodle" viewBox="0 0 60 60" stroke-width="2.3">
+        <path d="M30 8c0 12 1 30 0 43" />
+        <path d="M13 18c10 6 25 15 34 21" />
+        <path d="M47 18c-9 6-24 15-34 21" />
+      </svg>
+
+      <!-- 5 · Wolke -->
+      <svg class="doodle" viewBox="0 0 60 60" stroke-width="2">
+        <path d="M14 40c-7 0-8-10-1-11-1-10 13-13 17-5 5-7 17-2 15 7 7 1 6 9-1 9z" />
+      </svg>
+
+      <!-- 6 · Pfeil -->
+      <svg class="doodle" viewBox="0 0 60 60" stroke-width="2.2">
+        <path d="M8 20c11 24 33 24 44 6" />
+        <path d="M52 26l-9 3" />
+        <path d="M52 26l-3 9" />
+      </svg>
+
+      <!-- 7 · Krakelkopf. Das Motiv aus der Vorlage: ein Gesicht in einer
+           krakeligen Umrandung, angeschnitten von der Blattkante. -->
+      <svg class="doodle" viewBox="0 0 64 64" stroke-width="2.1">
+        <path
+          d="M52 32a7.5 7.5 0 0 1-5 13.4 6.8 6.8 0 0 1-11.5 6.3 7.2 7.2 0 0 1-14.1-2.7 7 7 0 0 1-8.2-10.2 6.6 6.6 0 0 1 .6-13.8 7.4 7.4 0 0 1 8.2-10.3 7 7 0 0 1 14-2.7 7.2 7.2 0 0 1 11.3 7.1A6.9 6.9 0 0 1 52 32z"
+        />
+        <path d="M25 28v4.5" />
+        <path d="M39 28v4.5" />
+        <path d="M24 38c4 6 12 6 16 0" />
+      </svg>
+    </div>
+
+    <div class="shell">
+      <div class="darkbar">
+        <strong>Dunkelmodus</strong>
+        <button type="button" data-dark="jetzt">Jetzt</button>
+        <button type="button" data-dark="sepia" aria-pressed="true">Sepia</button>
+        <button type="button" data-dark="daemmerung">Dämmerung</button>
+        <button type="button" data-dark="nachttisch">Nachttisch</button>
+        <button type="button" data-dark="kein">Kein</button>
+      </div>
+
+      <header class="topbar">
+        <div class="wordmark">
+          <img src="../../public/logo.webp" alt="" width="114" height="104" />
+          <span>appl<b>ai</b></span>
+        </div>
+        <ol class="steps" aria-label="Ablauf">
+          <li aria-current="step"><span class="sr-only">Schritt 1, Vorbereiten</span></li>
+          <li><span class="sr-only">Schritt 2, Anschreiben anpassen</span></li>
+        </ol>
+      </header>
+
+      <main class="stage">
+        <h1 class="sr-only">Bewerbung vorbereiten</h1>
+
+        <div class="panel">
+          <!-- Zwei Kacheln, gleich groß, leicht gegeneinander verdreht. Was
+               nötig ist und was nicht, sagt die Marke „Optional" oben rechts
+               und sonst nichts. -->
+          <div class="tiles">
+            <div class="tile-wrap" data-slot="letter">
+              <button type="button" class="tile" aria-describedby="err-letter">
+                <span class="tile__fill" aria-hidden="true"></span>
+                <span class="tile__plus" aria-hidden="true"></span>
+                <span class="tile__name">Anschreiben</span>
+                <span class="tile__file"></span>
+              </button>
+              <button type="button" class="tile__drop" aria-label="Anschreiben entfernen">
+                <svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false">
+                  <path
+                    d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z"
+                  />
+                </svg>
+              </button>
+              <p class="tile-error" id="err-letter" role="alert"></p>
+              <input type="file" accept=".docx,.pdf" hidden />
+            </div>
+
+            <div class="tile-wrap" data-slot="cv">
+              <button type="button" class="tile" aria-describedby="err-cv">
+                <span class="tile__fill" aria-hidden="true"></span>
+                <span class="tile__flag">Optional</span>
+                <span class="tile__plus" aria-hidden="true"></span>
+                <span class="tile__name">Lebenslauf</span>
+                <span class="tile__file"></span>
+              </button>
+              <button type="button" class="tile__drop" aria-label="Lebenslauf entfernen">
+                <svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false">
+                  <path
+                    d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z"
+                  />
+                </svg>
+              </button>
+              <p class="tile-error" id="err-cv" role="alert"></p>
+              <input type="file" accept=".docx,.pdf" hidden />
+            </div>
+          </div>
+
+          <!-- Die Anzeige. Beschriftung, Feld, ein Nebenknopf für PDF. -->
+          <div class="block">
+            <div class="block__head">
+              <label class="label" for="ad">Stellenanzeige</label>
+              <button
+                type="button"
+                class="mini"
+                id="adPdf"
+                aria-label="Stellenanzeige aus PDF einlesen"
+              >
+                PDF
+              </button>
+            </div>
+            <textarea id="ad" placeholder="Anzeige hier einfügen"></textarea>
+          </div>
+
+          <!-- Der Name wird erst gefragt, wenn eine Unterlage daliegt. -->
+          <div class="reveal" id="nameReveal">
+            <div>
+              <div class="block">
+                <label class="label" for="name">Ihr Name</label>
+                <input type="text" id="name" autocomplete="name" aria-describedby="nameHint" />
+                <p class="hint" id="nameHint">
+                  Wird vor jeder Anfrage durch einen Platzhalter ersetzt.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="gobar">
+          <ol class="beads" id="beads" aria-label="Noch offen">
+            <li data-bead="doc" title="Anschreiben oder Lebenslauf">
+              <span class="sr-only">Anschreiben oder Lebenslauf</span>
+              <svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false">
+                <path
+                  d="M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z"
+                />
+              </svg>
+            </li>
+            <li data-bead="ad" title="Stellenanzeige">
+              <span class="sr-only">Stellenanzeige</span>
+              <svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false">
+                <path
+                  d="M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z"
+                />
+              </svg>
+            </li>
+            <li data-bead="name" title="Ihr Name">
+              <span class="sr-only">Ihr Name</span>
+              <svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false">
+                <path
+                  d="M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z"
+                />
+              </svg>
+            </li>
+          </ol>
+
+          <button type="button" class="go" id="go" disabled>
+            Weiter
+            <svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false">
+              <path
+                d="M205.66,117.66a8,8,0,0,1-11.32,0L136,59.31V216a8,8,0,0,1-16,0V59.31L61.66,117.66a8,8,0,0,1-11.32-11.32l72-72a8,8,0,0,1,11.32,0l72,72A8,8,0,0,1,205.66,117.66Z"
+              />
+            </svg>
+          </button>
+        </div>
+      </main>
+    </div>
+
+    <script>
+      /* =====================================================================
+         Die Attrappe verhält sich wie die Seite, ohne etwas zu lesen: Der
+         Dateiname kommt aus der gewählten Datei, ihr Inhalt bleibt außen vor.
+         Alles Uebrige (Zustände, Sperren, Reihenfolge) ist echt.
+         ===================================================================== */
+
+      const state = { letter: null, cv: null, ad: '', name: '' }
+
+      const SUPPORTED = /\.(docx|pdf)$/i
+      const DETECTED_NAME = 'Jonna Bredereck'
+
+      const beads = {
+        doc: document.querySelector('[data-bead="doc"]'),
+        ad: document.querySelector('[data-bead="ad"]'),
+        name: document.querySelector('[data-bead="name"]'),
+      }
+      const go = document.getElementById('go')
+      const nameReveal = document.getElementById('nameReveal')
+      const nameInput = document.getElementById('name')
+      const adInput = document.getElementById('ad')
+
+      const wraps = {}
+      document.querySelectorAll('.tile-wrap').forEach((wrap) => {
+        wraps[wrap.dataset.slot] = {
+          root: wrap,
+          tile: wrap.querySelector('.tile'),
+          file: wrap.querySelector('.tile__file'),
+          error: wrap.querySelector('.tile-error'),
+          drop: wrap.querySelector('.tile__drop'),
+          input: wrap.querySelector('input[type="file"]'),
+        }
+      })
+
+      /** Acht feste Richtungen, damit der Ausbruch bei jedem Ablegen gleich
+       *  aussieht und nicht bei jedem Aufruf neu ausgewürfelt wird. */
+      const BURST = [
+        [0, -70],
+        [50, -50],
+        [70, 0],
+        [50, 50],
+        [0, 70],
+        [-50, 50],
+        [-70, 0],
+        [-50, -50],
+      ]
+
+      function burst(host) {
+        BURST.forEach(([dx, dy], i) => {
+          const dot = document.createElement('span')
+          dot.className = 'confetti'
+          dot.style.setProperty('--dx', dx * 1.7 + 'px')
+          dot.style.setProperty('--dy', dy * 1.7 + 'px')
+          dot.style.animationDelay = i * 12 + 'ms'
+          dot.addEventListener('animationend', () => dot.remove())
+          host.appendChild(dot)
+        })
+      }
+
+      let wasReady = false
+
+      function render() {
+        const hasDoc = state.letter !== null || state.cv !== null
+
+        beads.doc.classList.toggle('is-done', hasDoc)
+        beads.ad.classList.toggle('is-done', state.ad.trim() !== '')
+        beads.name.classList.toggle('is-done', hasDoc && state.name.trim() !== '')
+
+        nameReveal.classList.toggle('is-open', hasDoc)
+
+        const ready = hasDoc && state.ad.trim() !== '' && state.name.trim() !== ''
+        go.disabled = !ready
+        if (ready && !wasReady) {
+          go.classList.remove('is-ready')
+          void go.offsetWidth
+          go.classList.add('is-ready')
+        }
+        wasReady = ready
+      }
+
+      function setFile(slot, fileName) {
+        const w = wraps[slot]
+        state[slot] = fileName
+        w.root.classList.remove('is-error')
+        w.root.classList.add('is-loaded')
+        w.tile.classList.remove('is-busy')
+        w.tile.classList.add('is-loaded')
+        w.file.textContent = fileName
+        w.error.textContent = ''
+        if (state.name.trim() === '') {
+          state.name = DETECTED_NAME
+          nameInput.value = DETECTED_NAME
+        }
+        burst(w.tile)
+        render()
+      }
+
+      function clearFile(slot) {
+        const w = wraps[slot]
+        state[slot] = null
+        w.root.classList.remove('is-loaded', 'is-error')
+        w.tile.classList.remove('is-loaded', 'is-busy', 'is-over')
+        w.file.textContent = ''
+        w.error.textContent = ''
+        w.input.value = ''
+        render()
+      }
+
+      function failFile(slot) {
+        const w = wraps[slot]
+        state[slot] = null
+        w.root.classList.remove('is-loaded')
+        w.tile.classList.remove('is-loaded', 'is-busy', 'is-over')
+        w.root.classList.remove('is-error')
+        void w.root.offsetWidth
+        w.root.classList.add('is-error')
+        w.error.textContent = 'Applai liest DOCX und PDF.'
+        render()
+      }
+
+      /** Das kurze Lesen sichtbar machen. In der Anwendung dauert es je nach
+       *  Datei ein paar hundert Millisekunden, hier fest 700. */
+      function accept(slot, fileName) {
+        const w = wraps[slot]
+        if (!SUPPORTED.test(fileName)) {
+          failFile(slot)
+          return
+        }
+        w.root.classList.remove('is-error')
+        w.tile.classList.add('is-busy')
+        setTimeout(() => setFile(slot, fileName), 700)
+      }
+
+      Object.entries(wraps).forEach(([slot, w]) => {
+        w.tile.addEventListener('click', () => w.input.click())
+        w.input.addEventListener('change', () => {
+          const file = w.input.files && w.input.files[0]
+          if (file) accept(slot, file.name)
+        })
+        w.drop.addEventListener('click', () => clearFile(slot))
+
+        w.tile.addEventListener('dragover', (event) => {
+          event.preventDefault()
+          w.tile.classList.add('is-over')
+        })
+        w.tile.addEventListener('dragleave', () => w.tile.classList.remove('is-over'))
+        w.tile.addEventListener('drop', (event) => {
+          event.preventDefault()
+          w.tile.classList.remove('is-over')
+          const file = event.dataTransfer && event.dataTransfer.files[0]
+          if (file) accept(slot, file.name)
+        })
+      })
+
+      adInput.addEventListener('input', () => {
+        state.ad = adInput.value
+        render()
+      })
+
+      nameInput.addEventListener('input', () => {
+        state.name = nameInput.value
+        render()
+      })
+
+      document.getElementById('adPdf').addEventListener('click', () => {
+        adInput.value = 'Wir suchen zum nächstmöglichen Zeitpunkt eine Fachkraft für ...'
+        state.ad = adInput.value
+        render()
+      })
+
+      go.addEventListener('click', () => {
+        go.animate(
+          [{ transform: 'scale(1)' }, { transform: 'scale(0.94)' }, { transform: 'scale(1)' }],
+          { duration: 260, easing: 'cubic-bezier(0.34,1.56,0.64,1)' },
+        )
+      })
+
+      /* Umschalter der Fassungen. „Jetzt" ist der bisherige Dunkelmodus,
+         also einfach kein data-dark. „Kein" setzt das helle Thema. */
+      const root = document.documentElement
+      document.querySelectorAll('[data-dark]').forEach((button) => {
+        if (button.tagName !== 'BUTTON') return
+        button.addEventListener('click', () => {
+          const wahl = button.dataset.dark
+          root.setAttribute('data-theme', wahl === 'kein' ? 'light' : 'dark')
+          if (wahl === 'jetzt' || wahl === 'kein') root.removeAttribute('data-dark')
+          else root.setAttribute('data-dark', wahl)
+          document
+            .querySelectorAll('.darkbar button')
+            .forEach((o) => o.setAttribute('aria-pressed', String(o === button)))
+        })
+      })
+    </script>
+  </body>
+</html>
