@@ -4,15 +4,28 @@ import {
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
   type ClipboardEvent,
   type DragEvent,
   type KeyboardEvent,
   type RefObject,
 } from 'react'
+import type { DocumentFormat, FormattedParagraph, PageFormat } from '@/lib/docx/format'
 import type { Paragraph } from '@/lib/docx/model'
 import { cn } from '@/lib/utils'
+import { useDocumentFonts } from './documentFonts'
+import {
+  caretOffsetWithin,
+  displayedText,
+  pieceSignature,
+  placeCaretWithin,
+  runPieces,
+  sourceText,
+  writePieces,
+} from './documentRuns'
 import { PARAGRAPH_INDEX_ATTRIBUTE, paragraphOf } from './documentSelection'
-import { collapsedEmptyParagraphs, splitIntoPages } from './pagination'
+import { pageStyle, paragraphStyle, type NaturalLineHeight } from './documentStyle'
+import { splitIntoPages } from './pagination'
 import {
   insertPlainText,
   isBlockedInputType,
@@ -141,14 +154,16 @@ export interface DocumentViewProps {
    */
   letterheadParagraphs?: readonly number[]
   /**
-   * Läufe von mehr als zwei leeren Zeilen in der Ansicht zusammenfalten.
+   * Die ausgelesene Formatierung des Dokuments — Schrift, Grade, Einzüge,
+   * Zeilenabstände, Seitenmaße.
    *
-   * **Nur die Ansicht.** Die Absätze bleiben im Dokument, im DOM und im
-   * Export; sie werden lediglich flach dargestellt. Word-Dateien tragen oft
-   * lange Leerlaufstrecken, die auf dem Papier Sinn ergeben und auf dem
-   * Bildschirm nur Weg kosten.
+   * Fehlt sie, zeigt die Fläche den Brief als Rohtext auf einem A4-Blatt,
+   * so wie vor der originalgetreuen Darstellung. Das ist kein Rückschritt,
+   * sondern die Sicherung: Ein Dokument, dessen Formatierung sich nicht
+   * lesen lässt, bleibt lesbar und bearbeitbar, statt gar nicht zu
+   * erscheinen.
    */
-  collapseBlankRuns?: boolean
+  format?: DocumentFormat | null
   /** Der neue Text genau eines Absatzes, sobald der Nutzer ihn geändert hat. */
   onParagraphInput: (index: number, text: string) => void
   /** Kennung der Überschrift, die diese Fläche benennt. */
@@ -171,7 +186,7 @@ export function DocumentView({
   claimParagraphs = [],
   foreignParagraphs = [],
   letterheadParagraphs = [],
-  collapseBlankRuns = false,
+  format = null,
   onParagraphInput,
   labelledBy,
   language,
@@ -182,6 +197,17 @@ export function DocumentView({
   const retained = new Set(retainedParagraphs)
   const flagged = new Set([...claimParagraphs, ...foreignParagraphs])
   const applied = new Set(letterheadParagraphs)
+  const natural = useDocumentFonts(format)
+  // Die Formatierung kennt ihre Absätze über den Index des Fließtextmodells;
+  // Absätze aus Kopfzeilen und Textfeldern tragen `null` und gehören nicht
+  // hierher (siehe `format.ts`).
+  const formatted = useMemo(() => {
+    const byIndex = new Map<number, FormattedParagraph>()
+    for (const paragraph of format?.paragraphs ?? []) {
+      if (paragraph.index !== null) byIndex.set(paragraph.index, paragraph)
+    }
+    return byIndex
+  }, [format])
 
   function host(): HTMLDivElement | null {
     return rootRef?.current ?? ownRef.current
@@ -201,7 +227,11 @@ export function DocumentView({
       const node = element.querySelector<HTMLElement>(
         `[data-paragraph-index="${paragraph.index}"]`,
       )
-      const text = node?.textContent ?? null
+      // `sourceText` und nicht `textContent`: Ein übersetztes Bildzeichen
+      // zeigt `•`, im Dokument steht aber `U+F09F`. Der Bildschirmtext
+      // zurückgemeldet, machte schon eine Änderung irgendwo in derselben
+      // Zeile aus dem Wingdings-Zeichen dauerhaft einen Aufzählungspunkt.
+      const text = node === null ? null : sourceText(node)
       if (text !== null && text !== paragraph.text) {
         onParagraphInput(paragraph.index, text)
         return
@@ -255,11 +285,8 @@ export function DocumentView({
   }
 
   const root = rootRef ?? ownRef
-  const collapsed = useMemo(
-    () => (collapseBlankRuns ? collapsedEmptyParagraphs(paragraphs) : new Set<number>()),
-    [collapseBlankRuns, paragraphs],
-  )
-  const { pages, pageHeight } = usePagination(root, paragraphs, collapsed)
+  const page = format?.page ?? null
+  const { pages, geometry } = usePagination(root, paragraphs, page)
 
   return (
     <div
@@ -280,39 +307,47 @@ export function DocumentView({
       // Zusätzlich zu `insertFromDrop` (siehe `editableInput.ts`): Nicht
       // jeder Browser meldet ein Ablegen vorher als Eingabeart an.
       onDrop={editable ? (event: DragEvent<HTMLDivElement>) => event.preventDefault() : undefined}
+      // `--pt` ist der Maßstab des Blattes: wie viele Pixel ein Punkt hier
+      // misst. Jedes Maß der Darstellung hängt daran (siehe
+      // `documentStyle.ts`), damit der Brief mit der Spaltenbreite skaliert,
+      // ohne dass ein `transform` Cursorsetzung und Trefferprüfung gegen das
+      // verschiebt, was der Nutzer sieht.
+      style={{ '--pt': `${geometry.pxPerPt}px` } as CSSProperties}
       className={cn('flex flex-col', editable && 'focus-ring rounded-md', className)}
     >
-      {pages.map((indices, page) => (
+      {pages.map((indices, pageIndex) => (
         <div
-          key={page}
-          data-page={page + 1}
-          // Die Höhe kommt aus der **gemessenen** Breite, nicht aus CSS.
+          key={pageIndex}
+          data-page={pageIndex + 1}
+          // Blattmaß und Ränder kommen aus dem Dokument (`w:sectPr`), nicht
+          // aus einem festen A4-Verhältnis mit 9,5 % Rand. Ein Anschreiben
+          // nach DIN 5008 hat links einen anderen Rand als rechts; mit
+          // gleichen Rändern stünde jeder Absatz um Millimeter falsch.
           //
-          // Erst stand hier `aspect-[210/297]`: Ein Element mit
-          // Seitenverhältnis und bestimmter Breite nimmt als automatische
-          // Mindestgröße die übertragene Größe statt der Inhaltsgröße — es
-          // klemmte auf eine Seitenhöhe, und der Text lief heraus.
-          //
-          // Dann `min-h-[calc(100cqw*297/210)]`. Auch falsch, und
-          // nachgemessen: `100cqw` löste sich gegen das **Fenster** auf
-          // (1280 px) statt gegen die Seite (576 px), die Seiten wurden
-          // 1810 statt 815 px hoch, und der Umbruch trennte bei 705 px in
-          // einen Kasten, der 1700 px fasste. Genau daher der Sprung auf
-          // Seite 2 bei fast leerer Seite 1.
-          //
-          // Die Breite wird für die Aufteilung ohnehin gemessen. Aus
-          // derselben Zahl beides zu rechnen ist nicht nur einfacher — es
-          // ist die einzige Bauart, in der Kasten und Umbruch nicht
-          // auseinanderlaufen können.
+          // Ohne ausgelesene Formatierung bleibt es beim alten Weg: Höhe aus
+          // der gemessenen Breite im A4-Verhältnis. Das ist gemessen und
+          // nicht geschätzt — `100cqw` löste sich seinerzeit gegen das
+          // Fenster auf statt gegen die Seite, und der Umbruch trennte in
+          // einen Kasten, der doppelt so viel fasste.
           //
           // Kein `gap` zwischen den Seiten, sondern `mb`: Flex-Abstände
           // zwischen Kindern eines `contentEditable` sind heikel, weil der
           // Browser dort seinen Schreibcursor hineinsetzen können muss.
           //
           // Beim Drucken fällt all das weg (siehe `lib/export/print.css`).
-          style={pageHeight > 0 ? { minHeight: pageHeight } : undefined}
+          style={
+            page === null
+              ? geometry.pageHeight > 0
+                ? { minHeight: geometry.pageHeight }
+                : undefined
+              : pageStyle(page)
+          }
           className={cn(
-            'flex w-full flex-col gap-4 p-[9.5%]',
+            'flex w-full flex-col',
+            // Der Abstand zwischen Absätzen steckt in ihrer Polsterung,
+            // sobald die Formatierung bekannt ist — Word setzt ihn je Absatz
+            // und nicht gleichmäßig.
+            page === null && 'gap-4 p-[9.5%]',
             'rounded-lg bg-[var(--color-surface-raised)] shadow-[var(--shadow-raised)]',
             'mb-5 last:mb-0',
           )}
@@ -324,10 +359,11 @@ export function DocumentView({
               <DocumentParagraph
                 key={paragraph.index}
                 paragraph={paragraph}
+                formatted={formatted.get(paragraph.index) ?? null}
+                natural={natural}
                 retained={retained.has(paragraph.index)}
                 flagged={flagged.has(paragraph.index)}
                 applied={applied.has(paragraph.index)}
-                collapsed={collapsed.has(paragraph.index)}
               />
             )
           })}
@@ -353,8 +389,8 @@ export function DocumentView({
 function usePagination(
   root: RefObject<HTMLDivElement | null>,
   paragraphs: readonly Paragraph[],
-  collapsed: ReadonlySet<number>,
-): { pages: number[][]; pageHeight: number } {
+  page: PageFormat | null,
+): { pages: number[][]; geometry: PageGeometry } {
   const [pages, setPages] = useState<number[][]>(() => [paragraphs.map((_, index) => index)])
   const [width, setWidth] = useState(0)
 
@@ -368,35 +404,69 @@ function usePagination(
     return () => observer.disconnect()
   }, [root])
 
+  const geometry = pageGeometry(width, page)
+
   useLayoutEffect(() => {
     const element = root.current
     if (element === null) return
 
-    // Außenmaß der Seite und Texthöhe darin kommen aus **derselben** Zahl:
-    // A4-Verhältnis auf die gemessene Breite, abzüglich der beiden Ränder
-    // von je 9,5 % (2 cm auf 21 cm). `box-sizing: border-box` heißt, dass
-    // die Mindesthöhe die Ränder einschließt — deshalb genau diese
-    // Differenz.
-    const outer = width * (297 / 210)
-    const text = outer - 2 * (0.095 * width)
     const boxes = Array.from(element.querySelectorAll<HTMLElement>(`[${PARAGRAPH_INDEX_ATTRIBUTE}]`))
-    // Eine zusammengefallene Leerzeile beansprucht nichts — weder Höhe noch
-    // den Abstand vor sich, den ihr negativer Rand aufhebt.
-    // `splitIntoPages` schlägt den Abstand aber jedem Absatz zu; eine
-    // negative Höhe von genau einem Abstand hebt ihn wieder auf, sodass sie
-    // unterm Strich null kostet. Ohne das bräche die Seite bei jedem Lauf
-    // aus Leerzeilen zu früh um — bei neun zusammengefallenen Zeilen um
-    // rund ein Fünftel Blatt.
-    const heights = boxes.map((box, position) =>
-      collapsed.has(position) ? -PARAGRAPH_GAP : box.offsetHeight,
-    )
+    const heights = boxes.map((box) => box.offsetHeight)
 
-    const next = splitIntoPages(heights, text, PARAGRAPH_GAP)
+    const next = splitIntoPages(heights, geometry.textHeight, geometry.gap)
     setPages((current) => (samePages(current, next) ? current : next))
-  }, [root, paragraphs, width, collapsed])
+  }, [root, paragraphs, geometry.textHeight, geometry.gap])
 
-  return { pages, pageHeight: width * (297 / 210) }
+  return { pages, geometry }
 }
+
+interface PageGeometry {
+  /** Pixel je Punkt — der Maßstab, an dem alle Maße der Seite hängen. */
+  pxPerPt: number
+  /** Außenmaß der Seite in Pixeln. */
+  pageHeight: number
+  /** Was davon für Text bleibt, also ohne die Ränder. */
+  textHeight: number
+  /** Abstand zwischen zwei Absätzen, den die Aufteilung mitrechnen muss. */
+  gap: number
+}
+
+/**
+ * Wie groß das Blatt auf dem Schirm ist.
+ *
+ * Es ist immer so breit wie die gemessene Spalte; alles andere folgt daraus.
+ * Mit ausgelesener Formatierung kommen Seitenverhältnis und Ränder aus dem
+ * Dokument, und der Abstand zwischen zwei Absätzen ist **null** — er steckt
+ * dann in der Polsterung jedes Absatzes, weil Word ihn je Absatz setzt und
+ * nicht gleichmäßig.
+ *
+ * Ohne Formatierung bleibt es beim alten Weg: A4-Verhältnis auf die gemessene
+ * Breite, beidseits 9,5 % Rand (2 cm auf 21 cm), fester Abstand von 16 px.
+ * Außenmaß und Texthöhe kommen dabei aus **derselben** Zahl — die einzige
+ * Bauart, in der Kasten und Umbruch nicht auseinanderlaufen können.
+ */
+function pageGeometry(width: number, page: PageFormat | null): PageGeometry {
+  if (page === null) {
+    const pageHeight = width * (297 / 210)
+    return {
+      pxPerPt: width / A4_WIDTH_PT,
+      pageHeight,
+      textHeight: pageHeight - 2 * (0.095 * width),
+      gap: PARAGRAPH_GAP,
+    }
+  }
+
+  const pxPerPt = width / page.widthPt
+  return {
+    pxPerPt,
+    pageHeight: page.heightPt * pxPerPt,
+    textHeight: (page.heightPt - page.marginTopPt - page.marginBottomPt) * pxPerPt,
+    gap: 0,
+  }
+}
+
+/** DIN A4 in Punkt — nur für die Fläche ohne ausgelesene Formatierung. */
+const A4_WIDTH_PT = 595.28
 
 /** Der Abstand zwischen zwei Absätzen (`gap-4`), in die Höhe eingerechnet. */
 const PARAGRAPH_GAP = 16
@@ -410,9 +480,10 @@ function sameNumbers(a: number[], b: number[]): boolean {
 }
 
 interface DocumentParagraphProps {
-  /** Eine überzählige Leerzeile: flach dargestellt, aber weiter vorhanden. */
-  collapsed?: boolean
   paragraph: Paragraph
+  /** Die Formatierung dieses Absatzes, oder `null` für die Rohtextfläche. */
+  formatted: FormattedParagraph | null
+  natural: NaturalLineHeight
   retained: boolean
   /** Eine unbestätigte unbelegte Aussage oder ein fremder Firmenname. */
   flagged: boolean
@@ -422,21 +493,56 @@ interface DocumentParagraphProps {
 
 function DocumentParagraph({
   paragraph,
+  formatted,
+  natural,
   retained,
   flagged,
   applied,
-  collapsed = false,
 }: DocumentParagraphProps) {
   const ref = useRef<HTMLParagraphElement>(null)
 
-  // Bewusst ohne Abhängigkeitsliste: Der Abgleich läuft nach **jedem**
-  // Rendern und kostet einen Zeichenkettenvergleich. Mit `[paragraph.text]`
-  // bliebe der Fall unbehandelt, in dem der DOM von etwas anderem verändert
-  // wurde als von einer Eingabe — und genau dann muss das Modell gewinnen.
+  /**
+   * Der Abgleich zwischen Modell und DOM — **das Modell gewinnt**.
+   *
+   * Bewusst ohne Abhängigkeitsliste: Er läuft nach **jedem** Rendern und
+   * kostet zwei Zeichenkettenvergleiche. Mit `[paragraph.text]` bliebe der
+   * Fall unbehandelt, in dem der DOM von etwas anderem verändert wurde als
+   * von einer Eingabe — und genau dann muss das Modell gewinnen.
+   *
+   * Verglichen wird **zweierlei**, seit die Läufe Formatierung tragen:
+   *
+   * - der **Text**. Weicht er ab, wird neu gebaut und der Cursor springt an
+   *   den Absatzanfang. Sichtbar unangenehm und genau so gewollt — die
+   *   Gegenrichtung wäre eine Ansicht, die etwas anderes zeigt als das, was
+   *   gesichert und ausgegeben wird.
+   * - der **Aufbau der Läufe**. Er kann sich ändern, während der Text
+   *   derselbe bleibt: Eine Umformulierung teilt Läufe. Dann wird ebenfalls
+   *   neu gebaut, der Cursor aber wieder an seine Stelle gesetzt — ein
+   *   Sprung wäre hier durch nichts zu rechtfertigen.
+   *
+   * Gewöhnliches Tippen löst **keines** von beidem aus: Der Text im DOM ist
+   * nach dem Umlauf über das Modell derselbe, und die Kennung des Aufbaus
+   * trägt keine Längen (siehe `documentRuns.ts`). Der Cursor bleibt stehen,
+   * wo er war.
+   */
   useLayoutEffect(() => {
     const element = ref.current
     if (element === null) return
-    if (element.textContent !== paragraph.text) element.textContent = paragraph.text
+
+    if (formatted === null) {
+      if (element.textContent !== paragraph.text) element.textContent = paragraph.text
+      return
+    }
+
+    const pieces = runPieces(formatted)
+    const shown = displayedText(pieces)
+    const signature = pieceSignature(pieces)
+    if (element.textContent === shown && element.dataset.runs === signature) return
+
+    const caret = element.textContent === shown ? caretOffsetWithin(element) : null
+    writePieces(element, pieces)
+    element.dataset.runs = signature
+    if (caret !== null) placeCaretWithin(element, caret)
   })
 
   return (
@@ -444,33 +550,23 @@ function DocumentParagraph({
       ref={ref}
       data-paragraph-index={paragraph.index}
       data-paragraph-start={paragraph.start}
+      style={formatted === null ? undefined : paragraphStyle(formatted, natural)}
       className={cn(
         // Eine leere Zeile im Brief bleibt eine leere Zeile: ohne
         // Mindesthöhe fiele der Absatz auf null zusammen und wäre weder
         // sichtbar noch anklickbar.
-        'border-l-2 pl-3 whitespace-pre-wrap',
-        // Eine überzählige Leerzeile beansprucht **nichts**: keine Höhe und
-        // auch nicht den Abstand zum nächsten Absatz, den der negative Rand
-        // wieder aufhebt. Erst damit wird aus einem Lauf von fünf
-        // Leerzeilen wirklich eine — mit bloßer Resthöhe blieben die vier
-        // Abstände von je 16 px stehen, und die sind der eigentliche
-        // Leerraum.
-        //
-        // Nach unten und nicht nach oben: Am Kopf des Briefes fällt der
-        // ganze Lauf weg (siehe `collapsedEmptyParagraphs`), und dort gibt
-        // es vor der ersten Zeile keinen Abstand aufzuheben — wohl aber
-        // hinter der letzten. So bleibt oben wirklich nichts stehen.
-        //
-        // Aus dem DOM nehmen dürfte man sie trotzdem nicht: Ihre Offsets
-        // hängen daran, und der Export braucht sie unverändert. `h-0` statt
-        // `hidden`, weil ein `display: none` in einem beschreibbaren
-        // Bereich den Schreibcursor durcheinanderbringt.
-        //
-        // Verirrt sich doch einmal ein Zeichen hinein, heilt sich das von
-        // selbst: Der Absatz ist dann nicht mehr leer, fällt aus
-        // `collapsedEmptyParagraphs` heraus und steht beim nächsten Rendern
-        // wieder in voller Höhe da.
-        collapsed ? 'h-0 min-h-0 overflow-hidden -mb-4 last:mb-0' : 'min-h-[1.7em]',
+        'whitespace-pre-wrap',
+        // Die Kontur der Markierung liegt **neben** dem Absatz, nicht an ihm:
+        // als abgesetztes Pseudoelement statt als Rand mit Innenabstand. Ein
+        // Rand nähme Breite und verschöbe jede Zeile um 14 px gegen den
+        // Einzug, den das Dokument vorgibt — bei einem Anschreiben, dessen
+        // Anschriftenfeld auf den Millimeter sitzt, sofort sichtbar. Ein
+        // Pseudoelement steht in keinem Knoten und rührt damit auch die
+        // Offsets nicht an.
+        'relative before:absolute before:inset-y-0 before:-left-3 before:w-0.5 before:content-[""]',
+        // Ohne ausgelesene Formatierung gibt es kein Maß aus dem Dokument,
+        // an dem sich die Höhe einer Leerzeile bemessen ließe.
+        formatted === null && 'min-h-[1.7em]',
         // Die Kontur liegt immer an, nur farblos: So verschiebt sich beim
         // Hervorheben kein Zeichen. Der beanstandete Absatz gewinnt, wenn
         // beides zusammentrifft — er hält den Export an oder nennt einen
@@ -479,12 +575,12 @@ function DocumentParagraph({
         // Der Briefkopf steht hinten an: Ein falscher Firmenname hält den
         // Export auf, „hier wurde etwas geändert" ist ein Hinweis.
         flagged
-          ? 'border-[var(--color-error)]'
+          ? 'before:bg-[var(--color-error)]'
           : retained
-            ? 'border-[var(--color-warning)]'
+            ? 'before:bg-[var(--color-warning)]'
             : applied
-              ? 'border-[var(--color-info)]'
-              : 'border-transparent',
+              ? 'before:bg-[var(--color-info)]'
+              : 'before:bg-transparent',
       )}
     />
   )

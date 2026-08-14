@@ -101,7 +101,11 @@ function type(index: number, text: string): void {
  */
 function caretIn(index: number, offset = 0): void {
   const element = paragraphElement(index)
-  const node = element.firstChild ?? element
+  // Bis zum ersten **Textknoten** hinunter: Seit die Fläche die Läufe des
+  // Dokuments in `<span>` setzt, ist das erste Kind eines Absatzes ein
+  // Element und kein Text mehr. Ein Versatz auf einem Element zählt Kinder,
+  // nicht Zeichen — `setBaseAndExtent` würfe dort `IndexSizeError`.
+  const node = document.createTreeWalker(element, NodeFilter.SHOW_TEXT).nextNode() ?? element
   window.getSelection()?.setBaseAndExtent(node, offset, node, offset)
   fireEvent(document, new Event('selectionchange'))
 }
@@ -195,7 +199,13 @@ function stubFetch(options: FetchStubOptions = {}) {
     options.variants ?? VARIANT_TEXTS.map((text) => ({ text, unbackedClaims: [] }))
 
   const calls: { system: string; user: string }[] = []
-  const fetchMock = vi.fn((_url: string, init: RequestInit) => {
+  const fetchMock = vi.fn((url: string, init?: RequestInit) => {
+    // Nicht jeder Abruf geht an einen Anbieter: Die Arbeitsfläche holt die
+    // mitgelieferten Schriftdateien, um den Brief originalgetreu zu zeigen.
+    // Sie sind Same-Origin und tragen keinen Rumpf — hier gibt es sie nicht,
+    // und der Brief steht dann in der Ersatzschrift des Browsers.
+    if (init?.body === undefined) return Promise.resolve(mockFetchResponse(404, { url }))
+
     const body = JSON.parse(String(init.body)) as {
       systemInstruction: { parts: { text: string }[] }
       contents: { parts: { text: string }[] }[]
@@ -259,10 +269,29 @@ describe('Editor', () => {
     expect(await screen.findByText('Einstiegsseite')).toBeInTheDocument()
   })
 
-  it('verlangt ein Anschreiben, wenn nur ein Lebenslauf vorliegt', async () => {
+  // Der Fall, für den der zweite Bauabschnitt gebaut wurde: eine
+  // Ausschreibung, die nur den Lebenslauf verlangt. Früher stand hier eine
+  // Sackgasse.
+  it('öffnet die Arbeitsfläche mit dem Lebenslauf, wenn nur einer vorliegt', async () => {
     setup({ session: { letter: null, cv: letterDocument(), userName: 'Marlene Ostwald' } })
 
-    expect(await screen.findByText(t('editor.noLetter.heading'))).toBeInTheDocument()
+    expect(
+      await screen.findByRole('complementary', { name: t('editor.sidePanel.label') }),
+    ).toBeInTheDocument()
+    // Ein Umschalter mit einem einzigen Eintrag wäre eine Wahl, die keine ist.
+    expect(screen.queryByRole('radiogroup', { name: t('editor.switch.label') })).toBeNull()
+  })
+
+  it('verlangt eine Unterlage, wenn nichts im Arbeitsumfang liegt', async () => {
+    setup({
+      session: {
+        letter: letterDocument(),
+        userName: 'Marlene Ostwald',
+        scope: { letter: false, cv: false },
+      },
+    })
+
+    expect(await screen.findByText(t('editor.noDocument.heading'))).toBeInTheDocument()
     expect(screen.getByRole('link', { name: t('editor.backToStart') })).toBeInTheDocument()
   })
 
@@ -445,7 +474,7 @@ describe('Editor', () => {
       ),
     ).toBeInTheDocument()
     // Und der Absatz ist im Text zu finden, nicht nur in der Meldung.
-    expect(paragraphElement(1).className).toContain('border-[var(--color-warning)]')
+    expect(paragraphElement(1).className).toContain('before:bg-[var(--color-warning)]')
   })
 
   // Die Kontur im Text und der Hinweis in der Leiste sagen dasselbe: Ein
@@ -474,7 +503,7 @@ describe('Editor', () => {
     expect(
       screen.queryByRole('button', { name: t('editor.retained.short', { count: 1 }) }),
     ).not.toBeInTheDocument()
-    expect(paragraphElement(2).className).toContain('border-transparent')
+    expect(paragraphElement(2).className).toContain('before:bg-transparent')
   })
 
   it('sagt vor dem ersten Zwischenstand, dass von selbst gesichert wird', async () => {
@@ -527,12 +556,14 @@ describe('Editor — Varianten (14b)', () => {
   })
 
   it('fragt gar nicht, solange der Tresor gesperrt ist, und sagt warum', async () => {
-    const { fetchMock } = stubFetch()
+    const { calls } = stubFetch()
     setup({ status: 'locked' })
     await documentSurface()
 
     expect(screen.getByText(t('vault.locked'))).toBeInTheDocument()
-    expect(fetchMock).not.toHaveBeenCalled()
+    // Die Anbieteraufrufe, nicht jeder Abruf: Die Schriftdateien der Fläche
+    // kommen aus dem Projekt und haben mit dem Tresor nichts zu tun.
+    expect(calls).toHaveLength(0)
   })
 
   it('meldet eine gescheiterte Auswertung übersetzt und versucht sie auf Wunsch erneut', async () => {
@@ -618,12 +649,12 @@ describe('Editor — Varianten (14b)', () => {
     const blocked = await screen.findByText(t('editor.claims.blocked', { count: 1 }))
     expect(blocked).toBeInTheDocument()
     expect(screen.getByText('spreche fließend Finnisch')).toBeInTheDocument()
-    expect(paragraphElement(1).className).toContain('border-[var(--color-error)]')
+    expect(paragraphElement(1).className).toContain('before:bg-[var(--color-error)]')
 
     fireEvent.click(screen.getByRole('button', { name: t('editor.claims.confirm') }))
 
     expect(await screen.findByText(t('editor.claims.released'))).toBeInTheDocument()
-    expect(paragraphElement(1).className).not.toContain('border-[var(--color-error)]')
+    expect(paragraphElement(1).className).not.toContain('before:bg-[var(--color-error)]')
   })
 
   it('nimmt die Sperre zurück, sobald die Aussage nicht mehr im Brief steht', async () => {
@@ -974,7 +1005,7 @@ describe('Editor — Seitenspalte und Sprache (14c)', () => {
         t('editor.letterhead.foreign.entry', { name: 'Herren', number: 1 }),
       ),
     ).toBeInTheDocument()
-    expect(paragraphElement(0).className).toContain('border-[var(--color-error)]')
+    expect(paragraphElement(0).className).toContain('before:bg-[var(--color-error)]')
   })
 
   // docs/spec.md: „Zielsprache = Sprache der Anzeige. Nachfrage nur bei

@@ -1,63 +1,15 @@
 import { describe, expect, it } from 'vitest'
 
-import type {
-  CharacterFormat,
-  FormattedParagraph,
-  LineSpacing,
-  PageFormat,
-  ParagraphFormat,
-  ParagraphItem,
-} from '@/lib/docx/format'
+import type { CharacterFormat, FormattedParagraph, LineSpacing, ParagraphFormat, ParagraphItem } from '@/lib/docx/format'
+import { CHARACTER, PAGE, character, formattedParagraph } from './documentFormat.testutils'
 import { characterStyle, displayText, pageStyle, paragraphStyle, scaled } from './documentStyle'
 
-const CHARACTER: CharacterFormat = {
-  fontFamily: 'Calibri',
-  sizePt: 12,
-  bold: false,
-  italic: false,
-  underline: false,
-  strike: false,
-  color: null,
-  caps: false,
-  smallCaps: false,
-  vertAlign: 'baseline',
-}
-
-const PARAGRAPH: ParagraphFormat = {
-  alignment: 'left',
-  indentLeftPt: 0,
-  indentRightPt: 0,
-  indentFirstLinePt: 0,
-  spaceBeforePt: 0,
-  spaceAfterPt: 0,
-  lineSpacing: { rule: 'auto', factor: 1 },
-  tabStops: [],
-  pageBreakBefore: false,
-  keepNext: false,
-}
-
-const PAGE: PageFormat = {
-  widthPt: 595,
-  heightPt: 842,
-  marginTopPt: 57,
-  marginRightPt: 43,
-  marginBottomPt: 57,
-  marginLeftPt: 70,
-  headerDistancePt: 0,
-  footerDistancePt: 0,
-  titlePage: false,
-}
-
-function character(overrides: Partial<CharacterFormat> = {}): CharacterFormat {
-  return { ...CHARACTER, ...overrides }
-}
-
 function paragraph(
-  overrides: Partial<ParagraphFormat> = {},
+  format: Partial<ParagraphFormat> = {},
   items: ParagraphItem[] = [{ kind: 'text', text: 'Text', format: CHARACTER }],
   markFormat: CharacterFormat = CHARACTER,
 ): FormattedParagraph {
-  return { index: 0, format: { ...PARAGRAPH, ...overrides }, items, markFormat }
+  return formattedParagraph(items, format, markFormat)
 }
 
 /** Die natürliche Zeilenhöhe der Prüfschrift: schlicht das Anderthalbfache. */
@@ -141,9 +93,21 @@ describe('paragraphStyle — Absatzformatierung', () => {
     )
 
     expect(style.textAlign).toBe('justify')
-    expect(style.marginLeft).toBe('calc(var(--pt) * 190)')
-    expect(style.marginRight).toBe('calc(var(--pt) * 50)')
     expect(style.textIndent).toBe('calc(var(--pt) * -20)')
+  })
+
+  /**
+   * Einzüge als Polsterung, nicht als Außenrand: So bleibt der Absatzkasten
+   * so breit wie der Satzspiegel, und die Kontur der Markierung steht bei
+   * jedem Absatz an derselben Stelle statt mit dem Einzug zu wandern.
+   */
+  it('setzt Einzüge als Polsterung, damit der Kasten seine Breite behält', () => {
+    const style = paragraphStyle(paragraph({ indentLeftPt: 190, indentRightPt: 50 }), natural)
+
+    expect(style.paddingLeft).toBe('calc(var(--pt) * 190)')
+    expect(style.paddingRight).toBe('calc(var(--pt) * 50)')
+    expect(style.marginLeft).toBeUndefined()
+    expect(style.marginRight).toBeUndefined()
   })
 
   /**

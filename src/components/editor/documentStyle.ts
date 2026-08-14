@@ -149,8 +149,13 @@ export function paragraphStyle(
 
   return {
     textAlign: format.alignment,
-    marginLeft: scaled(format.indentLeftPt),
-    marginRight: scaled(format.indentRightPt),
+    // Auch die Einzüge als Polsterung: So bleibt der Absatzkasten immer so
+    // breit wie der Satzspiegel, und alles, was sich an seinem linken Rand
+    // ausrichtet — die Kontur der Markierung — steht bei jedem Absatz an
+    // derselben Stelle. Mit Außenrändern wanderte sie mit dem Einzug, und
+    // beim Namen im Briefkopf stünde sie mitten auf dem Blatt.
+    paddingLeft: scaled(format.indentLeftPt),
+    paddingRight: scaled(format.indentRightPt),
     textIndent: scaled(format.indentFirstLinePt),
     // Polsterung, nicht Rand: CSS-Ränder benachbarter Geschwister fallen
     // zusammen, Words Abstände tun das nicht — und `offsetHeight` schließt

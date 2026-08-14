@@ -1,7 +1,9 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import type { DocumentFormat, ParagraphItem } from '@/lib/docx/format'
 import type { Paragraph } from '@/lib/docx/model'
 import { DocumentView } from './DocumentView'
+import { character, documentFormat, formattedParagraph, text } from './documentFormat.testutils'
 import {
   PARAGRAPH_INDEX_ATTRIBUTE,
   PARAGRAPH_START_ATTRIBUTE,
@@ -383,8 +385,8 @@ describe('DocumentView', () => {
   it('hebt einen Absatz hervor, den die Markierung an seinem Platz festhalten würde', () => {
     setup({ retainedParagraphs: [1] })
 
-    expect(paragraphElement(1).className).toContain('border-[var(--color-warning)]')
-    expect(paragraphElement(0).className).toContain('border-transparent')
+    expect(paragraphElement(1).className).toContain('before:bg-[var(--color-warning)]')
+    expect(paragraphElement(0).className).toContain('before:bg-transparent')
   })
 
   // Der Brief steht auf Seiten, und alles, was daran hängt — Offsets,
@@ -408,49 +410,6 @@ describe('DocumentView', () => {
     expect(surface.querySelectorAll(`[${PARAGRAPH_INDEX_ATTRIBUTE}]`)).toHaveLength(2)
   })
 
-  it('macht aus einem Lauf von Leerzeilen eine, ohne sie zu entfernen', () => {
-    render(
-      <DocumentView
-        paragraphs={paragraphs(['Text', '', '', '', '', 'Mehr'])}
-        editable
-        labelledBy="ueberschrift"
-        onParagraphInput={vi.fn()}
-        collapseBlankRuns
-      />,
-    )
-
-    const boxes = Array.from(
-      screen.getByRole('textbox').querySelectorAll<HTMLElement>(`[${PARAGRAPH_INDEX_ATTRIBUTE}]`),
-    )
-    // Alle sechs stehen weiter im Baum — ihre Offsets hängen daran, und der
-    // Export braucht sie unverändert.
-    expect(boxes).toHaveLength(6)
-    // Die erste Leerzeile bleibt eine Leerzeile.
-    expect(boxes[1]?.className).toContain('min-h-[1.7em]')
-    // Die drei danach beanspruchen nichts mehr: keine Höhe, und der
-    // negative Rand hebt auch den Abstand hinter ihnen auf.
-    for (const index of [2, 3, 4]) {
-      expect(boxes[index]?.className).toContain('h-0')
-      expect(boxes[index]?.className).toContain('-mb-4')
-    }
-    expect(boxes[5]?.className).toContain('min-h-[1.7em]')
-  })
-
-  it('faltet nichts zusammen, solange es nicht verlangt wird', () => {
-    render(
-      <DocumentView
-        paragraphs={paragraphs(['Text', '', '', '', 'Mehr'])}
-        editable
-        labelledBy="ueberschrift"
-        onParagraphInput={vi.fn()}
-      />,
-    )
-
-    const boxes = Array.from(
-      screen.getByRole('textbox').querySelectorAll<HTMLElement>(`[${PARAGRAPH_INDEX_ATTRIBUTE}]`),
-    )
-    expect(boxes.every((box) => box.className.includes('min-h-[1.7em]'))).toBe(true)
-  })
 })
 
 it('umrandet einen selbsttätig geänderten Absatz in eigener Farbe', () => {
@@ -469,5 +428,159 @@ it('lässt eine Beanstandung der Briefkopf-Kontur vorgehen', () => {
 it('lässt einen unveränderten Absatz farblos', () => {
   setup({ letterheadParagraphs: [0] })
 
-  expect(paragraphElement(1).className).toContain('border-transparent')
+  expect(paragraphElement(1).className).toContain('before:bg-transparent')
+})
+
+/**
+ * Die originalgetreue Fläche: Wird die ausgelesene Formatierung
+ * mitgegeben, zeigt sie den Brief in seiner Schrift, mit seinen Einzügen
+ * und auf seinem Satzspiegel — statt als Rohtext.
+ */
+describe('DocumentView mit ausgelesener Formatierung', () => {
+  function formatOf(...items: ParagraphItem[][]): DocumentFormat {
+    return documentFormat(
+      items.map((paragraphItems, index) => ({
+        ...formattedParagraph(paragraphItems),
+        index,
+      })),
+    )
+  }
+
+  function renderFormatted(
+    texts: string[],
+    format: DocumentFormat,
+    onParagraphInput = vi.fn(),
+  ): { onParagraphInput: ReturnType<typeof vi.fn> } {
+    render(
+      <DocumentView
+        paragraphs={paragraphs(texts)}
+        editable
+        labelledBy="ueberschrift"
+        onParagraphInput={onParagraphInput}
+        format={format}
+      />,
+    )
+    return { onParagraphInput }
+  }
+
+  it('setzt jeden Lauf in seine Schrift und seinen Grad', () => {
+    renderFormatted(
+      ['Sehr geehrte Damen'],
+      formatOf([text('Sehr geehrte '), text('Damen', character({ bold: true, sizePt: 14 }))]),
+    )
+
+    const spans = paragraphElement(0).querySelectorAll('span')
+    expect(spans).toHaveLength(2)
+    // Calibri ist lizenziert; Carlito ist der metrikgleiche Nachbau.
+    expect(spans[0]?.style.fontFamily).toBe('Carlito')
+    expect(spans[0]?.style.fontWeight).toBe('400')
+    expect(spans[1]?.style.fontWeight).toBe('700')
+    expect(spans[1]?.style.fontSize).toBe('calc(var(--pt) * 14)')
+  })
+
+  it('nimmt Einzüge und Zeilenabstand aus dem Absatz', () => {
+    const format = documentFormat([
+      formattedParagraph([text('Naseem Salih')], { indentLeftPt: 190, spaceAfterPt: 6 }),
+    ])
+
+    renderFormatted(['Naseem Salih'], format)
+
+    const element = paragraphElement(0)
+    expect(element.style.paddingLeft).toBe('calc(var(--pt) * 190)')
+    expect(element.style.paddingBottom).toBe('calc(var(--pt) * 6)')
+  })
+
+  it('gibt dem Blatt die Ränder des Dokuments', () => {
+    renderFormatted(['Text'], formatOf([text('Text')]))
+
+    const page = screen.getByRole('textbox').querySelector<HTMLElement>('[data-page]')
+    expect(page?.style.paddingLeft).toBe('calc(var(--pt) * 70)')
+    expect(page?.style.paddingRight).toBe('calc(var(--pt) * 43)')
+  })
+
+  /**
+   * Der entscheidende Fall für den Schreibcursor: Rendert die Fläche
+   * erneut, ohne dass sich Text oder Laufaufbau geändert haben, darf sie
+   * den Absatz **nicht** neu bauen. Sonst spränge der Cursor bei jedem
+   * Anschlag an den Absatzanfang.
+   */
+  it('baut den Absatz nicht neu, wenn Text und Aufbau gleich bleiben', () => {
+    const format = formatOf([text('Sehr geehrte')])
+    const { rerender } = render(
+      <DocumentView
+        paragraphs={paragraphs(['Sehr geehrte'])}
+        editable
+        labelledBy="ueberschrift"
+        onParagraphInput={vi.fn()}
+        format={format}
+      />,
+    )
+    const before = paragraphElement(0).querySelector('span')
+
+    rerender(
+      <DocumentView
+        paragraphs={paragraphs(['Sehr geehrte'])}
+        editable
+        labelledBy="ueberschrift"
+        onParagraphInput={vi.fn()}
+        format={formatOf([text('Sehr '), text('geehrte')])}
+      />,
+    )
+
+    // Derselbe Knoten, nicht bloß derselbe Text: `replaceRange` teilt beim
+    // Bearbeiten Läufe, ohne dass sich etwas Sichtbares ändert.
+    expect(paragraphElement(0).querySelector('span')).toBe(before)
+  })
+
+  it('baut neu, sobald sich die Formatierung wirklich ändert', () => {
+    const { rerender } = render(
+      <DocumentView
+        paragraphs={paragraphs(['Sehr geehrte'])}
+        editable
+        labelledBy="ueberschrift"
+        onParagraphInput={vi.fn()}
+        format={formatOf([text('Sehr geehrte')])}
+      />,
+    )
+    const before = paragraphElement(0).querySelector('span')
+
+    rerender(
+      <DocumentView
+        paragraphs={paragraphs(['Sehr geehrte'])}
+        editable
+        labelledBy="ueberschrift"
+        onParagraphInput={vi.fn()}
+        format={formatOf([text('Sehr '), text('geehrte', character({ bold: true }))])}
+      />,
+    )
+
+    expect(paragraphElement(0).querySelectorAll('span')).toHaveLength(2)
+    expect(paragraphElement(0).querySelector('span')).not.toBe(before)
+  })
+
+  /**
+   * Word legt ein Wingdings-Zeichen in den Privatbereich. Auf dem Schirm
+   * steht dafür ein Aufzählungspunkt — im Dokument muss das Urzeichen
+   * stehen bleiben, sonst zeigte Word hinterher einen leeren Kasten.
+   */
+  it('zeigt ein Bildzeichen und meldet trotzdem das Urzeichen zurück', () => {
+    const { onParagraphInput } = renderFormatted(
+      ['Berlin  Mobil'],
+      formatOf([
+        text('Berlin '),
+        text('', character({ fontFamily: 'Wingdings' })),
+        text(' Mobil'),
+      ]),
+    )
+
+    const element = paragraphElement(0)
+    expect(element.textContent).toBe('Berlin • Mobil')
+
+    // Der Nutzer ändert etwas am Ende der Zeile.
+    const last = element.querySelectorAll('span')[2]
+    if (last) last.textContent = ' Mobilfunk'
+    fireEvent.input(screen.getByRole('textbox'))
+
+    expect(onParagraphInput).toHaveBeenCalledWith(0, 'Berlin  Mobilfunk')
+  })
 })
