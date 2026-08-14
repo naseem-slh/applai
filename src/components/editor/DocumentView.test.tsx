@@ -428,10 +428,10 @@ describe('DocumentView', () => {
     // Die erste Leerzeile bleibt eine Leerzeile.
     expect(boxes[1]?.className).toContain('min-h-[1.7em]')
     // Die drei danach beanspruchen nichts mehr: keine Höhe, und der
-    // negative Rand hebt auch den Abstand vor ihnen auf.
+    // negative Rand hebt auch den Abstand hinter ihnen auf.
     for (const index of [2, 3, 4]) {
       expect(boxes[index]?.className).toContain('h-0')
-      expect(boxes[index]?.className).toContain('-mt-4')
+      expect(boxes[index]?.className).toContain('-mb-4')
     }
     expect(boxes[5]?.className).toContain('min-h-[1.7em]')
   })

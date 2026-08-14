@@ -450,11 +450,16 @@ function DocumentParagraph({
         // sichtbar noch anklickbar.
         'border-l-2 pl-3 whitespace-pre-wrap',
         // Eine überzählige Leerzeile beansprucht **nichts**: keine Höhe und
-        // auch nicht den Abstand zum Absatz davor, den der negative Rand
+        // auch nicht den Abstand zum nächsten Absatz, den der negative Rand
         // wieder aufhebt. Erst damit wird aus einem Lauf von fünf
         // Leerzeilen wirklich eine — mit bloßer Resthöhe blieben die vier
         // Abstände von je 16 px stehen, und die sind der eigentliche
         // Leerraum.
+        //
+        // Nach unten und nicht nach oben: Am Kopf des Briefes fällt der
+        // ganze Lauf weg (siehe `collapsedEmptyParagraphs`), und dort gibt
+        // es vor der ersten Zeile keinen Abstand aufzuheben — wohl aber
+        // hinter der letzten. So bleibt oben wirklich nichts stehen.
         //
         // Aus dem DOM nehmen dürfte man sie trotzdem nicht: Ihre Offsets
         // hängen daran, und der Export braucht sie unverändert. `h-0` statt
@@ -465,7 +470,7 @@ function DocumentParagraph({
         // selbst: Der Absatz ist dann nicht mehr leer, fällt aus
         // `collapsedEmptyParagraphs` heraus und steht beim nächsten Rendern
         // wieder in voller Höhe da.
-        collapsed ? 'h-0 min-h-0 overflow-hidden -mt-4 first:mt-0' : 'min-h-[1.7em]',
+        collapsed ? 'h-0 min-h-0 overflow-hidden -mb-4 last:mb-0' : 'min-h-[1.7em]',
         // Die Kontur liegt immer an, nur farblos: So verschiebt sich beim
         // Hervorheben kein Zeichen. Der beanstandete Absatz gewinnt, wenn
         // beides zusammentrifft — er hält den Export an oder nennt einen

@@ -66,10 +66,10 @@ export function splitIntoPages(
     current.push(index)
     // Nie unter null: Eine Höhe darf negativ sein — die Ansicht drückt
     // damit aus, dass ein Absatz nicht nur nichts hoch ist, sondern auch
-    // den Abstand vor sich aufhebt (siehe `collapsedEmptyParagraphs`).
-    // Steht so einer am Kopf einer Seite, gibt es davor aber gar keinen
-    // Abstand, den er aufheben könnte; ohne die Schranke zöge er der Seite
-    // Platz ab, den sie nie ausgegeben hat.
+    // einen Abstand aufhebt (siehe `collapsedEmptyParagraphs`). Steht so
+    // einer ganz am Anfang, gibt es davor aber gar keinen Abstand, den er
+    // aufheben könnte; ohne die Schranke zöge er der Seite Platz ab, den
+    // sie nie ausgegeben hat.
     used = Math.max(0, used + cost)
   }
 
@@ -92,7 +92,14 @@ export const VISIBLE_EMPTY_RUN = 1
 
 /**
  * Die Absätze, deren Höhe die Ansicht zusammenfallen lässt: jede leere
- * Zeile eines Laufs ab der zweiten.
+ * Zeile eines Laufs ab der zweiten — und am Kopf des Briefes jede.
+ *
+ * **Vor dem ersten Wort setzt eine Leerzeile nichts ab.** Eine Leerzeile
+ * trennt zwei Absätze; steht sie ganz oben, hat sie nichts zu trennen und
+ * schiebt den Brief nur von der Blattkante weg. Word-Anschreiben beginnen
+ * fast immer mit ein paar davon — sie halten auf dem Papier den Platz für
+ * das Sichtfenster des Umschlags frei, den es auf dem Bildschirm nicht
+ * gibt. Der Lauf am Anfang fällt deshalb **ganz** weg, nicht bis auf eine.
  *
  * **Nur die Ansicht.** Die Absätze bleiben im Dokument, im DOM und im
  * Export — sie werden lediglich flach dargestellt. Sie aus dem DOM zu
@@ -107,12 +114,15 @@ export const VISIBLE_EMPTY_RUN = 1
 export function collapsedEmptyParagraphs(paragraphs: readonly Paragraph[]): Set<number> {
   const collapsed = new Set<number>()
   let run = 0
+  /** Kam schon Text? Vorher gibt es nichts, wovon sich etwas absetzen ließe. */
+  let started = false
 
   for (const paragraph of paragraphs) {
     if (paragraph.text.trim() === '') {
       run += 1
-      if (run > VISIBLE_EMPTY_RUN) collapsed.add(paragraph.index)
+      if (run > (started ? VISIBLE_EMPTY_RUN : 0)) collapsed.add(paragraph.index)
     } else {
+      started = true
       run = 0
     }
   }

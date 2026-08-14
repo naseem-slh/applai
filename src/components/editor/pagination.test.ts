@@ -111,7 +111,16 @@ describe('collapsedEmptyParagraphs', () => {
     expect([...collapsed]).toEqual([2, 3, 4])
   })
 
-  it('lässt eine einzelne Leerzeile auch am Anfang des Briefes stehen', () => {
-    expect([...collapsedEmptyParagraphs(paragraphs(['', 'A']))]).toEqual([])
+  // Vor dem ersten Wort setzt eine Leerzeile nichts ab — sie schiebt den
+  // Brief nur von der Blattkante weg. Word-Anschreiben beginnen fast immer
+  // mit ein paar davon: Auf dem Papier halten sie den Platz für das
+  // Sichtfenster des Umschlags frei, auf dem Bildschirm nichts.
+  it('faltet den Lauf am Kopf des Briefes ganz zusammen', () => {
+    expect([...collapsedEmptyParagraphs(paragraphs(['', 'A']))]).toEqual([0])
+    expect([...collapsedEmptyParagraphs(paragraphs(['', '', '', 'A']))]).toEqual([0, 1, 2])
+  })
+
+  it('lässt vom Lauf danach wieder eine Leerzeile stehen', () => {
+    expect([...collapsedEmptyParagraphs(paragraphs(['', '', 'A', '', '', 'B']))]).toEqual([0, 1, 4])
   })
 })
