@@ -37,6 +37,7 @@ import { useGapAnalysis } from '@/components/editor/useGapAnalysis'
 import { useApplicationAnalysis } from '@/components/editor/useApplicationAnalysis'
 import { usePrecisePointer } from '@/components/editor/usePrecisePointer'
 import { useWideViewport } from '@/components/editor/useWideViewport'
+import { clampZoom } from '@/components/editor/zoom'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { FIELD_HINT_CLASS } from '@/components/ui/Field'
@@ -668,6 +669,43 @@ function EditorWorkspace({ session }: { session: StartSession }) {
     [updateSettings],
   )
 
+  /**
+   * Der Maßstab der Arbeitsfläche, in Prozent.
+   *
+   * **Warum hier und nicht in `DocumentColumn`.** Beide Unterlagen teilen
+   * sich einen Wert: Wer den Brief herauszoomt, um die ganze Seite zu sehen,
+   * will den Lebenslauf daneben nicht wieder herangeholt bekommen. Die
+   * Spalte gibt es zweimal, die Schale einmal — also hält die Schale ihn.
+   *
+   * **Warum abgeleitet und nicht abgeschrieben.** Der gesicherte Wert steht
+   * in den Einstellungen, und die kommen aus der IndexedDB — also erst ein
+   * paar Lidschläge nach dem ersten Bild. Ein Zustand, der ihn beim ersten
+   * Rendern einmal abschreibt, bliebe auf der Voreinstellung stehen: Wer die
+   * Seite unmittelbar auf `/editor` neu lädt, bekäme seinen Maßstab nicht
+   * zurück, weil diese Ansicht nicht auf `storageReady` wartet. Der Zustand
+   * hier hält deshalb nur, was gerade **gezogen** wird; ruht der Regler,
+   * gilt der gesicherte Wert.
+   *
+   * **Warum es diesen Zwischenzustand überhaupt gibt.** Am Regler entstehen
+   * beim Ziehen dutzende Werte. Jeden davon zu sichern hieße dutzende
+   * Schreibvorgänge in die IndexedDB für eine einzige Geste; gesichert wird
+   * erst beim Loslassen (`onValueCommit`).
+   */
+  const [draggedZoom, setDraggedZoom] = useState<number | null>(null)
+  const zoom = draggedZoom ?? clampZoom(settings.zoom)
+  const commitZoom = useCallback(
+    (next: number) => {
+      // `updateSettings` setzt den neuen Wert sofort und nimmt ihn nur
+      // zurück, wenn das Speichern scheitert — dann springt der Regler
+      // zurück, genau wie die Auswahlliste beim Wahrheitsmodus. Deshalb darf
+      // der Zwischenzustand hier fallen: Ohne ihn gilt wieder der gesicherte
+      // Wert, und der steht schon auf `next`.
+      void updateSettings({ zoom: next }).catch(() => {})
+      setDraggedZoom(null)
+    },
+    [updateSettings],
+  )
+
   // Strg+Z am Fenster, nicht an der Dokumentfläche: Der Verlauf soll auch
   // dann greifen, wenn der Fokus auf einem Knopf der Leiste steht. Eingabe-
   // und Textfelder behalten ihr eigenes Rückgängig.
@@ -831,6 +869,9 @@ function EditorWorkspace({ session }: { session: StartSession }) {
                 rewrite={rewriteLetter}
                 rewriteReady={analysis.status === 'ready' && style !== null}
                 onUndo={undoAll}
+                zoom={zoom}
+                onZoomChange={setDraggedZoom}
+                onZoomCommit={commitZoom}
                 foreignParagraphs={foreign.paragraphs}
                 letterheadParagraphs={application?.changes.map((change) => change.paragraph) ?? []}
                 // Der Auswertungsstand gehört der **Bewerbung** und steht
@@ -863,6 +904,9 @@ function EditorWorkspace({ session }: { session: StartSession }) {
                 rewrite={rewriteCv}
                 rewriteReady={analysis.status === 'ready' && cvStyle !== null}
                 onUndo={undoAll}
+                zoom={zoom}
+                onZoomChange={setDraggedZoom}
+                onZoomCommit={commitZoom}
                 foreignParagraphs={cvForeign.paragraphs}
                 notice={
                   <p className={FIELD_HINT_CLASS}>

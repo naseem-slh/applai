@@ -362,6 +362,7 @@ describe('getSettings / saveSettings', () => {
       anonymize: true,
       truthMode: 'strict',
       theme: 'system',
+      zoom: 100,
     })
     expect(settings).toEqual(DEFAULT_SETTINGS)
     // Das bloße Lesen legt nichts an — reiner Lesezugriff ohne Nebenwirkung.

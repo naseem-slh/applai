@@ -249,6 +249,13 @@
       "heading": "Cover letter",
       "cvHeading": "CV"
     },
+    "zoom": {
+      "label": "Zoom",
+      "value": "{{percent}} %",
+      "out": "Zoom out",
+      "in": "Zoom in",
+      "reset": "{{percent}} %, reset to 100 %"
+    },
     "switch": {
       "label": "Choose document",
       "letter": "Cover letter",

@@ -326,6 +326,37 @@ Stufennamen. Die Enden stehen in `--color-muted` und gehören damit auf
 `surface` oder `surface-raised`, nicht in eine Karte mit `variant="subtle"`
 (siehe Kontrast).
 
+### Der Maßstabsregler
+
+Daneben steht **ein** zweites Bedienelement mit einer Schiene, und das ist
+Absicht: der Maßstabsregler der Arbeitsfläche (`editor/ZoomControl.tsx`),
+unten rechts am Blatt, wie der Zoom in Word und in jedem PDF-Betrachter.
+
+Er bekommt als einziger eine **Zahlenspanne** statt benannter Stufen, weil
+ein Maßstab eine Zahl ist: „60 %" sagt vollständig, was es sagt — anders als
+eine Stellschraube zwischen „förmlich" und „locker", wo eine 63 nichts
+bedeutet. Aus demselben Grund steht sein Stand als Prozentzahl in derselben
+Zeile wie die Schiene und nicht als Beschriftungszeile darunter; der Stand
+ist zugleich der Knopf zurück auf 100 %.
+
+Damit nutzt er nicht das Primitiv `ui/Slider.tsx`, sondern setzt selbst auf
+`SliderPrimitive` auf. Schiene, Bereich und Griff tragen dieselben Klassen
+wie dort — der Regler soll wie ein Regler aussehen, gleich welcher von
+beiden. **Einen dritten gibt es nicht**: Wer eine Schiene braucht, nimmt die
+benannten Stufen; wer eine Zahl braucht, hat diesen hier.
+
+Die Spanne läuft von 25 % bis 100 %, in Schritten von 5. 100 % ist das obere
+Ende und nicht die Mitte wie bei Word, denn dort füllt das Blatt seine Spalte
+bereits aus — darüber hinaus müsste der Bereich zusätzlich waagerecht
+blättern. Eine Raste bei 100 % erübrigt sich damit: Der Anschlag der Schiene
+und die Ende-Taste treffen sie von selbst.
+
+Der Maßstab wirkt über die **Breite des Blattkastens**, nie über
+`transform: scale()`. Aus der Breite misst die Fläche ihr `--pt`, und daran
+hängt jedes Maß des Briefes (siehe `editor/documentStyle.ts`). Eine
+Skalierung über `transform` verschöbe Cursorsetzung und Trefferprüfung im
+`contenteditable` gegen das, was der Nutzer sieht.
+
 ### Benennung der Varianten
 
 `variant` beschreibt den Ton, `size` die Größe, `padding` den Innenabstand.

@@ -249,6 +249,13 @@
       "heading": "Anschreiben",
       "cvHeading": "Lebenslauf"
     },
+    "zoom": {
+      "label": "Maßstab",
+      "value": "{{percent}} %",
+      "out": "Kleiner",
+      "in": "Größer",
+      "reset": "{{percent}} %, auf 100 % zurücksetzen"
+    },
     "switch": {
       "label": "Unterlage wählen",
       "letter": "Anschreiben",

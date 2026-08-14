@@ -71,10 +71,16 @@
   [data-print-document] {
     position: absolute;
     inset: 0 auto auto 0;
-    width: 100%;
+    /* `!important` — und zwar zwingend: Der Maßstabsregler der Arbeitsfläche
+       setzt Breite und Höchstbreite als **Stilangabe am Element** (siehe
+       `components/editor/zoom.ts`), und eine Stilangabe schlägt jede Regel
+       aus einer Datei. Ohne den Zusatz käme ein auf 60 % herausgezoomter
+       Brief auch auf 60 % seiner Größe aufs Papier — der Regler ist eine
+       Frage der Ansicht und hat auf dem Druck nichts zu suchen. */
+    width: 100% !important;
     /* Papiermaße statt Bildschirmmaße: `72ch` sind auf dem Bildschirm eine
        angenehme Zeilenlänge, im Druck aber eine willkürliche Breite. */
-    max-width: none;
+    max-width: none !important;
     padding: 0;
     border: 0;
     box-shadow: none;

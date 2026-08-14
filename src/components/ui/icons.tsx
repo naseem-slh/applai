@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils'
 /**
  * Die Sinnbilder der Oberfläche.
  *
- * **Warum eingebettet und nicht als Abhängigkeit.** Applai braucht sechs
+ * **Warum eingebettet und nicht als Abhängigkeit.** Applai braucht eine Handvoll
  * Glyphen. Ein Paket wie `@phosphor-icons/react` brächte über tausend mit,
  * dazu eine Abhängigkeit, die bei jedem `npm audit` mitläuft (G9). Die
  * Pfaddaten unten stammen wörtlich aus Phosphor Icons 2.1.1, Strichstärke
@@ -51,6 +51,8 @@ const PATHS = {
   x: 'M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z',
   check:
     'M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z',
+  minus: 'M224,128a8,8,0,0,1-8,8H40a8,8,0,0,1,0-16H216A8,8,0,0,1,224,128Z',
+  plus: 'M224,128a8,8,0,0,1-8,8H136v80a8,8,0,0,1-16,0V136H40a8,8,0,0,1,0-16h80V40a8,8,0,0,1,16,0v80h80A8,8,0,0,1,224,128Z',
 } as const
 
 export const DownloadIcon = (props: IconProps) => <Icon d={PATHS.downloadSimple} {...props} />
@@ -60,3 +62,5 @@ export const CaretDownIcon = (props: IconProps) => <Icon d={PATHS.caretDown} {..
 export const ArrowUpIcon = (props: IconProps) => <Icon d={PATHS.arrowUp} {...props} />
 export const XIcon = (props: IconProps) => <Icon d={PATHS.x} {...props} />
 export const CheckIcon = (props: IconProps) => <Icon d={PATHS.check} {...props} />
+export const MinusIcon = (props: IconProps) => <Icon d={PATHS.minus} {...props} />
+export const PlusIcon = (props: IconProps) => <Icon d={PATHS.plus} {...props} />

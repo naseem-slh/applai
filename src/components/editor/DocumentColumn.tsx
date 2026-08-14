@@ -7,11 +7,13 @@ import { detectLanguage } from '@/lib/domain/language'
 import type { Variant } from '@/lib/domain/rewrite'
 import { ClaimGuard } from './ClaimGuard'
 import { DocumentView } from './DocumentView'
+import { ZoomControl } from './ZoomControl'
 import { DraftStatus } from './DraftStatus'
 import { SelectionLayer } from './SelectionLayer'
 import { VariantPopover } from './VariantPopover'
 import { paragraphRange, wholeDocumentRange, type EditorSelection } from './documentSelection'
 import type { DocumentWorkspace } from './useDocumentWorkspace'
+import { sheetSize } from './zoom'
 
 /**
  * Die mittlere Spalte: das Blatt, die Leiste darüber und die unbelegten
@@ -51,6 +53,17 @@ export interface DocumentColumnProps {
   notice?: ReactNode
   /** Der Zustand der Auswertungen, unter der Leiste. */
   status?: ReactNode
+  /**
+   * Der Maßstab des Blattes in Prozent (25–100).
+   *
+   * Kommt von außen, weil beide Unterlagen sich einen Wert teilen: Die
+   * Schale hält ihn und sichert ihn in den Einstellungen.
+   */
+  zoom: number
+  /** Während des Ziehens am Regler. */
+  onZoomChange: (zoom: number) => void
+  /** Beim Loslassen — erst dann wird gesichert. */
+  onZoomCommit: (zoom: number) => void
 }
 
 export function DocumentColumn({
@@ -67,6 +80,9 @@ export function DocumentColumn({
   letterheadParagraphs = [],
   notice,
   status,
+  zoom,
+  onZoomChange,
+  onZoomCommit,
 }: DocumentColumnProps) {
   const { t } = useTranslation()
   const docx = workspace.document
@@ -185,70 +201,105 @@ export function DocumentColumn({
           `tabIndex === -1` und steht damit nicht in der Tabulatorfolge.
           Mit dem Halt hier blättert Bild-auf und Bild-ab den Brief, ohne
           dass der Schreibcursor in den Text gesetzt werden muss. */}
-      <div
-        tabIndex={0}
-        className="flex min-h-0 flex-1 flex-col items-center gap-5 px-4 py-6 lg:overflow-y-auto lg:px-8"
-      >
-        {/* `data-print-document`: Beim Drucken bleibt genau diese Karte
-            stehen, alles andere wird ausgeblendet (siehe
-            `lib/export/print.css`). Die Markierung sitzt an der Karte und
-            nicht an der Fläche darin, damit der Rand des Blattes mitgeht.
+      {/* Der Halter für den Maßstabsregler: Er liegt **neben** dem
+          blätternden Bereich, nicht darin, damit die Leiste beim Blättern
+          stehenbleibt statt mit dem Brief nach oben zu wandern. */}
+      <div className="relative flex min-h-0 flex-1 flex-col">
+        <div
+          tabIndex={0}
+          className="flex min-h-0 flex-1 flex-col items-center gap-5 px-4 py-6 lg:overflow-y-auto lg:px-8"
+        >
+          {/* `data-print-document`: Beim Drucken bleibt genau diese Karte
+              stehen, alles andere wird ausgeblendet (siehe
+              `lib/export/print.css`). Die Markierung sitzt an der Karte und
+              nicht an der Fläche darin, damit der Rand des Blattes mitgeht.
 
-            Der Brief ist eine **Seite**, kein Textblock in einer Karte:
-            Es gilt das Seitenverhältnis von A4 bei höchstens 900 px
-            Breite. Nur noch Hülle und Druckmarke — das Blatt selbst ist
-            jede einzelne Seite in `DocumentView`. */}
-        <div data-print-document className="w-full max-w-[900px]">
-          <DocumentView
-            rootRef={workspace.rootRef}
-            paragraphs={docx.paragraphs}
-            // Auch mit dem Finger: Die Checkliste nimmt auf schmalen
-            // Geräten nur die **Feinmarkierung** weg, nicht das Tippen.
-            editable
-            labelledBy={headingId}
-            // Die Sprache des Dokuments, deterministisch erkannt (Aufgabe 9,
-            // kein Modellaufruf). Sie entscheidet, in welcher Sprache der
-            // Browser die Rechtschreibung prüft und eine Vorlesesoftware
-            // den Text ausspricht.
-            language={detectLanguage(docx.text)}
-            // Nur die Absätze, die die Leiste auch benennt (`position > 0`,
-            // siehe `SelectionLayer`). Eine Kontur ohne ein Wort dazu wäre
-            // eine Bedeutung, die allein an der Farbe hinge.
-            retainedParagraphs={
-              workspace.selection?.inspection.retained
-                .filter((entry) => entry.position > 0)
-                .map((entry) => entry.index) ?? []
-            }
-            // Absätze mit einer unbestätigten unbelegten Aussage (freier
-            // Modus). Der Wortlaut steht in `ClaimGuard` darunter.
-            claimParagraphs={workspace.claims.pendingParagraphs}
-            // Fremdfirmen-Treffer bekommen dieselbe Behandlung wie die
-            // unbelegten Aussagen (siehe `foreignCompanies.ts`).
-            foreignParagraphs={foreignParagraphs}
-            // Absätze, in denen der Briefkopf selbsttätig übernommen
-            // wurde. Eigene Farbe, kein Fehler.
-            letterheadParagraphs={letterheadParagraphs}
-            onParagraphInput={workspace.handleParagraphInput}
-            // `rounded-lg` statt der Vorgabe `rounded-md`: Der Fokusring
-            // folgt dem Radius seines Elements und soll dem Blatt folgen,
-            // nicht daneben liegen.
-            className="rounded-lg"
-            // Damit die Fläche den Brief zeigt, wie er beim Empfänger
-            // ankommt: in seiner Schrift, mit seinen Einzügen, auf seinem
-            // Satzspiegel.
-            format={format}
-          />
+              Der Brief ist eine **Seite**, kein Textblock in einer Karte:
+              Es gilt das Seitenverhältnis von A4. Nur noch Hülle und
+              Druckmarke — das Blatt selbst ist jede einzelne Seite in
+              `DocumentView`.
+
+              **Hier greift der Maßstab, und nur hier.** Aus dieser Breite
+              misst `DocumentView` sein `--pt`, und an `--pt` hängt jedes Maß
+              des Briefes (siehe `documentStyle.ts`). Den Kasten schmaler zu
+              machen verkleinert deshalb Blatt, Schrift, Ränder und
+              schwebende Objekte in einem Zug — ohne `transform`, das
+              Cursorsetzung und Trefferprüfung verschöbe. Die vormaligen
+              `w-full max-w-[900px]` stehen jetzt als Maße in `zoom.ts`.
+
+              Die Breite steht als **Stilangabe** am Element und schlägt
+              damit jede Regel aus einer Datei. Für den Druck ist das eigens
+              behandelt: `print.css` setzt sie mit `!important` zurück, sonst
+              käme ein auf 60 % gezogener Brief auch auf 60 % aufs Papier. */}
+          <div data-print-document style={sheetSize(zoom)}>
+            <DocumentView
+              rootRef={workspace.rootRef}
+              paragraphs={docx.paragraphs}
+              // Auch mit dem Finger: Die Checkliste nimmt auf schmalen
+              // Geräten nur die **Feinmarkierung** weg, nicht das Tippen.
+              editable
+              labelledBy={headingId}
+              // Die Sprache des Dokuments, deterministisch erkannt (Aufgabe 9,
+              // kein Modellaufruf). Sie entscheidet, in welcher Sprache der
+              // Browser die Rechtschreibung prüft und eine Vorlesesoftware
+              // den Text ausspricht.
+              language={detectLanguage(docx.text)}
+              // Nur die Absätze, die die Leiste auch benennt (`position > 0`,
+              // siehe `SelectionLayer`). Eine Kontur ohne ein Wort dazu wäre
+              // eine Bedeutung, die allein an der Farbe hinge.
+              retainedParagraphs={
+                workspace.selection?.inspection.retained
+                  .filter((entry) => entry.position > 0)
+                  .map((entry) => entry.index) ?? []
+              }
+              // Absätze mit einer unbestätigten unbelegten Aussage (freier
+              // Modus). Der Wortlaut steht in `ClaimGuard` darunter.
+              claimParagraphs={workspace.claims.pendingParagraphs}
+              // Fremdfirmen-Treffer bekommen dieselbe Behandlung wie die
+              // unbelegten Aussagen (siehe `foreignCompanies.ts`).
+              foreignParagraphs={foreignParagraphs}
+              // Absätze, in denen der Briefkopf selbsttätig übernommen
+              // wurde. Eigene Farbe, kein Fehler.
+              letterheadParagraphs={letterheadParagraphs}
+              onParagraphInput={workspace.handleParagraphInput}
+              // `rounded-lg` statt der Vorgabe `rounded-md`: Der Fokusring
+              // folgt dem Radius seines Elements und soll dem Blatt folgen,
+              // nicht daneben liegen.
+              className="rounded-lg"
+              // Damit die Fläche den Brief zeigt, wie er beim Empfänger
+              // ankommt: in seiner Schrift, mit seinen Einzügen, auf seinem
+              // Satzspiegel.
+              format={format}
+            />
+          </div>
+
+          {/* Die unbelegten Aussagen stehen unter dem Blatt, nicht in einer
+              Spalte: Sie gehören zu diesem Dokument und zu keiner Stellschraube.
+
+              **Ohne Maßstab.** Sie sind eine Auskunft der Oberfläche und kein
+              Abbild des Briefes; bei 25 % wären sie 225 px breit und nicht
+              mehr zu lesen. Dass sie damit breiter stehen können als das
+              herausgezoomte Blatt, ist gewollt — es sind zwei verschiedene
+              Dinge. */}
+          <div className="w-full max-w-[900px]">
+            <ClaimGuard
+              claims={workspace.claims.located}
+              onConfirm={workspace.claims.confirm}
+              headingId={claimsHeadingId}
+            />
+          </div>
         </div>
 
-        {/* Die unbelegten Aussagen stehen unter dem Blatt, nicht in einer
-            Spalte: Sie gehören zu diesem Dokument und zu keiner Stellschraube. */}
-        <div className="w-full max-w-[900px]">
-          <ClaimGuard
-            claims={workspace.claims.located}
-            onConfirm={workspace.claims.confirm}
-            headingId={claimsHeadingId}
-          />
-        </div>
+        {/* Unten rechts, wie in Word. Unterhalb von `lg` blättert nicht
+            dieser Bereich, sondern die Seite — dort steht die Leiste
+            deshalb im Fluss am Ende statt zu schweben, sonst klebte sie am
+            unteren Ende eines Blocks, den man erst herunterblättern muss. */}
+        <ZoomControl
+          zoom={zoom}
+          onZoomChange={onZoomChange}
+          onZoomCommit={onZoomCommit}
+          className="m-4 self-end lg:absolute lg:right-8 lg:bottom-4 lg:m-0"
+        />
       </div>
     </>
   )

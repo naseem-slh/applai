@@ -167,6 +167,20 @@ export interface Settings {
   anonymize: boolean
   truthMode: TruthMode
   theme: 'light' | 'dark' | 'system'
+  /**
+   * Der Maßstab der Arbeitsfläche in Prozent (25–100), wie ihn der
+   * Maßstabsregler unten rechts am Blatt stellt.
+   *
+   * Eine Ansichtseinstellung, kein Dokumentinhalt: gespeichert wird eine
+   * Zahl, sonst nichts (G5 bleibt unberührt). Ein Wert für beide Unterlagen
+   * — wer den Brief herauszoomt, will den Lebenslauf daneben nicht wieder
+   * herangeholt bekommen.
+   *
+   * Wahlfrei, weil jeder vor dieser Aufgabe gespeicherte Datensatz ohne ihn
+   * auskommt. Gelesen wird er ausschließlich durch `clampZoom`
+   * (`components/editor/zoom.ts`), das Fehlen und Unsinn auf 100 % zieht.
+   */
+  zoom?: number
 }
 
 export interface StorageAdapter {

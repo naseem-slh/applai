@@ -49,6 +49,7 @@ export const DEFAULT_SETTINGS: Settings = {
   anonymize: true,
   truthMode: 'strict',
   theme: 'system',
+  zoom: 100,
 }
 
 /**
