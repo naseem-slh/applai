@@ -255,11 +255,11 @@ export function DocumentView({
   }
 
   const root = rootRef ?? ownRef
-  const { pages, pageHeight } = usePagination(root, paragraphs)
   const collapsed = useMemo(
     () => (collapseBlankRuns ? collapsedEmptyParagraphs(paragraphs) : new Set<number>()),
     [collapseBlankRuns, paragraphs],
   )
+  const { pages, pageHeight } = usePagination(root, paragraphs, collapsed)
 
   return (
     <div
@@ -353,6 +353,7 @@ export function DocumentView({
 function usePagination(
   root: RefObject<HTMLDivElement | null>,
   paragraphs: readonly Paragraph[],
+  collapsed: ReadonlySet<number>,
 ): { pages: number[][]; pageHeight: number } {
   const [pages, setPages] = useState<number[][]>(() => [paragraphs.map((_, index) => index)])
   const [width, setWidth] = useState(0)
@@ -379,11 +380,20 @@ function usePagination(
     const outer = width * (297 / 210)
     const text = outer - 2 * (0.095 * width)
     const boxes = Array.from(element.querySelectorAll<HTMLElement>(`[${PARAGRAPH_INDEX_ATTRIBUTE}]`))
-    const heights = boxes.map((box) => box.offsetHeight)
+    // Eine zusammengefallene Leerzeile beansprucht nichts — weder Höhe noch
+    // den Abstand vor sich, den ihr negativer Rand aufhebt.
+    // `splitIntoPages` schlägt den Abstand aber jedem Absatz zu; eine
+    // negative Höhe von genau einem Abstand hebt ihn wieder auf, sodass sie
+    // unterm Strich null kostet. Ohne das bräche die Seite bei jedem Lauf
+    // aus Leerzeilen zu früh um — bei neun zusammengefallenen Zeilen um
+    // rund ein Fünftel Blatt.
+    const heights = boxes.map((box, position) =>
+      collapsed.has(position) ? -PARAGRAPH_GAP : box.offsetHeight,
+    )
 
     const next = splitIntoPages(heights, text, PARAGRAPH_GAP)
     setPages((current) => (samePages(current, next) ? current : next))
-  }, [root, paragraphs, width])
+  }, [root, paragraphs, width, collapsed])
 
   return { pages, pageHeight: width * (297 / 210) }
 }
@@ -439,11 +449,23 @@ function DocumentParagraph({
         // Mindesthöhe fiele der Absatz auf null zusammen und wäre weder
         // sichtbar noch anklickbar.
         'border-l-2 pl-3 whitespace-pre-wrap',
-        // Eine überzählige Leerzeile wird flach, aber nicht unsichtbar: Sie
-        // behält genug Höhe, um sie anzuklicken und den Schreibcursor
-        // hineinzusetzen. Aus dem DOM nehmen dürfte man sie nicht — ihre
-        // Offsets hängen daran, und der Export braucht sie unverändert.
-        collapsed ? 'min-h-[0.4em]' : 'min-h-[1.7em]',
+        // Eine überzählige Leerzeile beansprucht **nichts**: keine Höhe und
+        // auch nicht den Abstand zum Absatz davor, den der negative Rand
+        // wieder aufhebt. Erst damit wird aus einem Lauf von fünf
+        // Leerzeilen wirklich eine — mit bloßer Resthöhe blieben die vier
+        // Abstände von je 16 px stehen, und die sind der eigentliche
+        // Leerraum.
+        //
+        // Aus dem DOM nehmen dürfte man sie trotzdem nicht: Ihre Offsets
+        // hängen daran, und der Export braucht sie unverändert. `h-0` statt
+        // `hidden`, weil ein `display: none` in einem beschreibbaren
+        // Bereich den Schreibcursor durcheinanderbringt.
+        //
+        // Verirrt sich doch einmal ein Zeichen hinein, heilt sich das von
+        // selbst: Der Absatz ist dann nicht mehr leer, fällt aus
+        // `collapsedEmptyParagraphs` heraus und steht beim nächsten Rendern
+        // wieder in voller Höhe da.
+        collapsed ? 'h-0 min-h-0 overflow-hidden -mt-4 first:mt-0' : 'min-h-[1.7em]',
         // Die Kontur liegt immer an, nur farblos: So verschiebt sich beim
         // Hervorheben kein Zeichen. Der beanstandete Absatz gewinnt, wenn
         // beides zusammentrifft — er hält den Export an oder nennt einen

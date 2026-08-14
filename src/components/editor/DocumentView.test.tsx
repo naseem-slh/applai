@@ -408,7 +408,7 @@ describe('DocumentView', () => {
     expect(surface.querySelectorAll(`[${PARAGRAPH_INDEX_ATTRIBUTE}]`)).toHaveLength(2)
   })
 
-  it('faltet mehr als zwei Leerzeilen hintereinander zusammen, ohne sie zu entfernen', () => {
+  it('macht aus einem Lauf von Leerzeilen eine, ohne sie zu entfernen', () => {
     render(
       <DocumentView
         paragraphs={paragraphs(['Text', '', '', '', '', 'Mehr'])}
@@ -425,10 +425,15 @@ describe('DocumentView', () => {
     // Alle sechs stehen weiter im Baum — ihre Offsets hängen daran, und der
     // Export braucht sie unverändert.
     expect(boxes).toHaveLength(6)
+    // Die erste Leerzeile bleibt eine Leerzeile.
     expect(boxes[1]?.className).toContain('min-h-[1.7em]')
-    expect(boxes[2]?.className).toContain('min-h-[1.7em]')
-    expect(boxes[3]?.className).toContain('min-h-[0.4em]')
-    expect(boxes[4]?.className).toContain('min-h-[0.4em]')
+    // Die drei danach beanspruchen nichts mehr: keine Höhe, und der
+    // negative Rand hebt auch den Abstand vor ihnen auf.
+    for (const index of [2, 3, 4]) {
+      expect(boxes[index]?.className).toContain('h-0')
+      expect(boxes[index]?.className).toContain('-mt-4')
+    }
+    expect(boxes[5]?.className).toContain('min-h-[1.7em]')
   })
 
   it('faltet nichts zusammen, solange es nicht verlangt wird', () => {

@@ -59,8 +59,18 @@ export function splitIntoPages(
       current = []
       used = 0
     }
+    // Nach einem Umbruch steht der Absatz am Kopf der neuen Seite und
+    // kostet den Abstand nicht mehr — deshalb wird hier erneut gefragt und
+    // nicht `needed` weiterverwendet.
+    const cost = (current.length > 0 ? gap : 0) + height
     current.push(index)
-    used += used === 0 ? height : gap + height
+    // Nie unter null: Eine Höhe darf negativ sein — die Ansicht drückt
+    // damit aus, dass ein Absatz nicht nur nichts hoch ist, sondern auch
+    // den Abstand vor sich aufhebt (siehe `collapsedEmptyParagraphs`).
+    // Steht so einer am Kopf einer Seite, gibt es davor aber gar keinen
+    // Abstand, den er aufheben könnte; ohne die Schranke zöge er der Seite
+    // Platz ab, den sie nie ausgegeben hat.
+    used = Math.max(0, used + cost)
   }
 
   pages.push(current)
@@ -71,15 +81,18 @@ export function splitIntoPages(
  * Wie viele leere Zeilen hintereinander stehen bleiben, bevor der Rest
  * zusammenfällt.
  *
- * Zwei, weil eine Leerzeile im Brief ein Absatzabstand ist und zwei eine
- * bewusste Lücke. Alles darüber ist Formatierung, die beim Schreiben
- * entstanden ist und in der Ansicht nur Platz kostet.
+ * Eine. Was im Brief nacheinander leer steht, ist auf dem Papier ein
+ * Abstand und auf dem Bildschirm nur Weg: Eine Leerzeile sagt „hier endet
+ * ein Gedanke" bereits vollständig, jede weitere sagt dasselbe noch einmal.
+ * Es standen einmal zwei, in der Annahme, zwei seien eine bewusste Lücke —
+ * gemessen an einem wirklichen Anschreiben waren es aber vier und fünf, und
+ * zwischen zwei Absätzen klaffte ein Drittel Seite.
  */
-export const VISIBLE_EMPTY_RUN = 2
+export const VISIBLE_EMPTY_RUN = 1
 
 /**
  * Die Absätze, deren Höhe die Ansicht zusammenfallen lässt: jede leere
- * Zeile eines Laufs ab der dritten.
+ * Zeile eines Laufs ab der zweiten.
  *
  * **Nur die Ansicht.** Die Absätze bleiben im Dokument, im DOM und im
  * Export — sie werden lediglich flach dargestellt. Sie aus dem DOM zu
