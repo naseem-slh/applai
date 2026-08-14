@@ -82,6 +82,12 @@ ablegen("cheering-fists-up", "jubeln.webp", 640)
 ablegen("holding-umbrella-in-rain", "schirm.webp", 640)
 ablegen("sunglasses-hands-on-hips", "inkognito.webp", 640)
 
+# Für die Einstellungen: das Jonglieren steht für die Kette der Modelle,
+# von denen eines übernimmt, wenn das vorige erschöpft ist, der Karton für
+# die Sicherung.
+ablegen("juggling-balls", "jonglieren.webp", 640)
+ablegen("sitting-in-cardboard-box", "karton.webp", 640)
+
 
 # --- Die Spähende ----------------------------------------------------
 # Die Vorlage bringt ihre eigene Kante mit: einen schwarzen Senkrechtstrich,
