@@ -1189,7 +1189,13 @@ function EditorWorkspace({ session }: { session: StartSession }) {
                 foreign={foreign}
                 application={application}
                 onDismissApplication={() => setApplication(null)}
-                defaultOpen={wide}
+                // Zugeklappt wie das Stilprofil, auch auf breiten Fenstern:
+                // Der Briefkopf ist vorgeschlagen und meist schon selbst
+                // übernommen, bevor der Nutzer hier ankommt — er will
+                // nachgesehen und selten berichtigt werden. Dass etwas
+                // übernommen wurde, steht ohnehin im Brief selbst: Die
+                // geänderten Absätze tragen dort ihre eigene Kontur.
+                defaultOpen={false}
               />
             )}
             {style !== null && sliders !== null && (
