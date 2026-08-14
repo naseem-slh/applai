@@ -69,14 +69,13 @@ for f, name in [("logo-panic.webp","logo-schreck.webp"), ("logo-panic-white.webp
 # =====================================================================
 # --- Wie groß ist die Figur wirklich? --------------------------------------
 # Die Bildhöhe taugt nicht als Maß. Beim Schirm nimmt die Wolke die obere
-# Hälfte, beim Karton die Kiste die untere, beim Jonglieren stehen die Bälle
-# über dem Kopf: Gleich hohe Bilder ergeben verschieden große Personen.
+# Hälfte, beim Luftballon der Ballon, beim Jonglieren stehen die Bälle über
+# dem Kopf: Gleich hohe Bilder ergeben verschieden große Personen.
 #
 # Gemessen wurde deshalb die Kopfbreite — die größte zusammenhängende Fläche
 # in Hautfarbe. Zur Kontrolle gegen den Pupillendurchmesser gehalten (schwarze
-# Scheiben, von Weiß umschlossen und darum eigene Flächen): Bei fünf von sechs
-# Figuren stimmen beide Maße auf 1% überein, beim Karton greift die
-# Pupillensuche danebenon die Kiste, dort gilt die Kopfbreite.
+# Scheiben, von Weiß umschlossen und darum eigene Flächen); beide Maße stimmen
+# auf ein Prozent überein.
 #
 #   Figur         Kopfbreite bei 640px Bildhöhe
 #   warten             316px
@@ -85,12 +84,12 @@ for f, name in [("logo-panic.webp","logo-schreck.webp"), ("logo-panic-white.webp
 #   schirm             214px      ← Wolke und Schirm nehmen Platz weg
 #   inkognito          312px
 #   jonglieren         317px
-#   karton             237px      ← die Kiste nimmt Platz weg
+#   luftballon         209px      ← Ballon und Schnur nehmen Platz weg
 #
 # Für eine gewünschte Kopfbreite K ist die Anzeigehöhe also
 #   H = K * 640 / Kopfbreite
 # Bei K = 66px, wie auf Datenschutz- und Einstellungsseite verwendet:
-#   schirm 129x197 · inkognito 87x135 · jonglieren 104x133 · karton 185x178
+#   schirm 129x197 · inkognito 87x135 · jonglieren 104x133 · luftballon 121x202
 
 
 def ablegen(quelle, ziel, hoehe):
@@ -112,7 +111,7 @@ ablegen("sunglasses-hands-on-hips", "inkognito.webp", 640)
 # von denen eines übernimmt, wenn das vorige erschöpft ist, der Karton für
 # die Sicherung.
 ablegen("juggling-balls", "jonglieren.webp", 640)
-ablegen("sitting-in-cardboard-box", "karton.webp", 640)
+ablegen("party-hat-with-balloon", "luftballon.webp", 640)
 
 
 # --- Die Spähende ----------------------------------------------------

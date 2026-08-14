@@ -541,7 +541,6 @@
          Server ist kein drittes Ziel, er ist das, was auf diesem Weg fehlt.
          --------------------------------------------------------------------- */
       .flow {
-        position: relative;
         display: grid;
         grid-template-columns: 1fr;
         gap: 20px;
@@ -557,22 +556,25 @@
            aber sie wird nicht erkannt — dieselbe Aussage wie „ohne Ihren
            Namen" auf der Linie dazwischen.
 
+         **Sie stehen im Raum, nicht an der Karte.** Sie liegen darum im
+         Blatt, zusammen mit den Kritzeleien, und nicht in der Karte: Wer an
+         der Karte hängt, richtet sich nach ihr aus und liest sich als ihre
+         Beigabe. Wer auf dem Blatt steht, steht auf dem Blatt.
+
          **Gleich groß heißt: gleich große Person, nicht gleich großes Bild.**
          Beim Schirm nehmen Wolke und Schirm die halbe Bildhöhe ein; bei
          gleicher Bildhöhe wäre die Person darunter deutlich kleiner als die
-         mit der Sonnenbrille. Die Maße unten sind deshalb aus der gemessenen
+         mit der Sonnenbrille. Die Maße unten sind aus der gemessenen
          Kopfbreite gerechnet, beide auf 66px Kopf (siehe assets.py).
 
-         **Und sie stehen nicht auf einer Linie.** Zwei gespiegelte Figuren in
-         gleicher Höhe lesen sich als Ornament, als zwei Hälften einer
-         Verzierung. Die eine steht darum oben und weiter weg, die andere
-         unten und dichter dran, jede ein wenig anders gekippt — wie zwei
-         Aufkleber, die jemand nacheinander aufs Blatt gesetzt hat.
-
-         Sie tragen nichts bei, was die Liste daneben nicht auch sagt, und
-         sind deshalb für den Vorleser nicht vorhanden. */
+         Der waagerechte Ort hängt an der Mitte des Fensters, nicht am
+         Blattrand: `50% + halbe Kartenbreite + Abstand`. So bleibt der
+         Abstand zur Karte auf jedem Fenster derselbe. Senkrecht steht die
+         eine hoch, die andere tief — auf einer Linie läsen sie sich als
+         Ornament. */
       .guard {
         position: absolute;
+        display: none;
       }
 
       .guard img {
@@ -581,27 +583,26 @@
         height: auto;
       }
 
+      /* 390px ist die halbe Kartenbreite. Unter 1140px bleibt daneben kein
+         Platz mehr, dann bleiben beide weg. */
+      @media (min-width: 1140px) {
+        .guard {
+          display: block;
+        }
+      }
+
       .guard--bleibt {
-        top: 24px;
-        right: calc(100% + 26px);
+        top: 19vh;
+        right: calc(50% + 416px);
         width: 129px;
         rotate: -4deg;
       }
 
       .guard--geht {
-        bottom: -14px;
-        left: calc(100% + 6px);
+        bottom: 8vh;
+        left: calc(50% + 398px);
         width: 87px;
         rotate: 5deg;
-      }
-
-      /* Neben eine 780px-Karte passen beide Figuren samt Neigung und Abstand
-         erst ab etwa 1085px Fenster. Erst ab 1140px bleibt an beiden Rändern
-         noch sichtbar Luft, deshalb steht die Schwelle dort. */
-      @media (max-width: 1139px) {
-        .guard {
-          display: none;
-        }
       }
 
       @media (min-width: 720px) {
@@ -911,6 +912,13 @@
         <path d="M39 28v4.5" />
         <path d="M24 38c4 6 12 6 16 0" />
       </svg>
+
+      <div class="guard guard--bleibt">
+        <img src="../../public/figuren/schirm.webp" alt="" width="419" height="640" />
+      </div>
+      <div class="guard guard--geht">
+        <img src="../../public/figuren/inkognito.webp" alt="" width="413" height="640" />
+      </div>
     </div>
 
     <div class="shell">
@@ -952,13 +960,6 @@
         </div>
 
         <div class="panel flow">
-          <div class="guard guard--bleibt" aria-hidden="true">
-            <img src="../../public/figuren/schirm.webp" alt="" width="419" height="640" />
-          </div>
-          <div class="guard guard--geht" aria-hidden="true">
-            <img src="../../public/figuren/inkognito.webp" alt="" width="413" height="640" />
-          </div>
-
           <section class="side" aria-labelledby="stays">
             <h2 class="side__head" id="stays">Bleibt auf Ihrem Gerät</h2>
             <ul class="items">

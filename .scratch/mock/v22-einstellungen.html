@@ -526,35 +526,34 @@
         }
       }
 
-      /* --- Zwei Figuren an zwei Karten ---------------------------------------
+      /* --- Zwei Figuren im Raum ----------------------------------------------
          Keine Zierde an der Seite, sondern je ein Bild zu dem, was auf der
          Karte daneben steht:
 
            Die Kette der Modelle hält mehrere in der Luft, und wenn eines
            erschöpft ist, übernimmt das nächste — das ist Jonglieren.
-           Die Sicherung packt alles in eine Datei — das ist der Karton.
+           Die Sicherung nimmt einem die Sorge ab, dass etwas verloren geht —
+           das ist der Ballon.
+
+         **Sie stehen im Raum, nicht an den Karten.** Sie liegen darum im
+         Blatt, zusammen mit den Kritzeleien, und nicht in einer Karte: Wer an
+         der Karte hängt, richtet sich nach ihr aus und wird zur Spalte
+         daneben. Wer auf dem Blatt steht, steht auf dem Blatt.
 
          **Gleich groß heißt: gleich große Person, nicht gleich großes Bild.**
-         Beim Karton nimmt die Kiste ein gutes Drittel der Bildhöhe ein, beim
+         Beim Ballon nimmt der Ballon ein gutes Drittel der Bildhöhe ein, beim
          Jonglieren stehen die Bälle über dem Kopf. Gleich hohe Bilder ergäben
-         verschieden große Personen. Die Maße unten sind deshalb aus der
-         gemessenen Kopfbreite gerechnet, beide auf 66px Kopf — dieselbe Größe
-         wie auf der Datenschutzseite (siehe assets.py).
+         verschieden große Personen. Die Maße unten sind aus der gemessenen
+         Kopfbreite gerechnet, beide auf 66px Kopf — dieselbe Größe wie auf
+         der Datenschutzseite (siehe assets.py).
 
-         **Und sie stehen nicht auf einer Linie.** Die Jonglierende steht oben
-         an ihrer Karte und weiter weg, der Karton unten an seiner und dichter
-         dran; beide leicht und verschieden gekippt. Über die Reihe hinweg
-         ergibt das eine Schräge statt einer Spiegelung.
-
-         Sie sagen nichts, was auf der Karte nicht steht, und sind deshalb für
-         den Vorleser nicht vorhanden. */
-      .card--anbieter,
-      .card--sicherung {
-        position: relative;
-      }
-
+         Der waagerechte Ort hängt an der Mitte des Fensters, nicht am
+         Blattrand: `50% + halbe Reihenbreite + Abstand`. Senkrecht steht die
+         eine hoch, die andere tief; auf einer Linie läsen sie sich als
+         Ornament. */
       .fig {
         position: absolute;
+        display: none;
       }
 
       .fig img {
@@ -563,31 +562,26 @@
         height: auto;
       }
 
+      /* 470px ist die halbe Reihenbreite. Unter 1280px bleibt daneben kein
+         Platz mehr, dann bleiben beide weg. */
+      @media (min-width: 1280px) {
+        .fig {
+          display: block;
+        }
+      }
+
       .fig--jonglieren {
-        top: 6px;
-        right: calc(100% + 28px);
+        top: 23vh;
+        right: calc(50% + 498px);
         width: 104px;
         rotate: 5deg;
       }
 
-      .fig--karton {
-        bottom: -16px;
-        /* Rückt bewusst über die Kartenkante: Die Kiste steht an der Karte,
-           nicht daneben — dieselbe Sprache wie die Spähende auf der
-           Vorbereiten-Seite. Das schafft zugleich den Platz, der die
-           Schwelle unten von 1380px auf 1300px drückt. */
-        left: calc(100% - 24px);
-        width: 185px;
+      .fig--luftballon {
+        bottom: 7vh;
+        left: calc(50% + 486px);
+        width: 121px;
         rotate: -3deg;
-      }
-
-      /* Neben die 940px breite Reihe passen beide Figuren samt Neigung erst
-         ab etwa 1265px Fenster; ab 1300px bleibt an beiden Rändern noch Luft.
-         Darunter bleiben sie weg, statt am Bildrand zu kleben. */
-      @media (max-width: 1299px) {
-        .fig {
-          display: none;
-        }
       }
 
       .card {
@@ -973,6 +967,13 @@
         <path d="M39 28v4.5" />
         <path d="M24 38c4 6 12 6 16 0" />
       </svg>
+
+      <div class="fig fig--jonglieren">
+        <img src="../../public/figuren/jonglieren.webp" alt="" width="498" height="640" />
+      </div>
+      <div class="fig fig--luftballon">
+        <img src="../../public/figuren/luftballon.webp" alt="" width="382" height="640" />
+      </div>
     </div>
 
     <div class="shell">
@@ -1068,10 +1069,7 @@
           </section>
 
           <!-- Anbieter. Der Schlüssel selbst steht nie da. -->
-          <section class="card card--anbieter" aria-labelledby="h-key">
-            <div class="fig fig--jonglieren" aria-hidden="true">
-              <img src="../../public/figuren/jonglieren.webp" alt="" width="498" height="640" />
-            </div>
+          <section class="card" aria-labelledby="h-key">
             <h2 class="card__head" id="h-key">Anbieter</h2>
 
             <div class="row">
@@ -1105,10 +1103,7 @@
           </section>
 
           <!-- Sicherung. -->
-          <section class="card card--sicherung" aria-labelledby="h-backup">
-            <div class="fig fig--karton" aria-hidden="true">
-              <img src="../../public/figuren/karton.webp" alt="" width="666" height="640" />
-            </div>
+          <section class="card" aria-labelledby="h-backup">
             <h2 class="card__head" id="h-backup">Sicherung</h2>
             <p class="note">Bewerbungen, Zwischenstände und Einstellungen als Datei. Ohne Schlüssel.</p>
             <div class="actions">
