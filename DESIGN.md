@@ -506,6 +506,43 @@ festlegt, gilt für ihre Anbauten (14b, 14c) und für den Export (15):
   wenn dabei der Schreibcursor springt. Eine Ansicht, die etwas anderes
   zeigt als das, was exportiert wird, wäre der schlimmere Fehler.
 
+### Auszeichnungen im Text
+
+Im Brief selbst gibt es **zwei** Arten, etwas hervorzuheben, und die Wahl
+zwischen ihnen ist keine Geschmacksfrage: Ein `<span>` um ein Wort bräche die
+Offset-Rechnung, auf der Markierung und Ersetzung beruhen, und fiele im
+`contentEditable` beim ersten Tastendruck auseinander. Beide Wege kommen
+deshalb ohne Eingriff in den Baum aus.
+
+1. **Die Kontur am Absatzrand** — ein Pseudoelement im linken Steg, 2 px
+   breit, immer vorhanden und nur farblos, damit sich beim Hervorheben kein
+   Zeichen verschiebt. Sie sagt „in diesem Absatz steckt etwas": unbelegte
+   Aussage und Fremdfirma in `--color-error`, festgehaltener Absatz in
+   `--color-warning`, übernommener Briefkopf in `--color-info`.
+2. **Die Hervorhebung über `::highlight()`** — die CSS Custom Highlight API,
+   für alles, was **Zeichen** und nicht Absätze meint. Sie färbt Bereiche,
+   ohne den Baum anzufassen. Wirksam sind darin nur `color`,
+   `background-color`, `text-decoration`, `text-shadow` und
+   `-webkit-text-stroke`; Polsterung, Rahmen und Radius ignoriert der
+   Browser. Vorgemerkte Stellen bekommen eine Fläche
+   (`--color-mark`, erledigt `--color-mark-done`), die Befunde der
+   Textprüfung eine rote Wellenlinie.
+
+Die Wellenlinie ist bewusst die aus Word: Sie ist das eingeführte Zeichen für
+„hier stimmt etwas nicht", und sie liegt ohnehin schon im Brief, weil der
+Browser mit seiner eigenen Rechtschreibprüfung dieselbe Form malt. Sie trägt
+`text-decoration-skip-ink: none`, sonst bliebe von einem Befund aus zwei
+Zeichen kaum Linie übrig. Rot und nicht Gelb, weil `--color-warning` als
+Textfarbe verboten ist und eine Linie unter dem Wort wie eine Auszeichnung
+des Worts gelesen wird.
+
+**Keine dieser Auszeichnungen steht für sich.** Zu jeder gehört eine Liste,
+die dasselbe in Worten sagt — `ClaimGuard`, `MarkPanel`, `ProofreadingPanel`.
+Wo die Custom Highlight API fehlt, entfällt die Auszeichnung und sonst
+nichts. Eine Farbe im Fließtext, die als einzige Auskunft trüge, wäre für
+jeden verloren, der sie nicht unterscheiden kann — und für jeden, der nicht
+zufällig hinsieht.
+
 ### Kontrast
 
 Zwei Regeln, die aus den Messwerten der Palette folgen und leicht zu übersehen

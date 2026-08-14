@@ -18,6 +18,7 @@ import { LanguagePrompt } from '@/components/editor/LanguagePrompt'
 import { LetterheadPanel } from '@/components/editor/LetterheadPanel'
 import { applyLetterhead, type LetterheadApplication } from '@/components/editor/letterheadApply'
 import { MarkPanel } from '@/components/editor/MarkPanel'
+import { ProofreadingPanel } from '@/components/editor/ProofreadingPanel'
 import { StyleProfilePanel } from '@/components/editor/StyleProfilePanel'
 import { TruthModeSwitch } from '@/components/editor/TruthModeSwitch'
 import type { EditorSelection } from '@/components/editor/documentSelection'
@@ -1035,6 +1036,22 @@ function EditorWorkspace({ session }: { session: StartSession }) {
                 Er gilt für die ganze Sitzung und nicht für diese eine
                 Markierung, gehört also zu den Stellschrauben. */}
             <TruthModeSwitch value={settings.truthMode} onChange={changeTruthMode} />
+
+            {/* Die Textprüfung zeigt das **sichtbare** Dokument: Sie meldet
+                Fundstellen, und eine Fundstelle im verborgenen Teilbaum
+                anzuspringen führte ins Leere.
+
+                Aufgeklappt, sobald sie etwas gefunden hat. Zugeklappt wäre
+                sie zwar leiser, aber dann hinge die ganze Auskunft wieder an
+                der Wellenlinie, die nur findet, wer ohnehin hinsieht. */}
+            <ProofreadingPanel
+              findings={activeWorkspace.proofreading}
+              onSelect={(finding) => activeWorkspace.revealRange(finding.range)}
+              onApply={(finding) =>
+                activeWorkspace.applyEdit(finding.range, finding.suggestion)
+              }
+              defaultOpen={activeWorkspace.proofreading.length > 0}
+            />
             {activeKind === 'cv' && cvStyle !== null && (
               <CvStyleProfilePanel
                 style={cvStyle}

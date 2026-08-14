@@ -340,6 +340,24 @@
   background-color: var(--color-mark-done);
 }
 
+/* Die Wellenlinie der Textprüfung — dieselbe Bauart wie in Word, und aus
+   demselben Grund wie oben über `::highlight` statt über ein Element: Ein
+   Befund ist oft nur zwei Zeichen breit, und ein <span> darum bräche jede
+   Bereichsrechnung. `text-decoration` ist eine der wenigen Eigenschaften,
+   die in einem Hervorhebungs-Pseudoelement überhaupt wirken.
+
+   `text-decoration-skip-ink: none`, damit die Linie unter Unterlängen
+   durchläuft: Bei einem Befund von zwei Zeichen bliebe von einer Linie, die
+   um jedes g und j herumspringt, kaum etwas übrig.
+
+   Rot und nicht Gelb: `--color-warning` erreicht als Textfarbe nirgends
+   4,5:1 (DESIGN.md, „Kontrast"), und eine Linie unter dem Wort liest sich
+   wie eine Auszeichnung des Worts. */
+::highlight(applai-proofreading) {
+  text-decoration: underline wavy var(--color-error);
+  text-decoration-skip-ink: none;
+}
+
 /* Fokusring — jedes bedienbare Primitiv trägt diese Klasse, damit es im
    ganzen Programm genau eine Fokusdarstellung gibt. `outline` statt
    `box-shadow`: der Ring übernimmt den Radius des Elements von selbst und

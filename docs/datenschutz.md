@@ -13,9 +13,16 @@ sie nachprüfen will, und nennt zu jeder die Stelle im Quelltext.
 > ausschließlich in Ihrem Browser verarbeitet und nur an den von Ihnen
 > gewählten KI-Anbieter übertragen.
 
-Das ist keine Absichtserklärung, sondern eine Eigenschaft der Bauweise. Sie
-folgt aus vier Entscheidungen, die im Projekt als Regeln festgeschrieben und
-maschinell gehalten sind (siehe [`CLAUDE.md`](../CLAUDE.md)):
+Eine Einschränkung gehört gleich hierher, weil sie den Kernsatz berührt: Wer
+in Chrome oder Edge die *erweiterte* Rechtschreibprüfung eingeschaltet hat,
+dessen Eingaben gehen zusätzlich an dessen Hersteller. Das tut der Browser,
+nicht diese Seite, und sie kann es nicht unterbinden — die Einzelheiten
+stehen weiter unten.
+
+Im Übrigen ist der Kernsatz keine Absichtserklärung, sondern eine Eigenschaft
+der Bauweise. Sie folgt aus vier Entscheidungen, die im Projekt als Regeln
+festgeschrieben und maschinell gehalten sind (siehe
+[`CLAUDE.md`](../CLAUDE.md)):
 
 | Regel | Was sie zusichert | Wo sie durchgesetzt wird |
 |---|---|---|
@@ -60,6 +67,27 @@ standardmäßig eingeschaltet und in den Einstellungen abschaltbar.
 sich nachprüfen: Im Netzwerk-Tab des Browsers steht während eines ganzen
 Durchlaufs ausschließlich der gewählte Anbieter, und `fetch('https://example.com')`
 in der Konsole wird von der CSP abgewiesen.
+
+## Die Rechtschreibprüfung des Browsers — die eine Lücke
+
+Die Arbeitsfläche ist ein beschreibbares Feld, und der Browser prüft darin die
+Rechtschreibung. Bei Firefox und Safari geschieht das ausschließlich auf dem
+Gerät. **Chrome und Edge bieten darüber hinaus eine „erweiterte"
+Rechtschreibprüfung an, und die schickt Eingaben an Google beziehungsweise
+Microsoft.** Sie ist nicht voreingestellt, sondern muss in den
+Browsereinstellungen eingeschaltet werden — wer sie eingeschaltet hat, sollte
+das für diese Seite wissen.
+
+Die CSP kann daran nichts ändern: Die Anfrage geht nicht von dieser Seite aus,
+sondern vom Browser selbst, und `connect-src` greift nur auf das, was die
+Seite tut. Das ist der einzige uns bekannte Weg, auf dem Text die Anwendung
+verlassen kann, ohne dass sie ihn dorthin geschickt hat.
+
+Die **eigene** Textprüfung — doppelte Wörter, Zeichensetzung, Typografie,
+sichtbar als rote Wellenlinie mit einem Vorschlag auf Klick — arbeitet
+dagegen ausschließlich im Browser. Sie ist eine Handvoll Regeln über dem
+Text, ohne Netzwerkzugriff und ohne Modellaufruf; siehe
+[`src/components/editor/proofreading.ts`](../src/components/editor/proofreading.ts).
 
 ## Was beim Ausliefern anfällt
 

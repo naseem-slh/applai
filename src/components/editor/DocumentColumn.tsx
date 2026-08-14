@@ -3,10 +3,10 @@ import { useTranslation } from 'react-i18next'
 import { ApiUsageStatus } from '@/components/app/ApiUsageStatus'
 import { Button } from '@/components/ui/Button'
 import { readDocumentFormat } from '@/lib/docx/format'
-import { detectLanguage } from '@/lib/domain/language'
 import type { Variant } from '@/lib/domain/rewrite'
 import { ClaimGuard } from './ClaimGuard'
 import { DocumentView } from './DocumentView'
+import { ProofreadingMenu } from './ProofreadingMenu'
 import { ZoomControl } from './ZoomControl'
 import { DraftStatus } from './DraftStatus'
 import { SelectionLayer } from './SelectionLayer'
@@ -232,45 +232,60 @@ export function DocumentColumn({
               behandelt: `print.css` setzt sie mit `!important` zurück, sonst
               käme ein auf 60 % gezogener Brief auch auf 60 % aufs Papier. */}
           <div data-print-document style={sheetSize(zoom)}>
-            <DocumentView
+            {/* Der Klick auf eine Wellenlinie der Textprüfung. Er
+                liegt hier und nicht in `DocumentView`, weil die Fläche
+                dokumentunabhängig bleiben soll — und weil der Behälter das
+                Ereignis ohnehin sieht, es steigt aus den Absätzen auf. */}
+            <ProofreadingMenu
+              findings={workspace.proofreading}
               rootRef={workspace.rootRef}
-              paragraphs={docx.paragraphs}
-              // Auch mit dem Finger: Die Checkliste nimmt auf schmalen
-              // Geräten nur die **Feinmarkierung** weg, nicht das Tippen.
-              editable
-              labelledBy={headingId}
-              // Die Sprache des Dokuments, deterministisch erkannt (Aufgabe 9,
-              // kein Modellaufruf). Sie entscheidet, in welcher Sprache der
-              // Browser die Rechtschreibung prüft und eine Vorlesesoftware
-              // den Text ausspricht.
-              language={detectLanguage(docx.text)}
-              // Nur die Absätze, die die Leiste auch benennt (`position > 0`,
-              // siehe `SelectionLayer`). Eine Kontur ohne ein Wort dazu wäre
-              // eine Bedeutung, die allein an der Farbe hinge.
-              retainedParagraphs={
-                workspace.selection?.inspection.retained
-                  .filter((entry) => entry.position > 0)
-                  .map((entry) => entry.index) ?? []
-              }
-              // Absätze mit einer unbestätigten unbelegten Aussage (freier
-              // Modus). Der Wortlaut steht in `ClaimGuard` darunter.
-              claimParagraphs={workspace.claims.pendingParagraphs}
-              // Fremdfirmen-Treffer bekommen dieselbe Behandlung wie die
-              // unbelegten Aussagen (siehe `foreignCompanies.ts`).
-              foreignParagraphs={foreignParagraphs}
-              // Absätze, in denen der Briefkopf selbsttätig übernommen
-              // wurde. Eigene Farbe, kein Fehler.
-              letterheadParagraphs={letterheadParagraphs}
-              onParagraphInput={workspace.handleParagraphInput}
-              // `rounded-lg` statt der Vorgabe `rounded-md`: Der Fokusring
-              // folgt dem Radius seines Elements und soll dem Blatt folgen,
-              // nicht daneben liegen.
-              className="rounded-lg"
-              // Damit die Fläche den Brief zeigt, wie er beim Empfänger
-              // ankommt: in seiner Schrift, mit seinen Einzügen, auf seinem
-              // Satzspiegel.
-              format={format}
-            />
+              // Über `applyEdit`, den einen Weg, auf dem sich der Text
+              // ändert: So gehen Verlauf, Rückgängig und das Nachführen der
+              // vorgemerkten Stellen von selbst mit.
+              onApply={(finding) => workspace.applyEdit(finding.range, finding.suggestion)}
+            >
+              <DocumentView
+                rootRef={workspace.rootRef}
+                paragraphs={docx.paragraphs}
+                // Auch mit dem Finger: Die Checkliste nimmt auf schmalen
+                // Geräten nur die **Feinmarkierung** weg, nicht das Tippen.
+                editable
+                labelledBy={headingId}
+                // Die Sprache des Dokuments, deterministisch erkannt (Aufgabe 9,
+                // kein Modellaufruf). Sie entscheidet, in welcher Sprache der
+                // Browser die Rechtschreibung prüft, wie eine Vorlesesoftware
+                // den Text ausspricht — und welche Regeln die Textprüfung
+                // anlegt. Bestimmt wird sie im Arbeitsbereich, damit sie nicht
+                // zweimal je Bearbeitung über den ganzen Text läuft.
+                language={workspace.language}
+                // Nur die Absätze, die die Leiste auch benennt (`position > 0`,
+                // siehe `SelectionLayer`). Eine Kontur ohne ein Wort dazu wäre
+                // eine Bedeutung, die allein an der Farbe hinge.
+                retainedParagraphs={
+                  workspace.selection?.inspection.retained
+                    .filter((entry) => entry.position > 0)
+                    .map((entry) => entry.index) ?? []
+                }
+                // Absätze mit einer unbestätigten unbelegten Aussage (freier
+                // Modus). Der Wortlaut steht in `ClaimGuard` darunter.
+                claimParagraphs={workspace.claims.pendingParagraphs}
+                // Fremdfirmen-Treffer bekommen dieselbe Behandlung wie die
+                // unbelegten Aussagen (siehe `foreignCompanies.ts`).
+                foreignParagraphs={foreignParagraphs}
+                // Absätze, in denen der Briefkopf selbsttätig übernommen
+                // wurde. Eigene Farbe, kein Fehler.
+                letterheadParagraphs={letterheadParagraphs}
+                onParagraphInput={workspace.handleParagraphInput}
+                // `rounded-lg` statt der Vorgabe `rounded-md`: Der Fokusring
+                // folgt dem Radius seines Elements und soll dem Blatt folgen,
+                // nicht daneben liegen.
+                className="rounded-lg"
+                // Damit die Fläche den Brief zeigt, wie er beim Empfänger
+                // ankommt: in seiner Schrift, mit seinen Einzügen, auf seinem
+                // Satzspiegel.
+                format={format}
+              />
+            </ProofreadingMenu>
           </div>
 
           {/* Die unbelegten Aussagen stehen unter dem Blatt, nicht in einer

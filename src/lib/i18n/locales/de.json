@@ -249,6 +249,24 @@
       "heading": "Anschreiben",
       "cvHeading": "Lebenslauf"
     },
+    "proofreading": {
+      "heading": "Textprüfung",
+      "count_one": "1 Befund",
+      "count_other": "{{count}} Befunde",
+      "none": "Nichts gefunden. Geprüft wird, was der Rechtschreibprüfung des Browsers entgeht: doppelte Wörter, Zeichensetzung und Typografie.",
+      "entry": "{{rule}}, Absatz {{paragraph}}",
+      "replace": "{{found}} durch {{suggestion}} ersetzen",
+      "apply": "Übernehmen",
+      "rules": {
+        "doubledWord": "Doppeltes Wort",
+        "spaceBeforePunctuation": "Leerzeichen vor dem Satzzeichen",
+        "missingSpaceAfterComma": "Leerzeichen fehlt",
+        "doubleSpace": "Doppeltes Leerzeichen",
+        "seidForSeit": "Hier ist wohl „seit“ gemeint",
+        "hyphenAsDash": "Gedankenstrich statt Bindestrich",
+        "straightQuote": "Gerades Anführungszeichen"
+      }
+    },
     "zoom": {
       "label": "Maßstab",
       "value": "{{percent}} %",

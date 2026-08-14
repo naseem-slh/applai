@@ -1,5 +1,6 @@
 import { useLayoutEffect, type RefObject } from 'react'
 import { rangeToDomRange } from './documentSelection'
+import { applyHighlight, highlightRegistry } from './highlights'
 import type { Mark } from './marks'
 
 /**
@@ -15,8 +16,9 @@ import type { Mark } from './marks'
  * zudem im `contentEditable` beim ersten Tastendruck auseinander.
  *
  * Die CSS Custom Highlight API löst genau das: Sie färbt Bereiche, die als
- * `Range` übergeben werden, und lässt den Baum unberührt. Die Farben stehen
- * in `design.css` unter `::highlight(applai-mark)` und
+ * `Range` übergeben werden, und lässt den Baum unberührt. Der Zugang zu ihr
+ * liegt in `highlights.ts`, geteilt mit der Textprüfung. Die Farben stehen in
+ * `design.css` unter `::highlight(applai-mark)` und
  * `::highlight(applai-mark-done)`.
  *
  * **Wo es sie nicht gibt** (jsdom in den Tests, ältere Browser), entfällt
@@ -39,19 +41,6 @@ export interface MarkHighlightOptions {
   marks: readonly Mark[]
 }
 
-/** Der Registrierungspunkt der API, `null` wo der Browser sie nicht kennt. */
-function highlightRegistry(): HighlightRegistry | null {
-  const api = (globalThis as { CSS?: { highlights?: HighlightRegistry } }).CSS
-  if (api?.highlights === undefined) return null
-  if (typeof (globalThis as { Highlight?: unknown }).Highlight !== 'function') return null
-  return api.highlights
-}
-
-interface HighlightRegistry {
-  set: (name: string, highlight: object) => void
-  delete: (name: string) => void
-}
-
 export function useMarkHighlight({ rootRef, marks }: MarkHighlightOptions): void {
   useLayoutEffect(() => {
     const registry = highlightRegistry()
@@ -66,28 +55,12 @@ export function useMarkHighlight({ rootRef, marks }: MarkHighlightOptions): void
       ;(mark.done ? done : open).push(range)
     }
 
-    apply(registry, MARK_HIGHLIGHT, open)
-    apply(registry, MARK_HIGHLIGHT_DONE, done)
+    applyHighlight(registry, MARK_HIGHLIGHT, open)
+    applyHighlight(registry, MARK_HIGHLIGHT_DONE, done)
 
     return () => {
       registry.delete(MARK_HIGHLIGHT)
       registry.delete(MARK_HIGHLIGHT_DONE)
     }
   }, [rootRef, marks])
-}
-
-/**
- * Ein leerer Eintrag wird **entfernt** statt leer gesetzt: Ein `Highlight`
- * ohne Bereiche ist zwar wirkungslos, bliebe aber in der Registrierung
- * stehen und wäre in den Entwicklerwerkzeugen ein Hinweis auf etwas, das es
- * nicht gibt.
- */
-function apply(registry: HighlightRegistry, name: string, ranges: Range[]): void {
-  if (ranges.length === 0) {
-    registry.delete(name)
-    return
-  }
-  const Constructor = (globalThis as unknown as { Highlight: new (...ranges: Range[]) => object })
-    .Highlight
-  registry.set(name, new Constructor(...ranges))
 }

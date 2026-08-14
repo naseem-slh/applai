@@ -3,15 +3,18 @@ import type { LoadedDocument } from '@/components/app/appContext'
 import { parseDocx } from '@/lib/docx/parse'
 import type { DocxDocument } from '@/lib/docx/model'
 import { replaceRange, type Range as TextRange } from '@/lib/docx/replace'
+import { detectLanguage } from '@/lib/domain/language'
 import type { Variant } from '@/lib/domain/rewrite'
 import type { StorageAdapter } from '@/lib/storage/adapter'
 import { rangeToDomRange, type EditorSelection } from './documentSelection'
 import { diffText } from './editableInput'
-import { restoreMarks, shiftMarks, type Mark } from './marks'
+import { restoreMarks, shiftMarks, trimRange, type Mark } from './marks'
 import { TYPING_BREAK_MS, useDocumentHistory } from './useDocumentHistory'
 import { useDocumentSelection } from './useDocumentSelection'
 import { useDraftAutosave, type DraftSaveState } from './useDraftAutosave'
 import { useMarkHighlight } from './useMarkHighlight'
+import { useProofreadingHighlight } from './useProofreadingHighlight'
+import { findProofreadingIssues, type ProofreadingFinding } from './proofreading'
 import { useMarks, type MarksHandle } from './useMarks'
 import { useUnbackedClaims, type UnbackedClaimsHandle } from './useUnbackedClaims'
 
@@ -91,10 +94,21 @@ export interface DocumentWorkspace {
   clear: () => void
   /** Eine Stelle aus der Liste anspringen: markieren und ins Bild rollen. */
   selectMark: (mark: Mark) => void
+  /** Einen beliebigen Bereich anspringen — für die Liste der Textprüfung. */
+  revealRange: (range: TextRange) => void
   canUndo: boolean
   undo: () => void
   commit: (document: DocxDocument, marks: readonly Mark[], group?: object) => void
   claims: UnbackedClaimsHandle
+  /**
+   * Die Sprache des Dokuments, einmal je Stand bestimmt. Sie entscheidet,
+   * in welcher Sprache der Browser die Rechtschreibung prüft, wie eine
+   * Vorlesesoftware den Text ausspricht — und welche Regeln die Textprüfung
+   * anlegt.
+   */
+  language: 'de' | 'en'
+  /** Was die Textprüfung im laufenden Stand gefunden hat. */
+  proofreading: readonly ProofreadingFinding[]
   draft: DraftSaveState
   /** **Der eine Weg, auf dem sich der Text dieses Dokuments ändert.** */
   applyEdit: (
@@ -165,8 +179,36 @@ export function useDocumentWorkspace({
    * weiterhin auf zwei Wegen, die beide ausdrücklich sind: noch einmal genau
    * dieselbe Stelle markieren, oder „Entfernen" in der Merkliste.
    */
+  /**
+   * Dokumenttext und Befunde für {@link settleSelection}.
+   *
+   * Über Referenzen und nicht über Abhängigkeiten: `settleSelection` hängt an
+   * einem DOM-Zuhörer und muss stabil bleiben, sonst meldet sich der Zuhörer
+   * bei jedem Rendern neu an. Dasselbe Vorgehen wie bei `markHandleRef`.
+   */
+  const documentTextRef = useRef<string | null>(null)
+  const proofreadingRef = useRef<readonly ProofreadingFinding[]>([])
+
   const settleSelection = useCallback((range: TextRange | null) => {
     if (range === null || range.to === range.from) return
+
+    // **Die Rechtschreibung hat Vorrang.** Ein Doppelklick wählt das Wort
+    // aus, und Auswählen heißt hier Vormerken — wer aber auf ein rot
+    // unterschlängeltes Wort doppelklickt, will die Korrektur sehen und
+    // nicht eine Vormerkung anlegen. Von Hand über dieselbe Stelle gezogen
+    // merkt weiterhin vor; das ist eine andere Geste und eine ausdrückliche.
+    //
+    // Verglichen wird gegen den **getrimmten** Bereich, weil `toggleMark`
+    // ebenso trimmt: Ein Doppelklick nimmt in manchen Browsern das
+    // Leerzeichen dahinter mit, und ohne das Trimmen ginge der Vergleich um
+    // ein Zeichen daneben.
+    const text = documentTextRef.current
+    const trimmed = text === null ? range : (trimRange(text, range) ?? range)
+    const onFinding = proofreadingRef.current.some(
+      (finding) => finding.range.from === trimmed.from && finding.range.to === trimmed.to,
+    )
+    if (onFinding) return
+
     markHandleRef.current?.toggle(range)
   }, [])
 
@@ -211,6 +253,25 @@ export function useDocumentWorkspace({
   })
 
   const claims = useUnbackedClaims(docx)
+
+  /**
+   * Sprache und Textprüfung.
+   *
+   * Beides hängt am laufenden Stand, nicht am hochgeladenen: Der Nutzer soll
+   * einen Befund verschwinden sehen, sobald er ihn behoben hat — dieselbe
+   * Wahl wie bei der Fremdfirmen-Warnung.
+   *
+   * Ein `useMemo` genügt, eine Entprellung braucht es nicht: Der Durchlauf
+   * ist reine Zeichenarbeit über wenige tausend Zeichen und läuft ohnehin
+   * nur, wenn `docx` sich ändert — und das tut es je Bearbeitung einmal.
+   */
+  const language = useMemo(() => (docx === null ? 'de' : detectLanguage(docx.text)), [docx])
+  const proofreading = useMemo(() => findProofreadingIssues(docx, language), [docx, language])
+
+  documentTextRef.current = docx?.text ?? null
+  proofreadingRef.current = proofreading
+
+  useProofreadingHighlight({ rootRef, findings: proofreading })
 
   /**
    * **Der eine Weg, auf dem sich der Text ändert.**
@@ -341,16 +402,16 @@ export function useDocumentWorkspace({
   }, [marks, selection])
 
   /**
-   * Eine Stelle aus der Liste anspringen: markieren und ins Bild rollen.
-   * Die Vormerkung wird dabei **nicht** verbraucht — sie bleibt stehen, auch
-   * nachdem eine Variante übernommen wurde.
+   * Einen Bereich anspringen: markieren und ins Bild rollen. Geteilt von der
+   * Merkliste und der Textprüfung — beide zeigen eine Fundstelle in einer
+   * Liste, und beide sollen beim Klick dasselbe tun.
    */
-  const selectMark = useCallback(
-    (mark: Mark) => {
-      select(mark.range)
+  const revealRange = useCallback(
+    (range: TextRange) => {
+      select(range)
       const root = rootRef.current
       if (root === null) return
-      const element = rangeToDomRange(root, mark.range)?.startContainer.parentElement ?? null
+      const element = rangeToDomRange(root, range)?.startContainer.parentElement ?? null
       // jsdom kennt `scrollIntoView` nicht; im Browser ist es immer da.
       if (typeof element?.scrollIntoView === 'function') {
         element.scrollIntoView({ block: 'center', behavior: 'smooth' })
@@ -358,6 +419,13 @@ export function useDocumentWorkspace({
     },
     [select],
   )
+
+  /**
+   * Eine Stelle aus der Liste anspringen. Die Vormerkung wird dabei **nicht**
+   * verbraucht — sie bleibt stehen, auch nachdem eine Variante übernommen
+   * wurde.
+   */
+  const selectMark = useCallback((mark: Mark) => revealRange(mark.range), [revealRange])
 
   const insertAtSelection = useMemo(
     () =>
@@ -384,10 +452,13 @@ export function useDocumentWorkspace({
     select,
     clear,
     selectMark,
+    revealRange,
     canUndo,
     undo,
     commit,
     claims,
+    language,
+    proofreading,
     draft,
     applyEdit,
     applyVariant,

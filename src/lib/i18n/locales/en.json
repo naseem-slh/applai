@@ -249,6 +249,24 @@
       "heading": "Cover letter",
       "cvHeading": "CV"
     },
+    "proofreading": {
+      "heading": "Text check",
+      "count_one": "1 finding",
+      "count_other": "{{count}} findings",
+      "none": "Nothing found. This checks what your browser's spell checker misses: doubled words, punctuation and typography.",
+      "entry": "{{rule}}, paragraph {{paragraph}}",
+      "replace": "Replace {{found}} with {{suggestion}}",
+      "apply": "Apply",
+      "rules": {
+        "doubledWord": "Doubled word",
+        "spaceBeforePunctuation": "Space before punctuation",
+        "missingSpaceAfterComma": "Missing space",
+        "doubleSpace": "Double space",
+        "seidForSeit": "This probably means \u201eseit\u201c",
+        "hyphenAsDash": "Dash instead of hyphen",
+        "straightQuote": "Straight quotation mark"
+      }
+    },
     "zoom": {
       "label": "Zoom",
       "value": "{{percent}} %",
