@@ -552,12 +552,22 @@
            aber sie wird nicht erkannt — dieselbe Aussage wie „ohne Ihren
            Namen" auf der Linie dazwischen.
 
+         **Gleich groß heißt: gleich große Person, nicht gleich großes Bild.**
+         Beim Schirm nehmen Wolke und Schirm die halbe Bildhöhe ein; bei
+         gleicher Bildhöhe wäre die Person darunter deutlich kleiner als die
+         mit der Sonnenbrille. Die Maße unten sind deshalb aus der gemessenen
+         Kopfbreite gerechnet, beide auf 66px Kopf (siehe assets.py).
+
+         **Und sie stehen nicht auf einer Linie.** Zwei gespiegelte Figuren in
+         gleicher Höhe lesen sich als Ornament, als zwei Hälften einer
+         Verzierung. Die eine steht darum oben und weiter weg, die andere
+         unten und dichter dran, jede ein wenig anders gekippt — wie zwei
+         Aufkleber, die jemand nacheinander aufs Blatt gesetzt hat.
+
          Sie tragen nichts bei, was die Liste daneben nicht auch sagt, und
          sind deshalb für den Vorleser nicht vorhanden. */
       .guard {
         position: absolute;
-        bottom: 10px;
-        width: 104px;
       }
 
       .guard img {
@@ -567,17 +577,23 @@
       }
 
       .guard--bleibt {
+        top: 24px;
         right: calc(100% + 26px);
+        width: 129px;
+        rotate: -4deg;
       }
 
       .guard--geht {
-        left: calc(100% + 26px);
+        bottom: -14px;
+        left: calc(100% + 6px);
+        width: 87px;
+        rotate: 5deg;
       }
 
-      /* Neben eine 780px-Karte passen zwei 104px-Figuren mit Abstand erst ab
-         etwa 1100px Fenster. Darunter bleiben sie weg, statt halb aus dem
-         Bild zu ragen. */
-      @media (max-width: 1099px) {
+      /* Neben eine 780px-Karte passen beide Figuren samt Neigung und Abstand
+         erst ab etwa 1085px Fenster. Erst ab 1140px bleibt an beiden Rändern
+         noch sichtbar Luft, deshalb steht die Schwelle dort. */
+      @media (max-width: 1139px) {
         .guard {
           display: none;
         }

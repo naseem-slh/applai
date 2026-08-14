@@ -529,8 +529,20 @@
            erschöpft ist, übernimmt das nächste — das ist Jonglieren.
            Die Sicherung packt alles in eine Datei — das ist der Karton.
 
-         Sie sagen nichts, was auf der Karte nicht steht, und sind deshalb
-         für den Vorleser nicht vorhanden. */
+         **Gleich groß heißt: gleich große Person, nicht gleich großes Bild.**
+         Beim Karton nimmt die Kiste ein gutes Drittel der Bildhöhe ein, beim
+         Jonglieren stehen die Bälle über dem Kopf. Gleich hohe Bilder ergäben
+         verschieden große Personen. Die Maße unten sind deshalb aus der
+         gemessenen Kopfbreite gerechnet, beide auf 66px Kopf — dieselbe Größe
+         wie auf der Datenschutzseite (siehe assets.py).
+
+         **Und sie stehen nicht auf einer Linie.** Die Jonglierende steht oben
+         an ihrer Karte und weiter weg, der Karton unten an seiner und dichter
+         dran; beide leicht und verschieden gekippt. Über die Reihe hinweg
+         ergibt das eine Schräge statt einer Spiegelung.
+
+         Sie sagen nichts, was auf der Karte nicht steht, und sind deshalb für
+         den Vorleser nicht vorhanden. */
       .card--anbieter,
       .card--sicherung {
         position: relative;
@@ -538,7 +550,6 @@
 
       .fig {
         position: absolute;
-        bottom: 8px;
       }
 
       .fig img {
@@ -548,18 +559,26 @@
       }
 
       .fig--jonglieren {
-        right: calc(100% + 26px);
-        width: 96px;
+        top: 6px;
+        right: calc(100% + 28px);
+        width: 104px;
+        rotate: 5deg;
       }
 
       .fig--karton {
-        left: calc(100% + 26px);
-        width: 129px;
+        bottom: -16px;
+        /* Rückt bewusst über die Kartenkante: Die Kiste steht an der Karte,
+           nicht daneben — dieselbe Sprache wie die Spähende auf der
+           Vorbereiten-Seite. Das schafft zugleich den Platz, der die
+           Schwelle unten von 1380px auf 1300px drückt. */
+        left: calc(100% - 24px);
+        width: 185px;
+        rotate: -3deg;
       }
 
-      /* Neben die 940px breite Reihe passen beide Figuren mit Abstand erst
-         ab etwa 1250px Fenster. Bei 1300px bleibt an jeder Seite noch Luft;
-         darunter bleiben sie weg, statt am Bildrand zu kleben. */
+      /* Neben die 940px breite Reihe passen beide Figuren samt Neigung erst
+         ab etwa 1265px Fenster; ab 1300px bleibt an beiden Rändern noch Luft.
+         Darunter bleiben sie weg, statt am Bildrand zu kleben. */
       @media (max-width: 1299px) {
         .fig {
           display: none;

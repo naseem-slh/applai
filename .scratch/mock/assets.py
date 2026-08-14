@@ -67,6 +67,32 @@ for f, name in [("logo-panic.webp","logo-schreck.webp"), ("logo-panic-white.webp
 # =====================================================================
 # Figuren
 # =====================================================================
+# --- Wie groß ist die Figur wirklich? --------------------------------------
+# Die Bildhöhe taugt nicht als Maß. Beim Schirm nimmt die Wolke die obere
+# Hälfte, beim Karton die Kiste die untere, beim Jonglieren stehen die Bälle
+# über dem Kopf: Gleich hohe Bilder ergeben verschieden große Personen.
+#
+# Gemessen wurde deshalb die Kopfbreite — die größte zusammenhängende Fläche
+# in Hautfarbe. Zur Kontrolle gegen den Pupillendurchmesser gehalten (schwarze
+# Scheiben, von Weiß umschlossen und darum eigene Flächen): Bei fünf von sechs
+# Figuren stimmen beide Maße auf 1% überein, beim Karton greift die
+# Pupillensuche danebenon die Kiste, dort gilt die Kopfbreite.
+#
+#   Figur         Kopfbreite bei 640px Bildhöhe
+#   warten             316px
+#   jubeln             308px
+#   spaehen            371px
+#   schirm             214px      ← Wolke und Schirm nehmen Platz weg
+#   inkognito          312px
+#   jonglieren         317px
+#   karton             237px      ← die Kiste nimmt Platz weg
+#
+# Für eine gewünschte Kopfbreite K ist die Anzeigehöhe also
+#   H = K * 640 / Kopfbreite
+# Bei K = 66px, wie auf Datenschutz- und Einstellungsseite verwendet:
+#   schirm 129x197 · inkognito 87x135 · jonglieren 104x133 · karton 185x178
+
+
 def ablegen(quelle, ziel, hoehe):
     im = Image.open(f"{SRC}/webp/{quelle}.webp").convert("RGBA")
     im = im.crop(im.getchannel("A").getbbox())
