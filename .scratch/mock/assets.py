@@ -77,6 +77,11 @@ def ablegen(quelle, ziel, hoehe):
 ablegen("sitting-reading-book", "warten.webp", 640)
 ablegen("cheering-fists-up", "jubeln.webp", 640)
 
+# Für die Datenschutzseite: der Schirm steht für das, was trocken bleibt,
+# die Sonnenbrille für das, was hinausgeht, ohne erkannt zu werden.
+ablegen("holding-umbrella-in-rain", "schirm.webp", 640)
+ablegen("sunglasses-hands-on-hips", "inkognito.webp", 640)
+
 
 # --- Die Spähende ----------------------------------------------------
 # Die Vorlage bringt ihre eigene Kante mit: einen schwarzen Senkrechtstrich,
