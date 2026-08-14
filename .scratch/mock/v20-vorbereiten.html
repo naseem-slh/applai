@@ -398,8 +398,8 @@
         /* Der Abstand hängt an der Fensterhöhe, nicht an einer festen Zahl:
            Auf hohen Fenstern darf die Marke Luft haben, auf flachen ist
            jeder Pixel der Karte lieber gegeben als dem Zwischenraum. */
-        gap: clamp(16px, 4vh, 48px);
-        padding: 20px 16px 28px;
+        gap: clamp(10px, 2vh, 26px);
+        padding: 46px 16px 26px;
       }
 
       /* Die Figur steht frei in der Ecke, solange das Fenster breit genug
@@ -444,7 +444,7 @@
          keine Quelle und lädt darum nichts, solange niemand hinzeigt. */
       .wordmark {
         position: relative;
-        --breite: 340px;
+        --breite: 400px;
         width: var(--breite);
         line-height: 0;
         /* Rechts im Bild stehen 11,4% leer: der Platz, in den die Arme des
@@ -576,8 +576,8 @@
 
       @media (min-width: 640px) {
         .panel {
-          padding: 26px;
-          gap: 18px;
+          padding: 22px;
+          gap: 16px;
         }
       }
 
@@ -607,7 +607,7 @@
       .tile {
         position: relative;
         width: 100%;
-        min-height: 132px;
+        min-height: 106px;
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -887,7 +887,7 @@
 
       textarea {
         width: 100%;
-        min-height: 104px;
+        min-height: 150px;
         resize: vertical;
         padding: 14px 16px;
         background: var(--field);
@@ -993,14 +993,14 @@
         display: inline-flex;
         align-items: center;
         gap: 12px;
-        padding: 15px 36px 17px;
+        padding: 10px 26px 12px;
         background: var(--accent);
         border: 3px solid var(--line);
         border-radius: 999px;
         box-shadow: 0 var(--pop-height) 0 var(--accent-deep), var(--btn-shadow);
         color: var(--accent-ink);
         font-family: var(--font-display);
-        font-size: 1.1875rem;
+        font-size: 1rem;
         font-weight: 600;
         white-space: nowrap;
         cursor: pointer;
@@ -1011,8 +1011,8 @@
       }
 
       .go svg {
-        width: 20px;
-        height: 20px;
+        width: 17px;
+        height: 17px;
         rotate: 90deg;
         transition: translate 220ms var(--bounce);
       }
@@ -1141,61 +1141,65 @@
          Zustand: Datei da, Anzeige da, Namensfeld ausgeklappt. */
       @media (max-height: 840px) {
         .wordmark {
-          --breite: 250px;
+          --breite: 290px;
+        }
+
+        .shell {
+          padding-top: 30px;
         }
 
         .tile {
-          min-height: 112px;
+          min-height: 96px;
         }
 
         textarea {
-          min-height: 88px;
+          min-height: 120px;
         }
       }
 
       @media (max-height: 730px) {
         .wordmark {
-          --breite: 205px;
+          --breite: 225px;
+        }
+
+        .shell {
+          padding-top: 20px;
         }
 
         .tile {
-          min-height: 92px;
+          min-height: 78px;
           gap: 8px;
           padding: 12px 14px;
         }
 
         textarea {
-          min-height: 68px;
+          min-height: 96px;
         }
 
         .panel {
-          padding: 20px;
-          gap: 13px;
-        }
-
-        .go {
-          padding: 11px 30px 13px;
+          padding: 18px;
+          gap: 12px;
         }
       }
 
       /* Noch flacher — etwa ein 1366x768-Bildschirm mit Fensterrahmen. */
       @media (max-height: 680px) {
         .wordmark {
-          --breite: 178px;
+          --breite: 190px;
         }
 
         .tile {
-          min-height: 78px;
-          padding: 10px 12px;
+          min-height: 66px;
+          padding: 9px 12px;
         }
 
         textarea {
-          min-height: 58px;
+          min-height: 80px;
         }
 
         .panel {
-          padding: 16px;
-          gap: 11px;
+          padding: 15px;
+          gap: 10px;
         }
       }
 
