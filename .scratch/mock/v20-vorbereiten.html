@@ -597,6 +597,10 @@
       .tiles {
         display: grid;
         grid-template-columns: 1fr;
+        /* Gleich hohe Zeilen: Nebeneinander ergibt sich das von selbst,
+           untereinander nicht — dort steht jede Kachel in ihrer eigenen
+           Zeile und die geladene wäre die kürzere. */
+        grid-auto-rows: 1fr;
         gap: 20px;
       }
 
@@ -615,6 +619,15 @@
 
       .tile {
         position: relative;
+        /* Die Rasterzellen sind gleich hoch, die Kacheln darin waren es
+           nicht: Jede stand für sich in ihrem Halter und nahm die Höhe
+           ihres Inhalts. Sobald eine geladen war, fiel das Plus weg und der
+           Dateiname kam dazu — unterm Strich 19px weniger. Die volle Kachel
+           schrumpfte also, statt sich zu füllen.
+
+           `flex: 1` lässt sie die Höhe ihres Halters annehmen, und den gibt
+           das Raster beiden gleich vor. */
+        flex: 1;
         width: 100%;
         min-height: 106px;
         display: flex;
@@ -717,7 +730,12 @@
         display: none;
       }
 
+      /* `position: relative` steht hier nur der Malreihenfolge wegen: Die
+         Füllung ist absolut gesetzt und wird darum über allem Unpositionierten
+         gezeichnet — die Beschriftung verschwand beim Laden hinter ihr. Das
+         Plus blieb sichtbar, weil es ohnehin positioniert ist. */
       .tile__name {
+        position: relative;
         font-family: var(--font-display);
         font-size: 1.125rem;
         font-weight: 600;
@@ -725,6 +743,7 @@
       }
 
       .tile__file {
+        position: relative;
         display: none;
         max-width: 100%;
         overflow-wrap: anywhere;
@@ -852,16 +871,24 @@
         pointer-events: none;
       }
 
+      /* Die Dauer ist dieselbe wie die des Lesens im Skript (700ms): Die
+         Füllung ist oben angekommen, wenn die Datei daliegt, und die grüne
+         Kachel löst sie im selben Augenblick ab.
+
+         Vorher lief hier `900ms infinite alternate` von 8% auf 80% — eine
+         Pulsschlag-Anzeige, die nach 700ms mitten in der Bewegung
+         abgeschnitten wurde und nie oben ankam. Für „das Blatt füllt sich"
+         ist der Lauf einmalig und vollständig. */
       .tile.is-busy .tile__fill {
-        animation: fill 900ms ease-in-out infinite alternate;
+        animation: fill 700ms cubic-bezier(0.33, 0, 0.2, 1) forwards;
       }
 
       @keyframes fill {
         from {
-          height: 8%;
+          height: 0%;
         }
         to {
-          height: 80%;
+          height: 100%;
         }
       }
 
