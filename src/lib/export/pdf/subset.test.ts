@@ -5,7 +5,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { subsetFont } from './subset'
-import { readTrueType, type TrueTypeFont } from './truetype'
+import { readTrueType, type TrueTypeFont } from '../../fonts/truetype'
 
 const FONT_DIR = join(dirname(fileURLToPath(import.meta.url)), '../../../../public/fonts/pdf')
 

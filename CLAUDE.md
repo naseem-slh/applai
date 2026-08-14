@@ -44,8 +44,13 @@ gegenstandslos.
 ## Architektur-Grenzen
 
 - `src/lib/docx`, `src/lib/pdf`, `src/lib/export`, `src/lib/ai`,
-  `src/lib/storage`, `src/lib/privacy` kennen React nicht und sind ohne
-  Oberfläche testbar.
+  `src/lib/fonts`, `src/lib/storage`, `src/lib/privacy` kennen React nicht
+  und sind ohne Oberfläche testbar.
+- `src/lib/fonts` sind die mitgelieferten Schriftdateien: welche Familie zu
+  welchem Word-Namen gehört, wie eine `.ttf` gelesen wird, wie sie geholt
+  wird. Arbeitsfläche **und** PDF-Ausfuhr hängen daran, und zwar an
+  derselben Zuordnung — sonst zeigte der Bildschirm eine andere Schrift als
+  die Datei, die der Nutzer verschickt.
 - `src/lib/pdf` liest PDF **ein** (Beta-Umwandlung nach Word),
   `src/lib/export/pdf` schreibt PDF **aus**. Die beiden Richtungen teilen
   keinen Code außer `pdfjs-dist` in den Tests des Schreibers, wo es als

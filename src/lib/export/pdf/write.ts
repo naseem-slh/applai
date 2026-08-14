@@ -3,7 +3,7 @@ import { zlibSync } from 'fflate'
 import { readImage, type PdfImage } from './image'
 import type { DrawnText, LaidOutDocument } from './layout'
 import { subsetFont, type FontSubset } from './subset'
-import type { TrueTypeFont } from './truetype'
+import type { TrueTypeFont } from '../../fonts/truetype'
 
 /**
  * Schreibt die gesetzten Seiten als PDF-Datei.

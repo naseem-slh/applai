@@ -7,8 +7,9 @@ import type {
   PageFormat,
   ParagraphFormat,
 } from '../../docx/format'
-import { fontFileKey, type FontFace, type FontProvider } from './fonts'
-import { translateSymbolText } from './symbols'
+import { translateSymbolText } from '../../docx/symbols'
+import { fontFileKey } from '../../fonts/bundled'
+import type { FontFace, FontProvider } from './fonts'
 
 /**
  * Setzt den ausgelesenen Brief auf Seiten: Zeilenumbruch, Tabulatoren,

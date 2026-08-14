@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { readTrueType, type TrueTypeFont } from './truetype'
 
-const FONT_DIR = join(dirname(fileURLToPath(import.meta.url)), '../../../../public/fonts/pdf')
+const FONT_DIR = join(dirname(fileURLToPath(import.meta.url)), '../../../public/fonts/pdf')
 
 async function loadFont(fileName: string): Promise<TrueTypeFont> {
   return readTrueType(new Uint8Array(await readFile(join(FONT_DIR, fileName))))

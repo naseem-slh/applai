@@ -1,4 +1,4 @@
-import { tableBytes, type TrueTypeFont } from './truetype'
+import { tableBytes, type TrueTypeFont } from '../../fonts/truetype'
 
 /**
  * Dampft eine Schriftdatei auf die Glyphen ein, die im Brief tatsächlich
