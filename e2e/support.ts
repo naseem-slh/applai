@@ -82,6 +82,19 @@ const STYLE_REPLY = {
   sample: 'ich bewerbe mich hiermit um die ausgeschriebene Stelle.',
 }
 
+/**
+ * Die Antwort auf die Lebenslauf-Stilanalyse. `sample` muss wörtlich im
+ * abgelegten Dokument stehen — der Ende-zu-Ende-Test legt dafür dieselbe
+ * Fixture ab, die auch als Anschreiben dient (der Durchlauf hängt nicht am
+ * Inhalt, sondern am Weg durch die Oberfläche).
+ */
+const CV_STYLE_REPLY = {
+  bulletForm: 'verbFirst',
+  tense: 'present',
+  traits: ['knappe Einträge'],
+  sample: 'ich bewerbe mich hiermit um die ausgeschriebene Stelle.',
+}
+
 export const VARIANT_TEXT = 'Ich bewerbe mich mit großer Freude um die ausgeschriebene Stelle.'
 
 const REWRITE_REPLY = {
@@ -126,9 +139,11 @@ export async function stubProvider(page: Page): Promise<{ requests: string[] }> 
       ? JOB_AD_REPLY
       : system.startsWith('Du analysierst den Schreibstil')
         ? STYLE_REPLY
-        : system.startsWith('Du prüfst')
-          ? GAPS_REPLY
-          : REWRITE_REPLY
+        : system.startsWith('Du analysierst die FORM')
+          ? CV_STYLE_REPLY
+          : system.startsWith('Du prüfst')
+            ? GAPS_REPLY
+            : REWRITE_REPLY
 
     await route.fulfill({
       status: 200,
@@ -174,8 +189,32 @@ export async function fillStartPage(page: Page, jobAdText = JOB_AD_TEXT): Promis
   await page.getByRole('button', { name: t('start.continue') }).click()
 }
 
+/**
+ * Nur einen **Lebenslauf** ablegen — der Fall, für den es den zweiten
+ * Bauabschnitt gibt: eine Ausschreibung, die kein Anschreiben verlangt.
+ *
+ * Abgelegt wird dieselbe Word-Fixture wie beim Anschreiben. Der Weg durch
+ * die Oberfläche hängt nicht am Inhalt der Datei, und eine zweite Fixture
+ * nur für diesen Test wäre ein Anhang ohne Aussage.
+ */
+export async function fillStartPageCvOnly(page: Page, jobAdText = JOB_AD_TEXT): Promise<void> {
+  await page
+    .locator('input[type="file"]')
+    .nth(1)
+    .setInputFiles(join(FIXTURES_DIR, 'anschreiben.docx'))
+  await page.getByText(t('start.files.loaded', { name: 'anschreiben.docx' })).waitFor()
+
+  await page.getByLabel(t('start.name.label'), { exact: true }).fill('Marlene Ostwald')
+  await page.getByLabel(t('start.jobAd.label'), { exact: true }).fill(jobAdText)
+
+  await page.getByRole('button', { name: t('start.continue') }).click()
+}
+
 /** Wartet, bis Anzeige und Stilprofil ausgewertet sind. */
-export async function waitForAnalysis(page: Page): Promise<void> {
-  await page.getByRole('textbox', { name: t('editor.document.heading') }).waitFor()
+export async function waitForAnalysis(
+  page: Page,
+  heading = t('editor.document.heading'),
+): Promise<void> {
+  await page.getByRole('textbox', { name: heading }).waitFor()
   await page.getByText(t('editor.analysis.loading')).waitFor({ state: 'detached' })
 }

@@ -4,7 +4,7 @@
   },
   "nav": {
     "start": "Prepare",
-    "editor": "Tailor letter",
+    "editor": "Tailor documents",
     "settings": "Settings",
     "label": "Main navigation",
     "privacy": "Privacy"
@@ -187,6 +187,11 @@
       "beta": "Read from a PDF. Converting it to Word is a beta feature: it restores paragraphs, headings and bullet points, but neither the original layout nor images or tables. Please read the result in the workspace before you use it.",
       "multiColumn": "This PDF is laid out in several columns. The conversion reads it line by line across the full page width, so text from the left and the right column ends up interleaved. For this document a Word file is by far the better source."
     },
+    "scope": {
+      "label": "Tailor for this application",
+      "hint": "Unchecked: the document stays untouched and only serves as evidence for what the other one may claim.",
+      "blocked": "Multi-column PDFs cannot be tailored. The text still counts as evidence."
+    },
     "recent": {
       "heading": "Last used",
       "body": "This browser still holds a draft. You can carry on with it instead of looking for the file again. Drafts are deleted automatically after seven days.",
@@ -223,7 +228,8 @@
       "heading": "Still missing:",
       "document": "a cover letter or a CV",
       "jobAd": "the text of the job ad",
-      "userName": "your name"
+      "userName": "your name",
+      "scope": "at least one document to tailor"
     },
     "continue": "Continue to the workspace"
   },
@@ -231,16 +237,26 @@
     "loading": "Reading the cover letter.",
     "undo": "Undo",
     "backToStart": "Back to the start page",
-    "noLetter": {
-      "heading": "The workspace needs a cover letter.",
-      "body": "This first stage works on the cover letter, the CV follows later. Please add a cover letter on the start page."
+    "noDocument": {
+      "heading": "The workspace needs a document.",
+      "body": "Add a cover letter or a CV on the start page and tick what should be tailored."
     },
     "failed": {
       "heading": "The cover letter could not be read.",
       "body": "The file may be damaged. Please add it again on the start page."
     },
     "document": {
-      "heading": "Cover letter"
+      "heading": "Cover letter",
+      "cvHeading": "CV"
+    },
+    "switch": {
+      "label": "Choose document",
+      "letter": "Cover letter",
+      "cv": "CV"
+    },
+    "beta": {
+      "badge": "Beta",
+      "cv": "Tailoring the CV is new. Please read every applied wording before you use the file: especially periods, titles and figures."
     },
     "selection": {
       "wholeDocument": "Whole document",
@@ -248,6 +264,7 @@
       "paragraphShort": "Paragraph",
       "none": "Drag across a passage.",
       "touch": "With touch, only the whole document can be selected.",
+      "touchParagraph": "With a finger, tap a paragraph to select it.",
       "summary": "{{chars}} characters selected.",
       "chars": "{{chars}} characters"
     },
@@ -304,6 +321,15 @@
         "heading_one": "One statement is not backed by your documents:",
         "heading_other": "{{count}} statements are not backed by your documents:"
       },
+      "figures": {
+        "heading": "Figures differ from the selection",
+        "changed": "{{from}} → {{to}}",
+        "removed_one": "No longer present: {{figures}}.",
+        "removed_other": "No longer present: {{figures}}.",
+        "added_one": "Newly added: {{figures}}.",
+        "added_other": "Newly added: {{figures}}.",
+        "confirm": "I have checked this figure and want to apply it."
+      },
       "willShift_one": "Paragraph {{paragraphs}} will be left empty. Anything anchored there, a signature for instance, visibly moves up.",
       "willShift_other": "Paragraphs {{paragraphs}} will be left empty. Anything anchored there, a signature for instance, visibly moves up."
     },
@@ -337,7 +363,7 @@
     "reapply": {
       "trigger": "Next posting",
       "heading": "Next job posting",
-      "description": "The letter is rebuilt from your uploaded cover letter. The marked passages are rewritten for the new posting.",
+      "description": "Your documents are rebuilt from the uploaded files. The marked passages are rewritten for the new job ad.",
       "jobAdLabel": "Job posting",
       "marks_one": "1 marked passage",
       "marks_other": "{{count}} marked passages",
@@ -353,6 +379,7 @@
       "halt": {
         "wahl": "Please pick a wording.",
         "unbelegteAussagen": "This wording contains claims your documents do not back up. Please confirm them one by one.",
+        "faktenGeaendert": "This wording changes a figure or a date compared with your selection. Please check it before applying.",
         "anbieterfehler": "The request failed.",
         "antwortVerworfen": "The AI's answer was not usable."
       },
@@ -451,6 +478,37 @@
       },
       "sentenceLength": "{{words}} words per sentence"
     },
+    "cvStyle": {
+      "heading": "Entry form",
+      "formLabel": "How an entry starts",
+      "form": {
+        "verbFirst": "Verb first (\"Develops …\")",
+        "nounPhrase": "Noun phrase (\"Development of …\")",
+        "mixed": "mixed"
+      },
+      "tenseLabel": "Tense",
+      "tense": {
+        "present": "Present",
+        "past": "Past",
+        "mixed": "mixed: ongoing in present, finished in past"
+      },
+      "traitsHint": "One observation per line. Whatever stands here feeds every rewrite.",
+      "measured": {
+        "person": "Person",
+        "terminalPunctuation": "Punctuation at line end",
+        "bulletLength": "Usual length",
+        "sample": "Sample entry from your CV"
+      },
+      "person": {
+        "none": "no first person, entries name the activity",
+        "first": "First person"
+      },
+      "terminalPunctuation": {
+        "yes": "yes, entries end with a full stop",
+        "no": "no, entries end without punctuation"
+      },
+      "bulletLength": "{{words}} words per entry"
+    },
     "language": {
       "heading": "Which language should the letter be in?",
       "intro": "The job ad is in {{ad}}, your cover letter in {{letter}}. Reworded passages are translated first and adapted afterwards.",
@@ -484,6 +542,7 @@
       "copyDone": "The text is in your clipboard.",
       "copyFailed": "The text could not be copied. The browser denied access to the clipboard.",
       "pdfTooltip": "Creates a PDF file with the original's typeface, margins and letterhead.",
+      "pdfBlockedTooltip": "This document contains a table. The PDF typesetter cannot lay out tables, so the result would lose its columns. The Word file passes the original through unchanged.",
       "copyTooltip": "Puts the letter into the clipboard as plain text."
     }
   },

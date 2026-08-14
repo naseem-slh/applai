@@ -13,9 +13,12 @@ import { textFingerprint } from '@/lib/text/fingerprint'
  *
  * **Was im Schlüssel steht und warum jedes Stück.**
  *
- * - **Art** (`jobAd`, `style`) — beide lesen Text und geben etwas völlig
- *   anderes zurück. Ohne Trennung bekäme das Stilprofil die Anzeigenanalyse
- *   untergeschoben, wenn zufällig derselbe Text vorliegt.
+ * - **Art** (`jobAd`, `style`, `cvStyle`) — alle drei lesen Text und geben
+ *   etwas völlig anderes zurück. Ohne Trennung bekäme das Stilprofil die
+ *   Anzeigenanalyse untergeschoben, wenn zufällig derselbe Text vorliegt.
+ *   `cvStyle` kam im zweiten Bauabschnitt dazu und braucht **keinen** neuen
+ *   Fassungsstand: Es ist ein eigener Namensraum, und die beiden
+ *   vorhandenen Arten behalten Prompt und Schema unverändert.
  * - **Fassung** — Ändern sich Prompt, Schema oder Auswertung, wird sie
  *   erhöht. Alle alten Einträge sind damit unerreichbar, ohne dass jemand
  *   aufräumen muss. Das ist die wichtigste Zeile hier: Ein Speicher, der
@@ -29,7 +32,7 @@ import { textFingerprint } from '@/lib/text/fingerprint'
 /** Erhöhen, sobald sich Prompt, Antwortschema oder Auswertung ändern. */
 export const ANALYSIS_CACHE_VERSION = 1
 
-export type AnalysisKind = 'jobAd' | 'style'
+export type AnalysisKind = 'jobAd' | 'style' | 'cvStyle'
 
 export async function analysisCacheKey(
   kind: AnalysisKind,

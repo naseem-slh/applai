@@ -89,7 +89,7 @@ const BASIS: RewriteRequest = {
   contextBefore: CONTEXT_BEFORE,
   contextAfter: CONTEXT_AFTER,
   jobAd: JOB_AD,
-  style: STYLE,
+  document: { kind: 'letter', style: STYLE },
   truthMode: 'strict',
   facts: FACTS,
   targetLanguage: 'de',
@@ -120,9 +120,33 @@ describe('rewriteSelection — genau drei Varianten', () => {
     expect(varianten[0]).toEqual({
       text: 'Drei Jahre lang habe ich ein fünfköpfiges Team geführt.',
       unbackedClaims: [],
+      // Weder Markierung noch Variante tragen eine Ziffer: Zahlwörter
+      // bleiben ungeprüft (siehe `domain/factsGuard.ts`).
+      figures: { added: [], removed: [] },
     })
     expect(provider.requests).toHaveLength(1)
     expect(provider.requests[0]?.json).toBe(true)
+  })
+
+  it('meldet eine veränderte Jahreszahl am Ergebnis, statt die Antwort zu verwerfen', async () => {
+    const provider = stubProvider(
+      antwort([
+        { text: 'Von 2018 bis 2022 ein Team geführt.' },
+        { text: 'Zweite Fassung.' },
+        { text: 'Dritte Fassung.' },
+      ]),
+    )
+    const varianten = await rewriteSelection(
+      { ...BASIS, selection: 'Von 2019 bis 2022 ein Team geführt.' },
+      provider,
+      'test-key',
+      PRIVAT_AUS,
+    )
+
+    expect(varianten[0]?.figures).toEqual({ added: ['2018'], removed: ['2019'] })
+    // Die übrigen Varianten haben die Angaben ganz verloren — auch das ist
+    // ein Befund, kein Fehlschlag der Antwort.
+    expect(varianten[1]?.figures.removed).toEqual(['2019', '2022'])
   })
 
   it('scheitert, wenn das Modell nur zwei Varianten liefert — statt still weiterzumachen', async () => {

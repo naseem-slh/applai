@@ -246,6 +246,108 @@ export function buildRewritePrompt(input: RewritePromptInput): { system: string;
 }
 
 /**
+ * **Die harten Angaben eines Lebenslaufs.** Sie sind der Grund, warum es für
+ * den Lebenslauf einen eigenen Prompt gibt und nicht einen Zweig im
+ * Anschreiben-Prompt.
+ *
+ * In einem Anschreiben ist der Name eines früheren Arbeitgebers meist eine
+ * Altlast, die ersetzt gehört (siehe `staleDataRule`). In einem Lebenslauf ist
+ * er das Gegenteil: die Sache selbst. Dieselbe Anweisung an beide Dokumente
+ * zu richten hieße, dem Modell an der einen Stelle zu befehlen, was es an der
+ * anderen niemals tun darf — und ein Modell, das Arbeitgeber in einem
+ * Lebenslauf „aktualisiert", erfindet eine Berufsstation.
+ *
+ * `factsGuard` prüft dieselbe Zusage anschließend deterministisch nach, aber
+ * nur für Zahlen und Datumsangaben. Namen und Titel trägt allein diese Regel;
+ * das ist eine bewusste Grenze, siehe `domain/factsGuard.ts`.
+ */
+const CV_HARD_FACTS_RULE = `HARTE ANGABEN BLEIBEN WÖRTLICH STEHEN. Arbeitgeber, Firmennamen, Stellenbezeichnungen, Abschlüsse, Institutionen, Orte, Jahreszahlen, Zeiträume, Mengen und Prozentwerte werden UNVERÄNDERT übernommen – gleiche Schreibweise, gleiche Zahl, gleicher Zeitraum. Sie sind der Inhalt eines Lebenslaufs, nicht seine Formulierung. Ändere niemals eine Jahreszahl, auch nicht um einen einzigen Jahrgang, und ergänze keine Angabe, die in der Auswahl nicht steht. Umformuliert wird ausschließlich die BESCHREIBUNG der Tätigkeit: ihre Wortwahl, ihre Reihenfolge, ihre Ausrichtung auf die Anzeige.`
+
+function buildCvRewriteSystemPrompt(input: RewritePromptInput): string {
+  return `Du bist der Umformulierungs-Assistent einer Bewerbungs-App. Der Nutzer hat in seinem eigenen LEBENSLAUF eine Stelle markiert – in aller Regel einen Eintrag unter den Tätigkeiten, manchmal eine Profilzeile. Deine Aufgabe: genau drei Neuformulierungen GENAU DIESER Stelle – in der eigenen Form dieses Lebenslaufs, nicht in einer allgemein "guten". Antworte ausschließlich mit einem einzigen JSON-Objekt – kein Fließtext davor oder danach, kein Markdown-Codeblock. Das JSON-Objekt muss exakt diese Form haben:
+
+{
+  "variants": [
+    { "text": string, "unbackedClaims": string[] },
+    { "text": string, "unbackedClaims": string[] },
+    { "text": string, "unbackedClaims": string[] }
+  ]
+}
+
+Verbindliche Regeln, in dieser Reihenfolge zu prüfen:
+
+1. GENAU ${VARIANT_COUNT} Varianten – nicht zwei, nicht vier. Eine Antwort mit einer anderen Anzahl wird vollständig verworfen. "unbackedClaims" ist immer anzugeben, notfalls als leeres Array [].
+
+2. ${CV_HARD_FACTS_RULE}
+
+3. NUR DIE AUSWAHL: Der Text vor und nach der Auswahl ("Kontext davor", "Kontext danach") ist nur zum Mitlesen da, damit du siehst, zu welcher Station der Eintrag gehört und wie die Nachbareinträge gebaut sind. Er ist nicht Teil der Aufgabe und darf nicht verändert, nicht fortgesetzt und nicht mit zurückgegeben werden. Gib in "text" ausschließlich den Ersatz für die Auswahl zurück. Übernimm keine Aufzählungszeichen, Spiegelstriche oder Einrückungen aus dem Kontext – die Formatierung des Dokuments bleibt unangetastet, du lieferst nur den Text.
+
+4. KEIN FLIESSTEXT. Ein Lebenslauf ist keine Prosa: keine Anrede, keine Überleitung, keine Einleitungsfloskel ("Im Rahmen meiner Tätigkeit möchte ich erwähnen, dass …"), kein Schlusssatz. Umfasst die Auswahl mehrere Einträge, bleibt es bei ebenso vielen – jeder für sich, in derselben Reihenfolge, durch Zeilenumbruch getrennt. Fasse niemals zwei Einträge zu einem zusammen und teile niemals einen in zwei.
+
+5. DREI VERSCHIEDENE ANSÄTZE, nicht dreimal derselbe Eintrag mit anderen Wörtern:
+   - Variante 1 bleibt nah am Original: gleiche Aussage, nur schärfere Wortwahl.
+   - Variante 2 stellt um: das Ergebnis nach vorn statt der Tätigkeit.
+   - Variante 3 richtet sich auf die Anzeige aus: betont von dem, was belegt ist, das, was zu den Anforderungen passt – ohne etwas hinzuzufügen, was nicht dasteht.
+   Die drei dürfen sich nicht nur in einzelnen Wörtern unterscheiden.
+
+6. FORM: Schreibe in der Form dieses Lebenslaufs (siehe Stilprofil im Nutzer-Prompt) – dieselbe Satzform, dieselbe Zeitform, dieselbe Person, dieselbe Handhabung des Schlusspunkts, ungefähr dieselbe Länge. Eine umformulierte Zeile, die anders gebaut ist als die Zeilen darüber und darunter, macht die ganze Liste zusammengesetzt; das ist auch dann ein Fehler, wenn die Zeile für sich genommen gut klingt.
+
+7. WAHRHEITSGRENZE. ${TRUTH_MODE_RULES[input.truthMode]}
+
+8. ${LENGTH_GOAL_RULES[input.lengthGoal]}
+
+9. ${PLACEHOLDER_RULE}
+
+Die gesamte Antwort steht in dieser Sprache: ${LANGUAGE_LABELS[input.targetLanguage]}.`
+}
+
+function buildCvRewriteUserPrompt(input: RewritePromptInput, facts: string): string {
+  return `Zielsprache: ${LANGUAGE_LABELS[input.targetLanguage]}
+
+${input.styleFragment}
+
+Stellenanzeige (nur zur Ausrichtung – diese Angaben stammen aus der Anzeige, nicht aus den Unterlagen des Nutzers und sind deshalb keine Belege über seine Person):
+${jobAdBlock(input.jobAd)}
+
+Faktenbasis aus den hochgeladenen Unterlagen (neben der Auswahl selbst die EINZIGE zulässige Belegquelle):
+"""
+${facts}
+"""
+
+Kontext davor – NUR ZUM MITLESEN, nicht zurückgeben:
+"""
+${input.contextBefore}
+"""
+
+MARKIERTE AUSWAHL – nur diese umformulieren:
+"""
+${input.selection}
+"""
+
+Kontext danach – NUR ZUM MITLESEN, nicht zurückgeben:
+"""
+${input.contextAfter}
+"""`
+}
+
+/**
+ * Baut System- und Nutzer-Prompt für die Umformulierung einer Stelle im
+ * **Lebenslauf**.
+ *
+ * Eine eigene Funktion neben `buildRewritePrompt`, aus demselben Grund, aus
+ * dem `buildTranslationPrompt` eine eigene ist: getrennte Aufgaben, getrennte
+ * Prompts, damit sich ihre Fehlerquellen nicht vermischen. Was beide teilen —
+ * Wahrheitsmodi, Längenregel, Platzhalter, Anzeigenblock — teilen sie als
+ * Baustein, nicht als Verzweigung.
+ */
+export function buildCvRewritePrompt(input: RewritePromptInput): { system: string; user: string } {
+  return {
+    system: buildCvRewriteSystemPrompt(input),
+    user: buildCvRewriteUserPrompt(input, factsBlock(input.facts)),
+  }
+}
+
+/**
  * Baut System- und Nutzer-Prompt für den ersten von zwei Schritten bei
  * abweichender Zielsprache: die reine Übersetzung der Auswahl.
  *

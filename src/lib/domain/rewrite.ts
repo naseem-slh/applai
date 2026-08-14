@@ -1,11 +1,19 @@
 import { z } from 'zod'
 import type { LlmProvider } from '../ai/provider'
 import { ModelResponseError, parseModelJson, truncateForError } from '../ai/modelJson'
-import { buildRewritePrompt, buildTranslationPrompt, VARIANT_COUNT } from '../ai/prompts/rewrite'
+import {
+  buildCvRewritePrompt,
+  buildRewritePrompt,
+  buildTranslationPrompt,
+  VARIANT_COUNT,
+} from '../ai/prompts/rewrite'
 import type { LengthGoal } from '../ai/prompts/rewrite'
 import { withAnonymization } from '../privacy/withAnonymization'
 import type { AnonymizationSettings } from '../privacy/withAnonymization'
 import type { TruthMode } from '../storage/adapter'
+import { cvStyleProfileToPromptFragment } from './cvStyleProfile'
+import { checkFigures, type FigureCheck } from './factsGuard'
+import type { CvStyleProfile } from './cvStyleProfile'
 import type { JobAd } from './jobAd'
 import { detectLanguage } from './language'
 import { styleProfileToPromptFragment } from './styleProfile'
@@ -35,13 +43,29 @@ import type { StyleProfile } from './styleProfile'
  * nicht entscheiden.
  */
 
+/**
+ * Welches Dokument umformuliert wird — und damit, welches Stilprofil gilt.
+ *
+ * **Eine unterschiedene Vereinigung, kein Merkmal neben einem gemeinsamen
+ * Profil.** Ein Anschreiben hat Förmlichkeit, Anredeform und Satzlänge, ein
+ * Lebenslauf Aufzählungsform, Zeitform und Schlusszeichen; die beiden Sätze
+ * überschneiden sich in keinem einzigen Feld. Ein gemeinsamer Typ mit lauter
+ * optionalen Feldern hätte für jedes Dokument die Hälfte davon leer — und der
+ * Übersetzer wüsste nicht mehr, welche Hälfte. So sagt der Typ selbst, was
+ * zusammengehört, und der Prompt-Zweig unten kann nichts anderes wählen als
+ * das, was dazu passt.
+ */
+export type RewriteDocument =
+  | { kind: 'letter'; style: StyleProfile }
+  | { kind: 'cv'; style: CvStyleProfile }
+
 export interface RewriteRequest {
   selection: string
   /** Bis zu 600 Zeichen davor — wird mitgelesen, nie verändert. */
   contextBefore: string
   contextAfter: string
   jobAd: JobAd
-  style: StyleProfile
+  document: RewriteDocument
   truthMode: TruthMode
   /** Fließtext aus Lebenslauf + Anschreiben als Faktenbasis. */
   facts: string
@@ -69,7 +93,26 @@ export interface RewriteRequest {
 export interface Variant {
   text: string
   unbackedClaims: string[]
+  /**
+   * Der Befund der Faktenprüfung (`domain/factsGuard.ts`): Zahlen und
+   * Datumsangaben, die gegenüber der Markierung hinzugekommen oder
+   * verschwunden sind.
+   *
+   * **Ein Befund, kein Fehler.** Er wirft nicht und verwirft die Variante
+   * nicht — er steht am Vorschlag und sperrt „Übernehmen", bis der Nutzer ihn
+   * bestätigt hat. Eine veränderte Zahl ist manchmal richtig; entschieden
+   * wird das dort, wo Markierung und Variante nebeneinander stehen.
+   */
+  figures: FigureCheck
 }
+
+/**
+ * Eine Variante, wie sie das Modell liefert — vor der Faktenprüfung. Sie
+ * läuft erst durch die Anonymisierungsklammer zurück; erst danach stehen
+ * echte Zahlen darin, und erst dann ist ein Vergleich mit der Markierung
+ * überhaupt aussagekräftig.
+ */
+type DraftVariant = Omit<Variant, 'figures'>
 
 /**
  * Fehler in der Anfrage selbst — nicht in der Modellantwort. Eigene Klasse
@@ -251,7 +294,7 @@ function assertNoContextEcho(texts: string[], contextBefore: string, contextAfte
  * Eigenschaft. Dafür ist die Prompt-Regel 3 zuständig (drei ausdrücklich
  * benannte Ansätze); hier steht nur der harte Fall.
  */
-function assertVariantsAreDistinct(variants: Variant[], label: string): void {
+function assertVariantsAreDistinct(variants: DraftVariant[], label: string): void {
   const seen = new Set<string>()
   for (const variant of variants) {
     const normalized = normalizeWhitespace(variant.text)
@@ -276,7 +319,7 @@ function assertVariantsAreDistinct(variants: Variant[], label: string): void {
  * die Antwort verwerfen, als die einzige Schutzvorrichtung des freien Modus
  * zur Dekoration zu machen.
  */
-function assertClaimsAreVerbatim(variants: Variant[], label: string): void {
+function assertClaimsAreVerbatim(variants: DraftVariant[], label: string): void {
   for (const variant of variants) {
     const normalizedText = normalizeWhitespace(variant.text)
     for (const claim of variant.unbackedClaims) {
@@ -455,14 +498,14 @@ export async function rewriteSelection(
   const sourceLanguage = detectSourceLanguage(req)
   const needsTranslation = sourceLanguage !== req.targetLanguage
 
-  return withAnonymization(
+  const variants = await withAnonymization(
     {
       selection: req.selection,
       contextBefore: req.contextBefore,
       contextAfter: req.contextAfter,
       facts: req.facts,
-      styleSample: req.style.sample,
-      styleTraits: req.style.traits.join('\n'),
+      styleSample: req.document.style.sample,
+      styleTraits: req.document.style.traits.join('\n'),
     },
     privacy,
     async (fields) => {
@@ -486,12 +529,19 @@ export async function rewriteSelection(
         selection = translated.translation
       }
 
-      const style = applySliders(
-        { ...req.style, sample: fields.styleSample, traits: splitTraits(fields.styleTraits) },
-        req.sliders,
-      )
+      // Die anonymisierten Felder gehen an ihren Platz im Profil zurück,
+      // bevor daraus der Baustein wird. Beim Anschreiben wirkt zusätzlich
+      // der Förmlichkeitsregler; der Lebenslauf hat keinen — dort trägt die
+      // Form allein das Profil (`docs/spec.md`, „Stil").
+      const restored = { sample: fields.styleSample, traits: splitTraits(fields.styleTraits) }
+      const styleFragment =
+        req.document.kind === 'cv'
+          ? cvStyleProfileToPromptFragment({ ...req.document.style, ...restored })
+          : styleProfileToPromptFragment(
+              applySliders({ ...req.document.style, ...restored }, req.sliders),
+            )
 
-      const { system, user } = buildRewritePrompt({
+      const promptInput = {
         selection,
         contextBefore: fields.contextBefore,
         contextAfter: fields.contextAfter,
@@ -502,15 +552,17 @@ export async function rewriteSelection(
           requirements: req.jobAd.requirements.map((requirement) => requirement.text),
         },
         facts: fields.facts,
-        styleFragment: styleProfileToPromptFragment(style),
+        styleFragment,
         truthMode: req.truthMode,
         targetLanguage: req.targetLanguage,
         lengthGoal: lengthGoal(req.sliders.length),
-      })
+      }
+      const { system, user } =
+        req.document.kind === 'cv' ? buildCvRewritePrompt(promptInput) : buildRewritePrompt(promptInput)
 
       const raw = await provider.generate({ system, user, json: true }, apiKey)
       const parsed = parseModelJson(buildResponseSchema(req.truthMode), raw, REWRITE_LABEL)
-      const variants: Variant[] = parsed.variants.map((variant) => ({
+      const variants: DraftVariant[] = parsed.variants.map((variant) => ({
         text: variant.text,
         unbackedClaims: variant.unbackedClaims,
       }))
@@ -526,10 +578,23 @@ export async function rewriteSelection(
 
       return variants
     },
-    (variants, restoreText) =>
-      variants.map((variant) => ({
+    (produced, restoreText) =>
+      produced.map((variant) => ({
         text: restoreText(variant.text),
         unbackedClaims: variant.unbackedClaims.map(restoreText),
       })),
   )
+
+  // **Nach** dem Rücktausch geprüft, gegen die **ursprüngliche** Markierung.
+  //
+  // Nach dem Rücktausch, weil der Nutzer echte Zahlen sehen soll und nicht
+  // die Platzhalter, durch die eine Telefonnummer unterwegs ersetzt war.
+  //
+  // Gegen `req.selection`, also den Text vor jeder Übersetzung: Auch eine
+  // Übersetzung darf keine Jahreszahl verschieben, und dieser Vergleich
+  // fängt genau das mit — ein zweiter Prüfpunkt dafür wäre unnötig.
+  return variants.map((variant) => ({
+    ...variant,
+    figures: checkFigures(req.selection, variant.text),
+  }))
 }

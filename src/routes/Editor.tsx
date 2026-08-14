@@ -2,98 +2,81 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNod
 import { useTranslation } from 'react-i18next'
 import { Link, Navigate } from 'react-router-dom'
 import { AiErrorNotice } from '@/components/app/AiErrorNotice'
-import { ApiUsageStatus } from '@/components/app/ApiUsageStatus'
 import { VaultLockedError } from '@/components/app/aiErrorKey'
-import { LETTER_DRAFT_ID, useApp, type StartSession } from '@/components/app/appContext'
-import { ClaimGuard } from '@/components/editor/ClaimGuard'
-import { DocumentView } from '@/components/editor/DocumentView'
-import { DraftStatus } from '@/components/editor/DraftStatus'
-import { ExportBar } from '@/components/editor/ExportBar'
+import {
+  CV_DRAFT_ID,
+  LETTER_DRAFT_ID,
+  useApp,
+  type StartSession,
+} from '@/components/app/appContext'
+import { CvStyleProfilePanel } from '@/components/editor/CvStyleProfilePanel'
+import { DocumentColumn } from '@/components/editor/DocumentColumn'
+import { DocumentSwitch, type DocumentKind } from '@/components/editor/DocumentSwitch'
+import { ExportBar, type ExportDocument } from '@/components/editor/ExportBar'
 import { GapList } from '@/components/editor/GapList'
 import { LanguagePrompt } from '@/components/editor/LanguagePrompt'
 import { LetterheadPanel } from '@/components/editor/LetterheadPanel'
 import { applyLetterhead, type LetterheadApplication } from '@/components/editor/letterheadApply'
 import { MarkPanel } from '@/components/editor/MarkPanel'
-import { SelectionLayer } from '@/components/editor/SelectionLayer'
 import { StyleProfilePanel } from '@/components/editor/StyleProfilePanel'
 import { TruthModeSwitch } from '@/components/editor/TruthModeSwitch'
-import { VariantPopover } from '@/components/editor/VariantPopover'
-import {
-  paragraphRange,
-  rangeToDomRange,
-  wholeDocumentRange,
-  type EditorSelection,
-} from '@/components/editor/documentSelection'
-import { diffText } from '@/components/editor/editableInput'
+import type { EditorSelection } from '@/components/editor/documentSelection'
 import { findForeignCompanies } from '@/components/editor/foreignCompanies'
-import { restoreMarks, shiftMarks, type Mark } from '@/components/editor/marks'
 import { ReapplyDialog } from '@/components/editor/ReapplyDialog'
 import { ReapplyStatus } from '@/components/editor/ReapplyStatus'
-import { useReapply } from '@/components/editor/useReapply'
+import { useReapply, type ReapplyDocument } from '@/components/editor/useReapply'
 import {
   buildRewriteRequest,
+  CV_DEFAULT_SLIDERS,
   defaultSliders,
   factsFrom,
   type RewriteSliders,
 } from '@/components/editor/rewriteRequest'
-import { TYPING_BREAK_MS, useDocumentHistory } from '@/components/editor/useDocumentHistory'
-import { useDocumentSelection } from '@/components/editor/useDocumentSelection'
-import { useDraftAutosave } from '@/components/editor/useDraftAutosave'
+import { useDocumentWorkspace } from '@/components/editor/useDocumentWorkspace'
 import { useGapAnalysis } from '@/components/editor/useGapAnalysis'
-import { useLetterAnalysis } from '@/components/editor/useLetterAnalysis'
-import { useMarkHighlight } from '@/components/editor/useMarkHighlight'
-import { useMarks } from '@/components/editor/useMarks'
+import { useApplicationAnalysis } from '@/components/editor/useApplicationAnalysis'
 import { usePrecisePointer } from '@/components/editor/usePrecisePointer'
-import { useUnbackedClaims } from '@/components/editor/useUnbackedClaims'
 import { useWideViewport } from '@/components/editor/useWideViewport'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { FIELD_HINT_CLASS } from '@/components/ui/Field'
 import { providerFor, withSignal } from '@/lib/ai/provider'
 import { isoDate } from '@/lib/export/docx'
-import { parseDocx } from '@/lib/docx/parse'
 import type { JobAd } from '@/lib/domain/jobAd'
 import { detectLanguage } from '@/lib/domain/language'
 import { suggestLetterhead, type Letterhead } from '@/lib/domain/letterhead'
-import { rewriteSelection, type Variant } from '@/lib/domain/rewrite'
+import { rewriteSelection, type RewriteDocument, type Variant } from '@/lib/domain/rewrite'
+import type { CvStyleProfile } from '@/lib/domain/cvStyleProfile'
 import type { StyleProfile } from '@/lib/domain/styleProfile'
-import { replaceRange, type Range as TextRange } from '@/lib/docx/replace'
 import type { TruthMode } from '@/lib/storage/adapter'
 import { textFingerprint } from '@/lib/text/fingerprint'
 import { cn } from '@/lib/utils'
 
 /**
- * Die Arbeitsfläche: das Anschreiben als Dokument, die freie Markierung und
- * der Verlauf.
+ * Die Arbeitsfläche — die **Schale** der Bewerbung.
  *
- * Was hier zusammenläuft:
+ * Sie hält, was für die ganze Bewerbung gilt und es genau einmal gibt:
  *
- * - `DocumentView` zeigt die Absätze und nimmt Eingaben entgegen. Jede
- *   Eingabe geht als **kleinste** Textänderung (`diffText`) über
- *   `replaceRange` ins Modell, nicht als Neuschreiben des ganzen Absatzes;
- *   sonst verlöre er seine Formatierung.
- * - `SelectionLayer` zeigt, was markiert ist, und bietet „ganzes Dokument"
- *   sowie „aktueller Absatz" an.
- * - `useDocumentHistory` hält die Zustände für Strg+Z, `useDraftAutosave`
- *   sichert alle 20 Sekunden.
- * - `useLetterAnalysis` liest beim Betreten einmal die Stellenanzeige und
- *   das Stilprofil (14b) — beides braucht `rewriteSelection` als
- *   Pflichtfeld.
- * - `useMarks` und `MarkPanel` halten die vorgemerkten Stellen: mehrere
- *   Textstellen gleichzeitig, eine nach der anderen umformuliert, und je
- *   Anschreiben gemerkt.
- * - `VariantPopover` fragt nach drei Formulierungen, `TruthModeSwitch`
- *   verschiebt die Wahrheitsgrenze, `useUnbackedClaims` und `ClaimGuard`
- *   halten Markierung, Einzelbestätigung und Exportsperre des freien Modus
- *   (G10).
+ * - `useApplicationAnalysis` liest beim Betreten einmal die Stellenanzeige und
+ *   das Stilprofil (14b) — beides braucht `rewriteSelection` als Pflichtfeld.
+ * - `useGapAnalysis` füllt die Lückenliste, `findForeignCompanies` die
+ *   Fremdfirmen-Warnung, `TruthModeSwitch` verschiebt die Wahrheitsgrenze.
+ * - Der Briefkopf: Vorschlag, selbsttätige Übernahme, Bericht. Er hängt an
+ *   der Anzeige und an der Liste früherer Firmen, also an der Bewerbung.
+ * - Export, Bewerbungseintrag und der Durchlauf für die nächste
+ *   Ausschreibung.
  *
- * **Anbaustelle für 14c** steht unten im Aufbau: die Spalte neben dem
- * Dokument für Briefkopf, Lückenliste und Stilprofil.
+ * Was **ein Dokument** für sich hat — Verlauf, Markierung, vorgemerkte
+ * Stellen, Entwurf, unbelegte Aussagen und der eine Weg, auf dem sich sein
+ * Text ändert — liegt in `useDocumentWorkspace`. Die Schale ruft ihn je
+ * Dokument einmal auf; die Begründung für diese Richtung steht dort.
  *
  * **Der Modellaufruf wird hier zusammengesetzt, nicht in der Überlagerung.**
  * `VariantPopover` bekommt eine fertige Funktion und kennt weder Anbieter
  * noch Schlüssel noch Anonymisierung; hier laufen Sitzung, Einstellungen und
- * Tresor ohnehin zusammen.
+ * Tresor ohnehin zusammen. Aus demselben Grund liegt das Stilprofil hier und
+ * nicht im Dokument-Haken: Brief und Lebenslauf haben verschiedene Profile
+ * mit verschiedenen Typen.
  *
  * Kein eigenes `<main>`: Das steht einmal in `AppLayout` um den `<Outlet />`.
  */
@@ -112,98 +95,37 @@ export default function Editor() {
   return <EditorWorkspace session={session} />
 }
 
+/**
+ * Was als **Beta** gekennzeichnet ist.
+ *
+ * Der Lebenslauf ist der jüngste Teil der Anwendung: Sein Stilprofil, sein
+ * Prompt und die Faktenprüfung haben noch keine Bewerbungssaison hinter
+ * sich. Gekennzeichnet wird deshalb nach demselben Muster wie die
+ * PDF-Umwandlung (`docs/spec.md`): sichtbare Marke am Reiter, dazu ein
+ * Prüfhinweis über dem Blatt. **Gesperrt wird nichts** — eine Beta, die man
+ * nicht benutzen kann, erzeugt keine Erfahrung, aus der sie herauswachsen
+ * könnte.
+ */
+const BETA_DOCUMENTS: readonly DocumentKind[] = ['cv']
+
 function EditorWorkspace({ session }: { session: StartSession }) {
   const { t } = useTranslation()
   const { storage, keyVault, settings, updateSettings, setSession } = useApp()
   const headingId = useId()
   const claimsHeadingId = useId()
-  const rootRef = useRef<HTMLDivElement>(null)
 
-  const { document: docx, marks, canUndo, reset, commit, setMarks, undo } = useDocumentHistory()
   const precise = usePrecisePointer()
   // Nur für den Anfangszustand der aufklappbaren Bereiche, siehe dort.
   const wide = useWideViewport()
-  const [loading, setLoading] = useState(session.letter !== null)
-  const [failed, setFailed] = useState(false)
-
-  const letter = session.letter
-  useEffect(() => {
-    if (letter === null) return
-    let cancelled = false
-    void (async () => {
-      try {
-        const parsed = await parseDocx(letter.docxBase)
-        if (!cancelled) reset(parsed)
-      } catch {
-        if (!cancelled) setFailed(true)
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [letter, reset])
 
   /**
-   * **Markieren ist Vormerken.** Es gibt keinen eigenen Knopf mehr: Wer eine
-   * Textstelle markiert, hat sie damit vorgemerkt. Der Handgriff, den der
-   * Nutzer ohnehin macht, sagt bereits alles; ein zweiter wäre eine
-   * Wiederholung.
-   *
-   * Gerufen wird das erst, wenn die Markierung **fertig** ist (siehe
-   * `onSettled`) — beim Ziehen meldet der Browser fortwährend
-   * Zwischenstände, und jeden davon vorzumerken hieße, für einen Zug ein
-   * Dutzend Stellen anzulegen.
-   *
-   * `toggleMark` erledigt den Rest: deckungsgleich hebt auf, überschneidend
-   * ersetzt (siehe `marks.ts`).
-   *
-   * **Ein bloßer Klick hebt nichts mehr auf.** Er tat es einmal, und das war
-   * in einem beschreibbaren Dokument der falsche Handgriff: Wer den
-   * Schreibcursor in eine vorgemerkte Stelle setzt — um einen Tippfehler zu
-   * berichtigen, um die gerade übernommene Formulierung zu lesen —, löschte
-   * damit stillschweigend die Vormerkung. Danach war die Merkliste leer, und
-   * „Nächste Anzeige" hatte nichts mehr abzuarbeiten: Der Durchlauf stellte
-   * das Original her und meldete „0 Stellen übernommen". Aufheben lässt sich
-   * eine Stelle weiterhin auf zwei Wegen, die beide ausdrücklich sind — noch
-   * einmal genau dieselbe Stelle markieren, oder „Entfernen" in der
-   * Merkliste.
+   * Der Arbeitsumfang, geprüft: Haken **und** vorhandenes Dokument. Der
+   * Haken allein genügt nicht — eine Sitzung, die aus einer Sicherungsdatei
+   * oder einem Test stammt, kann ihn tragen, ohne dass die Unterlage
+   * dabeiliegt (siehe `StartSession.scope`).
    */
-  const settleSelection = useCallback((range: TextRange | null) => {
-    if (range === null || range.to === range.from) return
-    markHandleRef.current?.toggle(range)
-  }, [])
-
-  const { selection, caretParagraph, select, clear } = useDocumentSelection({
-    rootRef,
-    document: docx,
-    trackPointerSelection: precise,
-    onSettled: settleSelection,
-  })
-
-  const documentText = docx?.text ?? null
-  // `settleSelection` hängt an einem Ereigniszuhörer und muss stabil
-  // bleiben; die jeweils letzte Fassung reicht ihm.
-  const marksRef = useRef<readonly Mark[]>(marks)
-  marksRef.current = marks
-
-  const markHandle = useMarks({
-    storage,
-    // Der Fingerabdruck kommt vom **hochgeladenen** Brief, nicht vom
-    // Arbeitsstand: Sonst läge der Satz nach jedem Tastendruck unter einer
-    // neuen Kennung.
-    letterText: letter?.text ?? null,
-    documentText,
-    marks,
-    setMarks,
-    keep: settings.keepMarks === true,
-  })
-
-  const markHandleRef = useRef(markHandle)
-  markHandleRef.current = markHandle
-
-  useMarkHighlight({ rootRef, marks })
+  const letter = session.scope.letter ? session.letter : null
+  const cv = session.scope.cv ? session.cv : null
 
   /**
    * Fingerabdruck der aktuellen Stellenanzeige (`textFingerprint`,
@@ -231,21 +153,52 @@ function EditorWorkspace({ session }: { session: StartSession }) {
    * zuletzt gelaufen ist — die Sperre ÜBER SITZUNGEN HINWEG (Schaden 2).
    * Beginnt mit dem Wert aus einem fortgesetzten Entwurf, falls vorhanden
    * (`Draft.letterheadAppliedFor`, über `session.letter` gereicht, siehe
-   * `Start.handleUseRecent`); `useDraftAutosave` unten schreibt jede
-   * spätere Änderung in den Entwurf zurück, unabhängig davon, ob sich dabei
-   * auch der Dokumentinhalt ändert (siehe dort).
+   * `Start.handleUseRecent`); `useDraftAutosave` schreibt jede spätere
+   * Änderung in den Entwurf zurück, unabhängig davon, ob sich dabei auch
+   * der Dokumentinhalt ändert (siehe dort).
    */
   const [appliedForFingerprint, setAppliedForFingerprint] = useState<string | null>(
     session.letter?.letterheadAppliedFor ?? null,
   )
 
-  const draft = useDraftAutosave({
-    storage,
+  const letterWorkspace = useDocumentWorkspace({
+    kind: 'letter',
     draftId: LETTER_DRAFT_ID,
-    document: docx,
-    enabled: docx !== null,
+    source: letter,
+    storage,
+    precise,
+    keepMarks: settings.keepMarks === true,
     letterheadAppliedFor: appliedForFingerprint,
   })
+
+  const cvWorkspace = useDocumentWorkspace({
+    kind: 'cv',
+    draftId: CV_DRAFT_ID,
+    source: cv,
+    storage,
+    precise,
+    keepMarks: settings.keepMarks === true,
+  })
+
+  /**
+   * Welches Dokument gerade auf dem Tisch liegt.
+   *
+   * Beide bleiben eingehängt — der ruhende nur verborgen, siehe unten. Ein
+   * Wechsel darf weder den Rückgängig-Verlauf noch die vorgemerkten Stellen
+   * verwerfen, und ein Neuaufbau parste das `word/document.xml` jedes Mal
+   * neu.
+   */
+  const available = useMemo<DocumentKind[]>(
+    () => [letter === null ? null : ('letter' as const), cv === null ? null : ('cv' as const)]
+      .filter((kind): kind is DocumentKind => kind !== null),
+    [letter, cv],
+  )
+  const [active, setActive] = useState<DocumentKind>(() => (letter === null ? 'cv' : 'letter'))
+  const activeKind: DocumentKind = available.includes(active) ? active : (available[0] ?? 'letter')
+  const activeWorkspace = activeKind === 'cv' ? cvWorkspace : letterWorkspace
+
+  const docx = letterWorkspace.document
+  const marks = letterWorkspace.marks
 
   // Der Anbieter kommt aus dem Tresor, nicht aus den Einstellungen: Er
   // gehört zum Schlüssel (ein Gemini-Schlüssel spricht nicht mit OpenAI),
@@ -267,16 +220,18 @@ function EditorWorkspace({ session }: { session: StartSession }) {
     [settings.anonymize, session.userName],
   )
 
-  const analysis = useLetterAnalysis({
+  const analysis = useApplicationAnalysis({
     jobAdText: session.jobAdText,
-    letterText: letter?.text ?? '',
+    // `null`, nicht `''`: Was nicht im Arbeitsumfang liegt, wird gar nicht
+    // erst ausgewertet. Ein Stilprofil des leeren Textes kostete eine
+    // Anfrage und beschriebe nichts.
+    letterText: letter?.text ?? null,
+    cvText: cv?.text ?? null,
     provider,
     apiKey,
     privacy,
     storage,
   })
-
-  const claims = useUnbackedClaims(docx)
 
   /**
    * Die Sprache des vorhandenen Anschreibens, deterministisch erkannt
@@ -286,8 +241,8 @@ function EditorWorkspace({ session }: { session: StartSession }) {
    * Zielsprache für alles Weitere.
    */
   const letterLanguage = useMemo<'de' | 'en'>(
-    () => detectLanguage(letter?.text ?? ''),
-    [letter],
+    () => detectLanguage(letter?.text ?? cv?.text ?? ''),
+    [letter, cv],
   )
 
   /**
@@ -312,10 +267,19 @@ function EditorWorkspace({ session }: { session: StartSession }) {
     if (adLanguage !== null && !languageDiffers) setTargetLanguage(letterLanguage)
   }, [adLanguage, languageDiffers, letterLanguage])
 
-  /** Die Faktenbasis: hochgeladener Lebenslauf und hochgeladenes Anschreiben. */
+  /**
+   * Die Faktenbasis: hochgeladener Lebenslauf und hochgeladenes Anschreiben.
+   *
+   * **Immer beide, unabhängig vom Arbeitsumfang** — und immer der
+   * hochgeladene Stand, nie der laufende. Eine Unterlage, die nicht angepasst
+   * wird, bleibt Faktenquelle; genau dafür ist sie da. Und der laufende Stand
+   * schlösse eine Schleife: Eine im freien Modus erfundene Zeile im
+   * Lebenslauf würde zum Beleg für den nächsten Satz im Anschreiben, und G10
+   * wäre über einen Umweg ausgehebelt, den niemand sieht.
+   */
   const facts = useMemo(
-    () => factsFrom({ cv: session.cv?.text ?? null, letter: letter?.text ?? null }),
-    [session.cv, letter],
+    () => factsFrom({ cv: session.cv?.text ?? null, letter: session.letter?.text ?? null }),
+    [session.cv, session.letter],
   )
 
   /**
@@ -336,6 +300,22 @@ function EditorWorkspace({ session }: { session: StartSession }) {
     setStyle(derivedStyle)
     setSliders(defaultSliders(derivedStyle))
   }, [derivedStyle])
+
+  /**
+   * Dasselbe für den Lebenslauf. Ein eigenes Paar Zustände statt eines
+   * gemeinsamen: Die beiden Profile teilen kein einziges Feld (siehe
+   * `RewriteDocument`), und ein Umschalten dürfte die Korrekturen am jeweils
+   * anderen nicht verwerfen.
+   */
+  const [cvStyle, setCvStyle] = useState<CvStyleProfile | null>(null)
+  const [cvSliders, setCvSliders] = useState<RewriteSliders>(CV_DEFAULT_SLIDERS)
+
+  const derivedCvStyle = analysis.cvStyle
+  useEffect(() => {
+    if (derivedCvStyle === null) return
+    setCvStyle(derivedCvStyle)
+    setCvSliders(CV_DEFAULT_SLIDERS)
+  }, [derivedCvStyle])
 
   /**
    * Der Briefkopfvorschlag (Aufgabe 12, ohne KI). `today` entsteht einmal je
@@ -463,6 +443,7 @@ function EditorWorkspace({ session }: { session: StartSession }) {
    */
   const appliedFor = useRef<JobAd | null>(null)
   const [application, setApplication] = useState<LetterheadApplication | null>(null)
+  const commit = letterWorkspace.commit
   useEffect(() => {
     if (docx === null || jobAd === null || letterhead === null || !companiesLoaded) return
     // Siehe oben: `letterhead` muss zur laufenden `jobAd` gehören.
@@ -505,30 +486,49 @@ function EditorWorkspace({ session }: { session: StartSession }) {
    * Rückgängig nimmt auch den Bericht mit: Er bezeichnet Änderungen, die es
    * danach nicht mehr gibt.
    */
+  const undoActive = activeWorkspace.undo
   const undoAll = useCallback(() => {
-    undo()
-    setApplication(null)
-  }, [undo])
+    undoActive()
+    // Der Briefkopfbericht gehört zum Anschreiben. Nach einem Rückgängig im
+    // Lebenslauf steht er unverändert weiter da, und das ist richtig — dort
+    // wurde nichts an ihm zurückgenommen.
+    if (activeKind === 'letter') setApplication(null)
+  }, [undoActive, activeKind])
 
   const foreign = useMemo(
     () => findForeignCompanies(docx, jobAd?.company ?? null, knownCompanies),
     [docx, jobAd, knownCompanies],
   )
+  // Auch im Lebenslauf: Eine Zeile, die noch auf die vorige Ausschreibung
+  // gemünzt ist, steht dort genauso oft wie im Brief. Die Prüfung ist
+  // deterministisch und kostet keine Anfrage (siehe `foreignCompanies.ts`).
+  const cvForeign = useMemo(
+    () => findForeignCompanies(cvWorkspace.document, jobAd?.company ?? null, knownCompanies),
+    [cvWorkspace.document, jobAd, knownCompanies],
+  )
 
   const gaps = useGapAnalysis({ jobAd, facts, provider, apiKey, privacy })
 
-  const rewrite = useCallback(
-    async (current: EditorSelection, signal: AbortSignal): Promise<Variant[]> => {
+  /**
+   * Der Modellaufruf, einmal gebaut und von beiden Dokumenten benutzt.
+   *
+   * Was sich je Dokument unterscheidet — das Stilprofil und damit der Prompt
+   * — kommt als `document` herein (`RewriteDocument`). Alles andere gehört
+   * der Bewerbung: Anzeige, Faktenbasis, Wahrheitsmodus, Zielsprache,
+   * Anbieter, Tresor, Anonymisierung. Ein zweiter Aufrufort daneben wäre ein
+   * zweiter Ort, an dem G3, G4 und die Anonymisierung zu beachten wären.
+   */
+  const rewriteWith = useCallback(
+    async (
+      document: RewriteDocument,
+      documentSliders: RewriteSliders,
+      current: EditorSelection,
+      signal: AbortSignal,
+    ): Promise<Variant[]> => {
       // Nicht erreichbar, solange `ready` unten den Knopf sperrt — aber der
       // Typ weiß das nicht, und ein stiller Rückgabewert wäre schlechter als
       // ein sichtbarer Fehler.
-      if (
-        jobAd === null ||
-        style === null ||
-        sliders === null ||
-        targetLanguage === null ||
-        provider === null
-      ) {
+      if (jobAd === null || targetLanguage === null || provider === null) {
         throw new Error('Umformulierung ohne Auswertung, Zielsprache oder Anbieter angefordert.')
       }
 
@@ -548,111 +548,39 @@ function EditorWorkspace({ session }: { session: StartSession }) {
         buildRewriteRequest({
           selection: current,
           jobAd,
-          style,
+          document,
           facts,
           truthMode: settings.truthMode,
           targetLanguage,
-          sliders,
+          sliders: documentSliders,
         }),
         withSignal(provider, signal),
         key,
         privacy,
       )
     },
-    [
-      jobAd,
-      style,
-      sliders,
-      targetLanguage,
-      provider,
-      keyVault,
-      facts,
-      settings.truthMode,
-      privacy,
-    ],
+    [jobAd, targetLanguage, provider, keyVault, facts, settings.truthMode, privacy],
   )
 
-  /**
-   * **Der eine Weg, auf dem sich der Brieftext ändert.**
-   *
-   * Tippen, eine übernommene Variante und ein eingesetztes Briefkopf-Feld
-   * laufen alle hier hindurch: `replaceRange` bildet den neuen Stand,
-   * `shiftMarks` führt die vorgemerkten Stellen nach, und beides geht in
-   * **einem** `commit` in den Verlauf. Ein vierter Änderungsweg, der das
-   * Nachführen vergäße, wäre der wahrscheinlichste Fehler dieser
-   * Erweiterung — deshalb gibt es nur diesen einen.
-   *
-   * `completes` hakt die Vormerkung ab, die genau auf dem ersetzten Bereich
-   * liegt. Welche das ist, wird **vor** dem Verschieben festgestellt:
-   * danach ist ihr Bereich ein anderer.
-   */
-  const applyEdit = useCallback(
-    (range: TextRange, text: string, options: { group?: object; completes?: boolean } = {}) => {
-      if (docx === null) return
-      const completed =
-        options.completes === true
-          ? (marks.find(
-              (mark) => mark.range.from === range.from && mark.range.to === range.to,
-            ) ?? null)
-          : null
-
-      const next = replaceRange(docx, range, text)
-      const shifted = shiftMarks(marks, range, text.length, next.text)
-      commit(
-        next,
-        completed === null
-          ? shifted
-          : shifted.map((mark) => (mark.id === completed.id ? { ...mark, done: true } : mark)),
-        options.group,
-      )
+  const rewriteLetter = useCallback(
+    (current: EditorSelection, signal: AbortSignal): Promise<Variant[]> => {
+      if (style === null || sliders === null) {
+        throw new Error('Umformulierung des Anschreibens ohne Stilprofil angefordert.')
+      }
+      return rewriteWith({ kind: 'letter', style }, sliders, current, signal)
     },
-    [docx, marks, commit],
+    [rewriteWith, style, sliders],
   )
 
-  /**
-   * Eine übernommene Variante geht denselben Weg wie das Tippen:
-   * `replaceRange` auf den Bereich der Markierung, dann `commit` **ohne**
-   * Merkmal — sie ist ein eigener Verlaufsschritt und verschmilzt nicht mit
-   * dem Tippen davor.
-   *
-   * Die unbelegten Aussagen werden **nach** dem Einsetzen angemeldet: Erst
-   * dann stehen sie im Dokument, und nur dort findet `locateClaims` sie.
-   */
-  const applyVariant = useCallback(
-    (variant: Variant) => {
-      if (selection === null) return
-      applyEdit(selection.range, variant.text, { completes: true })
-      claims.add(variant.unbackedClaims)
-      clear()
+  const rewriteCv = useCallback(
+    (current: EditorSelection, signal: AbortSignal): Promise<Variant[]> => {
+      if (cvStyle === null) {
+        throw new Error('Umformulierung des Lebenslaufs ohne Stilprofil angefordert.')
+      }
+      return rewriteWith({ kind: 'cv', style: cvStyle }, cvSliders, current, signal)
     },
-    [selection, applyEdit, claims, clear],
+    [rewriteWith, cvStyle, cvSliders],
   )
-
-  /**
-   * Zurück auf das hochgeladene Anschreiben — derselbe Weg, den das Betreten
-   * der Arbeitsfläche geht (`parseDocx` + `reset`), und danach die
-   * vorgemerkten Stellen neu gegen genau diesen Text gesetzt.
-   *
-   * Die Anker wurden seinerzeit auf dem Original gebildet und treffen hier
-   * deshalb, sofern das Anschreiben nicht ausgetauscht wurde. Was dennoch
-   * nicht sitzt, wird gezählt und im Dialog gemeldet — vor der ersten
-   * bezahlten Anfrage, nicht mitten im Lauf.
-   *
-   * Alle wiedergefundenen Stellen stehen wieder **offen**: Das Abgehakt-Sein
-   * galt der vorigen Bewerbung, nicht der Stelle selbst.
-   */
-  const restoreOriginal = useCallback(async () => {
-    if (letter === null) return { markIds: [], unresolved: 0 }
-    const anchors = marksRef.current.map((mark) => mark.anchor)
-    const parsed = await parseDocx(letter.docxBase)
-    reset(parsed)
-    const restored = restoreMarks(parsed.text, anchors, (index) => `mark-${index}`)
-    setMarks(restored.marks)
-    return {
-      markIds: restored.marks.map((mark) => mark.id),
-      unresolved: restored.unresolved.length,
-    }
-  }, [letter, reset, setMarks])
 
   const setJobAdText = useCallback(
     (text: string) => setSession({ ...session, jobAdText: text }),
@@ -667,36 +595,32 @@ function EditorWorkspace({ session }: { session: StartSession }) {
    * Er bekommt ausschließlich Vorhandenes gereicht: `rewrite` ist dasselbe,
    * das die Variantenauswahl von Hand benutzt, `applyEdit` derselbe eine Weg,
    * auf dem sich Brieftext ändert. Die neue Anzeige setzt er über die
-   * Sitzung — `useLetterAnalysis` wertet sie dann von allein aus, samt
+   * Sitzung — `useApplicationAnalysis` wertet sie dann von allein aus, samt
    * Zwischenspeicher, Fehleranzeige und selbsttätigem Briefkopf.
    */
+  const reapplyDocuments = useMemo<ReapplyDocument[]>(
+    () =>
+      available.map((kind) => {
+        const workspace = kind === 'cv' ? cvWorkspace : letterWorkspace
+        return {
+          kind,
+          docx: workspace.document,
+          marks: workspace.marks,
+          rewrite: kind === 'cv' ? rewriteCv : rewriteLetter,
+          applyEdit: workspace.applyEdit,
+          addClaims: workspace.claims.add,
+          restoreOriginal: workspace.restoreOriginal,
+        }
+      }),
+    [available, cvWorkspace, letterWorkspace, rewriteCv, rewriteLetter],
+  )
+
   const reapply = useReapply({
-    docx,
-    marks,
-    rewrite,
-    applyEdit,
-    addClaims: claims.add,
+    documents: reapplyDocuments,
     setJobAdText,
-    restoreOriginal,
     currentJobAdText: session.jobAdText,
     jobAd: analysis.jobAd,
   })
-
-  /**
-   * Einsetzen eines Briefkopf-Feldes an der Markierung — derselbe Weg wie
-   * die Übernahme einer Variante, also ein eigener Verlaufsschritt.
-   * `null`, solange nichts markiert ist; der Knopf ist dann gesperrt.
-   */
-  const insertAtSelection = useMemo(
-    () =>
-      docx === null || selection === null
-        ? null
-        : (value: string) => {
-            applyEdit(selection.range, value)
-            clear()
-          },
-    [docx, selection, applyEdit, clear],
-  )
 
   /**
    * Nach dem Word-Export: Bewerbung eintragen und den Zwischenstand löschen
@@ -709,16 +633,29 @@ function EditorWorkspace({ session }: { session: StartSession }) {
    * lassen. Ein nicht gelöschter Entwurf läuft ohnehin nach sieben Tagen ab
    * (`purgeExpiredDrafts`).
    */
-  const handleExported = useCallback(() => {
-    void storage
-      .addApplication({
-        company: jobAd?.company ?? '',
-        position: jobAd?.position ?? '',
-        date: isoDate(new Date()),
-      })
-      .catch(() => {})
-    void storage.deleteDraft(LETTER_DRAFT_ID).catch(() => {})
-  }, [storage, jobAd])
+  const applicationRecorded = useRef(false)
+  const handleExported = useCallback(
+    (kind: DocumentKind) => {
+      // **Eine Bewerbung, ein Eintrag** — auch wenn zwei Dateien
+      // herauskommen. Ein Ref und kein Zustand: Der Wert steuert keine
+      // Anzeige, und ein Nachrendern mitten im Download wäre eine Wirkung
+      // ohne Zweck.
+      if (!applicationRecorded.current) {
+        applicationRecorded.current = true
+        void storage
+          .addApplication({
+            company: jobAd?.company ?? '',
+            position: jobAd?.position ?? '',
+            date: isoDate(new Date()),
+          })
+          .catch(() => {})
+      }
+      // Der Zwischenstand **dieser** Unterlage. Den der anderen zu löschen
+      // hieße, Arbeit wegzuwerfen, die noch nicht heraus ist.
+      void storage.deleteDraft(kind === 'cv' ? CV_DRAFT_ID : LETTER_DRAFT_ID).catch(() => {})
+    },
+    [storage, jobAd],
+  )
 
   const changeTruthMode = useCallback(
     (next: TruthMode) => {
@@ -731,46 +668,9 @@ function EditorWorkspace({ session }: { session: StartSession }) {
     [updateSettings],
   )
 
-  /**
-   * Zusammenhängendes Tippen ist **ein** Verlaufsschritt. Der Lauf endet,
-   * wenn der Absatz wechselt oder wenn länger als {@link TYPING_BREAK_MS}
-   * nichts eingegeben wurde. Das Merkmal ist ein frisches Objekt je Lauf: An
-   * seiner Identität erkennt die Historie den Zusammenhang, und ein späterer
-   * zweiter Lauf im selben Absatz verschmilzt nicht mit dem ersten.
-   */
-  const typingRun = useRef<{ token: object; index: number; at: number } | null>(null)
-
-  const typingToken = useCallback((index: number): object => {
-    const now = Date.now()
-    const run = typingRun.current
-    if (run !== null && run.index === index && now - run.at <= TYPING_BREAK_MS) {
-      run.at = now
-      return run.token
-    }
-    const token = {}
-    typingRun.current = { token, index, at: now }
-    return token
-  }, [])
-
-  const handleParagraphInput = useCallback(
-    (index: number, text: string) => {
-      if (docx === null) return
-      const paragraph = docx.paragraphs[index]
-      if (paragraph === undefined || paragraph.text === text) return
-
-      const edit = diffText(paragraph.text, text)
-      applyEdit(
-        { from: paragraph.start + edit.from, to: paragraph.start + edit.to },
-        edit.insert,
-        { group: typingToken(index) },
-      )
-    },
-    [docx, applyEdit, typingToken],
-  )
-
   // Strg+Z am Fenster, nicht an der Dokumentfläche: Der Verlauf soll auch
   // dann greifen, wenn der Fokus auf einem Knopf der Leiste steht. Eingabe-
-  // und Textfelder behalten ihr eigenes Rückgängig; 14c bringt welche mit.
+  // und Textfelder behalten ihr eigenes Rückgängig.
   useEffect(() => {
     const handle = (event: KeyboardEvent) => {
       if (event.altKey || event.shiftKey) return
@@ -785,33 +685,24 @@ function EditorWorkspace({ session }: { session: StartSession }) {
     return () => window.removeEventListener('keydown', handle)
   }, [undoAll])
 
-  /** Die Vormerkung, die gerade markiert ist — für `aria-current` in der Liste. */
-  const activeMarkId = useMemo(() => {
-    if (selection === null) return null
-    const active = marks.find(
-      (mark) =>
-        mark.range.from === selection.range.from && mark.range.to === selection.range.to,
-    )
-    return active?.id ?? null
-  }, [marks, selection])
+  /** Die Dokumente, die tatsächlich bearbeitet werden — in der Reihenfolge des Umschalters. */
+  const openWorkspaces = available.map((kind) => (kind === 'cv' ? cvWorkspace : letterWorkspace))
 
   /**
-   * Eine Stelle aus der Liste anspringen: markieren und ins Bild rollen.
-   * Die Vormerkung wird dabei **nicht** verbraucht — sie bleibt stehen, auch
-   * nachdem eine Variante übernommen wurde.
+   * Dieselben Dokumente für den Export. Die Wächter unten schließen ein
+   * fehlendes `document` bereits aus; der Typ weiß das nicht, und eine
+   * Zusicherung wäre hier eine Behauptung statt einer Prüfung.
    */
-  const selectMark = useCallback(
-    (mark: Mark) => {
-      select(mark.range)
-      const root = rootRef.current
-      if (root === null) return
-      const element = rangeToDomRange(root, mark.range)?.startContainer.parentElement ?? null
-      // jsdom kennt `scrollIntoView` nicht; im Browser ist es immer da.
-      if (typeof element?.scrollIntoView === 'function') {
-        element.scrollIntoView({ block: 'center', behavior: 'smooth' })
-      }
-    },
-    [select],
+  const exportDocuments: ExportDocument[] = openWorkspaces.flatMap((workspace) =>
+    workspace.document === null
+      ? []
+      : [
+          {
+            kind: workspace.kind,
+            document: workspace.document,
+            blocked: workspace.claims.exportBlocked,
+          },
+        ],
   )
 
   const heading = (
@@ -835,24 +726,24 @@ function EditorWorkspace({ session }: { session: StartSession }) {
     </Button>
   )
 
-  // Die Einstiegsseite lässt „Anschreiben **oder** Lebenslauf" zu; im ersten
-  // Bauabschnitt wird aber nur das Anschreiben bearbeitet (`docs/spec.md`,
-  // „Reihenfolge"). Das ist ein echter Zustand des Produkts, kein
-  // nachgebauter Leerzustand.
-  if (letter === null) {
+  // Ein Arbeitsumfang ohne Dokument: Die Einstiegsseite lässt das nicht zu
+  // (der Weiter-Knopf bleibt gesperrt), eine aus einer Sicherungsdatei
+  // wiederhergestellte Sitzung kann es aber tragen. Ein echter Zustand des
+  // Produkts, kein nachgebauter Leerzustand.
+  if (available.length === 0) {
     return state(
       <>
         {heading}
         <Card variant="subtle" padding="lg" className="flex max-w-[65ch] flex-col gap-3">
-          <p className="font-medium text-[var(--color-ink)]">{t('editor.noLetter.heading')}</p>
-          <p className="text-[var(--color-ink)]">{t('editor.noLetter.body')}</p>
+          <p className="font-medium text-[var(--color-ink)]">{t('editor.noDocument.heading')}</p>
+          <p className="text-[var(--color-ink)]">{t('editor.noDocument.body')}</p>
           {backToStart}
         </Card>
       </>,
     )
   }
 
-  if (failed) {
+  if (openWorkspaces.some((workspace) => workspace.failed)) {
     return state(
       <>
         {heading}
@@ -865,7 +756,7 @@ function EditorWorkspace({ session }: { session: StartSession }) {
     )
   }
 
-  if (loading || docx === null) {
+  if (openWorkspaces.some((workspace) => workspace.loading || workspace.document === null)) {
     return state(
       <>
         {heading}
@@ -884,13 +775,13 @@ function EditorWorkspace({ session }: { session: StartSession }) {
       <h1 className="sr-only">{t('routes.editor.heading')}</h1>
 
       {/* Drei Spalten über die volle Fensterbreite: links, was die Anzeige
-          verlangt und was vorgemerkt ist, in der Mitte der Brief, rechts die
-          Stellschrauben und die Ausgabe.
+          verlangt und was vorgemerkt ist, in der Mitte das Dokument, rechts
+          die Stellschrauben und die Ausgabe.
 
-          **Die Reihenfolge im Aufbau ist eine andere als die im Bild.** Der
-          Brief steht im HTML zuerst, damit Tastatur und Vorlesesoftware
-          zuerst an das Dokument kommen; die Spalten werden erst über
-          `col-start` an ihren Platz gesetzt. Das war schon vorher so.
+          **Die Reihenfolge im Aufbau ist eine andere als die im Bild.** Das
+          Dokument steht im HTML zuerst, damit Tastatur und Vorlesesoftware
+          zuerst an es kommen; die Spalten werden erst über `col-start` an
+          ihren Platz gesetzt.
 
           Bis `xl` liegen beide Spalten zusammen rechts, weil ein Brief
           zwischen zwei Spalten sonst zu schmal würde. `xl:contents` löst den
@@ -908,177 +799,86 @@ function EditorWorkspace({ session }: { session: StartSession }) {
           'xl:grid-cols-[19rem_minmax(0,1fr)_21rem]',
         )}
       >
-        <section
-          aria-labelledby={headingId}
-          className="flex min-h-0 flex-col lg:col-start-1 lg:row-start-1 xl:col-start-2"
-        >
-          <h2 id={headingId} className="sr-only">
-            {t('editor.document.heading')}
-          </h2>
-
-          {/* Die Leiste steht fest über dem Blatt, statt mitzublättern: Der
-              Bereich darunter blättert für sich, also braucht sie kein
-              `sticky` mehr. */}
-          <div className="flex flex-none flex-col gap-2 border-b border-[var(--color-border)] bg-[var(--color-surface-raised)] px-4 py-2.5 lg:px-6">
-            {/* **Eine Zeile (Variante A).** Vorher wuchs die Leiste beim
-                Markieren von 87 auf bis zu 237 px, weil Knoepfe und Zeilen je
-                nach Zustand kamen und gingen; der Brief darunter sprang bei
-                jeder Markierung. Jetzt wechselt der Inhalt seinen Zustand,
-                nicht sein Mass (siehe `SelectionLayer`).
-
-                **Warum der Umbruch trotzdem bleibt.** Gemessen im Browser:
-                Die Markierungsleiste braucht 630 px, die Mittelspalte hat bei
-                einem Fenster von 1280 px aber nur 592 px. In einer Zeile geht
-                das nicht auf, und beide Auswege waren schlechter als ein
-                Umbruch: Laesst man die linke Seite nachgeben (`flex-1` setzt
-                die Basis auf 0), wird sie auf 47 px zusammengedrueckt und ihre
-                Knoepfe schieben sich unter die rechte Gruppe, die dann Klicks
-                abfaengt. Blendet man die Auskuenfte aus, fehlt dem Nutzer die
-                Bestaetigung, dass sein Zwischenstand gesichert ist.
-
-                Also bricht die Reihe um, wenn der Platz nicht reicht: eine
-                Zeile ab etwa 1330 px Fensterbreite, darunter zwei. Das Mass
-                haengt dann an der Breite, nicht mehr am Zustand der
-                Markierung — und genau darum ging es. */}
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-              <div className="min-w-[16rem] flex-1">
-                <SelectionLayer
-                  selection={selection}
-                  fineSelection={precise}
-                  caretParagraph={caretParagraph}
-                  onSelectWholeDocument={() => select(wholeDocumentRange(docx))}
-                  onSelectParagraph={(index) => {
-                    const range = paragraphRange(docx, index)
-                    if (range !== null) {
-                      select(range)
-                      markHandle.toggle(range)
-                    }
-                  }}
-                        actions={
-                    <VariantPopover
-                      selection={selection}
-                      rewrite={rewrite}
-                      ready={analysis.status === 'ready'}
-                      onApply={applyVariant}
-                    />
-                  }
-                />
-              </div>
-              {/* „Rueckgaengig" ist eine Handlung und behaelt ihre Breite.
-                  Sicherungsstand und Anfragenzaehler sind leise Auskuenfte und
-                  geben als einzige nach, wenn die Spalte eng wird: Sie kuerzen
-                  mit Auslassungspunkten, statt die Zeile umbrechen zu lassen.
-
-                  **Warum sie nicht einfach verschwinden.** Der erste Versuch
-                  blendete sie unterhalb von 48rem aus. Das nimmt dem Nutzer
-                  die Bestaetigung, dass sein Zwischenstand gesichert ist —
-                  `happy-path.spec.ts` hat genau das gemeldet. Gekuerzt bleibt
-                  der Text im Baum, sichtbar und auffindbar. */}
-              <div className="flex shrink-0 items-center gap-3">
-                <Button variant="ghost" size="sm" disabled={!canUndo} onClick={undoAll}>
-                  {t('editor.undo')}
-                </Button>
-                <span className="flex min-w-0 items-center gap-3 [&>p]:truncate">
-                  <DraftStatus state={draft} />
-                  <ApiUsageStatus />
-                </span>
-              </div>
-            </div>
-
-            <AnalysisStatus analysis={analysis} hasKey={apiKey !== null} />
-          </div>
-
-          {/* Der Bereich, der das Blatt trägt. Er blättert für sich; die
-              Seite als Ganzes steht still.
-
-              `tabIndex={0}`, weil er blättert: Ein Blätterbereich muss mit
-              der Tastatur erreichbar sein, sonst kommt niemand ohne Maus an
-              den Text unterhalb der Fensterkante (WCAG 2.1.1, axe-Regel
-              `scrollable-region-focusable`, Wirkung „serious"). Die
-              Dokumentfläche darin ist zwar fokussierbar, zählt aber nicht:
-              Ein `contenteditable` ohne eigenes `tabindex` meldet
-              `tabIndex === -1` und steht damit nicht in der Tabulatorfolge.
-              Mit dem Halt hier blättert Bild-auf und Bild-ab den Brief, ohne
-              dass der Schreibcursor in den Text gesetzt werden muss. */}
-          <div
-            tabIndex={0}
-            className="flex min-h-0 flex-1 flex-col items-center gap-5 px-4 py-6 lg:overflow-y-auto lg:px-8"
-          >
-            {/* `data-print-document`: Beim Drucken bleibt genau diese Karte
-                stehen, alles andere wird ausgeblendet (siehe
-                `lib/export/print.css`). Die Markierung sitzt an der Karte und
-                nicht an der Fläche darin, damit der Rand des Blattes mitgeht. */}
-            {/* Der Brief ist eine **Seite**, kein Textblock in einer Karte.
-                `max-w-[72ch]` war eine Zeilenlängenregel und hatte mit dem
-                Dokument nichts zu tun: In der Mitte blieben daneben rund
-                290 px leer, während die Seitenspalten Beschriftungen
-                abschnitten. Jetzt gilt das Seitenverhältnis von A4
-                (210:297) bei höchstens 900 px Breite, und der Innenabstand
-                ist der Seitenrand des Drucks: 2 cm auf 21 cm sind 9,5 %.
-
-                In Prozent, nicht in rem, damit der Rand mitschrumpft, wenn
-                das Blatt schmaler wird, statt den Satzspiegel zu erdrücken.
-                Bei 900 px bleiben 722 px Text, rund 75 Zeichen je Zeile. */}
-            {/* Nur noch Hülle und Druckmarke: Das Blatt selbst ist jede
-                einzelne Seite in `DocumentView`. Die feste Höhe aus
-                `aspect-[210/297]` ist weg — sie klemmte den Brief auf eine
-                Seitenhöhe, und alles darüber stand auf dem Hintergrund. */}
-            <div data-print-document className="w-full max-w-[900px]">
-              <DocumentView
-                rootRef={rootRef}
-                paragraphs={docx.paragraphs}
-                // Auch mit dem Finger: Die Checkliste nimmt auf schmalen
-                // Geräten nur die **Feinmarkierung** weg, nicht das Tippen.
-                editable
-                labelledBy={headingId}
-                // Die Sprache des Briefs, deterministisch erkannt (Aufgabe 9,
-                // kein Modellaufruf). Sie entscheidet, in welcher Sprache der
-                // Browser die Rechtschreibung prüft und eine Vorlesesoftware
-                // den Text ausspricht.
-                language={detectLanguage(docx.text)}
-                // Nur die Absätze, die die Leiste auch benennt (`position > 0`,
-                // siehe `SelectionLayer`). Eine Kontur ohne ein Wort dazu wäre
-                // eine Bedeutung, die allein an der Farbe hinge.
-                retainedParagraphs={
-                  selection?.inspection.retained
-                    .filter((entry) => entry.position > 0)
-                    .map((entry) => entry.index) ?? []
-                }
-                // Absätze mit einer unbestätigten unbelegten Aussage (freier
-                // Modus). Der Wortlaut steht in `ClaimGuard` darunter.
-                claimParagraphs={claims.pendingParagraphs}
-                // Fremdfirmen-Treffer bekommen dieselbe Behandlung wie die
-                // unbelegten Aussagen (siehe `foreignCompanies.ts`).
+        {/* Beide Dokumente stehen im Aufbau, das ruhende auf `display: none`.
+            Ein Wechsel soll weder den Rückgängig-Verlauf noch die
+            vorgemerkten Stellen verwerfen — und ein Neuaufbau parste das
+            `word/document.xml` jedes Mal neu. Verborgen heißt hier
+            vollständig verborgen: Vorlesesoftware und Tabulatorfolge lassen
+            einen `display: none`-Teilbaum aus, eine zweite Auszeichnung
+            braucht es dafür nicht. */}
+        <div className="flex min-h-0 flex-col lg:col-start-1 lg:row-start-1 xl:col-start-2">
+          <DocumentSwitch
+            available={available}
+            active={activeKind}
+            onChange={setActive}
+            // Der Lebenslauf ist neu und ausdrücklich als Beta
+            // gekennzeichnet — dieselbe Linie wie bei der PDF-Umwandlung
+            // (`docs/spec.md`). Fällt die Kennzeichnung weg, fällt hier ein
+            // Wort weg.
+            beta={BETA_DOCUMENTS}
+          />
+          {letter !== null && (
+            <section
+              aria-labelledby={`${headingId}-letter`}
+              className={cn('flex min-h-0 flex-1 flex-col', activeKind !== 'letter' && 'hidden')}
+            >
+              <DocumentColumn
+                workspace={letterWorkspace}
+                headingId={`${headingId}-letter`}
+                claimsHeadingId={`${claimsHeadingId}-letter`}
+                heading={t('editor.document.heading')}
+                fineSelection={precise}
+                rewrite={rewriteLetter}
+                rewriteReady={analysis.status === 'ready' && style !== null}
+                onUndo={undoAll}
                 foreignParagraphs={foreign.paragraphs}
-                // Absätze, in denen der Briefkopf selbsttätig übernommen
-                // wurde. Eigene Farbe, kein Fehler.
                 letterheadParagraphs={application?.changes.map((change) => change.paragraph) ?? []}
-                onParagraphInput={handleParagraphInput}
-                // `rounded-lg` statt der Vorgabe `rounded-md`: Der Fokusring
-                // folgt dem Radius seines Elements und soll dem Blatt folgen,
-                // nicht daneben liegen.
-                // Der Seitenrand sitzt jetzt an den Seiten selbst; hier
-                // bleibt nur der Fokusring, der dem Blatt folgen soll.
-                className="rounded-lg"
-                // Lange Leerlaufstrecken aus der Word-Datei ergeben auf
-                // Papier Sinn und kosten auf dem Bildschirm nur Weg. Das
-                // Dokument bleibt unangetastet, nur die Darstellung fällt
-                // zusammen.
-                collapseBlankRuns
+                // Der Auswertungsstand gehört der **Bewerbung** und steht
+                // deshalb genau einmal da — beim sichtbaren Dokument. Zweimal
+                // im Aufbau wäre es dieselbe Meldung an zwei Stellen, und
+                // eine davon in einem verborgenen Teilbaum.
+                status={
+                  activeKind === 'letter' ? (
+                    <AnalysisStatus analysis={analysis} hasKey={apiKey !== null} />
+                  ) : undefined
+                }
               />
-            </div>
-
-            {/* Die unbelegten Aussagen stehen unter dem Blatt, nicht in einer
-                Spalte: Sie gehören zu diesem Brief und zu keiner Stellschraube. */}
-            <div className="w-full max-w-[900px]">
-              <ClaimGuard
-                claims={claims.located}
-                onConfirm={claims.confirm}
-                headingId={claimsHeadingId}
+            </section>
+          )}
+          {cv !== null && (
+            <section
+              aria-labelledby={`${headingId}-cv`}
+              className={cn('flex min-h-0 flex-1 flex-col', activeKind !== 'cv' && 'hidden')}
+            >
+              <DocumentColumn
+                workspace={cvWorkspace}
+                headingId={`${headingId}-cv`}
+                claimsHeadingId={`${claimsHeadingId}-cv`}
+                heading={t('editor.document.cvHeading')}
+                fineSelection={precise}
+                // Kein „Ganzes Dokument": Ein Lebenslauf am Stück
+                // umformuliert verliert seine Gliederung — Überschriften,
+                // Datumsspalten, Tabellenzellen. Gewählt wird absatzweise.
+                allowWholeDocument={false}
+                rewrite={rewriteCv}
+                rewriteReady={analysis.status === 'ready' && cvStyle !== null}
+                onUndo={undoAll}
+                foreignParagraphs={cvForeign.paragraphs}
+                notice={
+                  <p className={FIELD_HINT_CLASS}>
+                    <strong className="font-semibold">{t('editor.beta.badge')}</strong>{' '}
+                    {t('editor.beta.cv')}
+                  </p>
+                }
+                status={
+                  activeKind === 'cv' ? (
+                    <AnalysisStatus analysis={analysis} hasKey={apiKey !== null} />
+                  ) : undefined
+                }
               />
-            </div>
-          </div>
-        </section>
+            </section>
+          )}
+        </div>
 
         {/* Sammelbehälter der beiden Spalten, siehe `xl:contents` oben. */}
         <div
@@ -1090,35 +890,38 @@ function EditorWorkspace({ session }: { session: StartSession }) {
         >
           <aside
             aria-label={t('editor.sidePanel.reference')}
-              // `[&>*]:shrink-0`: In einer Spalte mit eigenem Blättern
-              // dürfen die Kinder standardmäßig schrumpfen — und sie tun es,
-              // statt die Spalte blättern zu lassen. Sichtbar war das daran,
-              // dass „Briefkopf" zu einem Streifen gequetscht unter
-              // „Schreibstil" lag und dessen Textfeld unten abgeschnitten
-              // war. Ein Bereich muss seine natürliche Höhe behalten; scrollen
-              // soll die Spalte.
+            // `[&>*]:shrink-0`: In einer Spalte mit eigenem Blättern
+            // dürfen die Kinder standardmäßig schrumpfen — und sie tun es,
+            // statt die Spalte blättern zu lassen. Sichtbar war das daran,
+            // dass „Briefkopf" zu einem Streifen gequetscht unter
+            // „Schreibstil" lag und dessen Textfeld unten abgeschnitten
+            // war. Ein Bereich muss seine natürliche Höhe behalten; scrollen
+            // soll die Spalte.
             className={cn(
               'flex flex-col gap-3 border-t border-[var(--color-border)] p-4 lg:border-t-0',
               'xl:col-start-1 xl:row-start-1 xl:min-h-0 xl:overflow-y-auto xl:border-r',
               '[&>*]:shrink-0',
             )}
           >
+            {/* Die Merkliste zeigt die Stellen des **sichtbaren** Dokuments.
+                Sie ist dokumentunabhängig gebaut; welche Stellen darin
+                stehen, entscheidet der Umschalter. */}
             <MarkPanel
-              marks={marks}
-              unresolved={markHandle.unresolved}
-              restore={markHandle.restore}
-              activeId={activeMarkId}
-          keep={settings.keepMarks === true}
-          onKeepChange={(next) => {
-            // Scheitert das Speichern, bleibt der Schalter stehen, wo er
-            // war — dieselbe Behandlung wie beim Wahrheitsmodus.
-            void updateSettings({ keepMarks: next }).catch(() => {})
-          }}
-              onSelect={selectMark}
-              onToggleDone={markHandle.setDone}
-              onRemove={markHandle.remove}
-              onClearAll={markHandle.clearAll}
-              onDismiss={markHandle.dismiss}
+              marks={activeWorkspace.marks}
+              unresolved={activeWorkspace.markHandle.unresolved}
+              restore={activeWorkspace.markHandle.restore}
+              activeId={activeWorkspace.activeMarkId}
+              keep={settings.keepMarks === true}
+              onKeepChange={(next) => {
+                // Scheitert das Speichern, bleibt der Schalter stehen, wo er
+                // war — dieselbe Behandlung wie beim Wahrheitsmodus.
+                void updateSettings({ keepMarks: next }).catch(() => {})
+              }}
+              onSelect={activeWorkspace.selectMark}
+              onToggleDone={activeWorkspace.markHandle.setDone}
+              onRemove={activeWorkspace.markHandle.remove}
+              onClearAll={activeWorkspace.markHandle.clearAll}
+              onDismiss={activeWorkspace.markHandle.dismiss}
               // Als einziger Bereich beginnt die Merkliste auch auf schmalen
               // Geräten offen, sobald etwas darin steht.
               //
@@ -1133,7 +936,11 @@ function EditorWorkspace({ session }: { session: StartSession }) {
               //
               // Leer bleibt sie zu: Eine aufgeklappte Fläche, in der „Noch
               // nichts vorgemerkt" steht, kostet auf einem Telefon nur Platz.
-              defaultOpen={wide || marks.length > 0 || markHandle.unresolved.length > 0}
+              defaultOpen={
+                wide ||
+                activeWorkspace.marks.length > 0 ||
+                activeWorkspace.markHandle.unresolved.length > 0
+              }
             />
             {analysis.jobAd !== null && (
               // Beginnt immer zugeklappt, auch auf breiten Geräten: Die
@@ -1161,10 +968,13 @@ function EditorWorkspace({ session }: { session: StartSession }) {
                 Am Fuß lag beides unter drei aufklappbaren Bereichen und war
                 auf einem kleineren Fenster nur nach dem Blättern zu sehen. */}
             <div>
+              {/* Der Export gehört der **Bewerbung**: Er zeigt jede Unterlage
+                  im Arbeitsumfang, nicht nur die sichtbare. Wer beide
+                  angepasst hat, sieht hier, was noch fehlt, und muss zum
+                  Herunterladen nicht erst umschalten. */}
               <ExportBar
-                document={docx}
+                documents={exportDocuments}
                 company={jobAd?.company ?? null}
-                blocked={claims.exportBlocked}
                 onExported={handleExported}
                 onNextPosting={() => setReapplyOpen(true)}
               />
@@ -1181,11 +991,23 @@ function EditorWorkspace({ session }: { session: StartSession }) {
                 Er gilt für die ganze Sitzung und nicht für diese eine
                 Markierung, gehört also zu den Stellschrauben. */}
             <TruthModeSwitch value={settings.truthMode} onChange={changeTruthMode} />
-            {letterhead !== null && (
+            {activeKind === 'cv' && cvStyle !== null && (
+              <CvStyleProfilePanel
+                style={cvStyle}
+                onChange={setCvStyle}
+                sliders={cvSliders}
+                onSlidersChange={setCvSliders}
+                // Zugeklappt wie das Stilprofil des Anschreibens, aus
+                // demselben Grund: abgeleitet und gemessen, bevor der Nutzer
+                // hier ankommt.
+                defaultOpen={false}
+              />
+            )}
+            {activeKind === 'letter' && letterhead !== null && (
               <LetterheadPanel
                 letterhead={letterhead}
                 onChange={setLetterhead}
-                onInsert={insertAtSelection}
+                onInsert={letterWorkspace.insertAtSelection}
                 foreign={foreign}
                 application={application}
                 onDismissApplication={() => setApplication(null)}
@@ -1198,7 +1020,7 @@ function EditorWorkspace({ session }: { session: StartSession }) {
                 defaultOpen={false}
               />
             )}
-            {style !== null && sliders !== null && (
+            {activeKind === 'letter' && style !== null && sliders !== null && (
               <StyleProfilePanel
                 style={style}
                 onChange={setStyle}
@@ -1218,8 +1040,13 @@ function EditorWorkspace({ session }: { session: StartSession }) {
       <ReapplyDialog
         open={reapplyOpen}
         onOpenChange={setReapplyOpen}
-        markCount={marks.length}
-        unresolvedCount={markHandle.unresolved.length}
+        // Über **alle** Unterlagen im Arbeitsumfang: Der Durchlauf arbeitet
+        // sie in einem Zug ab, und was er kosten wird, ist die Summe.
+        markCount={openWorkspaces.reduce((sum, workspace) => sum + workspace.marks.length, 0)}
+        unresolvedCount={openWorkspaces.reduce(
+          (sum, workspace) => sum + workspace.markHandle.unresolved.length,
+          0,
+        )}
         onStart={(text, mode) => {
           setReapplyOpen(false)
           reapply.start(text, mode)
@@ -1256,7 +1083,7 @@ function AnalysisStatus({
   analysis,
   hasKey,
 }: {
-  analysis: ReturnType<typeof useLetterAnalysis>
+  analysis: ReturnType<typeof useApplicationAnalysis>
   hasKey: boolean
 }) {
   const { t } = useTranslation()

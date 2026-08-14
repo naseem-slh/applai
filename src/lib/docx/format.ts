@@ -205,6 +205,23 @@ export interface DocumentFormat {
   defaultTabStopPt: number
 }
 
+/**
+ * Welche Ausführung der Kopf- oder Fußzeile auf dieser Seite gilt.
+ *
+ * Word führt bis zu drei je Abschnitt: eine eigene für die erste Seite (nur
+ * wenn `w:titlePg` gesetzt ist), eine für gerade Seiten und die übrige. Der
+ * PDF-Satz und die Arbeitsfläche müssen dieselbe wählen.
+ */
+export function chooseRunningPart(
+  parts: RunningParts,
+  titlePage: boolean,
+  pageIndex: number,
+): FormattedParagraph[] | null {
+  if (pageIndex === 0 && titlePage && parts.first) return parts.first
+  if (pageIndex % 2 === 1 && parts.even) return parts.even
+  return parts.default
+}
+
 /** Alles, was beim Auflösen einer Eigenschaft gebraucht wird. */
 interface FormatContext {
   zip: DocxDocument['zip']

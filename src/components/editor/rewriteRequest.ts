@@ -1,5 +1,5 @@
 import type { JobAd } from '@/lib/domain/jobAd'
-import type { RewriteRequest } from '@/lib/domain/rewrite'
+import type { RewriteDocument, RewriteRequest } from '@/lib/domain/rewrite'
 import type { StyleProfile } from '@/lib/domain/styleProfile'
 import type { TruthMode } from '@/lib/storage/adapter'
 import type { EditorSelection } from './documentSelection'
@@ -42,6 +42,18 @@ export interface RewriteSliders {
 export function defaultSliders(style: StyleProfile): RewriteSliders {
   return { formality: style.formality, length: 50 }
 }
+
+/**
+ * Der Anfangsstand der Regler beim **Lebenslauf**.
+ *
+ * `formality` steht auf der Mitte und bleibt dort: Der Lebenslauf hat keinen
+ * Förmlichkeitsregler (`docs/spec.md`, „Stil"), und
+ * `cvStyleProfileToPromptFragment` liest das Feld gar nicht. Es steht hier
+ * nur, weil `RewriteSliders` von beiden Dokumenten geteilt wird — ein
+ * eigener Typ für einen einzigen ungenutzten Wert wäre mehr Aufwand als
+ * Klarheit.
+ */
+export const CV_DEFAULT_SLIDERS: RewriteSliders = { formality: 50, length: 50 }
 
 /**
  * Wie viele Stufen die beiden Regler haben.
@@ -91,7 +103,8 @@ export function factsFrom(sources: { cv: string | null; letter: string | null })
 export interface RewriteRequestInput {
   selection: EditorSelection
   jobAd: JobAd
-  style: StyleProfile
+  /** Welches Dokument samt seinem Stilprofil — siehe `RewriteDocument`. */
+  document: RewriteDocument
   facts: string
   truthMode: TruthMode
   targetLanguage: 'de' | 'en'
@@ -101,7 +114,7 @@ export interface RewriteRequestInput {
 export function buildRewriteRequest({
   selection,
   jobAd,
-  style,
+  document,
   facts,
   truthMode,
   targetLanguage,
@@ -112,7 +125,7 @@ export function buildRewriteRequest({
     contextBefore: selection.contextBefore,
     contextAfter: selection.contextAfter,
     jobAd,
-    style,
+    document,
     truthMode,
     facts,
     targetLanguage,

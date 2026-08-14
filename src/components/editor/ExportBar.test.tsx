@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { DocxDocument, Paragraph } from '@/lib/docx/model'
 import i18n from '@/lib/i18n/i18n'
-import { ExportBar } from './ExportBar'
+import { ExportBar, type ExportDocument } from './ExportBar'
 
 const t = i18n.getFixedT(i18n.resolvedLanguage ?? 'de')
 
@@ -18,7 +18,19 @@ vi.mock('@/lib/docx/serialize', () => ({
 const downloadPdf = vi.hoisted(() => vi.fn(() => Promise.resolve()))
 vi.mock('@/lib/export/pdf', () => ({ downloadPdf }))
 
-function fakeDocument(texts: string[]): DocxDocument {
+/**
+ * Ein leerer XML-Baum als `doc`. Er wird gebraucht, seit `ExportBar` am
+ * Dokument abliest, ob eine Tabelle darin steht (`hasTables`) — ein `null`
+ * mit Typzusicherung reichte dafür nicht mehr.
+ */
+function emptyXml(inner = ''): XMLDocument {
+  return new DOMParser().parseFromString(
+    `<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">${inner}</w:document>`,
+    'application/xml',
+  )
+}
+
+function fakeDocument(texts: string[], inner = ''): DocxDocument {
   let offset = 0
   const paragraphs: Paragraph[] = texts.map((text, index) => {
     const start = offset
@@ -32,20 +44,39 @@ function fakeDocument(texts: string[]): DocxDocument {
       end: start + text.length,
     }
   })
-  return { zip: {}, doc: null as unknown as XMLDocument, paragraphs, text: texts.join('\n') }
+  return { zip: {}, doc: emptyXml(inner), paragraphs, text: texts.join('\n') }
 }
 
 const DOCX = fakeDocument(['Sehr geehrte Damen und Herren,', '', 'ich bewerbe mich.'])
 
+/** Ein Dokument mit einer Tabelle — der Fall, für den der PDF-Weg gesperrt ist. */
+const DOCX_WITH_TABLE = fakeDocument(
+  ['Berufserfahrung', '2019 bis 2022'],
+  '<w:tbl><w:tr><w:tc><w:p/></w:tc></w:tr></w:tbl>',
+)
+
 function setup(
-  options: { blocked?: boolean; company?: string | null; onNextPosting?: () => void } = {},
+  options: {
+    blocked?: boolean
+    company?: string | null
+    onNextPosting?: () => void
+    document?: DocxDocument
+    documents?: readonly ExportDocument[]
+  } = {},
 ) {
   const onExported = vi.fn()
   render(
     <ExportBar
-      document={DOCX}
+      documents={
+        options.documents ?? [
+          {
+            kind: 'letter',
+            document: options.document ?? DOCX,
+            blocked: options.blocked ?? false,
+          },
+        ]
+      }
       company={options.company === undefined ? 'Musterwerk' : options.company}
-      blocked={options.blocked ?? false}
       onExported={onExported}
       onNextPosting={options.onNextPosting ?? (() => {})}
     />,
@@ -194,5 +225,69 @@ describe('ExportBar', () => {
     setup()
 
     expect(screen.getByText(t('editor.export.pdfHint'))).toBeInTheDocument()
+  })
+})
+
+/**
+ * Die Tabellensperre. Der PDF-Satz kennt keine Tabellen
+ * (`lib/export/pdf/layout.ts`), und ein zweispaltiger Lebenslauf IST eine
+ * Tabelle — das PDF käme still ohne seine Spalten heraus.
+ */
+describe('ExportBar — Tabellen', () => {
+  it('sperrt den PDF-Weg, sobald eine Tabelle im Dokument steht', () => {
+    setup({ document: DOCX_WITH_TABLE })
+
+    expect(screen.getByRole('button', { name: t('editor.export.pdf') })).toBeDisabled()
+  })
+
+  it('lässt Word und Kopierfeld dabei offen — sie reichen das Original weiter', () => {
+    setup({ document: DOCX_WITH_TABLE })
+
+    expect(screen.getByRole('button', { name: t('editor.export.docx') })).toBeEnabled()
+    expect(screen.getByRole('button', { name: t('editor.export.copy') })).toBeEnabled()
+  })
+})
+
+/**
+ * Der Export gehört der Bewerbung, nicht dem sichtbaren Dokument: Wer beide
+ * Unterlagen angepasst hat, sieht hier beide.
+ */
+describe('ExportBar — zwei Unterlagen', () => {
+  const BOTH: readonly ExportDocument[] = [
+    { kind: 'letter', document: DOCX, blocked: false },
+    { kind: 'cv', document: fakeDocument(['Berufserfahrung', 'Entwickelt Software']), blocked: false },
+  ]
+
+  it('bietet jede Unterlage einzeln an und benennt sie', () => {
+    setup({ documents: BOTH })
+
+    expect(screen.getAllByRole('button', { name: t('editor.export.docx') })).toHaveLength(2)
+    expect(screen.getByText(t('editor.switch.letter'))).toBeInTheDocument()
+    expect(screen.getByText(t('editor.switch.cv'))).toBeInTheDocument()
+  })
+
+  it('sperrt nur die Unterlage, in der die unbestätigte Aussage steht', () => {
+    setup({
+      documents: [
+        { kind: 'letter', document: DOCX, blocked: false },
+        { kind: 'cv', document: DOCX, blocked: true },
+      ],
+    })
+
+    const [letter, cv] = screen.getAllByRole('button', { name: t('editor.export.docx') })
+    expect(letter).toBeEnabled()
+    expect(cv).toBeDisabled()
+  })
+
+  it('sagt beim Erzeugen, um welche Unterlage es geht', async () => {
+    setup({ documents: BOTH })
+
+    fireEvent.click(screen.getAllByRole('button', { name: t('editor.export.docx') })[1]!)
+
+    await waitFor(() =>
+      expect(
+        screen.getByText(`${t('editor.switch.cv')}: ${t('editor.export.docxDone')}`),
+      ).toBeInTheDocument(),
+    )
   })
 })

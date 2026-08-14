@@ -4,16 +4,13 @@ import { parseDocx } from '@/lib/docx/parse'
 import { buildDocx, paragraphXml } from '@/lib/docx/docx.testutils'
 import type { DocxDocument } from '@/lib/docx/model'
 import { createAnchor, type Mark } from './marks'
-import { useReapply, type ReapplyOptions } from './useReapply'
+import { useReapply, type ReapplyDocument, type ReapplyOptions } from './useReapply'
+import { variant } from '@/lib/domain/rewrite.testutils'
 
 const ERSTER = 'ich bewerbe mich hiermit auf Ihre Stelle'
 const ZWEITER = 'Ich bringe Erfahrung aus dem Handwerk mit'
 
-const VARIANTEN = [
-  { text: 'neu eins', unbackedClaims: [] },
-  { text: 'neu zwei', unbackedClaims: [] },
-  { text: 'neu drei', unbackedClaims: [] },
-]
+const VARIANTEN = [variant('neu eins'), variant('neu zwei'), variant('neu drei')]
 
 let docx: DocxDocument
 let marks: Mark[]
@@ -43,19 +40,42 @@ beforeEach(async () => {
 const ALTE_ANZEIGE = { company: 'Alt AG' }
 const NEUE_ANZEIGE = { company: 'Neu GmbH' }
 
-function optionen(over: Partial<ReapplyOptions> = {}): ReapplyOptions {
+/** Eine Unterlage mit lauter Attrappen; einzelne davon lassen sich ersetzen. */
+function dokument(over: Partial<ReapplyDocument> = {}): ReapplyDocument {
   return {
+    kind: 'letter',
     docx,
     marks,
     rewrite: vi.fn().mockResolvedValue(VARIANTEN),
     applyEdit: vi.fn(),
     addClaims: vi.fn(),
-    setJobAdText: vi.fn(),
     restoreOriginal: vi.fn().mockResolvedValue({ markIds: ['mark-0', 'mark-1'], unresolved: 0 }),
-    currentJobAdText: 'Die alte Anzeige',
-    jobAd: ALTE_ANZEIGE,
     ...over,
   }
+}
+
+/**
+ * Der Durchlauf mit **einer** Unterlage. Die Überschreibungen auf
+ * Dokumentebene (`rewrite`, `applyEdit`, …) gehen an diese eine; wer zwei
+ * braucht, reicht `documents` selbst herein.
+ */
+function optionen(
+  over: Partial<ReapplyOptions> & Partial<ReapplyDocument> = {},
+): ReapplyOptions {
+  const { documents, setJobAdText, currentJobAdText, jobAd, ...perDocument } = over
+  return {
+    documents: documents ?? [dokument(perDocument)],
+    setJobAdText: setJobAdText ?? vi.fn(),
+    currentJobAdText: currentJobAdText ?? 'Die alte Anzeige',
+    jobAd: jobAd ?? ALTE_ANZEIGE,
+  }
+}
+
+/** Die erste (und meist einzige) Unterlage eines Durchlaufs. */
+function brief(opts: ReapplyOptions): ReapplyDocument {
+  const first = opts.documents[0]
+  if (first === undefined) throw new Error('Der Durchlauf hat keine Unterlage.')
+  return first
 }
 
 /**
@@ -105,11 +125,11 @@ describe('useReapply', () => {
 
     // Die Auswertung läuft noch: dieselbe `jobAd` wie beim Start.
     expect(result.current.state.status).toBe('anzeigeWirdGelesen')
-    expect(opts.rewrite).not.toHaveBeenCalled()
+    expect(brief(opts).rewrite).not.toHaveBeenCalled()
 
     rerender({ ...opts, jobAd: NEUE_ANZEIGE })
 
-    await waitFor(() => expect(opts.rewrite).toHaveBeenCalled())
+    await waitFor(() => expect(brief(opts).rewrite).toHaveBeenCalled())
   })
 
   it('setzt im Schnellmodus jede Stelle genau einmal ein', async () => {
@@ -117,11 +137,11 @@ describe('useReapply', () => {
     const result = await starteDurchlauf(opts, 'schnell')
 
     await waitFor(() => expect(result.current.state.status).toBe('fertig'))
-    expect(opts.applyEdit).toHaveBeenCalledTimes(2)
-    expect(opts.applyEdit).toHaveBeenNthCalledWith(1, marks[0].range, 'neu eins', {
+    expect(brief(opts).applyEdit).toHaveBeenCalledTimes(2)
+    expect(brief(opts).applyEdit).toHaveBeenNthCalledWith(1, marks[0].range, 'neu eins', {
       completes: true,
     })
-    expect(opts.applyEdit).toHaveBeenNthCalledWith(2, marks[1].range, 'neu eins', {
+    expect(brief(opts).applyEdit).toHaveBeenNthCalledWith(2, marks[1].range, 'neu eins', {
       completes: true,
     })
   })
@@ -131,13 +151,13 @@ describe('useReapply', () => {
     const result = await starteDurchlauf(opts, 'waehlen')
 
     await waitFor(() => expect(result.current.state).toMatchObject({ status: 'haelt', reason: 'wahl' }))
-    expect(opts.applyEdit).not.toHaveBeenCalled()
+    expect(brief(opts).applyEdit).not.toHaveBeenCalled()
   })
 
   it('hält im Schnellmodus bei unbelegten Aussagen an (G10)', async () => {
     const opts = optionen({
       rewrite: vi.fn().mockResolvedValue([
-        { text: 'erfunden', unbackedClaims: ['Zehn Jahre Erfahrung'] },
+        variant('erfunden', { unbackedClaims: ['Zehn Jahre Erfahrung'] }),
         ...VARIANTEN.slice(1),
       ]),
     })
@@ -149,7 +169,7 @@ describe('useReapply', () => {
         reason: 'unbelegteAussagen',
       }),
     )
-    expect(opts.applyEdit).not.toHaveBeenCalled()
+    expect(brief(opts).applyEdit).not.toHaveBeenCalled()
   })
 
   it('hält bei einem Fehler des Anbieters an und läuft nach „erneut" weiter', async () => {
@@ -171,9 +191,9 @@ describe('useReapply', () => {
 
     await waitFor(() => expect(result.current.state.status).toBe('haelt'))
 
-    act(() => result.current.choose({ text: 'gewählt', unbackedClaims: ['erfunden'] }))
+    act(() => result.current.choose(variant('gewählt', { unbackedClaims: ['erfunden'] })))
 
-    await waitFor(() => expect(opts.addClaims).toHaveBeenCalledWith(['erfunden']))
+    await waitFor(() => expect(brief(opts).addClaims).toHaveBeenCalledWith(['erfunden']))
   })
 
   it('bricht ab, ohne weitere Anfragen zu stellen', async () => {
@@ -185,7 +205,7 @@ describe('useReapply', () => {
     act(() => result.current.cancel())
 
     expect(result.current.state.status).toBe('abgebrochen')
-    expect(opts.rewrite).toHaveBeenCalledTimes(1)
+    expect(brief(opts).rewrite).toHaveBeenCalledTimes(1)
   })
 
   it('überspringt eine Stelle und arbeitet die nächste ab', async () => {
@@ -199,7 +219,7 @@ describe('useReapply', () => {
     await waitFor(() =>
       expect(result.current.state).toMatchObject({ status: 'haelt', index: 1 }),
     )
-    expect(opts.applyEdit).not.toHaveBeenCalled()
+    expect(brief(opts).applyEdit).not.toHaveBeenCalled()
   })
 
   // Dieselbe Anzeige erneut auswerten zu lassen wäre eine bezahlte Anfrage
@@ -215,5 +235,74 @@ describe('useReapply', () => {
 
     await waitFor(() => expect(result.current.state.status).toBe('fertig'))
     expect(opts.setJobAdText).not.toHaveBeenCalled()
+  })
+})
+
+/**
+ * Der Durchlauf über zwei Unterlagen. Er ist **einer**: Die Anzeige wird
+ * einmal ausgewertet, die Stellen hängen hintereinander, der Bericht zählt
+ * einmal.
+ */
+describe('useReapply — zwei Unterlagen', () => {
+  it('stellt beide Originale her und arbeitet Anschreiben vor Lebenslauf ab', async () => {
+    const brief = dokument({
+      restoreOriginal: vi.fn().mockResolvedValue({ markIds: ['mark-0'], unresolved: 0 }),
+    })
+    const lebenslauf = dokument({
+      kind: 'cv',
+      restoreOriginal: vi.fn().mockResolvedValue({ markIds: ['mark-1'], unresolved: 0 }),
+    })
+    const opts = optionen({ documents: [brief, lebenslauf] })
+    const result = await starteDurchlauf(opts, 'schnell')
+
+    await waitFor(() => expect(result.current.state.status).toBe('fertig'))
+
+    expect(brief.restoreOriginal).toHaveBeenCalledTimes(1)
+    expect(lebenslauf.restoreOriginal).toHaveBeenCalledTimes(1)
+    // Jede Unterlage bekommt genau ihre eigene Stelle eingesetzt.
+    expect(brief.applyEdit).toHaveBeenCalledTimes(1)
+    expect(lebenslauf.applyEdit).toHaveBeenCalledTimes(1)
+    expect(brief.applyEdit).toHaveBeenCalledWith(marks[0].range, 'neu eins', { completes: true })
+    expect(lebenslauf.applyEdit).toHaveBeenCalledWith(marks[1].range, 'neu eins', {
+      completes: true,
+    })
+  })
+
+  it('fragt für jede Unterlage ihre eigene Umformulierung an', async () => {
+    const brief = dokument({
+      restoreOriginal: vi.fn().mockResolvedValue({ markIds: ['mark-0'], unresolved: 0 }),
+    })
+    const lebenslauf = dokument({
+      kind: 'cv',
+      restoreOriginal: vi.fn().mockResolvedValue({ markIds: ['mark-1'], unresolved: 0 }),
+    })
+    const result = await starteDurchlauf(optionen({ documents: [brief, lebenslauf] }), 'schnell')
+
+    await waitFor(() => expect(result.current.state.status).toBe('fertig'))
+
+    expect(brief.rewrite).toHaveBeenCalledTimes(1)
+    expect(lebenslauf.rewrite).toHaveBeenCalledTimes(1)
+  })
+})
+
+/**
+ * Die Faktenprüfung hält auch den Schnellmodus an. „Schnell" heißt „ohne
+ * Rückfrage, wo nichts zu entscheiden ist" — eine verschobene Jahreszahl ist
+ * etwas zu entscheiden.
+ */
+describe('useReapply — veränderte Zahlen', () => {
+  it('hält im Schnellmodus an, statt eine veränderte Jahreszahl einzusetzen', async () => {
+    const opts = optionen({
+      rewrite: vi.fn().mockResolvedValue([
+        variant('Von 2018 bis 2022', { figures: { added: ['2018'], removed: ['2019'] } }),
+        ...VARIANTEN.slice(1),
+      ]),
+    })
+    const result = await starteDurchlauf(opts, 'schnell')
+
+    await waitFor(() =>
+      expect(result.current.state).toMatchObject({ status: 'haelt', reason: 'faktenGeaendert' }),
+    )
+    expect(brief(opts).applyEdit).not.toHaveBeenCalled()
   })
 })

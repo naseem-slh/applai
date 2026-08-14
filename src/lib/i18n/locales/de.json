@@ -4,7 +4,7 @@
   },
   "nav": {
     "start": "Vorbereiten",
-    "editor": "Anschreiben anpassen",
+    "editor": "Unterlagen anpassen",
     "settings": "Einstellungen",
     "label": "Hauptnavigation",
     "privacy": "Datenschutz"
@@ -187,6 +187,11 @@
       "beta": "Aus PDF gelesen. Die Umwandlung nach Word ist eine Beta-Funktion: Sie stellt Absätze, Überschriften und Stichpunkte wieder her, aber weder das ursprüngliche Layout noch Bilder oder Tabellen. Bitte lesen Sie das Ergebnis auf der Arbeitsfläche durch, bevor Sie es verwenden.",
       "multiColumn": "Diese PDF-Datei ist mehrspaltig gesetzt. Die Umwandlung liest sie Zeile für Zeile über die ganze Seitenbreite. Text aus der linken und der rechten Spalte steht danach ineinander verschränkt. Für dieses Dokument ist eine Word-Datei die deutlich bessere Vorlage."
     },
+    "scope": {
+      "label": "Für diese Bewerbung anpassen",
+      "hint": "Nicht angehakt: Die Unterlage bleibt unverändert und dient nur als Beleg für das, was in der anderen steht.",
+      "blocked": "Mehrspaltige PDF-Dateien lassen sich nicht anpassen. Als Beleg zählt der Text trotzdem."
+    },
     "recent": {
       "heading": "Zuletzt benutzt",
       "body": "Aus diesem Browser liegt noch ein Zwischenstand vor. Sie können damit weiterarbeiten, statt die Datei erneut zu suchen. Zwischenstände werden nach sieben Tagen von selbst gelöscht.",
@@ -223,7 +228,8 @@
       "heading": "Dafür fehlt noch:",
       "document": "ein Anschreiben oder ein Lebenslauf",
       "jobAd": "der Text der Stellenausschreibung",
-      "userName": "Ihr Name"
+      "userName": "Ihr Name",
+      "scope": "mindestens eine Unterlage zum Anpassen"
     },
     "continue": "Weiter zur Arbeitsfläche"
   },
@@ -231,16 +237,26 @@
     "loading": "Das Anschreiben wird gelesen.",
     "undo": "Rückgängig",
     "backToStart": "Zurück zur Einstiegsseite",
-    "noLetter": {
-      "heading": "Für die Arbeitsfläche fehlt das Anschreiben.",
-      "body": "Im ersten Bauabschnitt wird das Anschreiben bearbeitet, der Lebenslauf folgt später. Legen Sie auf der Einstiegsseite ein Anschreiben ab."
+    "noDocument": {
+      "heading": "Für die Arbeitsfläche fehlt eine Unterlage.",
+      "body": "Legen Sie auf der Einstiegsseite ein Anschreiben oder einen Lebenslauf ab und haken Sie an, was angepasst werden soll."
     },
     "failed": {
       "heading": "Das Anschreiben konnte nicht gelesen werden.",
       "body": "Die Datei ist möglicherweise beschädigt. Bitte legen Sie sie auf der Einstiegsseite noch einmal ab."
     },
     "document": {
-      "heading": "Anschreiben"
+      "heading": "Anschreiben",
+      "cvHeading": "Lebenslauf"
+    },
+    "switch": {
+      "label": "Unterlage wählen",
+      "letter": "Anschreiben",
+      "cv": "Lebenslauf"
+    },
+    "beta": {
+      "badge": "Beta",
+      "cv": "Die Lebenslauf-Anpassung ist neu. Bitte lesen Sie jede übernommene Formulierung durch, bevor Sie die Datei verwenden: besonders Zeiträume, Titel und Zahlen."
     },
     "selection": {
       "wholeDocument": "Ganzes Dokument",
@@ -248,6 +264,7 @@
       "paragraphShort": "Absatz",
       "none": "Ziehen Sie über eine Textstelle.",
       "touch": "Mit dem Finger ist nur das ganze Dokument wählbar.",
+      "touchParagraph": "Mit dem Finger tippen Sie einen Absatz an und wählen ihn damit.",
       "summary": "{{chars}} Zeichen markiert.",
       "chars": "{{chars}} Zeichen"
     },
@@ -304,6 +321,15 @@
         "heading_one": "Eine Aussage ist durch Ihre Unterlagen nicht gedeckt:",
         "heading_other": "{{count}} Aussagen sind durch Ihre Unterlagen nicht gedeckt:"
       },
+      "figures": {
+        "heading": "Zahlen weichen von der Markierung ab",
+        "changed": "{{from}} → {{to}}",
+        "removed_one": "Nicht mehr enthalten: {{figures}}.",
+        "removed_other": "Nicht mehr enthalten: {{figures}}.",
+        "added_one": "Neu hinzugekommen: {{figures}}.",
+        "added_other": "Neu hinzugekommen: {{figures}}.",
+        "confirm": "Ich habe die Angabe geprüft und will sie so übernehmen."
+      },
       "willShift_one": "Absatz {{paragraphs}} bleibt leer stehen. Was dort fest im Dokument liegt, etwa eine Unterschrift, rutscht dadurch sichtbar nach oben.",
       "willShift_other": "Die Absätze {{paragraphs}} bleiben leer stehen. Was dort fest im Dokument liegt, etwa eine Unterschrift, rutscht dadurch sichtbar nach oben."
     },
@@ -337,7 +363,7 @@
     "reapply": {
       "trigger": "Nächste Anzeige",
       "heading": "Nächste Stellenausschreibung",
-      "description": "Der Brief entsteht neu aus Ihrem hochgeladenen Anschreiben. Die vorgemerkten Stellen werden auf die neue Anzeige umgeschrieben.",
+      "description": "Ihre Unterlagen entstehen neu aus den hochgeladenen Dateien. Die vorgemerkten Stellen werden auf die neue Anzeige umgeschrieben.",
       "jobAdLabel": "Stellenausschreibung",
       "marks_one": "1 vorgemerkte Stelle",
       "marks_other": "{{count}} vorgemerkte Stellen",
@@ -353,6 +379,7 @@
       "halt": {
         "wahl": "Bitte wählen Sie eine Formulierung.",
         "unbelegteAussagen": "Diese Formulierung enthält Aussagen, die Ihre Unterlagen nicht decken. Bitte einzeln bestätigen.",
+        "faktenGeaendert": "Diese Formulierung ändert eine Zahl oder ein Datum gegenüber Ihrer Markierung. Bitte prüfen Sie die Angabe, bevor Sie sie übernehmen.",
         "anbieterfehler": "Die Anfrage ist fehlgeschlagen.",
         "antwortVerworfen": "Die Antwort der KI war nicht verwertbar."
       },
@@ -451,6 +478,37 @@
       },
       "sentenceLength": "{{words}} Wörter je Satz"
     },
+    "cvStyle": {
+      "heading": "Form der Einträge",
+      "formLabel": "Aufbau eines Eintrags",
+      "form": {
+        "verbFirst": "Verb zuerst („Entwickelt …\")",
+        "nounPhrase": "Nominalphrase („Entwicklung von …\")",
+        "mixed": "gemischt"
+      },
+      "tenseLabel": "Zeitform",
+      "tense": {
+        "present": "Präsens",
+        "past": "Vergangenheit",
+        "mixed": "gemischt: laufend im Präsens, abgeschlossen in der Vergangenheit"
+      },
+      "traitsHint": "Eine Beobachtung je Zeile. Was hier steht, geht in jede Umformulierung ein.",
+      "measured": {
+        "person": "Person",
+        "terminalPunctuation": "Satzzeichen am Zeilenende",
+        "bulletLength": "Übliche Länge",
+        "sample": "Beispieleintrag aus Ihrem Lebenslauf"
+      },
+      "person": {
+        "none": "ohne Ich, die Einträge nennen die Tätigkeit",
+        "first": "Ich-Form"
+      },
+      "terminalPunctuation": {
+        "yes": "ja, die Einträge enden mit einem Punkt",
+        "no": "nein, die Einträge enden ohne Satzzeichen"
+      },
+      "bulletLength": "{{words}} Wörter je Eintrag"
+    },
     "language": {
       "heading": "In welcher Sprache soll der Brief stehen?",
       "intro": "Die Stellenanzeige ist auf {{ad}}, Ihr Anschreiben auf {{letter}}. Umformulierte Stellen werden zuerst übersetzt und dann angepasst.",
@@ -484,6 +542,7 @@
       "copyDone": "Der Text liegt in der Zwischenablage.",
       "copyFailed": "Der Text konnte nicht kopiert werden. Der Browser hat den Zugriff auf die Zwischenablage abgelehnt.",
       "pdfTooltip": "Erzeugt eine PDF-Datei mit Schrift, Rändern und Briefkopf des Originals.",
+      "pdfBlockedTooltip": "Diese Unterlage enthält eine Tabelle. Der PDF-Satz kann Tabellen nicht setzen, das Ergebnis wäre ohne ihre Spalten. Die Word-Datei gibt das Original unverändert weiter.",
       "copyTooltip": "Legt den Brief als reinen Text in die Zwischenablage."
     }
   },

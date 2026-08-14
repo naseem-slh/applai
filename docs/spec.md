@@ -1,9 +1,11 @@
-# Spezifikation — die 29 Entscheidungen
+# Spezifikation — die 30 Entscheidungen
 
 Diese Tabelle ist die verbindliche Fassung. Quelle:
 [`docs/superpowers/plans/2026-08-11-applai-bauabschnitt-1.md`](superpowers/plans/2026-08-11-applai-bauabschnitt-1.md).
 Die 29. Entscheidung („Vorgemerkte Stellen") kam später dazu:
 [`docs/superpowers/specs/2026-08-12-vorgemerkte-stellen-design.md`](superpowers/specs/2026-08-12-vorgemerkte-stellen-design.md).
+Die 30. („Lebenslauf anpassen") eröffnet den zweiten Bauabschnitt:
+[`docs/superpowers/specs/2026-08-14-lebenslauf-design.md`](superpowers/specs/2026-08-14-lebenslauf-design.md).
 
 ### Produkt und Auslieferung
 
@@ -34,7 +36,7 @@ Die 29. Entscheidung („Vorgemerkte Stellen") kam später dazu:
 
 | Thema | Entscheidung |
 |---|---|
-| Unterlagen | `.docx` (Hauptweg, Layout bleibt erhalten) oder `.pdf` (Lesen + Beta-Umwandlung) |
+| Unterlagen | `.docx` (Hauptweg, Layout bleibt erhalten) oder `.pdf` (Lesen + Beta-Umwandlung). Ein **mehrspaltig gesetztes** PDF ist nicht anpassbar und zählt nur als Faktenquelle — die Umwandlung verschränkt seine Spalten |
 | Mindestanforderung | Anschreiben **oder** Lebenslauf muss vorhanden sein |
 | Stellenausschreibung | Eingefügter Text oder PDF. **Kein Link-Abruf** — bräuchte einen Vermittler und damit einen Server |
 | Anforderungsanalyse | Sichtbarer Zwischenschritt: die aus der Anzeige gezogenen Anforderungen sind einsehbar |
@@ -44,11 +46,15 @@ Die 29. Entscheidung („Vorgemerkte Stellen") kam später dazu:
 
 | Thema | Entscheidung |
 |---|---|
-| Reihenfolge | Anschreiben zuerst, Lebenslauf im zweiten Bauabschnitt |
-| Auswahl | Freie Textmarkierung per Maus, beliebiger Bereich, auch satzübergreifend. Zusätzlich „ganzes Dokument" |
-| Vorgemerkte Stellen | Mehrere Stellen gleichzeitig vormerkbar, eine nach der anderen umformulierbar. Vormerkungen werden je Anschreiben gemerkt und beim nächsten Mal selbsttätig wiederhergestellt |
+| Reihenfolge | Anschreiben und Lebenslauf in **einer** Arbeitsfläche, umschaltbar. Der Lebenslauf trägt keinen Briefkopf, kein „ganzes Dokument" und nur den Längenregler |
+| Lebenslauf-Anpassung | **Beta**, sichtbar gekennzeichnet mit Prüfhinweis — dieselbe Linie wie bei PDF→Word. Benutzbar ohne Einschränkung; was fehlt, ist die Erfahrung aus mehreren Bewerbungssaisons, nicht eine Funktion |
+| Arbeitsumfang | Beim Vorbereiten wird gewählt, **welche** Unterlagen angepasst werden. Nicht Gewähltes bleibt reine Faktenquelle und wird nicht angefasst. In der Arbeitsfläche nachträglich änderbar |
+| Faktenbasis | Belegt wird ausschließlich der **hochgeladene** Stand, nie der laufende. Sonst würde eine erfundene Zeile im Lebenslauf zum Beleg für das Anschreiben |
+| Faktenprüfung | Deterministischer Abgleich je Variante: Zahlen und Datumsangaben müssen unverändert wiederkehren. Ein Befund sperrt „Übernehmen" bis zur Bestätigung. **Zahlwörter bleiben ungeprüft** — sonst nähme niemand die Warnung mehr ernst |
+| Auswahl | Freie Textmarkierung per Maus, beliebiger Bereich, auch satzübergreifend. Zusätzlich „ganzes Dokument" — **beim Anschreiben**; ein Lebenslauf wird absatzweise gewählt, sonst ebnete eine Umformulierung seine Gliederung ein. Mit dem Finger wählt ein Tippen den Absatz |
+| Vorgemerkte Stellen | Mehrere Stellen gleichzeitig vormerkbar, eine nach der anderen umformulierbar. Vormerkungen werden **je Dokument** gemerkt und beim nächsten Mal selbsttätig wiederhergestellt |
 | Ergebnis | **Drei Varianten** zur Auswahl, übernehmen oder verwerfen |
-| Stil | Stilprofil aus dem vorhandenen Anschreiben abgeleitet, einsehbar und korrigierbar. Zusätzlich zwei bis drei Schieberegler (förmlich↔locker, kurz↔ausführlich) |
+| Stil | Stilprofil aus dem vorhandenen Dokument abgeleitet, einsehbar und korrigierbar. Der Lebenslauf bekommt ein **eigenes**: Aufzählungsform, Zeitform, Person, Schlusspunkt, Länge — Satzlänge und Anrede sagen über einen Aufzählungspunkt nichts. Zusätzlich zwei Schieberegler (förmlich↔locker, kurz↔ausführlich); am Lebenslauf nur die Länge |
 | Eigene Änderungen | Tippen überall möglich (Text ja, Formatierung nein) |
 | Wahrheitsgrenze | **Streng** als Grundregel. **Brücken** zuschaltbar (nur inhaltlich gedeckte Verallgemeinerungen). **Frei** zuschaltbar — mit farbiger Markierung, Einzelbestätigung und Exportsperre |
 | Lückenliste | Was die Anzeige verlangt, was gedeckt ist, was fehlt. **Kein Prozentwert** — er wäre erfunden |
@@ -61,7 +67,7 @@ Die 29. Entscheidung („Vorgemerkte Stellen") kam später dazu:
 | Thema | Entscheidung |
 |---|---|
 | Word-Export | Das Original mit gepatchten Textstellen — Schrift, Ränder, Kopfzeile unverändert |
-| PDF-Export | Im Browser aus dem Original neu gesetzt: Schrift, Grade, Ränder, Ausrichtung, Kopf- und Fußzeile samt Bildern. Schwebende Textfelder, Linien und Unterschriften stehen an ihrer Blattkoordinate; Bildschriften (Wingdings, Symbol) werden auf Unicode abgebildet. Metrikgleiche Schriften (Carlito, Liberation) halten den Zeilenumbruch. Ohne Tabellen, Aufzählungszeichen und Textumfluss |
+| PDF-Export | Im Browser aus dem Original neu gesetzt: Schrift, Grade, Ränder, Ausrichtung, Kopf- und Fußzeile samt Bildern. Schwebende Textfelder, Linien und Unterschriften stehen an ihrer Blattkoordinate; Bildschriften (Wingdings, Symbol) werden auf Unicode abgebildet. Metrikgleiche Schriften (Carlito, Liberation) halten den Zeilenumbruch. Ohne Tabellen, Aufzählungszeichen und Textumfluss. **Trägt ein Dokument eine Tabelle, ist der PDF-Export für es gesperrt** — sonst käme die Mappe still ohne ihre Tabelle heraus. Word-Export und Kopierfeld bleiben offen |
 | Kopierfeld | Reintext für Online-Formulare |
 | PDF→Word | **Beta**, einspaltig, sichtbar gekennzeichnet mit Prüfhinweis. Originaltreue folgt im zweiten Abschnitt |
 | Bewerbungsliste | Firma, Stelle, Datum. Nur im Browser. Hinweis bei doppelter Bewerbung |
@@ -70,6 +76,7 @@ Die 29. Entscheidung („Vorgemerkte Stellen") kam später dazu:
 | Löschen | Knopf „Alle Daten löschen" |
 | Erweiterbarkeit | Speicherung hinter einer Schnittstelle, damit später ein Server dazukommen kann |
 
-### Nicht im ersten Bauabschnitt
+### Nicht im zweiten Bauabschnitt
 
-Lebenslauf-Bearbeitung · originalgetreue PDF-Umwandlung · Anschreiben ganz ohne Vorlage erstellen · lokale Modelle (Ollama) · serverseitige Liste · Bewerbungsverwaltung mit Status und Fristen · Link-Abruf von Stellenanzeigen
+Tabellensatz im PDF-Export · Umsortieren oder Gewichten von Lebenslauf-Einträgen
+· erzeugter Profilabschnitt · originalgetreue PDF-Umwandlung · Anschreiben ganz ohne Vorlage erstellen · lokale Modelle (Ollama) · serverseitige Liste · Bewerbungsverwaltung mit Status und Fristen · Link-Abruf von Stellenanzeigen

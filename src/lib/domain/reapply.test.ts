@@ -14,11 +14,15 @@ import {
   type ReapplyState,
 } from './reapply'
 import type { Variant } from './rewrite'
+import { variant } from './rewrite.testutils'
 
-const STEPS = [{ markId: 'a' }, { markId: 'b' }]
+const STEPS = [
+  { markId: 'a', document: 'letter' as const },
+  { markId: 'b', document: 'letter' as const },
+]
 
 function variante(text: string, unbacked: string[] = []): Variant {
-  return { text, unbackedClaims: unbacked }
+  return variant(text, { unbackedClaims: unbacked })
 }
 
 const DREI = [variante('eins'), variante('zwei'), variante('drei')]
@@ -39,6 +43,7 @@ describe('reapply — der Weg durch den Durchlauf', () => {
     expect(naechsteHandlung(bisErsteStelle('schnell'))).toEqual({
       kind: 'anfordern',
       markId: 'a',
+      document: 'letter',
     })
   })
 
@@ -56,6 +61,7 @@ describe('reapply — die beiden Betriebsarten', () => {
     expect(naechsteHandlung(state)).toEqual({
       kind: 'uebernehmen',
       markId: 'a',
+      document: 'letter',
       variant: DREI[0],
     })
   })
@@ -80,7 +86,7 @@ describe('reapply — die beiden Betriebsarten', () => {
   it('rückt nach der Übernahme auf die nächste Stelle', () => {
     const state = uebernommen(variantenDa(bisErsteStelle('schnell'), DREI))
     expect(state).toMatchObject({ status: 'laeuft', applied: 1 })
-    expect(naechsteHandlung(state)).toEqual({ kind: 'anfordern', markId: 'b' })
+    expect(naechsteHandlung(state)).toEqual({ kind: 'anfordern', markId: 'b', document: 'letter' })
   })
 
   it('ist nach der letzten Stelle fertig und zählt die Übernahmen', () => {
@@ -94,6 +100,7 @@ describe('reapply — die beiden Betriebsarten', () => {
     expect(naechsteHandlung(state)).toEqual({
       kind: 'uebernehmen',
       markId: 'a',
+      document: 'letter',
       variant: DREI[2],
     })
   })
@@ -108,7 +115,7 @@ describe('reapply — Halt, Überspringen, Abbruch', () => {
 
   it('versucht dieselbe Stelle nach einem Fehler erneut', () => {
     const state = nochmal(fehler(bisErsteStelle('schnell'), 'antwortVerworfen'))
-    expect(naechsteHandlung(state)).toEqual({ kind: 'anfordern', markId: 'a' })
+    expect(naechsteHandlung(state)).toEqual({ kind: 'anfordern', markId: 'a', document: 'letter' })
   })
 
   it('merkt sich übersprungene Stellen samt Grund', () => {

@@ -3,8 +3,10 @@ import { useTranslation } from 'react-i18next'
 import { AiErrorNotice } from '@/components/app/AiErrorNotice'
 import { isAbortError } from '@/components/app/aiErrorKey'
 import { Button } from '@/components/ui/Button'
+import { Checkbox } from '@/components/ui/Checkbox'
 import { FIELD_HINT_CLASS } from '@/components/ui/Field'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/Popover'
+import { hasFigureChanges, pairFigureChange } from '@/lib/domain/factsGuard'
 import type { Variant } from '@/lib/domain/rewrite'
 import { cn } from '@/lib/utils'
 import { paragraphsLeftBehind, type EditorSelection } from './documentSelection'
@@ -235,6 +237,24 @@ interface VariantOptionProps {
 function VariantOption({ variant, number, selection, onApply }: VariantOptionProps) {
   const { t } = useTranslation()
   const leftBehind = paragraphsLeftBehind(selection, variant.text)
+  /**
+   * Die Faktenprüfung sperrt „Übernehmen", bis sie bestätigt ist.
+   *
+   * **Bestätigt, nicht bloß angezeigt.** Eine Zahl, die sich verändert hat,
+   * ist der eine Fehler, den man dem fertigen Dokument nicht mehr ansieht —
+   * niemand liest ein Bewerbungs-PDF gegen das Arbeitszeugnis. Ein Hinweis
+   * daneben würde in der Hälfte der Fälle überlesen; ein gesperrter Knopf
+   * nicht.
+   *
+   * **Und trotzdem nur eine Sperre, kein Verbot.** Wer eine Zeile
+   * zusammenfasst, verliert womöglich absichtlich eine Angabe. Diese
+   * Entscheidung gehört dem Nutzer, hier, wo Markierung und Variante
+   * nebeneinander stehen.
+   */
+  const [figuresAccepted, setFiguresAccepted] = useState(false)
+  const figuresChanged = hasFigureChanges(variant.figures)
+  const change = pairFigureChange(variant.figures)
+  const figureCheckId = useId()
 
   return (
     <li className="flex flex-col gap-2 rounded-md border border-[var(--color-border)] p-3">
@@ -259,6 +279,56 @@ function VariantOption({ variant, number, selection, onApply }: VariantOptionPro
         </div>
       )}
 
+      {figuresChanged && (
+        // In `--color-error`, nicht in `--color-warning`: Letzteres erreicht
+        // auf keiner hellen Fläche 4,5:1 (siehe DESIGN.md). Und die Farbe
+        // trägt die Bedeutung nicht allein — die Überschrift sagt, was los
+        // ist, und jede Angabe steht wörtlich da.
+        <div className="flex flex-col gap-2 rounded-md border border-[var(--color-error)] p-2">
+          <p
+            id={figureCheckId}
+            className="text-[length:var(--text-body-sm-size)] font-medium text-[var(--color-error)]"
+          >
+            {t('editor.variants.figures.heading')}
+          </p>
+          <p className="text-[length:var(--text-body-sm-size)] text-[var(--color-ink)]">
+            {change !== null
+              ? t('editor.variants.figures.changed', { from: change.from, to: change.to })
+              : [
+                  variant.figures.removed.length > 0
+                    ? t('editor.variants.figures.removed', {
+                        figures: variant.figures.removed.join(', '),
+                        count: variant.figures.removed.length,
+                      })
+                    : null,
+                  variant.figures.added.length > 0
+                    ? t('editor.variants.figures.added', {
+                        figures: variant.figures.added.join(', '),
+                        count: variant.figures.added.length,
+                      })
+                    : null,
+                ]
+                  .filter((line): line is string => line !== null)
+                  .join(' ')}
+          </p>
+          <div className="flex items-start gap-2">
+            <Checkbox
+              id={`${figureCheckId}-confirm`}
+              checked={figuresAccepted}
+              aria-describedby={figureCheckId}
+              onCheckedChange={(next) => setFiguresAccepted(next === true)}
+              className="mt-0.5"
+            />
+            <label
+              htmlFor={`${figureCheckId}-confirm`}
+              className="text-[length:var(--text-body-sm-size)] leading-[var(--text-body-sm-leading)] text-[var(--color-ink)]"
+            >
+              {t('editor.variants.figures.confirm')}
+            </label>
+          </div>
+        </div>
+      )}
+
       {leftBehind.length > 0 && (
         <p className={cn('text-[length:var(--text-body-sm-size)]', 'text-[var(--color-error)]')}>
           {t('editor.variants.willShift', {
@@ -269,7 +339,12 @@ function VariantOption({ variant, number, selection, onApply }: VariantOptionPro
       )}
 
       <div className="flex items-center gap-2">
-        <Button variant="secondary" size="sm" onClick={onApply}>
+        <Button
+          variant="secondary"
+          size="sm"
+          disabled={figuresChanged && !figuresAccepted}
+          onClick={onApply}
+        >
           {t('editor.variants.apply')}
         </Button>
         <span className={FIELD_HINT_CLASS}>

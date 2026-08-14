@@ -86,7 +86,7 @@ export function useDocumentSelection({
   }, [docx])
 
   useEffect(() => {
-    if (!trackPointerSelection || docx === null) return
+    if (docx === null) return
 
     const handle = () => {
       const root = rootRef.current
@@ -95,7 +95,15 @@ export function useDocumentSelection({
       const anchor = domSelection?.anchorNode ?? null
       if (domSelection === null || anchor === null || !root.contains(anchor)) return
 
+      // **Der Absatz wird immer nachgehalten, auch ohne Feinmarkierung.**
+      // Mit dem Finger gibt es keine gezogene Markierung, aber sehr wohl
+      // einen Schreibcursor: Ein Tippen setzt ihn, und daraus wird „dieser
+      // Absatz". Ohne das bliebe unterwegs nur „ganzes Dokument" — und
+      // genau das darf ein Lebenslauf nicht anbieten, weil eine
+      // Umformulierung am Stück seine Gliederung einebnet.
       setCaretParagraph(paragraphIndexOf(domSelection.focusNode))
+      if (!trackPointerSelection) return
+
       const range = selectionToRange(root, domSelection)
       if (range === null) return
       setSelection(range.to > range.from ? createSelection(docx, range) : null)

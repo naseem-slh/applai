@@ -19,18 +19,37 @@ import type { Variant } from './rewrite'
 export type ReapplyMode = 'schnell' | 'waehlen'
 
 /** Warum der Durchlauf ruht. Genau vier Gründe, siehe Spezifikation. */
-export type HaltReason = 'wahl' | 'unbelegteAussagen' | 'anbieterfehler' | 'antwortVerworfen'
+export type HaltReason =
+  | 'wahl'
+  | 'unbelegteAussagen'
+  | 'faktenGeaendert'
+  | 'anbieterfehler'
+  | 'antwortVerworfen'
 
 /** Warum eine Stelle ohne Übernahme geblieben ist. */
 export type SkipReason = HaltReason | 'abgebrochen'
 
-/** Eine Stelle im Durchlauf — über die Kennung, nie über den Bereich. */
+/** Welche Unterlage eine Stelle trägt. */
+export type ReapplyDocumentKind = 'letter' | 'cv'
+
+/**
+ * Eine Stelle im Durchlauf — über die Kennung, nie über den Bereich.
+ *
+ * `document` sagt, in welcher Unterlage sie liegt. Die Maschine selbst
+ * deutet den Wert nicht; sie führt ihn mit, damit der Aufrufer beim
+ * Anfordern und Übernehmen den richtigen Arbeitsbereich anspricht. Ein
+ * Durchlauf über zwei Unterlagen ist damit **eine** Liste von Stellen und
+ * nicht zwei Durchläufe — die Anzeige wird einmal ausgewertet, der Bericht
+ * am Ende zählt einmal.
+ */
 export interface ReapplyStep {
   markId: string
+  document: ReapplyDocumentKind
 }
 
 export interface SkippedStep {
   markId: string
+  document: ReapplyDocumentKind
   reason: SkipReason
 }
 
@@ -58,8 +77,8 @@ export type ReapplyState =
  */
 export type Handlung =
   | { kind: 'anzeigeLesen' }
-  | { kind: 'anfordern'; markId: string }
-  | { kind: 'uebernehmen'; markId: string; variant: Variant }
+  | { kind: 'anfordern'; markId: string; document: ReapplyDocumentKind }
+  | { kind: 'uebernehmen'; markId: string; document: ReapplyDocumentKind; variant: Variant }
   | { kind: 'warten' }
   | { kind: 'beendet' }
 
@@ -114,6 +133,15 @@ export function variantenDa(state: ReapplyState, variants: readonly Variant[]): 
   if (erste.unbackedClaims.length > 0) {
     return { ...state, status: 'haelt', reason: 'unbelegteAussagen', variants }
   }
+  // **Auch im Schnellmodus wird hier angehalten.** Eine verschobene
+  // Jahreszahl ist der eine Fehler, den man dem fertigen Dokument nicht mehr
+  // ansieht; ihn ungefragt einzusetzen, nur weil der Nutzer „schnell"
+  // gewählt hat, wäre genau die stille Falschangabe, die die Prüfung
+  // verhindern soll. „Schnell" heißt „ohne Rückfrage, wo nichts zu
+  // entscheiden ist" — hier ist etwas zu entscheiden.
+  if (erste.figures.added.length > 0 || erste.figures.removed.length > 0) {
+    return { ...state, status: 'haelt', reason: 'faktenGeaendert', variants }
+  }
   return { ...state, status: 'uebernimmt', variant: erste }
 }
 
@@ -165,7 +193,11 @@ export function ueberspringen(state: ReapplyState): ReapplyState {
     ...current,
     skipped: [
       ...current.skipped,
-      { markId: current.steps[current.index].markId, reason: state.reason },
+      {
+        markId: current.steps[current.index].markId,
+        document: current.steps[current.index].document,
+        reason: state.reason,
+      },
     ],
   })
 }
@@ -182,7 +214,7 @@ export function abbrechen(state: ReapplyState): ReapplyState {
     return state
   }
   const rest = state.steps.slice(state.index).map(
-    (step): SkippedStep => ({ markId: step.markId, reason: 'abgebrochen' }),
+    (step): SkippedStep => ({ markId: step.markId, document: step.document, reason: 'abgebrochen' }),
   )
   return { status: 'abgebrochen', applied: state.applied, skipped: [...state.skipped, ...rest] }
 }
@@ -213,11 +245,16 @@ export function naechsteHandlung(state: ReapplyState): Handlung {
     case 'anzeigeWirdGelesen':
       return { kind: 'anzeigeLesen' }
     case 'laeuft':
-      return { kind: 'anfordern', markId: state.steps[state.index].markId }
+      return {
+        kind: 'anfordern',
+        markId: state.steps[state.index].markId,
+        document: state.steps[state.index].document,
+      }
     case 'uebernimmt':
       return {
         kind: 'uebernehmen',
         markId: state.steps[state.index].markId,
+        document: state.steps[state.index].document,
         variant: state.variant,
       }
     case 'haelt':

@@ -1,6 +1,13 @@
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
-import { completeOnboarding, fillStartPage, stubProvider, t, waitForAnalysis } from './support'
+import {
+  completeOnboarding,
+  fillStartPage,
+  fillStartPageCvOnly,
+  stubProvider,
+  t,
+  waitForAnalysis,
+} from './support'
 
 /**
  * Barrierefreiheit, maschinell geprüft — und die Tastaturwege, die axe nicht
@@ -76,6 +83,18 @@ const VIEWS: { name: string; open: (page: Page) => Promise<void> }[] = [
       await completeOnboarding(page)
       await fillStartPage(page)
       await waitForAnalysis(page)
+    },
+  },
+  {
+    // Der Lebenslauf allein: eigene Bereiche (Form der Einträge statt
+    // Briefkopf und Schreibstil) und eine Markierungsleiste ohne „Ganzes
+    // Dokument". Beides ist Oberfläche, die es beim Anschreiben nicht gibt.
+    name: 'Arbeitsfläche mit dem Lebenslauf allein',
+    open: async (page) => {
+      await page.goto('/')
+      await completeOnboarding(page)
+      await fillStartPageCvOnly(page)
+      await waitForAnalysis(page, t('editor.document.cvHeading'))
     },
   },
   {

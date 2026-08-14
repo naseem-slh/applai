@@ -2,6 +2,11 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { analysisCacheKey, type AnalysisKind } from '@/lib/ai/analysisCache'
 import type { LlmProvider } from '@/lib/ai/provider'
 import { withSignal } from '@/lib/ai/provider'
+import {
+  CvStyleProfileSchema,
+  deriveCvStyleProfile,
+  type CvStyleProfile,
+} from '@/lib/domain/cvStyleProfile'
 import { analyzeJobAd, JobAdSchema, type JobAd } from '@/lib/domain/jobAd'
 import {
   deriveStyleProfile,
@@ -13,15 +18,16 @@ import { withAnonymization, type AnonymizationSettings } from '@/lib/privacy/wit
 import { isAbortError } from '@/components/app/aiErrorKey'
 
 /**
- * Die beiden Auswertungen, ohne die sich nichts umformulieren lässt:
- * die Stellenanzeige (Aufgabe 9) und das Stilprofil des vorhandenen
- * Anschreibens (Aufgabe 10).
+ * Die Auswertungen der **Bewerbung**, ohne die sich nichts umformulieren
+ * lässt: die Stellenanzeige (Aufgabe 9) und je ein Stilprofil für jede
+ * Unterlage im Arbeitsumfang — Anschreiben (Aufgabe 10) und Lebenslauf
+ * (zweiter Bauabschnitt).
  *
- * `rewriteSelection` verlangt beide als Pflichtfelder (`RewriteRequest.jobAd`,
- * `RewriteRequest.style`), und beide entstehen aus je einem Modellaufruf.
- * Sie gehören deshalb nicht in den Variantenvorschlag, sondern davor: Sonst
- * kostete die erste Umformulierung drei Aufrufe statt einem, und die beiden
- * Ergebnisse müssten trotzdem irgendwo liegenbleiben.
+ * `rewriteSelection` verlangt Anzeige und Stilprofil als Pflichtfelder
+ * (`RewriteRequest.jobAd`, `RewriteRequest.document`), und jedes entsteht aus
+ * einem Modellaufruf. Sie gehören deshalb nicht in den Variantenvorschlag,
+ * sondern davor: Sonst kostete die erste Umformulierung mehrere Aufrufe statt
+ * einem, und die Ergebnisse müssten trotzdem irgendwo liegenbleiben.
  *
  * **Warum beim Betreten der Arbeitsfläche und nicht erst auf Anforderung.**
  * Der Plan zeigt in derselben Ansicht die Anforderungsliste, die Lückenliste
@@ -61,9 +67,9 @@ import { isAbortError } from '@/components/app/aiErrorKey'
  * (Begründung in `domain/jobAd.ts`).
  */
 
-export type LetterAnalysisStatus = 'idle' | 'loading' | 'ready' | 'failed'
+export type ApplicationAnalysisStatus = 'idle' | 'loading' | 'ready' | 'failed'
 
-export interface LetterAnalysisOptions {
+export interface ApplicationAnalysisOptions {
   /** Der eingefügte Text der Stellenausschreibung. */
   jobAdText: string
   /**
@@ -71,8 +77,19 @@ export interface LetterAnalysisOptions {
    * Bearbeitungsstand. Das Stilprofil beschreibt den Ton des Nutzers, und
    * der steht im Original; ein während der Sitzung eingefügter
    * Modellvorschlag würde sonst zum Maßstab für den nächsten.
+   *
+   * `null`, wenn kein Anschreiben angepasst wird. Dann wird **nicht**
+   * gefragt: Ein Stilprofil des leeren Textes kostete eine Anfrage und
+   * beschriebe nichts.
    */
-  letterText: string
+  letterText: string | null
+  /**
+   * Der Lebenslauf, ebenfalls wie hochgeladen und aus demselben Grund.
+   * `null`, wenn er nicht im Arbeitsumfang liegt — als bloße Faktenquelle
+   * braucht er kein Stilprofil, und die gesparte Anfrage ist bei einer
+   * Bewerbung mit beiden Unterlagen genau die, die niemand gebraucht hätte.
+   */
+  cvText: string | null
   /** `null`, solange der Tresor keinen Anbieter kennt. Dann läuft nichts. */
   provider: LlmProvider | null
   /** `null`, solange der Tresor gesperrt ist. Dann läuft nichts. */
@@ -82,27 +99,32 @@ export interface LetterAnalysisOptions {
   storage: StorageAdapter
 }
 
-export interface LetterAnalysisHandle {
-  status: LetterAnalysisStatus
+export interface ApplicationAnalysisHandle {
+  status: ApplicationAnalysisStatus
   jobAd: JobAd | null
+  /** Das Stilprofil des Anschreibens. `null`, wenn keines angepasst wird. */
   style: StyleProfile | null
+  /** Das Stilprofil des Lebenslaufs. `null`, wenn keiner angepasst wird. */
+  cvStyle: CvStyleProfile | null
   /** Der aufgetretene Fehler, für `aiErrorKey`. `null`, solange keiner auftrat. */
   error: unknown
   /** Noch einmal versuchen. Ein laufender Versuch wird dabei abgebrochen. */
   retry: () => void
 }
 
-export function useLetterAnalysis({
+export function useApplicationAnalysis({
   jobAdText,
   letterText,
+  cvText,
   provider,
   apiKey,
   privacy,
   storage,
-}: LetterAnalysisOptions): LetterAnalysisHandle {
-  const [status, setStatus] = useState<LetterAnalysisStatus>('idle')
+}: ApplicationAnalysisOptions): ApplicationAnalysisHandle {
+  const [status, setStatus] = useState<ApplicationAnalysisStatus>('idle')
   const [jobAd, setJobAd] = useState<JobAd | null>(null)
   const [style, setStyle] = useState<StyleProfile | null>(null)
+  const [cvStyle, setCvStyle] = useState<CvStyleProfile | null>(null)
   const [error, setError] = useState<unknown>(null)
   const [attempt, setAttempt] = useState(0)
 
@@ -141,26 +163,47 @@ export function useLetterAnalysis({
 
     void (async () => {
       try {
-        const [ad, profile] = await Promise.all([
+        // Alle drei zugleich: Sie hängen nicht voneinander ab, und der
+        // Nutzer wartet auf die langsamste statt auf ihre Summe. Was nicht
+        // im Arbeitsumfang liegt, wird gar nicht erst gefragt — `null` ist
+        // hier kein Fehlschlag, sondern „gibt es nicht".
+        const [ad, profile, cvProfile] = await Promise.all([
           cached(store.current, 'jobAd', provider.model, jobAdText, JobAdSchema, () =>
             analyzeJobAd(jobAdText, bound, apiKey),
           ),
-          cached(store.current, 'style', provider.model, letterText, StyleProfileSchema, () =>
-            withAnonymization(
-              { letterText },
-              { enabled: anonymizeEnabled, userName },
-              (fields) => deriveStyleProfile(fields.letterText, bound, apiKey),
-              (result, restore) => ({
-                ...result,
-                sample: restore(result.sample),
-                traits: result.traits.map(restore),
-              }),
-            ),
-          ),
+          letterText === null
+            ? Promise.resolve(null)
+            : cached(store.current, 'style', provider.model, letterText, StyleProfileSchema, () =>
+                withAnonymization(
+                  { letterText },
+                  { enabled: anonymizeEnabled, userName },
+                  (fields) => deriveStyleProfile(fields.letterText, bound, apiKey),
+                  (result, restore) => ({
+                    ...result,
+                    sample: restore(result.sample),
+                    traits: result.traits.map(restore),
+                  }),
+                ),
+              ),
+          cvText === null
+            ? Promise.resolve(null)
+            : cached(store.current, 'cvStyle', provider.model, cvText, CvStyleProfileSchema, () =>
+                withAnonymization(
+                  { cvText },
+                  { enabled: anonymizeEnabled, userName },
+                  (fields) => deriveCvStyleProfile(fields.cvText, bound, apiKey),
+                  (result, restore) => ({
+                    ...result,
+                    sample: restore(result.sample),
+                    traits: result.traits.map(restore),
+                  }),
+                ),
+              ),
         ])
         if (controller.signal.aborted) return
         setJobAd(ad)
         setStyle(profile)
+        setCvStyle(cvProfile)
         setStatus('ready')
       } catch (caught) {
         // Ein Abbruch kommt nur vom Aufräumen dieses Effekts (Ansicht
@@ -173,9 +216,9 @@ export function useLetterAnalysis({
     })()
 
     return () => controller.abort()
-  }, [jobAdText, letterText, provider, apiKey, anonymizeEnabled, userName, attempt])
+  }, [jobAdText, letterText, cvText, provider, apiKey, anonymizeEnabled, userName, attempt])
 
-  return { status, jobAd, style, error, retry }
+  return { status, jobAd, style, cvStyle, error, retry }
 }
 
 /**

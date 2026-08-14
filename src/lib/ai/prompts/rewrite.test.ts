@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildRewritePrompt, buildTranslationPrompt, VARIANT_COUNT } from './rewrite'
+import { buildCvRewritePrompt, buildRewritePrompt, buildTranslationPrompt, VARIANT_COUNT } from './rewrite'
 import type { RewritePromptInput } from './rewrite'
 
 /**
@@ -220,5 +220,54 @@ describe('buildTranslationPrompt', () => {
 
     expect(system).toContain('[NAME]')
     expect(system).toContain('unverändert')
+  })
+})
+
+/**
+ * Der Lebenslauf-Zweig. Was er mit dem Anschreiben teilt — Wahrheitsmodi,
+ * Länge, Platzhalter — ist dort schon geprüft; hier steht nur, was ihn
+ * unterscheidet.
+ */
+describe('buildCvRewritePrompt', () => {
+  it('verlangt dieselbe Antwortform wie beim Anschreiben', () => {
+    const { system } = buildCvRewritePrompt(BASIS)
+
+    expect(system).toContain('"variants"')
+    expect(system).toContain('"unbackedClaims"')
+    expect(system).toContain('nicht zwei, nicht vier')
+  })
+
+  it('verlangt harte Angaben wörtlich — der Fehler, der eine Bewerbung kostet', () => {
+    const { system } = buildCvRewritePrompt(BASIS)
+
+    expect(system).toContain('HARTE ANGABEN BLEIBEN WÖRTLICH STEHEN')
+    expect(system).toContain('Ändere niemals eine Jahreszahl')
+  })
+
+  it('verbietet Fließtext und das Zusammenfassen von Einträgen', () => {
+    const { system } = buildCvRewritePrompt(BASIS)
+
+    expect(system).toContain('KEIN FLIESSTEXT')
+    expect(system).toContain('keine Anrede')
+    expect(system).toContain('Fasse niemals zwei Einträge zu einem zusammen')
+  })
+
+  /**
+   * Die Regel, die im Anschreiben richtig und im Lebenslauf gefährlich ist:
+   * Dort ist ein früherer Arbeitgeber eine Altlast, hier die Sache selbst.
+   * Ein Modell, das ihn „aktualisiert", erfindet eine Berufsstation.
+   */
+  it('trägt die Altlasten-Regel des Anschreibens NICHT', () => {
+    const { system } = buildCvRewritePrompt(BASIS)
+
+    expect(system).not.toContain('ALTLASTEN AUS EINER FRÜHEREN BEWERBUNG')
+  })
+
+  it('nimmt den Stilbaustein und die Anzeige unverändert auf', () => {
+    const { user } = buildCvRewritePrompt(BASIS)
+
+    expect(user).toContain(BASIS.styleFragment)
+    expect(user).toContain('Musterwerk Solutions GmbH')
+    expect(user).toContain('MARKIERTE AUSWAHL')
   })
 })

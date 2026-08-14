@@ -108,7 +108,7 @@ describe('buildRewriteRequest', () => {
     const request = buildRewriteRequest({
       selection,
       jobAd: JOB_AD,
-      style: STYLE,
+      document: { kind: 'letter', style: STYLE },
       facts: 'Lebenslauf',
       truthMode: 'strict',
       targetLanguage: 'de',
@@ -124,7 +124,7 @@ describe('buildRewriteRequest', () => {
     const request = buildRewriteRequest({
       selection: createSelection(docx, { from: 31, to: 63 })!,
       jobAd: JOB_AD,
-      style: STYLE,
+      document: { kind: 'letter', style: STYLE },
       facts: 'Lebenslauf',
       truthMode: 'free',
       targetLanguage: 'en',
@@ -135,6 +135,6 @@ describe('buildRewriteRequest', () => {
     expect(request.targetLanguage).toBe('en')
     expect(request.sliders).toEqual({ formality: 20, length: 80 })
     expect(request.jobAd).toBe(JOB_AD)
-    expect(request.style).toBe(STYLE)
+    expect(request.document).toEqual({ kind: 'letter', style: STYLE })
   })
 })

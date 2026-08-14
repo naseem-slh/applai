@@ -13,6 +13,7 @@ import {
   uebernommen,
   variantenDa,
   waehlen,
+  type ReapplyDocumentKind,
   type ReapplyMode,
   type ReapplyState,
 } from '@/lib/domain/reapply'
@@ -48,24 +49,46 @@ import type { Mark } from './marks'
  * falsch — deshalb sucht jeder Schritt seine Marke neu über die Kennung.
  */
 
-export interface ReapplyOptions {
+/**
+ * Eine Unterlage, wie der Durchlauf sie braucht.
+ *
+ * Er bekommt ausschließlich Vorhandenes gereicht: `rewrite` ist dasselbe,
+ * das die Variantenauswahl von Hand benutzt, `applyEdit` derselbe eine Weg,
+ * auf dem sich der Text ändert. Es entsteht kein zweiter KI-Aufrufort (G3,
+ * G4) und kein zweiter Änderungsweg — auch nicht dadurch, dass es die
+ * Unterlage jetzt zweimal gibt.
+ */
+export interface ReapplyDocument {
+  kind: ReapplyDocumentKind
   /** Der laufende Dokumentstand. `null`, solange nichts geladen ist. */
   docx: DocxDocument | null
   marks: readonly Mark[]
-  /** Genau das `rewrite` aus `Editor.tsx` — kein zweiter KI-Aufrufort. */
   rewrite: (selection: EditorSelection, signal: AbortSignal) => Promise<Variant[]>
-  /** Genau das `applyEdit` aus `Editor.tsx` — der eine Änderungsweg. */
   applyEdit: (range: TextRange, text: string, options?: { completes?: boolean }) => void
   /** Meldet die unbelegten Aussagen der übernommenen Variante an. */
   addClaims: (claims: readonly string[]) => void
-  /** Setzt den neuen Anzeigentext in der Sitzung; löst die Auswertung aus. */
-  setJobAdText: (text: string) => void
   /** Stellt das hochgeladene Original her und setzt die Stellen neu. */
   restoreOriginal: () => Promise<{ markIds: readonly string[]; unresolved: number }>
+}
+
+export interface ReapplyOptions {
+  /**
+   * Die Unterlagen im Arbeitsumfang, in der Reihenfolge, in der sie
+   * abgearbeitet werden — Anschreiben zuerst.
+   *
+   * **Ein Durchlauf, nicht zwei.** Die Anzeige wird einmal ausgewertet, die
+   * Stellen beider Unterlagen hängen hintereinander in derselben Liste, und
+   * der Bericht am Ende zählt einmal. Zwei getrennte Durchläufe hießen zwei
+   * Auswertungen derselben Ausschreibung — eine bezahlte Anfrage für ein
+   * bekanntes Ergebnis.
+   */
+  documents: readonly ReapplyDocument[]
+  /** Setzt den neuen Anzeigentext in der Sitzung; löst die Auswertung aus. */
+  setJobAdText: (text: string) => void
   /** Der Anzeigentext, der gerade ausgewertet ist. */
   currentJobAdText: string
   /**
-   * Die ausgewertete Anzeige aus `useLetterAnalysis`.
+   * Die ausgewertete Anzeige aus `useApplicationAnalysis`.
    *
    * Gewartet wird auf ihre **Identität**, nicht auf einen Statuswert: Eine
    * neue `jobAd` ist der einzige eindeutige Beleg dafür, dass die Auswertung
@@ -86,13 +109,8 @@ export interface ReapplyHandle {
 }
 
 export function useReapply({
-  docx,
-  marks,
-  rewrite,
-  applyEdit,
-  addClaims,
+  documents,
   setJobAdText,
-  restoreOriginal,
   currentJobAdText,
   jobAd,
 }: ReapplyOptions): ReapplyHandle {
@@ -111,8 +129,12 @@ export function useReapply({
   // Die Mitspieler wandern über Refs in den Effekt: Sie wechseln bei jedem
   // Rendern die Identität, und in der Abhängigkeitsliste würden sie den
   // Schritt erneut auslösen, obwohl sich der Zustand nicht bewegt hat.
-  const deps = useRef({ docx, marks, rewrite, applyEdit, addClaims })
-  deps.current = { docx, marks, rewrite, applyEdit, addClaims }
+  const deps = useRef(documents)
+  deps.current = documents
+
+  /** Die Unterlage zu einem Schritt. `undefined`, wenn sie inzwischen fehlt. */
+  const documentFor = (kind: ReapplyDocumentKind): ReapplyDocument | undefined =>
+    deps.current.find((entry) => entry.kind === kind)
 
   const start = useCallback(
     (jobAdText: string, mode: ReapplyMode) => {
@@ -120,19 +142,33 @@ export function useReapply({
       // während das Original noch hergestellt wird, hielte der Durchlauf sie
       // sonst für die alte und wartete auf eine, die nie mehr kommt.
       const startedWith = latestJobAd.current
+      const entries = deps.current
       void (async () => {
-        const { markIds } = await restoreOriginal()
+        // **Erst alle Originale, dann die Anzeige.** Käme die neue Anzeige
+        // vor dem Zurücksetzen, liefe der selbsttätige Briefkopf auf dem
+        // alten, bereits angepassten Text und markierte die Anzeige als
+        // erledigt — das hergestellte Original bekäme nie einen Briefkopf.
+        // Die Reihenfolge ist Teil der Zusage, nicht Geschmackssache.
+        const restored = await Promise.all(
+          entries.map(async (entry) => ({
+            kind: entry.kind,
+            markIds: (await entry.restoreOriginal()).markIds,
+          })),
+        )
+        const steps = restored.flatMap((entry) =>
+          entry.markIds.map((markId) => ({ markId, document: entry.kind })),
+        )
         jobAdAtStart.current = startedWith
         // Dieselbe Anzeige noch einmal auszuwerten wäre eine bezahlte
         // Anfrage für ein bekanntes Ergebnis — und der Effekt in
-        // `useLetterAnalysis` liefe mangels Änderung gar nicht erst an,
+        // `useApplicationAnalysis` liefe mangels Änderung gar nicht erst an,
         // sodass der Durchlauf ewig auf eine neue `jobAd` wartete.
         awaiting.current = jobAdText !== currentJobAdText
         if (awaiting.current) setJobAdText(jobAdText)
-        setState(starten(markIds.map((markId) => ({ markId })), mode))
+        setState(starten(steps, mode))
       })()
     },
-    [restoreOriginal, setJobAdText, currentJobAdText],
+    [setJobAdText, currentJobAdText],
   )
 
   useEffect(() => {
@@ -157,11 +193,12 @@ export function useReapply({
     handled.current = state
 
     if (handlung.kind === 'anfordern') {
-      const { docx: document, marks: current, rewrite: ask } = deps.current
-      const mark = current.find((entry) => entry.id === handlung.markId)
-      const selection = document === null || mark === undefined
-        ? null
-        : createSelection(document, mark.range)
+      const entry = documentFor(handlung.document)
+      const mark = entry?.marks.find((candidate) => candidate.id === handlung.markId)
+      const selection =
+        entry === undefined || entry.docx === null || mark === undefined
+          ? null
+          : createSelection(entry.docx, mark.range)
       // Ohne Dokument oder Marke gibt es nichts umzuschreiben. Das kann nur
       // eintreten, wenn die Arbeitsfläche unter dem Durchlauf weggezogen
       // wird — dann ist Abbrechen die ehrliche Antwort, kein Fehlerhalt.
@@ -170,9 +207,18 @@ export function useReapply({
         return
       }
 
+      // `selection !== null` heißt, dass `entry` gefunden wurde (siehe oben);
+      // der Übersetzer verfolgt diese Kette nicht über die Verzweigung
+      // hinweg, und eine Zusicherung wäre hier eine Behauptung statt einer
+      // Prüfung.
+      if (entry === undefined) {
+        setState(abbrechen)
+        return
+      }
+
       const own = new AbortController()
       controller.current = own
-      void ask(selection, own.signal).then(
+      void entry.rewrite(selection, own.signal).then(
         (variants) => {
           if (own.signal.aborted) return
           setState((previous) => variantenDa(previous, variants))
@@ -188,17 +234,17 @@ export function useReapply({
     }
 
     if (handlung.kind === 'uebernehmen') {
-      const { marks: current, applyEdit: apply, addClaims: claims } = deps.current
-      const mark = current.find((entry) => entry.id === handlung.markId)
-      if (mark === undefined) {
+      const entry = documentFor(handlung.document)
+      const mark = entry?.marks.find((candidate) => candidate.id === handlung.markId)
+      if (entry === undefined || mark === undefined) {
         setState(abbrechen)
         return
       }
       // Erst einsetzen, dann die Aussagen anmelden: `locateClaims` findet
       // sie nur, wenn sie im Dokument stehen. Dieselbe Reihenfolge wie bei
       // der Übernahme von Hand.
-      apply(mark.range, handlung.variant.text, { completes: true })
-      claims(handlung.variant.unbackedClaims)
+      entry.applyEdit(mark.range, handlung.variant.text, { completes: true })
+      entry.addClaims(handlung.variant.unbackedClaims)
       setState(uebernommen)
     }
   }, [state, jobAd])

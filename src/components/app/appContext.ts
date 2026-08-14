@@ -89,6 +89,29 @@ export interface StartSession {
   cv: LoadedDocument | null
   jobAdText: string
   userName: string
+  /**
+   * Der **Arbeitsumfang**: welche Unterlagen bei dieser Bewerbung angepasst
+   * werden (`docs/spec.md`, „Arbeitsumfang").
+   *
+   * Nicht Gewähltes bleibt **Faktenquelle**: Sein Text belegt weiterhin, was
+   * das andere Dokument behaupten darf (`factsFrom`), es erscheint aber
+   * nicht im Umschalter, bekommt kein Stilprofil — und wird nicht angefasst.
+   * Das spart bei einer Bewerbung, die nur den Lebenslauf verlangt, einen
+   * Modellaufruf und macht zugleich unmissverständlich, welche Datei am Ende
+   * verändert sein wird.
+   *
+   * Ein Umfang ohne jedes gewählte Dokument ist nicht hinschreibbar: Der
+   * Weiter-Knopf der Einstiegsseite bleibt gesperrt, solange nichts angehakt
+   * ist. Eine Arbeitsfläche ohne Arbeit wäre dieselbe Sackgasse, die diese
+   * Erweiterung gerade beseitigt.
+   */
+  scope: DocumentScope
+}
+
+/** Welche Unterlagen angepasst werden. Siehe {@link StartSession.scope}. */
+export interface DocumentScope {
+  letter: boolean
+  cv: boolean
 }
 
 /**

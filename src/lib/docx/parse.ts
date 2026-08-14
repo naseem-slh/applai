@@ -100,6 +100,29 @@ function parseParagraph(paragraphNode: Element): { text: string; runs: Run[] } {
  * Absatz ist, wären genau die Art von Abweichung, die später als
  * verrutschter Text auffällt.
  */
+/**
+ * Trägt dieses Dokument eine Tabelle?
+ *
+ * Gebraucht vom PDF-Export, und zwar als **Sperre**: Der Satzspiegel in
+ * `lib/export/pdf/layout.ts` kennt keine Tabellen (das steht dort
+ * ausdrücklich unter „Was bewusst fehlt"). Ein tabellenbasiertes Dokument
+ * käme als PDF ohne seine Tabelle heraus — der Text stünde untereinander,
+ * die Spalten wären weg. Zweispaltige Lebensläufe sind genau solche
+ * Dokumente (siehe `replace.ts`, `isLastParagraphInTableCell`), und
+ * Adressblöcke im Anschreiben ebenfalls.
+ *
+ * Eine still falsche Bewerbungsmappe ist der schlechteste denkbare Ausgang.
+ * Word-Export und Kopierfeld bleiben davon unberührt: Sie reichen das
+ * Original weiter, statt es neu zu setzen.
+ *
+ * Gesucht wird im ganzen Dokument, auch in Kopf- und Fußzeilen dieses Teils —
+ * `getElementsByTagName` sucht rekursiv, und eine Tabelle irgendwo ist eine
+ * Tabelle.
+ */
+export function hasTables(doc: XMLDocument): boolean {
+  return doc.getElementsByTagName('w:tbl').length > 0
+}
+
 export function paragraphNodesOf(root: XMLDocument | Element): Element[] {
   return Array.from(root.getElementsByTagName('w:p')).filter((node) => !isNestedContent(node))
 }

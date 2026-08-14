@@ -96,7 +96,15 @@ test.describe('Nächste Anzeige', () => {
     )
   })
 
-  test('bietet den Durchlauf ohne vorgemerkte Stelle gar nicht erst an', async ({ page }) => {
+  /**
+   * **Auch ohne vorgemerkte Stelle.** Der Knopf war einmal an
+   * `marks.length > 0` gebunden und verschwand deshalb genau dann, wenn eine
+   * Vormerkung wegfiel — der Weg in die nächste Bewerbung war dann nicht mehr
+   * auffindbar, ohne dass irgendetwas erklärte, warum (siehe `ExportBar`,
+   * Commit „Klick in den Brief hebt die Vormerkung nicht mehr auf"). Dieser
+   * Test hielt bis hierher die alte Zusage fest.
+   */
+  test('bietet den Durchlauf auch ohne vorgemerkte Stelle an', async ({ page }) => {
     await stubProvider(page)
 
     await page.goto('/')
@@ -104,6 +112,6 @@ test.describe('Nächste Anzeige', () => {
     await fillStartPage(page)
     await waitForAnalysis(page)
 
-    await expect(page.getByRole('button', { name: t('editor.reapply.trigger') })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: t('editor.reapply.trigger') })).toBeVisible()
   })
 })

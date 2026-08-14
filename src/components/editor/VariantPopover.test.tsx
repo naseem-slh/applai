@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { LlmError } from '@/lib/ai/errors'
 import type { DocxDocument, Paragraph } from '@/lib/docx/model'
 import type { Variant } from '@/lib/domain/rewrite'
+import { variant } from '@/lib/domain/rewrite.testutils'
 import i18n from '@/lib/i18n/i18n'
 import { createSelection, type EditorSelection } from './documentSelection'
 import { VariantPopover } from './VariantPopover'
@@ -39,9 +40,9 @@ function selectionOf(from: number, to: number): EditorSelection {
 }
 
 const VARIANTS: Variant[] = [
-  { text: 'Ich bewerbe mich mit Freude.', unbackedClaims: [] },
-  { text: 'Auf diese Stelle bewerbe ich mich gern.', unbackedClaims: [] },
-  { text: 'Die Stelle passt zu meinem Weg.', unbackedClaims: [] },
+  variant('Ich bewerbe mich mit Freude.'),
+  variant('Auf diese Stelle bewerbe ich mich gern.'),
+  variant('Die Stelle passt zu meinem Weg.'),
 ]
 
 interface SetupOptions {
@@ -162,7 +163,7 @@ describe('VariantPopover', () => {
   it('nennt die unbelegten Aussagen einer Variante, bevor sie im Brief steht', async () => {
     const rewrite = vi.fn(() =>
       Promise.resolve<Variant[]>([
-        { text: 'Ich spreche fließend Finnisch.', unbackedClaims: ['spreche fließend Finnisch'] },
+        variant('Ich spreche fließend Finnisch.', { unbackedClaims: ['spreche fließend Finnisch'] }),
         VARIANTS[1]!,
         VARIANTS[2]!,
       ]),
@@ -177,6 +178,52 @@ describe('VariantPopover', () => {
     expect(screen.getByText('spreche fließend Finnisch')).toBeInTheDocument()
   })
 
+  /**
+   * Die Faktenprüfung. Der eine Fehler, den man dem fertigen Dokument nicht
+   * mehr ansieht — deshalb ein gesperrter Knopf statt eines Hinweises.
+   */
+  it('sperrt Übernehmen, solange eine veränderte Jahreszahl nicht bestätigt ist', async () => {
+    const rewrite = vi.fn(() =>
+      Promise.resolve<Variant[]>([
+        variant('Softwareentwickler bei Bosch, 2018 bis 2022', {
+          figures: { added: ['2018'], removed: ['2019'] },
+        }),
+      ]),
+    )
+    const onApply = vi.fn()
+    setup({ rewrite, onApply })
+
+    fireEvent.click(trigger())
+
+    await waitFor(() =>
+      expect(screen.getByText(t('editor.variants.figures.heading'))).toBeInTheDocument(),
+    )
+    expect(
+      screen.getByText(t('editor.variants.figures.changed', { from: '2019', to: '2018' })),
+    ).toBeInTheDocument()
+
+    const apply = screen.getByRole('button', { name: t('editor.variants.apply') })
+    expect(apply).toBeDisabled()
+
+    fireEvent.click(screen.getByRole('checkbox', { name: t('editor.variants.figures.confirm') }))
+
+    await waitFor(() => expect(apply).toBeEnabled())
+    fireEvent.click(apply)
+    expect(onApply).toHaveBeenCalledTimes(1)
+  })
+
+  it('lässt Übernehmen frei, wenn alle Zahlen wiederkehren', async () => {
+    const rewrite = vi.fn(() => Promise.resolve<Variant[]>([variant('Unverändert, 2019 bis 2022')]))
+    setup({ rewrite })
+
+    fireEvent.click(trigger())
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: t('editor.variants.apply') })).toBeEnabled(),
+    )
+    expect(screen.queryByText(t('editor.variants.figures.heading'))).toBeNull()
+  })
+
   it('sagt vor dem Übernehmen, dass ein festgehaltener Absatz leer zurückbleibt', async () => {
     // Ein Absatz mit eingebettetem Inhalt kann nicht entfernt werden; die
     // Markierung geht über beide, der Ersatztext hat nur eine Zeile.
@@ -185,7 +232,7 @@ describe('VariantPopover', () => {
     const selection = createSelection(docx, { from: 0, to: docx.text.length })!
 
     const rewrite = vi.fn(() =>
-      Promise.resolve<Variant[]>([{ text: 'Eine einzige Zeile.', unbackedClaims: [] }]),
+      Promise.resolve<Variant[]>([variant('Eine einzige Zeile.')]),
     )
     render(
       <VariantPopover selection={selection} rewrite={rewrite} ready onApply={vi.fn()} />,

@@ -83,6 +83,17 @@ export function buildFileName(
   company: string | null,
   date: Date,
   extension: string = DOCX_EXTENSION,
+  /**
+   * Der erste Teil des Dateinamens. Vorgabe „Anschreiben", der Lebenslauf
+   * reicht „Lebenslauf" herein.
+   *
+   * **Deutsch, nicht über i18next.** Der Name folgt der Sprache der Dateien,
+   * die der Nutzer selbst mitgebracht hat, nicht der der Oberfläche: Wer
+   * seine Unterlagen auf Deutsch führt und die Anwendung auf Englisch
+   * bedient, will keine Datei namens „CoverLetter_Firma.docx" in seinem
+   * Bewerbungsordner. Das war schon vor dieser Erweiterung so.
+   */
+  baseName: string = 'Anschreiben',
 ): string {
   const cleaned = [...(company ?? '')]
     .map((character) =>
@@ -96,7 +107,7 @@ export function buildFileName(
     .replace(TRIMMABLE_EDGES, '')
     .replace(/ /g, '_')
 
-  const parts = cleaned === '' ? ['Anschreiben', isoDate(date)] : ['Anschreiben', cleaned, isoDate(date)]
+  const parts = cleaned === '' ? [baseName, isoDate(date)] : [baseName, cleaned, isoDate(date)]
   return `${parts.join('_')}${extension}`
 }
 

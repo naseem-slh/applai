@@ -5,6 +5,7 @@ import {
   CV_DRAFT_ID,
   LETTER_DRAFT_ID,
   useApp,
+  type DocumentScope,
   type LoadedDocument,
   type StartSession,
 } from '@/components/app/appContext'
@@ -22,6 +23,7 @@ import {
 } from '@/components/start/loadDocument'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
+import { Checkbox } from '@/components/ui/Checkbox'
 import {
   Dialog,
   DialogContent,
@@ -74,6 +76,20 @@ const EMPTY_SLOT: SlotState = { document: null, busy: false, error: null }
 
 const DRAFT_ID: Record<Slot, string> = { letter: LETTER_DRAFT_ID, cv: CV_DRAFT_ID }
 
+/**
+ * Lässt sich diese Unterlage anpassen?
+ *
+ * Nein bei einem **mehrspaltig** gesetzten PDF: Die Umwandlung liest es Zeile
+ * für Zeile über die ganze Seitenbreite, danach steht der Text der linken und
+ * der rechten Spalte ineinander verschränkt (`start.pdf.multiColumn`). Was
+ * daraus als Word-Datei herauskäme, sähe aus wie eine Bewerbungsunterlage,
+ * wäre aber keine. Als **Faktenquelle** taugt derselbe Text weiterhin: Dort
+ * zählt, was dasteht, nicht in welcher Reihenfolge.
+ */
+function isAdjustable(document: LoadedDocument | null): boolean {
+  return document !== null && !document.multiColumn
+}
+
 /** Ein reines Kalenderdatum ohne Uhrzeit, das Format von `Application.date`. */
 const CALENDAR_DATE = /^\d{4}-\d{2}-\d{2}$/
 
@@ -118,6 +134,16 @@ export default function Start({ loaders = DEFAULT_LOADERS }: StartProps) {
   const [slots, setSlots] = useState<Record<Slot, SlotState>>(() => ({
     letter: { ...EMPTY_SLOT, document: session?.letter ?? null },
     cv: { ...EMPTY_SLOT, document: session?.cv ?? null },
+  }))
+  /**
+   * Der Arbeitsumfang (siehe `StartSession.scope`). Eine frisch abgelegte
+   * Unterlage ist angehakt, sofern sie sich anpassen lässt — der Regelfall
+   * soll nichts verlangen. Wer nur eine der beiden anpassen will, hakt die
+   * andere ab; sie bleibt dann Faktenquelle.
+   */
+  const [scope, setScope] = useState<DocumentScope>(() => ({
+    letter: session?.scope.letter ?? false,
+    cv: session?.scope.cv ?? false,
   }))
   const [jobAdText, setJobAdText] = useState(session?.jobAdText ?? '')
   const [jobAdBusy, setJobAdBusy] = useState(false)
@@ -183,16 +209,19 @@ export default function Start({ loaders = DEFAULT_LOADERS }: StartProps) {
     try {
       const loaded = await loaders.loadDocument(file)
       setSlots((current) => ({ ...current, [slot]: { document: loaded, busy: false, error: null } }))
+      setScope((current) => ({ ...current, [slot]: isAdjustable(loaded) }))
       setRecent((current) => ({ ...current, [slot]: null }))
       adoptName(loaded.text)
     } catch (error) {
       const reason: DocumentLoadReason = error instanceof DocumentLoadError ? error.reason : 'unreadable'
       setSlots((current) => ({ ...current, [slot]: { document: null, busy: false, error: reason } }))
+      setScope((current) => ({ ...current, [slot]: false }))
     }
   }
 
   function handleClear(slot: Slot): void {
     setSlots((current) => ({ ...current, [slot]: { ...EMPTY_SLOT } }))
+    setScope((current) => ({ ...current, [slot]: false }))
   }
 
   function handleUseRecent(slot: Slot): void {
@@ -211,6 +240,9 @@ export default function Start({ loaders = DEFAULT_LOADERS }: StartProps) {
       letterheadAppliedFor: draft.letterheadAppliedFor,
     }
     setSlots((current) => ({ ...current, [slot]: { document: loaded, busy: false, error: null } }))
+    // Ein fortgesetzter Entwurf entstand aus einer Word-Datei und ist damit
+    // immer anpassbar (`multiColumn: false`, siehe oben).
+    setScope((current) => ({ ...current, [slot]: true }))
     setRecent((current) => ({ ...current, [slot]: null }))
     adoptName(draft.text)
   }
@@ -241,6 +273,10 @@ export default function Start({ loaders = DEFAULT_LOADERS }: StartProps) {
   const busy = slots.letter.busy || slots.cv.busy || jobAdBusy
   const missing: string[] = []
   if (!hasDocument) missing.push(t('start.missing.document'))
+  // Eine Arbeitsfläche ohne ein einziges anzupassendes Dokument hätte nichts
+  // zu tun. Gefragt wird erst, wenn überhaupt etwas dasteht — sonst stünde
+  // die Forderung neben zwei leeren Ablegefeldern.
+  if (hasDocument && !scope.letter && !scope.cv) missing.push(t('start.missing.scope'))
   if (jobAdText.trim() === '') missing.push(t('start.missing.jobAd'))
   // Erst fragen, wenn es ein Dokument gibt — vorher steht das Feld gar
   // nicht da, und eine Forderung ohne sichtbares Feld wäre eine Sackgasse.
@@ -252,6 +288,10 @@ export default function Start({ loaders = DEFAULT_LOADERS }: StartProps) {
       cv,
       jobAdText: jobAdText.trim(),
       userName: userName.trim(),
+      // Nur, was auch dasteht: Ein Haken an einem Feld, das zwischenzeitlich
+      // geleert wurde, führte die Arbeitsfläche sonst zu einem Dokument, das
+      // es nicht gibt.
+      scope: { letter: scope.letter && letter !== null, cv: scope.cv && cv !== null },
     }
     setSession(next)
     // Der Zwischenstand ist zugleich das, was beim nächsten Start als
@@ -439,6 +479,34 @@ export default function Start({ loaders = DEFAULT_LOADERS }: StartProps) {
                         </p>
                       )}
                     </Card>
+                  )}
+                  {/* Der Arbeitsumfang, unmittelbar an der Unterlage, auf die
+                      er sich bezieht — nicht als eigene Frage weiter unten.
+                      Wer die Datei ablegt, entscheidet im selben Blick, ob sie
+                      angepasst werden soll. */}
+                  {state.document !== null && (
+                    <div className="flex items-start gap-2">
+                      <Checkbox
+                        id={`${fieldPrefix}-scope-${slot}`}
+                        checked={scope[slot]}
+                        disabled={!isAdjustable(state.document)}
+                        onCheckedChange={(next) =>
+                          setScope((current) => ({ ...current, [slot]: next === true }))
+                        }
+                        className="mt-0.5"
+                      />
+                      <label
+                        htmlFor={`${fieldPrefix}-scope-${slot}`}
+                        className="text-[length:var(--text-body-sm-size)] leading-[var(--text-body-sm-leading)] text-[var(--color-ink)]"
+                      >
+                        {t('start.scope.label')}
+                        <span className={cn('block', FIELD_HINT_CLASS)}>
+                          {isAdjustable(state.document)
+                            ? t('start.scope.hint')
+                            : t('start.scope.blocked')}
+                        </span>
+                      </label>
+                    </div>
                   )}
                 </div>
               )

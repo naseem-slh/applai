@@ -61,6 +61,16 @@ export interface SelectionLayerProps {
    * bleibt der Knopf „ganzes Dokument". Getippt werden darf trotzdem.
    */
   fineSelection: boolean
+  /**
+   * Darf das ganze Dokument auf einmal markiert werden?
+   *
+   * Beim Anschreiben ja (`docs/spec.md`, „Auswahl"). Beim **Lebenslauf
+   * nicht**: Er ist eine Gliederung aus Überschriften, Datumsspalten und
+   * Einträgen, und eine Umformulierung am Stück macht daraus Fließtext. Dort
+   * wird absatzweise gewählt — mit der Maus gezogen oder, mit dem Finger,
+   * durch Antippen des Absatzes.
+   */
+  allowWholeDocument?: boolean
   /** Absatz, in dem der Schreibcursor zuletzt stand. */
   caretParagraph: number | null
   onSelectWholeDocument: () => void
@@ -81,6 +91,7 @@ export interface SelectionLayerProps {
 export function SelectionLayer({
   selection,
   fineSelection,
+  allowWholeDocument = true,
   caretParagraph,
   onSelectWholeDocument,
   onSelectParagraph,
@@ -107,22 +118,33 @@ export function SelectionLayer({
           Rahmen, die Knoepfe darin geben ihre eigene ab, damit die Gruppe
           als ein Bedienelement gelesen wird und nicht als zwei. */}
       <div className="flex shrink-0 overflow-hidden rounded-md border border-[var(--color-control-border)]">
-        <Button
-          variant="secondary"
-          size="sm"
-          className="rounded-none border-0"
-          onMouseDown={keepSelection}
-          onClick={onSelectWholeDocument}
-        >
-          {t('editor.selection.wholeDocument')}
-        </Button>
-        {fineSelection && caretParagraph !== null && (
+        {allowWholeDocument && (
+          <Button
+            variant="secondary"
+            size="sm"
+            className="rounded-none border-0"
+            onMouseDown={keepSelection}
+            onClick={onSelectWholeDocument}
+          >
+            {t('editor.selection.wholeDocument')}
+          </Button>
+        )}
+        {/* Der Absatzknopf erscheint mit einem genauen Zeigegerät immer — und
+            ohne eines nur dort, wo „Ganzes Dokument" fehlt. Beim Anschreiben
+            bleibt es damit bei der Zusage aus `docs/spec.md` („Mit dem Finger
+            ist nur das ganze Dokument wählbar"); der Lebenslauf, der das
+            ganze Dokument nicht anbietet, braucht dagegen unterwegs einen
+            Weg, und das Antippen eines Absatzes ist er. */}
+        {caretParagraph !== null && (fineSelection || !allowWholeDocument) && (
           // Sichtbar steht „Absatz", der Name bleibt „Aktueller Absatz":
           // In der Zeile zaehlt jede Breite, vorgelesen zaehlt die Bedeutung.
           <Button
             variant="secondary"
             size="sm"
-            className="rounded-none border-0 border-l border-[var(--color-control-border)]"
+            className={cn(
+              'rounded-none border-0',
+              allowWholeDocument && 'border-l border-[var(--color-control-border)]',
+            )}
             aria-label={t('editor.selection.currentParagraph')}
             onMouseDown={keepSelection}
             onClick={() => onSelectParagraph(caretParagraph)}
@@ -141,7 +163,11 @@ export function SelectionLayer({
       <div role="status" className="flex min-w-0 flex-1 items-center gap-2">
         {selection === null ? (
           <p className={cn(FIELD_HINT_CLASS, 'truncate')}>
-            {fineSelection ? t('editor.selection.none') : t('editor.selection.touch')}
+            {fineSelection
+              ? t('editor.selection.none')
+              : allowWholeDocument
+                ? t('editor.selection.touch')
+                : t('editor.selection.touchParagraph')}
           </p>
         ) : (
           <>

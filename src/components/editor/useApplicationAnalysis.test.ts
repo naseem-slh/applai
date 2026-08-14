@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { createFakeStorage, type FakeStorage } from '@/components/app/appContext.testutils'
 import { LlmError } from '@/lib/ai/errors'
 import type { LlmProvider } from '@/lib/ai/provider'
-import { useLetterAnalysis, type LetterAnalysisOptions } from './useLetterAnalysis'
+import { useApplicationAnalysis, type ApplicationAnalysisOptions } from './useApplicationAnalysis'
 
 const JOB_AD_ANSWER = JSON.stringify({
   language: 'de',
@@ -49,10 +49,14 @@ function createProvider(overrides: Partial<LlmProvider> = {}): LlmProvider {
   }
 }
 
-function options(overrides: Partial<LetterAnalysisOptions> = {}): LetterAnalysisOptions {
+function options(overrides: Partial<ApplicationAnalysisOptions> = {}): ApplicationAnalysisOptions {
   return {
     jobAdText: 'Wir suchen eine Entwicklerin bei Siemens.',
     letterText: LETTER_TEXT,
+    // Standard: kein Lebenslauf im Arbeitsumfang. Die Tests dieser Datei
+    // prüfen Anzeige und Anschreiben; wer das Lebenslauf-Profil braucht,
+    // reicht `cvText` ausdrücklich herein.
+    cvText: null,
     provider: createProvider(),
     apiKey: 'test-key',
     privacy: { enabled: true, userName: 'Marlene Ostwald' },
@@ -66,9 +70,9 @@ async function ready(result: { current: { status: string } }): Promise<void> {
   await waitFor(() => expect(result.current.status).toBe('ready'))
 }
 
-describe('useLetterAnalysis', () => {
+describe('useApplicationAnalysis', () => {
   it('wertet Anzeige und Stilprofil beim Laden aus', async () => {
-    const { result } = renderHook((props: LetterAnalysisOptions) => useLetterAnalysis(props), {
+    const { result } = renderHook((props: ApplicationAnalysisOptions) => useApplicationAnalysis(props), {
       initialProps: options(),
     })
 
@@ -82,7 +86,7 @@ describe('useLetterAnalysis', () => {
 
   it('fragt gar nicht, solange kein Schlüssel im Arbeitsspeicher liegt', () => {
     const provider = createProvider()
-    const { result } = renderHook(() => useLetterAnalysis(options({ provider, apiKey: null })))
+    const { result } = renderHook(() => useApplicationAnalysis(options({ provider, apiKey: null })))
 
     expect(result.current.status).toBe('idle')
     expect(provider.generate).not.toHaveBeenCalled()
@@ -104,7 +108,7 @@ describe('useLetterAnalysis', () => {
       }),
     })
 
-    const { result } = renderHook(() => useLetterAnalysis(options({ provider })))
+    const { result } = renderHook(() => useApplicationAnalysis(options({ provider })))
     await waitFor(() => expect(result.current.status).toBe('ready'))
 
     const styleCall = vi
@@ -118,7 +122,7 @@ describe('useLetterAnalysis', () => {
   it('sendet den Klartext, wenn die Anonymisierung abgeschaltet ist', async () => {
     const provider = createProvider()
     const { result } = renderHook(() =>
-      useLetterAnalysis(options({ provider, privacy: { enabled: false, userName: 'Marlene Ostwald' } })),
+      useApplicationAnalysis(options({ provider, privacy: { enabled: false, userName: 'Marlene Ostwald' } })),
     )
     await waitFor(() => expect(result.current.status).toBe('ready'))
 
@@ -138,7 +142,7 @@ describe('useLetterAnalysis', () => {
       }),
     })
 
-    const { result } = renderHook(() => useLetterAnalysis(options({ provider })))
+    const { result } = renderHook(() => useApplicationAnalysis(options({ provider })))
     await waitFor(() => expect(result.current.status).toBe('failed'))
     expect(result.current.error).toBeInstanceOf(LlmError)
 
@@ -159,7 +163,7 @@ describe('useLetterAnalysis', () => {
       ),
     })
 
-    const { unmount } = renderHook(() => useLetterAnalysis(options({ provider })))
+    const { unmount } = renderHook(() => useApplicationAnalysis(options({ provider })))
     await waitFor(() => expect(seen).toBeDefined())
     expect(seen!.aborted).toBe(false)
 
@@ -171,7 +175,7 @@ describe('useLetterAnalysis', () => {
   it('legt beide Auswertungen ab, damit sie nicht zweimal bezahlt werden', async () => {
     const storage: FakeStorage = createFakeStorage()
     const props = options({ storage })
-    const { result } = renderHook(() => useLetterAnalysis(props))
+    const { result } = renderHook(() => useApplicationAnalysis(props))
 
     await ready(result)
 
@@ -184,13 +188,13 @@ describe('useLetterAnalysis', () => {
   it('fragt beim zweiten Mal gar nicht mehr, wenn Anzeige und Brief dieselben sind', async () => {
     const storage: FakeStorage = createFakeStorage()
     const firstProps = options({ storage })
-    const first = renderHook(() => useLetterAnalysis(firstProps))
+    const first = renderHook(() => useApplicationAnalysis(firstProps))
     await ready(first.result)
     first.unmount()
 
     const provider = createProvider()
     const secondProps = options({ storage, provider })
-    const second = renderHook(() => useLetterAnalysis(secondProps))
+    const second = renderHook(() => useApplicationAnalysis(secondProps))
     await ready(second.result)
 
     expect(provider.generate).not.toHaveBeenCalled()
@@ -201,13 +205,13 @@ describe('useLetterAnalysis', () => {
   it('fragt die Anzeige neu, wenn ihr Text ein anderer ist, den Brief aber nicht', async () => {
     const storage: FakeStorage = createFakeStorage()
     const firstProps = options({ storage })
-    const first = renderHook(() => useLetterAnalysis(firstProps))
+    const first = renderHook(() => useApplicationAnalysis(firstProps))
     await ready(first.result)
     first.unmount()
 
     const provider = createProvider()
     const secondProps = options({ storage, provider, jobAdText: 'Eine ganz andere Anzeige.' })
-    const second = renderHook(() => useLetterAnalysis(secondProps))
+    const second = renderHook(() => useApplicationAnalysis(secondProps))
     await ready(second.result)
 
     // Genau ein Aufruf: die Anzeige. Das Stilprofil kam aus dem Speicher.
@@ -217,13 +221,13 @@ describe('useLetterAnalysis', () => {
   it('benutzt den Eintrag eines anderen Modells nicht', async () => {
     const storage: FakeStorage = createFakeStorage()
     const firstProps = options({ storage })
-    const first = renderHook(() => useLetterAnalysis(firstProps))
+    const first = renderHook(() => useApplicationAnalysis(firstProps))
     await ready(first.result)
     first.unmount()
 
     const provider = createProvider({ model: 'anderes-modell' })
     const secondProps = options({ storage, provider })
-    const second = renderHook(() => useLetterAnalysis(secondProps))
+    const second = renderHook(() => useApplicationAnalysis(secondProps))
     await ready(second.result)
 
     expect(provider.generate).toHaveBeenCalledTimes(2)
@@ -232,7 +236,7 @@ describe('useLetterAnalysis', () => {
   it('fragt neu, wenn der Speicher Unbrauchbares enthält, statt daran zu scheitern', async () => {
     const storage: FakeStorage = createFakeStorage()
     const firstProps = options({ storage })
-    const first = renderHook(() => useLetterAnalysis(firstProps))
+    const first = renderHook(() => useApplicationAnalysis(firstProps))
     await ready(first.result)
     first.unmount()
 
@@ -244,7 +248,7 @@ describe('useLetterAnalysis', () => {
 
     const provider = createProvider()
     const secondProps = options({ storage, provider })
-    const second = renderHook(() => useLetterAnalysis(secondProps))
+    const second = renderHook(() => useApplicationAnalysis(secondProps))
     await ready(second.result)
 
     expect(provider.generate).toHaveBeenCalledTimes(2)

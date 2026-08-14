@@ -128,7 +128,16 @@ export function createFakeVault(overrides: Partial<KeyVault> = {}): KeyVault {
  * Wer im Test gar keine Sitzung angibt, bekommt `null` — den Normalfall vor
  * dem ersten Weitergehen.
  */
-const BLANK_SESSION: StartSession = { letter: null, cv: null, jobAdText: '', userName: '' }
+const BLANK_SESSION: StartSession = {
+  letter: null,
+  cv: null,
+  jobAdText: '',
+  userName: '',
+  // Beide angehakt: Ein Test, der eine Unterlage angibt, meint sie auch. Was
+  // gar nicht dasteht, ist damit trotzdem nicht im Umfang — die Schale prüft
+  // Haken **und** Vorhandensein (siehe `Editor.tsx`).
+  scope: { letter: true, cv: true },
+}
 
 export interface HarnessOptions {
   storage?: FakeStorage

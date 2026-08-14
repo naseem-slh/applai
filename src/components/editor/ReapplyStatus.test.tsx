@@ -3,13 +3,17 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import i18n from '@/lib/i18n/i18n'
 import type { ReapplyState } from '@/lib/domain/reapply'
+import { variant } from '@/lib/domain/rewrite.testutils'
 import { ReapplyStatus } from './ReapplyStatus'
 
 const t = i18n.getFixedT(i18n.resolvedLanguage ?? 'de')
 
 const LAUF = {
   mode: 'schnell',
-  steps: [{ markId: 'a' }, { markId: 'b' }],
+  steps: [
+    { markId: 'a', document: 'letter' as const },
+    { markId: 'b', document: 'letter' as const },
+  ],
   index: 1,
   applied: 1,
   skipped: [],
@@ -97,9 +101,9 @@ describe('ReapplyStatus', () => {
   // anfragen.
   it('zeigt beim Wählen die bereits geholten Formulierungen zur Übernahme', async () => {
     const varianten = [
-      { text: 'Erste Fassung', unbackedClaims: [] },
-      { text: 'Zweite Fassung', unbackedClaims: [] },
-      { text: 'Dritte Fassung', unbackedClaims: [] },
+      variant('Erste Fassung'),
+      variant('Zweite Fassung'),
+      variant('Dritte Fassung'),
     ]
     const { onChoose, user } = setup({
       status: 'haelt',
@@ -129,7 +133,7 @@ describe('ReapplyStatus', () => {
     setup({
       status: 'fertig',
       applied: 3,
-      skipped: [{ markId: 'x', reason: 'anbieterfehler' }],
+      skipped: [{ markId: 'x', document: 'letter' as const, reason: 'anbieterfehler' as const }],
     })
 
     expect(screen.getByText(t('editor.reapply.done', { count: 3 }))).toBeInTheDocument()
@@ -149,7 +153,7 @@ describe('ReapplyStatus', () => {
     setup({
       status: 'abgebrochen',
       applied: 1,
-      skipped: [{ markId: 'b', reason: 'abgebrochen' }],
+      skipped: [{ markId: 'b', document: 'letter' as const, reason: 'abgebrochen' as const }],
     })
 
     expect(screen.getByText(t('editor.reapply.stopped'))).toBeInTheDocument()

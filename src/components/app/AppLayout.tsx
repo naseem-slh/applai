@@ -15,7 +15,10 @@ import { cn } from '@/lib/utils'
  * unbedienbar, sobald die Bildschirmtastatur aufgeht.
  *
  * Die Kopfzeile trägt den Ablauf: zwei Schritte, „Vorbereiten" und
- * „Anschreiben anpassen". Der zweite bleibt gesperrt, solange es keinen
+ * „Unterlagen anpassen". **Zwei bleiben es auch mit zwei Dokumenten** —
+ * Anschreiben und Lebenslauf sind keine aufeinanderfolgenden Arbeitsschritte,
+ * sondern zwei Sichten auf dieselbe Bewerbung; umgeschaltet wird über dem
+ * Blatt (`DocumentSwitch`). Der zweite Schritt bleibt gesperrt, solange es keinen
  * Übergabestand gibt — dieselbe Bedingung, an der auch `RequireSession`
  * hängt, nur sichtbar gemacht, statt den Nutzer erst auf eine Umleitung
  * laufen zu lassen.
