@@ -147,9 +147,9 @@ function EditorWorkspace({ session }: { session: StartSession }) {
 
   /**
    * **Markieren ist Vormerken.** Es gibt keinen eigenen Knopf mehr: Wer eine
-   * Textstelle markiert, hat sie damit vorgemerkt, und ein Klick hinein
-   * hebt sie wieder auf. Der Handgriff, den der Nutzer ohnehin macht, sagt
-   * bereits alles; ein zweiter wäre eine Wiederholung.
+   * Textstelle markiert, hat sie damit vorgemerkt. Der Handgriff, den der
+   * Nutzer ohnehin macht, sagt bereits alles; ein zweiter wäre eine
+   * Wiederholung.
    *
    * Gerufen wird das erst, wenn die Markierung **fertig** ist (siehe
    * `onSettled`) — beim Ziehen meldet der Browser fortwährend
@@ -158,24 +158,22 @@ function EditorWorkspace({ session }: { session: StartSession }) {
    *
    * `toggleMark` erledigt den Rest: deckungsgleich hebt auf, überschneidend
    * ersetzt (siehe `marks.ts`).
+   *
+   * **Ein bloßer Klick hebt nichts mehr auf.** Er tat es einmal, und das war
+   * in einem beschreibbaren Dokument der falsche Handgriff: Wer den
+   * Schreibcursor in eine vorgemerkte Stelle setzt — um einen Tippfehler zu
+   * berichtigen, um die gerade übernommene Formulierung zu lesen —, löschte
+   * damit stillschweigend die Vormerkung. Danach war die Merkliste leer, und
+   * „Nächste Anzeige" hatte nichts mehr abzuarbeiten: Der Durchlauf stellte
+   * das Original her und meldete „0 Stellen übernommen". Aufheben lässt sich
+   * eine Stelle weiterhin auf zwei Wegen, die beide ausdrücklich sind — noch
+   * einmal genau dieselbe Stelle markieren, oder „Entfernen" in der
+   * Merkliste.
    */
-  const settleSelection = useCallback(
-    (range: TextRange | null) => {
-      if (range === null) return
-      if (range.to > range.from) {
-        markHandleRef.current?.toggle(range)
-        return
-      }
-      // Zusammengefallen: ein Klick. Liegt er in einer vorgemerkten Stelle,
-      // nimmt er sie weg. Der Schreibcursor steht danach trotzdem dort, und
-      // der nächste Klick verhält sich wieder gewöhnlich.
-      const hit = marksRef.current.find(
-        (mark) => mark.range.from <= range.from && range.from <= mark.range.to,
-      )
-      if (hit !== undefined) markHandleRef.current?.remove(hit.id)
-    },
-    [],
-  )
+  const settleSelection = useCallback((range: TextRange | null) => {
+    if (range === null || range.to === range.from) return
+    markHandleRef.current?.toggle(range)
+  }, [])
 
   const { selection, caretParagraph, select, clear } = useDocumentSelection({
     rootRef,
@@ -1156,6 +1154,29 @@ function EditorWorkspace({ session }: { session: StartSession }) {
               '[&>*]:shrink-0',
             )}
           >
+            {/* Die Ausgabe steht **oben**, nicht am Fuß der Spalte. Sie ist
+                zwar das Ende der Arbeit, aber der am häufigsten gesuchte
+                Knopf des ganzen Bildschirms — und darunter hängt mit
+                „Nächste Anzeige" der Einstieg in die nächste Bewerbung.
+                Am Fuß lag beides unter drei aufklappbaren Bereichen und war
+                auf einem kleineren Fenster nur nach dem Blättern zu sehen. */}
+            <div>
+              <ExportBar
+                document={docx}
+                company={jobAd?.company ?? null}
+                blocked={claims.exportBlocked}
+                onExported={handleExported}
+                onNextPosting={() => setReapplyOpen(true)}
+              />
+              <ReapplyStatus
+                state={reapply.state}
+                onChoose={reapply.choose}
+                onRetry={reapply.retry}
+                onSkip={reapply.skip}
+                onCancel={reapply.cancel}
+              />
+            </div>
+
             {/* Der Wahrheitsmodus stand bisher unter der Markierungsleiste.
                 Er gilt für die ganze Sitzung und nicht für diese eine
                 Markierung, gehört also zu den Stellschrauben. */}
@@ -1177,27 +1198,13 @@ function EditorWorkspace({ session }: { session: StartSession }) {
                 onChange={setStyle}
                 sliders={sliders}
                 onSlidersChange={setSliders}
-                defaultOpen={wide}
+                // Zugeklappt auch auf breiten Fenstern: Das Stilprofil ist
+                // gelesen und gemessen, bevor der Nutzer hier ankommt — es
+                // will nachgesehen und selten korrigiert werden, nicht
+                // dauernd angesehen.
+                defaultOpen={false}
               />
             )}
-            {/* Die Ausgabe sitzt am Fuß der Spalte: Sie ist das Ende der
-                Arbeit und soll nicht zwischen den Stellschrauben stehen. */}
-            <div className="mt-auto pt-3">
-              <ExportBar
-                document={docx}
-                company={jobAd?.company ?? null}
-                blocked={claims.exportBlocked}
-                onExported={handleExported}
-                onNextPosting={marks.length === 0 ? null : () => setReapplyOpen(true)}
-              />
-              <ReapplyStatus
-                state={reapply.state}
-                onChoose={reapply.choose}
-                onRetry={reapply.retry}
-                onSkip={reapply.skip}
-                onCancel={reapply.cancel}
-              />
-            </div>
           </aside>
         </div>
       </div>

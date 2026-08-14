@@ -47,7 +47,7 @@ function setup(
       company={options.company === undefined ? 'Musterwerk' : options.company}
       blocked={options.blocked ?? false}
       onExported={onExported}
-      onNextPosting={options.onNextPosting ?? null}
+      onNextPosting={options.onNextPosting ?? (() => {})}
     />,
   )
   return { onExported }

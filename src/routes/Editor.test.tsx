@@ -1154,6 +1154,16 @@ function markParagraph(index: number): void {
   fireEvent.click(screen.getByRole('button', { name: t('editor.selection.currentParagraph') }))
 }
 
+/**
+ * Ein gewöhnlicher Klick in den Brief: Schreibcursor setzen, Maustaste
+ * loslassen. Das Loslassen ist es, was `onSettled` meldet (siehe
+ * `useDocumentSelection`).
+ */
+function clickInto(surface: HTMLElement, index: number, offset: number): void {
+  caretIn(index, offset)
+  fireEvent.pointerUp(surface)
+}
+
 describe('Editor — vorgemerkte Stellen', () => {
   it('merkt die markierte Stelle vor und führt sie in der Liste', async () => {
     setup()
@@ -1218,6 +1228,24 @@ describe('Editor — vorgemerkte Stellen', () => {
     expect(markEntry(1)).toBeInTheDocument()
   })
 
+  /**
+   * Der Brief ist beschreibbar, und ein Klick hinein setzt den Schreibcursor.
+   * Er hob die Vormerkung einmal auf — wer die gerade übernommene
+   * Formulierung nachlas oder einen Tippfehler berichtigte, löschte sie damit
+   * stillschweigend. Danach war die Merkliste leer und „Nächste Anzeige"
+   * hatte nichts mehr abzuarbeiten.
+   */
+  it('lässt die Vormerkung stehen, wenn in den Brief geklickt wird', async () => {
+    setup()
+    const surface = await documentSurface()
+    markParagraph(1)
+
+    clickInto(surface, 1, 5)
+
+    expect(screen.getByText(t('editor.marks.progress', { done: 0, total: 1 }))).toBeInTheDocument()
+    expect(markEntry(1)).toBeInTheDocument()
+  })
+
   it('holt Strg+Z Text und Vormerkung zusammen zurück', async () => {
     stubFetch()
     setup({ vault: unlockedVault() })
@@ -1263,18 +1291,22 @@ describe('Editor — vorgemerkte Stellen', () => {
 // ---------------------------------------------------------------------------
 
 describe('Editor — nächste Anzeige', () => {
-  it('bietet den Durchlauf erst an, wenn etwas vorgemerkt ist', async () => {
+  // Der Knopf hing einmal an `marks.length > 0` und verschwand deshalb genau
+  // dann, wenn eine Vormerkung wegfiel — der Weg in die nächste Bewerbung war
+  // dann nicht mehr auffindbar. Ohne Stellen ist der Durchlauf nicht sinnlos:
+  // Er stellt das Original her und setzt den Briefkopf der neuen Anzeige.
+  it('bietet den Durchlauf auch ohne vorgemerkte Stelle an', async () => {
     setup({ vault: unlockedVault() })
     await documentSurface()
 
     expect(
-      screen.queryByRole('button', { name: t('editor.reapply.trigger') }),
-    ).not.toBeInTheDocument()
+      await screen.findByRole('button', { name: t('editor.reapply.trigger') }),
+    ).toBeInTheDocument()
 
     markParagraph(1)
 
     expect(
-      await screen.findByRole('button', { name: t('editor.reapply.trigger') }),
+      screen.getByRole('button', { name: t('editor.reapply.trigger') }),
     ).toBeInTheDocument()
   })
 
@@ -1297,6 +1329,40 @@ describe('Editor — nächste Anzeige', () => {
     setup({ vault: unlockedVault() })
     await documentSurface()
     markParagraph(1)
+
+    fireEvent.click(screen.getByRole('button', { name: t('editor.reapply.trigger') }))
+    const feld = await screen.findByLabelText(t('editor.reapply.jobAdLabel'))
+    fireEvent.change(feld, {
+      target: { value: 'Gesucht: Projektleiterin für ein Team von zehn Personen.' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: t('editor.reapply.fast') }))
+
+    expect(
+      await screen.findByText(t('editor.reapply.done', { count: 1 }), undefined, {
+        timeout: 5000,
+      }),
+    ).toBeInTheDocument()
+    expect(await documentSurface()).toHaveTextContent(VARIANT_TEXTS[0]!)
+  })
+
+  /**
+   * Der Weg, den eine zweite Bewerbung tatsächlich nimmt: erst von Hand
+   * umformulieren lassen, dann im Brief weiterarbeiten, dann die nächste
+   * Anzeige. Der Klick dazwischen ist kein Beiwerk — an ihm scheiterte der
+   * Durchlauf, weil er die Vormerkung wegnahm.
+   */
+  it('schreibt die Stelle auch dann um, wenn schon eine Variante übernommen wurde', async () => {
+    stubFetch()
+    setup({ vault: unlockedVault() })
+    const surface = await documentSurface()
+    markParagraph(1)
+
+    await openVariants()
+    await screen.findByText(VARIANT_TEXTS[0]!)
+    fireEvent.click(screen.getAllByRole('button', { name: t('editor.variants.apply') })[0]!)
+    await waitFor(() => expect(paragraphElement(1).textContent).toBe(VARIANT_TEXTS[0]))
+
+    clickInto(surface, 1, 5)
 
     fireEvent.click(screen.getByRole('button', { name: t('editor.reapply.trigger') }))
     const feld = await screen.findByLabelText(t('editor.reapply.jobAdLabel'))

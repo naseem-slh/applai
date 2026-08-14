@@ -57,11 +57,17 @@ export interface ExportBarProps {
    */
   onExported: () => void
   /**
-   * Öffnet den Durchlauf für die nächste Ausschreibung. `null`, solange es
-   * nichts abzuarbeiten gibt — ohne vorgemerkte Stelle bliebe vom Durchlauf
-   * nur der Briefkopf, und dafür ist er nicht gebaut.
+   * Öffnet den Durchlauf für die nächste Ausschreibung.
+   *
+   * **Immer da, auch ohne vorgemerkte Stelle.** Der Knopf war einmal an
+   * `marks.length > 0` gebunden und verschwand deshalb genau dann, wenn eine
+   * Vormerkung wegfiel — der Weg in die nächste Bewerbung war dann schlicht
+   * nicht mehr auffindbar, ohne dass irgendetwas erklärte, warum. Ohne
+   * Stellen ist der Durchlauf nicht sinnlos: Er stellt das hochgeladene
+   * Anschreiben her, wertet die neue Anzeige aus und setzt den Briefkopf.
+   * Was er kosten wird, sagt der Dialog vor dem Start.
    */
-  onNextPosting: (() => void) | null
+  onNextPosting: () => void
 }
 
 export function ExportBar({
@@ -163,13 +169,10 @@ export function ExportBar({
 
         {/* Die nächste Bewerbung steht **unter** der Ausgabe, nicht
             daneben: Sie ist der Schritt danach, nicht einer der drei Wege
-            hinaus. Gesperrt ohne vorgemerkte Stellen — dann hätte der
-            Durchlauf nichts zu tun. */}
-        {onNextPosting !== null && (
-          <Button variant="secondary" onClick={onNextPosting} className="w-full">
-            {t('editor.reapply.trigger')}
-          </Button>
-        )}
+            hinaus. */}
+        <Button variant="secondary" onClick={onNextPosting} className="w-full">
+          {t('editor.reapply.trigger')}
+        </Button>
 
         {/* Der eine Halbsatz bleibt sichtbar statt im Fähnchen: Ein
             gesperrter Knopf nimmt keine Zeigerereignisse an und zeigt sein
