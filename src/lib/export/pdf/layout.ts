@@ -7,6 +7,8 @@ import type {
   PageFormat,
   ParagraphFormat,
 } from '../../docx/format'
+import { chooseRunningPart as choosePart } from '../../docx/format'
+import { floatPosition } from '../../docx/floatPosition'
 import { translateSymbolText } from '../../docx/symbols'
 import type { FontFace, FontProvider } from './fonts'
 
@@ -281,42 +283,16 @@ function placeFloat(
   flow: PageFlow,
 ): { pageIndex: number; items: DrawItem[] } | null {
   const page = format.page
-  const { anchor } = float
-
-  const originX = anchor.fromH === 'page' ? 0 : page.marginLeftPt
-  const spanX =
-    anchor.fromH === 'page' ? page.widthPt : page.widthPt - page.marginLeftPt - page.marginRightPt
-  const xPt =
-    anchor.alignH === 'center'
-      ? originX + (spanX - float.widthPt) / 2
-      : anchor.alignH === 'right'
-        ? originX + spanX - float.widthPt
-        : anchor.alignH === 'left'
-          ? originX
-          : originX + anchor.xPt
-
-  let pageIndex = 0
-  let originY = 0
-  if (anchor.fromV === 'paragraph') {
-    if (anchor.paragraphIndex === null) return null
-    const at = flow.anchorOf(anchor.paragraphIndex)
-    if (!at) return null
-    pageIndex = at.pageIndex
-    originY = at.topPt
-  } else if (anchor.fromV === 'margin') {
-    originY = page.marginTopPt
-  }
-
-  // Eine Ausrichtung am Absatz ergibt keinen Sinn — dort zählt der Versatz.
-  const spanY = anchor.fromV === 'page' ? page.heightPt : page.heightPt - page.marginTopPt - page.marginBottomPt
-  const yPt =
-    anchor.fromV !== 'paragraph' && anchor.alignV === 'center'
-      ? originY + (spanY - float.heightPt) / 2
-      : anchor.fromV !== 'paragraph' && anchor.alignV === 'bottom'
-        ? originY + spanY - float.heightPt
-        : anchor.fromV !== 'paragraph' && anchor.alignV === 'top'
-          ? originY
-          : originY + anchor.yPt
+  const at =
+    float.anchor.fromV === 'paragraph' && float.anchor.paragraphIndex !== null
+      ? flow.anchorOf(float.anchor.paragraphIndex)
+      : null
+  // Dieselbe Rechnung wie auf der Arbeitsfläche (`lib/docx/floatPosition.ts`)
+  // — stünde sie zweimal da, säße das Anschriftenfeld auf dem Schirm
+  // irgendwann woanders als in der Datei.
+  const position = floatPosition(float, page, at)
+  if (position === null) return null
+  const { pageIndex, xPt, yPt } = position
 
   switch (float.content.kind) {
     case 'image':
@@ -373,16 +349,6 @@ function runningItems(format: DocumentFormat, fonts: FontProvider, pageIndex: nu
     items.push(...layoutBlock(footer, format, fonts, top).items)
   }
   return items
-}
-
-function choosePart(
-  parts: DocumentFormat['header'],
-  titlePage: boolean,
-  pageIndex: number,
-): FormattedParagraph[] | null {
-  if (pageIndex === 0 && titlePage && parts.first) return parts.first
-  if (pageIndex % 2 === 1 && parts.even) return parts.even
-  return parts.default
 }
 
 /** Eine gesetzte Gruppe Absätze samt der Höhe, die sie einnimmt. */

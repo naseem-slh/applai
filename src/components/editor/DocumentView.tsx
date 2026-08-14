@@ -11,8 +11,10 @@ import {
   type RefObject,
 } from 'react'
 import type { DocumentFormat, FormattedParagraph, PageFormat } from '@/lib/docx/format'
+import type { ParagraphAnchor } from '@/lib/docx/floatPosition'
 import type { Paragraph } from '@/lib/docx/model'
 import { cn } from '@/lib/utils'
+import { DocumentFloats } from './DocumentFloats'
 import { useDocumentFonts } from './documentFonts'
 import {
   caretOffsetWithin,
@@ -287,8 +289,9 @@ export function DocumentView({
   const root = rootRef ?? ownRef
   const page = format?.page ?? null
   const { pages, geometry } = usePagination(root, paragraphs, page)
+  const anchors = useParagraphAnchors(root, geometry.pxPerPt, pages, paragraphs)
 
-  return (
+  const surface = (
     <div
       ref={root}
       // React verwaltet die Absätze, der Browser ihren Text. Das ist genau
@@ -371,6 +374,82 @@ export function DocumentView({
       ))}
     </div>
   )
+
+  if (format === null) return surface
+
+  // Die schwebende Ebene liegt **neben** dem Bearbeitungsbereich, nicht
+  // darin: Nicht bearbeitbare Inseln in einem `contentEditable` bringen den
+  // Schreibcursor durcheinander (siehe `DocumentFloats`).
+  return (
+    <div className="relative">
+      {surface}
+      <DocumentFloats
+        format={format}
+        pageCount={pages.length}
+        pxPerPt={geometry.pxPerPt}
+        pageGap={PAGE_GAP}
+        anchors={anchors}
+        natural={natural}
+      />
+    </div>
+  )
+}
+
+/** Der Abstand zwischen zwei Blättern (`mb-5`), in Pixeln. */
+const PAGE_GAP = 20
+
+/**
+ * Wo jeder Absatz zu stehen kam — Seite und Oberkante, in Punkt.
+ *
+ * Ein schwebendes Objekt hängt in Word regelmäßig an einem Absatz: die
+ * Unterschrift an der Grußformel. Auf welcher Seite und in welcher Höhe der
+ * landet, steht erst nach dem Umbruch fest, also erst nach dem Messen.
+ *
+ * Gemessen wird an der **fertigen** Aufteilung, deshalb hängt der Lauf an
+ * `pages`: Solange die Seiten sich noch setzen, stünde jeder Absatz gleich
+ * wieder woanders. Ersetzt wird die Zuordnung nur, wenn sie sich wirklich
+ * geändert hat — sonst liefe der Effekt endlos.
+ */
+function useParagraphAnchors(
+  root: RefObject<HTMLDivElement | null>,
+  pxPerPt: number,
+  pages: number[][],
+  paragraphs: readonly Paragraph[],
+): ReadonlyMap<number, ParagraphAnchor> {
+  const [anchors, setAnchors] = useState<ReadonlyMap<number, ParagraphAnchor>>(() => new Map())
+
+  useLayoutEffect(() => {
+    const element = root.current
+    if (element === null || pxPerPt <= 0) return
+
+    const next = new Map<number, ParagraphAnchor>()
+    element.querySelectorAll<HTMLElement>('[data-page]').forEach((box, pageIndex) => {
+      const pageTop = box.getBoundingClientRect().top
+      box.querySelectorAll<HTMLElement>(`[${PARAGRAPH_INDEX_ATTRIBUTE}]`).forEach((paragraph) => {
+        const index = Number(paragraph.getAttribute(PARAGRAPH_INDEX_ATTRIBUTE))
+        if (!Number.isInteger(index)) return
+        const topPt = (paragraph.getBoundingClientRect().top - pageTop) / pxPerPt
+        next.set(index, { pageIndex, topPt })
+      })
+    })
+
+    setAnchors((current) => (sameAnchors(current, next) ? current : next))
+  }, [root, pxPerPt, pages, paragraphs])
+
+  return anchors
+}
+
+function sameAnchors(
+  a: ReadonlyMap<number, ParagraphAnchor>,
+  b: ReadonlyMap<number, ParagraphAnchor>,
+): boolean {
+  if (a.size !== b.size) return false
+  for (const [index, anchor] of a) {
+    const other = b.get(index)
+    if (other === undefined) return false
+    if (other.pageIndex !== anchor.pageIndex || other.topPt !== anchor.topPt) return false
+  }
+  return true
 }
 
 /**

@@ -102,7 +102,8 @@ const MIME_BY_EXTENSION = new Map([
   ['svg', 'image/svg+xml'],
 ])
 
-function imageUrl(image: DocumentImage): string {
+/** Ein Bild aus dem Archiv als Adresse, die der Browser laden kann. */
+export function imageUrl(image: DocumentImage): string {
   const cached = imageUrls.get(image)
   if (cached !== undefined) return cached
 
