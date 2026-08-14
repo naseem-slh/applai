@@ -150,3 +150,30 @@ for ordner in ["marke", "figuren"]:
     for p in sorted(os.listdir(f"{DST}/{ordner}")):
         fp = f"{DST}/{ordner}/{p}"
         print(f"  {os.path.getsize(fp)/1024:8.1f} KB  {Image.open(fp).size}  {ordner}/{p}")
+
+
+# --- Die über die Kante Spähende -------------------------------------------
+# Dieselbe Geschichte wie bei der Spähenden um die Ecke, nur waagerecht: Die
+# Vorlage bringt ihre eigene Mauer mit, einen Querstrich bei Zeile 581 bis 589.
+# Er wird entfernt, damit die Kante des Blattes die Mauer sein kann — die
+# Finger, die sich davor krümmen, bleiben stehen.
+ueber = Image.open(f"{SRC}/webp/peeking-over-wall.webp").convert("RGBA")
+px = ueber.load()
+MAUER = range(576, 594)
+gelöscht = 0
+for x in range(ueber.width):
+    if any(px[x, y][3] > 40 for y in range(598, ueber.height)):
+        continue                      # hier greift eine Hand — nichts anfassen
+    for y in MAUER:
+        if px[x, y][3]:
+            px[x, y] = (0, 0, 0, 0)
+            gelöscht += 1
+
+mauer = 585.0                          # Mitte des Querstrichs in der Vorlage
+bb = ueber.getchannel("A").getbbox()
+ueber = ueber.crop(bb)
+anteil_oben = (mauer - bb[1]) / (bb[3] - bb[1])
+B = 640
+H2 = round(ueber.height * B / ueber.width)
+ueber.resize((B, H2), Image.LANCZOS).save(f"{DST}/figuren/spaehen-oben.webp", "WEBP", quality=92, method=6)
+print(f"Über die Kante: {gelöscht} Punkte der Mauer entfernt, Kante bei {anteil_oben:.4f} der Höhe, Ausgabe {B}x{H2}")
