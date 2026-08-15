@@ -95,7 +95,27 @@ describe('VariantPopover', () => {
     expect(rewrite).toHaveBeenCalledTimes(1)
 
     await waitFor(() => expect(screen.getByText(VARIANTS[0]!.text)).toBeInTheDocument())
-    expect(screen.getAllByRole('button', { name: t('editor.variants.apply') })).toHaveLength(3)
+    // Alle drei liegen im Stapel, aber übernommen wird der vorderste: ein
+    // „Übernehmen", nicht drei.
+    for (const entry of VARIANTS) expect(screen.getByText(entry.text)).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: t('editor.variants.apply') })).toHaveLength(1)
+  })
+
+  it('holt auf „Neu erzeugen" einen frischen Stapel und blättert wieder von vorn', async () => {
+    const { rewrite, onApply } = setup()
+
+    fireEvent.click(trigger())
+    await waitFor(() => expect(screen.getByText(VARIANTS[0]!.text)).toBeInTheDocument())
+    fireEvent.click(screen.getByRole('button', { name: t('editor.variants.next') }))
+
+    fireEvent.click(screen.getByRole('button', { name: t('editor.variants.regenerate') }))
+    expect(rewrite).toHaveBeenCalledTimes(2)
+
+    await waitFor(() => expect(screen.getByText(VARIANTS[0]!.text)).toBeInTheDocument())
+    // Der neue Stapel liegt auf seinem ersten Vorschlag und nicht auf dem
+    // Platz, an dem der alte stand.
+    fireEvent.click(screen.getByRole('button', { name: t('editor.variants.apply') }))
+    expect(onApply).toHaveBeenCalledWith(VARIANTS[0])
   })
 
   it('übernimmt die gewählte Variante und schließt', async () => {
@@ -103,7 +123,9 @@ describe('VariantPopover', () => {
 
     fireEvent.click(trigger())
     await waitFor(() => expect(screen.getByText(VARIANTS[1]!.text)).toBeInTheDocument())
-    fireEvent.click(screen.getAllByRole('button', { name: t('editor.variants.apply') })[1]!)
+    // Einmal weiterblättern: Übernommen wird, was dann vorn liegt.
+    fireEvent.click(screen.getByRole('button', { name: t('editor.variants.next') }))
+    fireEvent.click(screen.getByRole('button', { name: t('editor.variants.apply') }))
 
     expect(onApply).toHaveBeenCalledWith(VARIANTS[1])
     await waitFor(() => expect(screen.queryByText(VARIANTS[1]!.text)).not.toBeInTheDocument())

@@ -5,7 +5,8 @@ import { isAbortError } from '@/components/app/aiErrorKey'
 import { Button } from '@/components/ui/Button'
 import { Checkbox } from '@/components/ui/Checkbox'
 import { FIELD_HINT_CLASS } from '@/components/ui/Field'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/Popover'
+import { ArrowUpIcon, XIcon } from '@/components/ui/icons'
+import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from '@/components/ui/Popover'
 import { hasFigureChanges, pairFigureChange } from '@/lib/domain/factsGuard'
 import type { Variant } from '@/lib/domain/rewrite'
 import { cn } from '@/lib/utils'
@@ -46,10 +47,9 @@ import { paragraphsLeftBehind, type EditorSelection } from './documentSelection'
  * eine verschobene Stelle schreiben — das ist die eine Art Fehler, die
  * dieses Projekt an der Datei des Nutzers nicht machen darf.
  *
- * **Die Verschiebungswarnung ist hier genauer als in der Leiste.** Die
- * Leiste warnt beim Markieren, dass ein festgehaltener Absatz verrutschen
- * **kann**; hier liegt der Ersatztext vor, und `paragraphsLeftBehind` sagt
- * für jede Variante einzeln, ob es tatsächlich passiert.
+ * **Drei Varianten, ein Vorschlag zur Zeit.** Wie sie dargestellt werden,
+ * steht in `VariantDeck` weiter unten; was zu einem Vorschlag zu sagen ist,
+ * bevor er im Brief steht, in `VariantNotices`.
  */
 
 export type VariantStatus = 'idle' | 'loading' | 'ready' | 'failed'
@@ -80,6 +80,8 @@ export function VariantPopover({ selection, rewrite, ready, onApply }: VariantPo
   const [status, setStatus] = useState<VariantStatus>('idle')
   const [variants, setVariants] = useState<Variant[]>([])
   const [error, setError] = useState<unknown>(null)
+  /** Zählt die Läufe. Er ist der `key` des Stapels — siehe unten. */
+  const [run, setRun] = useState(0)
   const running = useRef<AbortController | null>(null)
 
   const stop = useCallback(() => {
@@ -99,6 +101,7 @@ export function VariantPopover({ selection, rewrite, ready, onApply }: VariantPo
       setStatus('loading')
       setError(null)
       setVariants([])
+      setRun((current) => current + 1)
       try {
         const result = await rewrite(current, controller.signal)
         if (controller.signal.aborted) return
@@ -152,20 +155,30 @@ export function VariantPopover({ selection, rewrite, ready, onApply }: VariantPo
         </Button>
       </PopoverTrigger>
 
-      {/* Breiter als die Vorgabe: Drei Formulierungsvorschläge sind Fließtext
-          und in 18rem nicht zu vergleichen. */}
+      {/* Breiter als die Vorgabe: Ein Formulierungsvorschlag ist Fließtext und
+          in 18rem nicht am Stück zu lesen. */}
       <PopoverContent
         aria-labelledby={headingId}
         align="start"
-        className="w-[min(28rem,calc(100vw-2rem))]"
+        className="w-[min(33.75rem,calc(100vw-2rem))]"
       >
         <div className="flex flex-col gap-3">
-          <h3
-            id={headingId}
-            className="text-[length:var(--text-body-size)] font-semibold text-[var(--color-ink-strong)]"
-          >
-            {t('editor.variants.heading')}
-          </h3>
+          <div className="flex items-center justify-between gap-3">
+            <h3
+              id={headingId}
+              className="font-display text-[length:var(--text-body-size)] font-semibold text-[var(--color-ink-strong)]"
+            >
+              {t('editor.variants.heading')}
+            </h3>
+            {/* Der Stapel bringt seine eigene Schließmarke mit: Er füllt die
+                Fläche, und wer ihn wegklicken will, sucht das Kreuz oben
+                rechts, nicht die Escape-Taste. */}
+            <PopoverClose asChild>
+              <Button variant="ghost" size="iconSm" aria-label={t('editor.variants.close')}>
+                <XIcon />
+              </Button>
+            </PopoverClose>
+          </div>
 
           {status === 'loading' && <PendingNotice onCancel={() => handleOpenChange(false)} />}
 
@@ -183,18 +196,17 @@ export function VariantPopover({ selection, rewrite, ready, onApply }: VariantPo
             </div>
           )}
 
-          {status === 'ready' && selection !== null && (
-            <ul className="flex flex-col gap-3">
-              {variants.map((variant, index) => (
-                <VariantOption
-                  key={`${index}-${variant.text.slice(0, 24)}`}
-                  variant={variant}
-                  number={index + 1}
-                  selection={selection}
-                  onApply={() => handleApply(variant)}
-                />
-              ))}
-            </ul>
+          {status === 'ready' && selection !== null && variants.length > 0 && (
+            // `key={run}`: Ein neuer Lauf ist ein neuer Stapel. Blattstand
+            // und bestätigte Zahlen gehören zu den Vorschlägen, die gerade da
+            // liegen, und nicht zu denen, die sie ersetzen.
+            <VariantDeck
+              key={run}
+              variants={variants}
+              selection={selection}
+              onApply={handleApply}
+              onRegenerate={() => void start(selection)}
+            />
           )}
         </div>
       </PopoverContent>
@@ -227,42 +239,191 @@ function PendingNotice({ onCancel }: { onCancel: () => void }) {
   )
 }
 
-interface VariantOptionProps {
-  variant: Variant
-  number: number
+interface VariantDeckProps {
+  variants: readonly Variant[]
   selection: EditorSelection
-  onApply: () => void
+  onApply: (variant: Variant) => void
+  onRegenerate: () => void
 }
 
-function VariantOption({ variant, number, selection, onApply }: VariantOptionProps) {
+/**
+ * Der Stapel: ein Vorschlag vorn, die übrigen versetzt darunter.
+ *
+ * **Warum nicht alle drei nebeneinander.** Die Varianten unterscheiden sich
+ * in Nuancen; drei solcher Sätze zu vergleichen ist mehr Arbeit als das
+ * Umschreiben selbst, und am Ende steht die Wahl zwischen drei Dingen, von
+ * denen zwei ohnehin verworfen werden. Vorn liegt einer, die anderen zeigen
+ * ihre Kante — sichtbar genug, dass niemand denkt, es gäbe nur diesen einen.
+ *
+ * **Geblättert wird über den Platz, nicht über den Inhalt.** Die Karten
+ * behalten ihren Text und bekommen ein neues `data-pos`; die Bewegung zeigt
+ * damit, woher der nächste Vorschlag kommt. Die Darstellung der Plätze steht
+ * in `design.css` (`@utility deck`).
+ *
+ * **Nur ein „Übernehmen".** Es gehört zum vordersten Vorschlag und steht
+ * deshalb in der Leiste darunter, neben den Punkten, die sagen, welcher das
+ * gerade ist.
+ */
+function VariantDeck({ variants, selection, onApply, onRegenerate }: VariantDeckProps) {
+  const { t } = useTranslation()
+  const [front, setFront] = useState(0)
+  /**
+   * Die bestätigten Zahlenabweichungen, je Vorschlag.
+   *
+   * Hier und nicht in der Karte: Eine Karte wechselt beim Blättern ihren Platz
+   * im Stapel, und eine Bestätigung, die am Platz hinge statt am Vorschlag,
+   * wanderte damit auf einen anderen Text.
+   */
+  const [accepted, setAccepted] = useState<readonly number[]>([])
+
+  function step(by: number): void {
+    setFront((current) => (current + by + variants.length) % variants.length)
+  }
+
+  const variant = variants[front]!
+  const figuresAccepted = accepted.includes(front)
+  const blocked = hasFigureChanges(variant.figures) && !figuresAccepted
+
+  return (
+    <div className="flex flex-col gap-3">
+      <ul className="deck">
+        {variants.map((entry, index) => {
+          // Der Platz im Stapel, nicht der Platz in der Antwort. Tiefer als
+          // zwei geht die Darstellung nicht: Die Anbieter liefern drei, und
+          // eine vierte Kante wäre von der dritten nicht zu unterscheiden.
+          const position = Math.min((index - front + variants.length) % variants.length, 2)
+          const inFront = position === 0
+          return (
+            <li
+              key={`${index}-${entry.text.slice(0, 24)}`}
+              data-pos={position}
+              // Die hinteren Karten sind Auskunft über die Menge, nicht zum
+              // Lesen da; ihr Text steht nur im Baum, damit der Stapel seine
+              // Höhe behält (siehe `@utility deck`).
+              aria-hidden={inFront ? undefined : true}
+              className={cn(
+                'flex flex-col gap-2 rounded-tile border-[3px] bg-[var(--field)]',
+                'px-[15px] pt-[13px] pb-[14px]',
+                inFront ? 'border-[var(--line)]' : 'border-[var(--line-soft)]',
+              )}
+            >
+              <p className="whitespace-pre-wrap text-[var(--color-ink)]">{entry.text}</p>
+              <span className={cn(FIELD_HINT_CLASS, 'tabular-nums')}>
+                {t('editor.variants.length', { chars: entry.text.length })}
+              </span>
+
+              {inFront && (
+                <VariantNotices
+                  variant={entry}
+                  selection={selection}
+                  figuresAccepted={figuresAccepted}
+                  onFiguresAccepted={(next) =>
+                    setAccepted((current) =>
+                      next ? [...current, front] : current.filter((item) => item !== front),
+                    )
+                  }
+                />
+              )}
+            </li>
+          )
+        })}
+      </ul>
+
+      <div className="flex flex-wrap items-center gap-2">
+        {variants.length > 1 && (
+          <>
+            <Button
+              variant="ghost"
+              size="iconSm"
+              aria-label={t('editor.variants.previous')}
+              onClick={() => step(-1)}
+            >
+              <ArrowUpIcon className="-rotate-90" />
+            </Button>
+
+            {/* Die Punkte sagen, wie viele es sind und wo man steht — dasselbe,
+                was die Meldung darunter für Vorlesesoftware sagt. Zweimal
+                dieselbe Auskunft ist einmal zu viel, deshalb hier nichts zu
+                lesen. */}
+            <ol aria-hidden="true" className="mx-1 flex items-center gap-1.5">
+              {variants.map((entry, index) => (
+                <li
+                  key={`${index}-${entry.text.slice(0, 12)}`}
+                  className={cn(
+                    'h-[9px] rounded-pill border-2 border-[var(--line)]',
+                    'transition-[width,background-color]',
+                    index === front ? 'w-[22px] bg-[var(--accent)]' : 'w-[9px] bg-[var(--field)]',
+                  )}
+                />
+              ))}
+            </ol>
+
+            <Button
+              variant="ghost"
+              size="iconSm"
+              aria-label={t('editor.variants.next')}
+              onClick={() => step(1)}
+            >
+              <ArrowUpIcon className="rotate-90" />
+            </Button>
+          </>
+        )}
+
+        <span className="flex-1" />
+
+        <Button variant="primary" size="sm" disabled={blocked} onClick={() => onApply(variant)}>
+          {t('editor.variants.apply')}
+        </Button>
+      </div>
+
+      {/* Was die Punkte zeigen, in Worten: Wer blättert, ohne zu sehen, soll
+          erfahren, wo er steht. */}
+      <p role="status" className="sr-only">
+        {t('editor.variants.position', { number: front + 1, count: variants.length })}
+      </p>
+
+      {/* Nicht „Erneut versuchen": Es ist nichts schiefgegangen. Wem keiner
+          der drei zusagt, der lässt drei neue holen. */}
+      <Button variant="secondary" size="sm" className="self-start" onClick={onRegenerate}>
+        {t('editor.variants.regenerate')}
+      </Button>
+    </div>
+  )
+}
+
+interface VariantNoticesProps {
+  variant: Variant
+  selection: EditorSelection
+  figuresAccepted: boolean
+  onFiguresAccepted: (next: boolean) => void
+}
+
+/**
+ * Was zu einem Vorschlag zu sagen ist, bevor er im Brief steht: ungedeckte
+ * Aussagen, abweichende Zahlen, zurückbleibende Absätze.
+ *
+ * Steht nur am vordersten Vorschlag — die hinteren sind nicht zu lesen, und
+ * eine Warnung, die niemand sieht, ist keine.
+ *
+ * **Die Verschiebungswarnung ist hier genauer als in der Leiste.** Die Leiste
+ * warnt beim Markieren, dass ein festgehaltener Absatz verrutschen **kann**;
+ * hier liegt der Ersatztext vor, und `paragraphsLeftBehind` sagt für diesen
+ * Vorschlag, ob es tatsächlich passiert.
+ */
+function VariantNotices({
+  variant,
+  selection,
+  figuresAccepted,
+  onFiguresAccepted,
+}: VariantNoticesProps) {
   const { t } = useTranslation()
   const leftBehind = paragraphsLeftBehind(selection, variant.text)
-  /**
-   * Die Faktenprüfung sperrt „Übernehmen", bis sie bestätigt ist.
-   *
-   * **Bestätigt, nicht bloß angezeigt.** Eine Zahl, die sich verändert hat,
-   * ist der eine Fehler, den man dem fertigen Dokument nicht mehr ansieht —
-   * niemand liest ein Bewerbungs-PDF gegen das Arbeitszeugnis. Ein Hinweis
-   * daneben würde in der Hälfte der Fälle überlesen; ein gesperrter Knopf
-   * nicht.
-   *
-   * **Und trotzdem nur eine Sperre, kein Verbot.** Wer eine Zeile
-   * zusammenfasst, verliert womöglich absichtlich eine Angabe. Diese
-   * Entscheidung gehört dem Nutzer, hier, wo Markierung und Variante
-   * nebeneinander stehen.
-   */
-  const [figuresAccepted, setFiguresAccepted] = useState(false)
   const figuresChanged = hasFigureChanges(variant.figures)
   const change = pairFigureChange(variant.figures)
   const figureCheckId = useId()
 
   return (
-    <li className="flex flex-col gap-2 rounded-md border border-[var(--color-border)] p-3">
-      <p className="text-[length:var(--text-body-sm-size)] font-medium text-[var(--color-ink-strong)]">
-        {t('editor.variants.option', { number })}
-      </p>
-      <p className="whitespace-pre-wrap text-[var(--color-ink)]">{variant.text}</p>
-
+    <>
       {variant.unbackedClaims.length > 0 && (
         // Der freie Modus, sichtbar gemacht, bevor etwas im Brief steht.
         // Die Farbe trägt die Bedeutung nicht allein: Die Überschrift sagt,
@@ -280,10 +441,25 @@ function VariantOption({ variant, number, selection, onApply }: VariantOptionPro
       )}
 
       {figuresChanged && (
-        // In `--color-error`, nicht in `--color-warning`: Letzteres erreicht
-        // auf keiner hellen Fläche 4,5:1 (siehe DESIGN.md). Und die Farbe
-        // trägt die Bedeutung nicht allein — die Überschrift sagt, was los
-        // ist, und jede Angabe steht wörtlich da.
+        /**
+         * Die Faktenprüfung sperrt „Übernehmen", bis sie bestätigt ist.
+         *
+         * **Bestätigt, nicht bloß angezeigt.** Eine Zahl, die sich verändert
+         * hat, ist der eine Fehler, den man dem fertigen Dokument nicht mehr
+         * ansieht — niemand liest ein Bewerbungs-PDF gegen das Arbeitszeugnis.
+         * Ein Hinweis daneben würde in der Hälfte der Fälle überlesen; ein
+         * gesperrter Knopf nicht.
+         *
+         * **Und trotzdem nur eine Sperre, kein Verbot.** Wer eine Zeile
+         * zusammenfasst, verliert womöglich absichtlich eine Angabe. Diese
+         * Entscheidung gehört dem Nutzer, hier, wo Markierung und Vorschlag
+         * nebeneinander stehen.
+         *
+         * In `--color-error`, nicht in `--color-warning`: Letzteres erreicht
+         * auf keiner hellen Fläche 4,5:1 (siehe DESIGN.md). Und die Farbe
+         * trägt die Bedeutung nicht allein — die Überschrift sagt, was los
+         * ist, und jede Angabe steht wörtlich da.
+         */
         <div className="flex flex-col gap-2 rounded-md border border-[var(--color-error)] p-2">
           <p
             id={figureCheckId}
@@ -316,7 +492,7 @@ function VariantOption({ variant, number, selection, onApply }: VariantOptionPro
               id={`${figureCheckId}-confirm`}
               checked={figuresAccepted}
               aria-describedby={figureCheckId}
-              onCheckedChange={(next) => setFiguresAccepted(next === true)}
+              onCheckedChange={(next) => onFiguresAccepted(next === true)}
               className="mt-0.5"
             />
             <label
@@ -337,20 +513,6 @@ function VariantOption({ variant, number, selection, onApply }: VariantOptionPro
           })}
         </p>
       )}
-
-      <div className="flex items-center gap-2">
-        <Button
-          variant="secondary"
-          size="sm"
-          disabled={figuresChanged && !figuresAccepted}
-          onClick={onApply}
-        >
-          {t('editor.variants.apply')}
-        </Button>
-        <span className={FIELD_HINT_CLASS}>
-          {t('editor.variants.length', { chars: variant.text.length })}
-        </span>
-      </div>
-    </li>
+    </>
   )
 }
