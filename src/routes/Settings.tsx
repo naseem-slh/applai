@@ -203,7 +203,7 @@ export default function SettingsRoute() {
           Schalter, keine Lesespalte: In der schmalen Rinne stand jede
           Auswahlliste allein in ihrer Zeile, und die Seite war dreieinhalb
           Bildschirme hoch. Zwei Spalten bringen sie auf einen. */}
-      <div className="flex w-full flex-col items-center gap-6 px-4 pt-6 pb-8">
+      <div className="flex w-full flex-col items-center gap-4 px-3 pt-6 pb-8 sm:gap-6 sm:px-4">
         <PageHeader backTo="/" backLabel={t('nav.back')} className="max-w-[940px]" />
 
         <main className="flex w-full max-w-[940px] flex-col gap-6">
@@ -443,7 +443,7 @@ export default function SettingsRoute() {
           variant="danger"
         >
           <div className="mt-3 flex flex-wrap items-start gap-x-6 gap-y-3">
-            <div className="min-w-[16rem] flex-1">
+            <div className="min-w-0 flex-1 sm:min-w-[16rem]">
               <p className={FIELD_HINT_CLASS}>{t('settings.delete.body')}</p>
 
               <details className="mt-2">

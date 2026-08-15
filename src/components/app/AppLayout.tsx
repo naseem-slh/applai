@@ -41,7 +41,7 @@ function AppFooter() {
   const { pathname } = useLocation()
 
   return (
-    <footer className="mt-auto flex shrink-0 flex-wrap items-center justify-center gap-x-4 gap-y-1 px-4 pt-2 pb-4 short:pt-1 short:pb-2">
+    <footer className="mt-auto flex shrink-0 flex-wrap items-center justify-center gap-x-3 gap-y-1 px-3 pt-2 pb-3 sm:gap-x-4 sm:px-4 sm:pb-4 short:pt-1 short:pb-2">
       {pathname === '/datenschutz' ? null : (
         <Link to="/datenschutz" className={FOOTER_LINK_CLASS}>
           {t('nav.privacy')}

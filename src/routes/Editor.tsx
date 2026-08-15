@@ -765,7 +765,7 @@ function EditorWorkspace({ session }: { session: StartSession }) {
    *  Fehler, Ladevorgang). Sie sind Lesestoff, keine Werkbank, und stehen
    *  deshalb in einer ruhigen Spalte statt im Dreispalter darunter. */
   const state = (children: ReactNode) => (
-    <div className="min-h-0 flex-1 overflow-y-auto px-5 py-8 sm:px-8">
+    <div className="min-h-0 flex-1 overflow-y-auto px-4 py-6 sm:px-5 sm:py-8 md:px-8">
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">{children}</div>
     </div>
   )
@@ -834,9 +834,9 @@ function EditorWorkspace({ session }: { session: StartSession }) {
         <Link
           to="/"
           aria-label={t('editor.backToStart')}
-          className="focus-ring ml-4 rounded-control"
+          className="focus-ring ml-2 rounded-control sm:ml-4"
         >
-          <Wordmark className="[--breite:220px]" />
+          <Wordmark className="[--breite:160px] sm:[--breite:220px]" />
         </Link>
 
         <div className="flex flex-wrap items-center gap-3">
@@ -969,7 +969,7 @@ function EditorWorkspace({ session }: { session: StartSession }) {
               // quer über das Papier — und sie hatte nichts zu trennen: Jede
               // Karte bringt ihre eigene Tinte mit, und dazwischen liegt
               // Blatt. Getrennt wird über den Zwischenraum.
-              'flex flex-col gap-3 p-4',
+              'flex flex-col gap-3 p-3 sm:p-4',
               'xl:col-start-1 xl:row-start-1 xl:min-h-0 xl:overflow-y-auto',
               '[&>*]:shrink-0',
             )}
@@ -1086,7 +1086,7 @@ function EditorWorkspace({ session }: { session: StartSession }) {
             className={cn(
               // Siehe die Spalte links: getrennt wird über den Zwischenraum,
               // nicht über eine Linie.
-              'flex flex-col gap-3 p-4',
+              'flex flex-col gap-3 p-3 sm:p-4',
               'xl:col-start-3 xl:row-start-1 xl:min-h-0 xl:overflow-y-auto',
               // Siehe die Spalte links: sonst quetschen sich die Bereiche
               // gegenseitig, statt dass die Spalte blättert.

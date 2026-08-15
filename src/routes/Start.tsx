@@ -400,7 +400,7 @@ export default function Start({ loaders = DEFAULT_LOADERS }: StartProps) {
       className={cn(
         // Der Raum ist das Blatt (siehe AppLayout); hier steht die Bühne
         // darauf. `relative`, weil die wartende Figur in ihrer Ecke hängt.
-        'relative flex flex-1 flex-col items-center px-4 pt-[46px] pb-6',
+        'relative flex flex-1 flex-col items-center px-3 pt-[46px] pb-6 sm:px-4',
         // Der Abstand hängt an der Fensterhöhe, nicht an einer festen Zahl:
         // Auf hohen Fenstern darf die Marke Luft haben, auf flachen ist jeder
         // Pixel der Karte lieber gegeben als dem Zwischenraum.
@@ -796,7 +796,7 @@ export default function Start({ loaders = DEFAULT_LOADERS }: StartProps) {
                 {applications.length === 0 ? (
                   <DialogDescription>{t('start.applications.empty')}</DialogDescription>
                 ) : (
-                  <table className="mt-4 w-full border-collapse text-left text-[length:var(--text-body-sm-size)]">
+                  <div className="mt-4 -mx-2 overflow-x-auto px-2"><table className="w-full border-collapse text-left text-[length:var(--text-body-sm-size)]">
                     <thead>
                       <tr className="border-b-2 border-[var(--line-soft)]">
                         <th scope="col" className="py-2 pr-4 font-display font-semibold">
@@ -824,7 +824,7 @@ export default function Start({ loaders = DEFAULT_LOADERS }: StartProps) {
                         </tr>
                       ))}
                     </tbody>
-                  </table>
+                  </table></div>
                 )}
               </DialogContent>
             </Dialog>
@@ -847,7 +847,7 @@ export default function Start({ loaders = DEFAULT_LOADERS }: StartProps) {
             <Button
               variant="primary"
               size="lg"
-              className={cn('ms-auto', ready && 'motion-safe:animate-pop')}
+              className={cn('w-full sm:ms-auto sm:w-auto', ready && 'motion-safe:animate-pop')}
               disabled={missing.length > 0 || busy}
               onClick={() => void handleContinue()}
             >
@@ -869,7 +869,7 @@ export default function Start({ loaders = DEFAULT_LOADERS }: StartProps) {
           stehen nach den Breitenstufen und gewinnen gegen sie), und auf
           einem schmalen, flachen Fenster fiel der Platz damit genau dann
           weg, wenn er am nötigsten war. */}
-      <div aria-hidden="true" className="h-[206px] shrink-0 max-[860px]:h-[136px] min-[1240px]:hidden" />
+      <div aria-hidden="true" className="h-[206px] shrink-0 max-[860px]:h-[136px] max-[480px]:h-[96px] min-[1240px]:hidden" />
 
       {/* Sie tut, was der Nutzer tut: warten. Sie liest, solange etwas fehlt,
           und springt auf, sobald alles beisammen ist — dasselbe, was der

@@ -56,7 +56,7 @@ typography:
     letterSpacing: "-0.02em"
   heading:
     fontFamily: "Fredoka, system-ui, sans-serif"
-    fontSize: "1.125rem"
+    fontSize: "clamp(1rem, 1vw + 0.875rem, 1.125rem)"
     fontWeight: 600
     lineHeight: 1.3
     letterSpacing: "normal"

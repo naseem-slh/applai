@@ -422,7 +422,7 @@
   --text-display-leading: 1.15;
   --text-display-tracking: -0.02em;
 
-  --text-heading-size: 1.125rem;
+  --text-heading-size: clamp(1rem, 1vw + 0.875rem, 1.125rem);
   --text-heading-weight: 600;
   --text-heading-leading: 1.3;
   --text-heading-tracking: normal;

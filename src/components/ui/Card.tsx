@@ -34,7 +34,7 @@ const cardVariants = cva('rounded-card border-[3px]', {
       none: '',
       sm: 'p-3',
       md: 'p-4',
-      lg: 'p-6',
+      lg: 'p-4 sm:p-6',
     },
   },
   defaultVariants: { variant: 'default', padding: 'md' },

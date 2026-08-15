@@ -52,7 +52,7 @@ export function PageHeader({ backTo, backLabel, className }: PageHeaderProps) {
   return (
     <header
       className={cn(
-        'grid w-full grid-cols-[1fr_auto_1fr] items-center gap-4',
+        'grid w-full grid-cols-[1fr_auto_1fr] items-center gap-3 sm:gap-4',
         'max-[560px]:flex max-[560px]:justify-between',
         className,
       )}

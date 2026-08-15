@@ -65,7 +65,7 @@ export default function Privacy() {
         />
       </RoomFigures>
 
-      <div className="flex w-full flex-col items-center gap-6 px-4 pt-6 pb-8">
+      <div className="flex w-full flex-col items-center gap-4 px-3 pt-6 pb-8 sm:gap-6 sm:px-4">
         <PageHeader
           backTo="/"
           backLabel={t('nav.back')}
