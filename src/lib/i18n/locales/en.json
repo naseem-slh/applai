@@ -1,0 +1,712 @@
+{
+  "app": {
+    "name": "Applai"
+  },
+  "nav": {
+    "settings": "Settings",
+    "privacy": "Privacy",
+    "back": "Back",
+    "home": "Back to the start page"
+  },
+  "routes": {
+    "start": {
+      "heading": "Prepare an application"
+    },
+    "editor": {
+      "heading": "Workspace"
+    },
+    "settings": {
+      "heading": "Settings"
+    }
+  },
+  "ui": {
+    "dialog": {
+      "close": "Close"
+    }
+  },
+  "onboarding": {
+    "privacy": {
+      "heading": "Before you start",
+      "intro": "Applai runs entirely in your browser. There is no server, no account and no sign-in. Four things you should know before you start.",
+      "provider": {
+        "title": "Your text goes to the AI provider you choose.",
+        "body": "Your cover letter and the job ad are sent from your browser straight to Google, OpenAI or Anthropic, depending on which one you pick. Without that step there are no suggestions. Applai replaces name, address, date of birth, phone number and email address with placeholders beforehand; the rest of the text goes as it is."
+      },
+      "training": {
+        "title": "On the free Gemini tier, Google uses your text for training.",
+        "body": "Google uses input and output from the free tier to develop its products and models, and people at Google may read it while doing so. For the paid tier Google states the opposite; OpenAI and Anthropic state the same for their APIs."
+      },
+      "draft": {
+        "title": "A working copy stays in your browser.",
+        "body": "So that nothing is lost, Applai keeps your work in progress in your browser's database, along with the application list and your settings. None of it leaves the device. Drafts are deleted after export, and after seven days at the latest."
+      },
+      "delete": {
+        "title": "“Delete all data” is available at any time.",
+        "body": "One button in the settings removes the application list, the drafts, the settings and the stored API key in one go. After that nothing of Applai is left on this device."
+      },
+      "accept": "Understood, continue"
+    },
+    "key": {
+      "heading": "Set up your API key",
+      "intro": "Applai has no account and no server of its own. The AI requests run through your own account with one of the three providers. The key for that stays encrypted in your browser.",
+      "replaceHint": "This browser already holds a key. Saving replaces it without a further prompt. OpenAI and Anthropic show a key only once, so a replaced one cannot be retrieved there.",
+      "providerLabel": "Provider",
+      "guideHeading": "How to get a key from {{provider}}",
+      "guideLink": "Open the key page at {{provider}}",
+      "legacyGeminiKey": "Already have a key that starts with “AIza”? Google stops accepting those keys in September 2026. Create a new one in Google AI Studio in good time; the free tier stays the same.",
+      "guide": {
+        "gemini": {
+          "step1": "Sign in to Google AI Studio with a Google account.",
+          "step2": "Open “Get API key” and create a new key.",
+          "step3": "Copy the key. New keys start with “AQ.”, older ones with “AIza”.",
+          "step4": "Paste it below. The free tier needs no payment method."
+        },
+        "openai": {
+          "step1": "Sign in to the OpenAI platform and add a payment method. There is no free tier.",
+          "step2": "Under “API keys”, click “Create new secret key”.",
+          "step3": "Copy the key straight away. It starts with “sk-” and is shown only once.",
+          "step4": "Paste it below."
+        },
+        "anthropic": {
+          "step1": "Sign in to the Claude Console and add credit. There is no free tier.",
+          "step2": "Under “Settings” → “API keys”, click “Create key”.",
+          "step3": "Copy the key straight away. It starts with “sk-ant-” and is shown only once.",
+          "step4": "Paste it below."
+        }
+      },
+      "apiKeyLabel": "API key",
+      "apiKeyHint": "Stored encrypted in your browser and used only for requests to {{provider}}.",
+      "billingLabel": "Is this key billed?",
+      "billingHint": "A Google key looks the same whether or not billing is switched on. Applai cannot tell and therefore has to ask: as soon as a key is billed, a password is required.",
+      "billingPlaceholder": "Please choose",
+      "billingFree": "No, free tier only",
+      "billingPaid": "Yes, billing is active for this project",
+      "passphraseHeading": "Password for this key",
+      "passphraseWhyPaid": "This key is billed. It is therefore encrypted with a password only you know. Without one, the material needed to decrypt it would sit next to the key in the browser.",
+      "passphraseFieldHint": "At least {{min}} characters, not a single repeated character, not a slice of the API key.",
+      "passphraseWhyLength": "At least {{min}} characters. The reason is concrete: anyone who copies the encrypted entry out of the browser can then try passwords at leisure, as fast as their graphics card allows. Nobody locks them out after ten failed attempts. A short password falls within hours, a long one takes years. Four random words in a row are easier to remember than a short string of special characters, and much harder to guess.",
+      "passphraseLimits": "Applai only checks the length and two obviously worthless cases. It cannot judge whether your password is actually hard to guess.",
+      "passphraseNoReset": "The password is stored nowhere and cannot be reset. If you forget it, you have to enter the API key again.",
+      "passphraseLabel": "Password",
+      "passphraseConfirmLabel": "Repeat password",
+      "submit": "Save key",
+      "submitting": "Saving …",
+      "saved": "The key has been saved.",
+      "errors": {
+        "emptyKey": "Please paste an API key.",
+        "controlCharacters": "The API key contains line breaks or other control characters. Please paste it without line breaks.",
+        "billingUnanswered": "Please answer whether this key is billed.",
+        "passphraseRequired": "A password is required for a billed key.",
+        "passphraseTooShort": "The password must be at least {{min}} characters long.",
+        "passphraseRepeated": "The password consists of a single repeated character. Please use different characters.",
+        "passphraseInKey": "The password must not be part of the API key. Please choose a separate password.",
+        "passphraseMismatch": "The two passwords do not match.",
+        "insecureOrigin": "Applai needs a secure connection (HTTPS) to store the key encrypted. Over an unencrypted connection the browser does not provide the functions required for that.",
+        "storage": "The key could not be saved. Please try again."
+      },
+      "corrupted": {
+        "heading": "The stored key could not be read",
+        "body": "Applai cannot tell which of these it is: the entry itself may be damaged, or the browser may simply not be releasing the storage right now, for example in private mode or while the app is open in a second tab. Reload the page first and close other tabs. If it stays that way, the only way on is to delete the stored key and enter it again afterwards.",
+        "action": "Delete the stored key"
+      }
+    },
+    "paidHints": {
+      "heading": "If this key is billed",
+      "intro": "The key is stored encrypted in your browser. Even so: anyone who gets hold of it can make requests at your expense. These settings at the provider limit the damage.",
+      "docsLink": "How to: {{topic}}",
+      "limit": {
+        "title": "Set a spending limit",
+        "gemini": "A budget in the Google Cloud console only warns. It stops neither the usage nor the billing; it sends an email once a threshold is passed. Set it anyway so you notice early, but do not rely on it.",
+        "openai": "OpenAI distinguishes two things: a spend alert only sends a message and lets the requests carry on. Only the “Enforce a hard limit” setting answers further requests with an error once the monthly amount is reached.",
+        "anthropic": "In the Claude Console a monthly spending limit can be set per workspace. That is not possible for the default workspace, so create one of your own and generate the key inside it."
+      },
+      "dedicated": {
+        "title": "A separate key used only for Applai",
+        "body": "Create a key you use nowhere else. Then you can see in the invoice what Applai accounts for, and you can revoke it on its own if you suspect anything, without interrupting your other applications."
+      },
+      "scope": {
+        "title": "Allow the key for the Gemini API only",
+        "body": "The Google Cloud credentials let you decide which APIs a key may address at all. Restricted to the Gemini API, a key that goes astray cannot use any other billable Google service in the same project. Keys newly created in Google AI Studio are restricted like this by default; older keys and ones from the Cloud console are not."
+      }
+    },
+    "unlock": {
+      "heading": "Unlock your key",
+      "intro": "You protected the stored key with a passphrase. Without it Applai cannot read the key and cannot send anything to the provider.",
+      "submit": "Unlock",
+      "submitting": "Unlocking …",
+      "wrong": "The key could not be decrypted with this passphrase. Please check what you typed.",
+      "forgotten": "The passphrase cannot be reset. If you have forgotten it, store a new key in the settings. Keep in mind that OpenAI and Anthropic show a key only once."
+    }
+  },
+  "ai": {
+    "errors": {
+      "invalid_key": "The API key is invalid or has expired. Please check it in Settings.",
+      "rate_limit": "Too many requests in a short time. The provider is temporarily blocking further calls. Wait a moment and it will work again.",
+      "quota": "The API key's quota has been used up.",
+      "quota_gemini": "Gemini's free daily quota has been used up. It resets tomorrow, or you can add your own paid key.",
+      "network": "The request could not be sent. Please check your internet connection.",
+      "blocked": "The provider blocked the response for safety reasons.",
+      "model_response": "The provider's response was unusable and has been discarded. Trying again usually works.",
+      "unknown": "Unexpected error while calling the provider.",
+      "providerDetails": "Message from the provider",
+      "retryIn": "Retry in {{seconds}} s"
+    },
+    "usage": {
+      "requests_one": "{{count}} request",
+      "requests_other": "{{count}} requests"
+    }
+  },
+  "start": {
+    "intro": "Drop in your cover letter, paste the job ad, and move on to the workspace. Everything stays in this browser until you ask for a passage to be rewritten.",
+    "storageUnavailable": "Your browser is not releasing its storage right now. You can keep working, but Applai will remember none of it: no draft, no settings, no application list. In private mode this is normal.",
+    "files": {
+      "letter": "Cover letter",
+      "cv": "CV",
+      "choose": "Choose",
+      "replace": "Replace",
+      "remove": "Remove",
+      "none": "Drop a file here",
+      "reading": "Reading the file …",
+      "loaded": "Chosen: {{name}}",
+      "fromDraft": "the document you last worked on",
+      "errors": {
+        "unsupportedType": "Applai reads Word files (.docx) and PDF files. Any other format cannot be opened.",
+        "passwordProtected": "This PDF file is password protected. Please remove the protection and choose it again.",
+        "unreadable": "The file could not be read. It may be damaged, or it may not be a Word or PDF document despite its extension."
+      },
+      "optional": "Optional"
+    },
+    "pdf": {
+      "beta": "Read from a PDF. Converting it to Word is a beta feature: it restores paragraphs, headings and bullet points, but neither the original layout nor images or tables. Please read the result in the workspace before you use it.",
+      "multiColumn": "This PDF is laid out in several columns. The conversion reads it line by line across the full page width, so text from the left and the right column ends up interleaved. For this document a Word file is by far the better source."
+    },
+    "scope": {
+      "label": "Tailor for this application",
+      "blocked": "Multi-column PDFs cannot be tailored. The text still counts as evidence."
+    },
+    "recent": {
+      "letter": "Cover letter, saved on {{date}}",
+      "cv": "CV, saved on {{date}}",
+      "use": "Carry on with it",
+      "discard": "Discard"
+    },
+    "name": {
+      "label": "Your name",
+      "hint": "Replaced by a placeholder before every request.",
+      "detected": "Taken from your document. Please check it, it may be a company name."
+    },
+    "jobAd": {
+      "heading": "Job ad",
+      "pdfLabel": "PDF",
+      "reading": "Reading the PDF …",
+      "pdfAria": "Read job posting from PDF",
+      "placeholder": "Paste the posting here"
+    },
+    "applications": {
+      "heading": "Application list",
+      "empty": "No application recorded yet. An entry appears once you export a finished cover letter.",
+      "company": "Company",
+      "position": "Position",
+      "date": "Date",
+      "duplicate": "This ad mentions a company you have already applied to: {{entries}}. That may be a coincidence: the check compares company names and nothing else.",
+      "duplicateEntry": "{{company}}, {{position}} ({{date}})",
+      "open": "Applications ({{count}})"
+    },
+    "missing": {
+      "heading": "Still missing:",
+      "document": "a cover letter or a CV",
+      "jobAd": "the text of the job ad",
+      "userName": "your name",
+      "scope": "at least one document to tailor"
+    },
+    "continue": "Continue"
+  },
+  "editor": {
+    "loading": "Reading the cover letter.",
+    "undo": "Undo",
+    "backToStart": "Back to the start page",
+    "noDocument": {
+      "heading": "The workspace needs a document.",
+      "body": "Add a cover letter or a CV on the start page and tick what should be tailored."
+    },
+    "failed": {
+      "heading": "The cover letter could not be read.",
+      "body": "The file may be damaged. Please add it again on the start page."
+    },
+    "document": {
+      "heading": "Cover letter",
+      "cvHeading": "CV"
+    },
+    "proofreading": {
+      "heading": "Text check",
+      "count_one": "1 finding",
+      "count_other": "{{count}} findings",
+      "none": "Nothing found. This checks what your browser's spell checker misses: doubled words, punctuation and typography.",
+      "entry": "{{rule}}, paragraph {{paragraph}}",
+      "replace": "Replace {{found}} with {{suggestion}}",
+      "apply": "Apply",
+      "rules": {
+        "doubledWord": "Doubled word",
+        "spaceBeforePunctuation": "Space before punctuation",
+        "missingSpaceAfterComma": "Missing space",
+        "doubleSpace": "Double space",
+        "seidForSeit": "This probably means „seit“",
+        "hyphenAsDash": "Dash instead of hyphen",
+        "straightQuote": "Straight quotation mark"
+      }
+    },
+    "zoom": {
+      "label": "Zoom",
+      "value": "{{percent}} %",
+      "reset": "{{percent}} %, reset to 100 %"
+    },
+    "switch": {
+      "label": "Choose document",
+      "letter": "Cover letter",
+      "cv": "CV"
+    },
+    "beta": {
+      "badge": "Beta",
+      "cv": "Tailoring the CV is new. Please read every applied wording before you use the file: especially periods, titles and figures."
+    },
+    "selection": {
+      "heading": "Selection",
+      "wholeDocument": "Whole document",
+      "currentParagraph": "Current paragraph",
+      "paragraphShort": "Paragraph",
+      "none": "Drag across a passage.",
+      "touch": "With touch, only the whole document can be selected.",
+      "touchParagraph": "With a finger, tap a paragraph to select it.",
+      "summary": "{{chars}} characters selected.",
+      "chars": "{{chars}} characters"
+    },
+    "marks": {
+      "heading": "Marked passages",
+      "none": "Passages you mark appear here.",
+      "entry": "{{number}}. “{{text}}”",
+      "select": "Select this passage",
+      "done": "Done",
+      "remove": "Remove",
+      "clearAll": "Remove all",
+      "next": "Next open passage",
+      "restored": "Restored {{restored}} of {{total}} marked passages.",
+      "restoredOther": "Carried over from an earlier letter: {{restored}} of {{total}} passages found again.",
+      "unresolved": {
+        "heading": "Not found again",
+        "body": "These passages are no longer in the letter.",
+        "dismiss": "Discard"
+      },
+      "keep": "Keep for the next application",
+      "tally": "{{done}} / {{total}}"
+    },
+    "retained": {
+      "heading": "Your selection reaches across fixed content.",
+      "short_one": "One paragraph stays put",
+      "short_other": "{{count}} paragraphs stay put",
+      "entry": "Paragraph {{number}}: {{reason}}",
+      "reason": {
+        "sectionBreak": "a section break carrying page margins, header and footer",
+        "tableCell": "the last line of a table cell, an address block for instance",
+        "embeddedContent": "embedded content, the signature image for instance"
+      },
+      "body": "Such paragraphs stay put. If the new text is shorter, fixed content visibly moves up. Shrink the selection if that bothers you."
+    },
+    "draft": {
+      "idle": "Saves automatically",
+      "saving": "Saving …",
+      "savedJustNow": "Saved just now",
+      "saved": "Saved {{when}}",
+      "failed": "Not saved. Your changes exist only in this view."
+    },
+    "variants": {
+      "trigger": "Suggest rewordings",
+      "heading": "Suggestion",
+      "pending": "Generating a response",
+      "cancel": "Cancel",
+      "retry": "Try again",
+      "regenerate": "Generate again",
+      "close": "Close",
+      "previous": "Previous suggestion",
+      "next": "Next suggestion",
+      "position": "Suggestion {{number}} of {{count}}",
+      "apply": "Use this one",
+      "length": "{{chars}} characters",
+      "unbacked": {
+        "heading_one": "One statement is not backed by your documents:",
+        "heading_other": "{{count}} statements are not backed by your documents:"
+      },
+      "figures": {
+        "heading": "Figures differ from the selection",
+        "changed": "{{from}} → {{to}}",
+        "removed_one": "No longer present: {{figures}}.",
+        "removed_other": "No longer present: {{figures}}.",
+        "added_one": "Newly added: {{figures}}.",
+        "added_other": "Newly added: {{figures}}.",
+        "confirm": "I have checked this figure and want to apply it."
+      },
+      "willShift_one": "Paragraph {{paragraphs}} will be left empty. Anything anchored there, a signature for instance, visibly moves up.",
+      "willShift_other": "Paragraphs {{paragraphs}} will be left empty. Anything anchored there, a signature for instance, visibly moves up."
+    },
+    "truthMode": {
+      "label": "Truthfulness",
+      "free": {
+        "heading": "Turn on free mode?",
+        "intro": "The AI may write claims your documents do not support.",
+        "marked": "Every such statement is highlighted in the text.",
+        "confirm": "You confirm each statement individually before moving on.",
+        "export": "Export stays locked while an unconfirmed statement is in the letter.",
+        "cancel": "Keep the current mode",
+        "confirmAction": "Turn on free mode"
+      }
+    },
+    "claims": {
+      "heading": "Unbacked statements",
+      "blocked_one": "Export is locked: one statement is not confirmed yet.",
+      "blocked_other": "Export is locked: {{count}} statements are not confirmed yet.",
+      "released": "All statements are confirmed. Export is unlocked.",
+      "location_one": "Found in paragraph {{paragraphs}}.",
+      "location_other": "Found in paragraphs {{paragraphs}}.",
+      "confirm": "Confirm statement",
+      "confirmed": "Confirmed by you.",
+      "hint": "Confirming does not change the text. To reject a claim, delete it in the letter."
+    },
+    "analysis": {
+      "loading": "Reading the job ad and your writing style.",
+      "retry": "Try again"
+    },
+    "reapply": {
+      "trigger": "Next posting",
+      "heading": "Next job posting",
+      "description": "Your documents are rebuilt from the uploaded files. The marked passages are rewritten for the new job ad.",
+      "jobAdLabel": "Job posting",
+      "marks_one": "1 marked passage",
+      "marks_other": "{{count}} marked passages",
+      "unresolved_one": "1 passage could not be found again and stays unchanged.",
+      "unresolved_other": "{{count}} passages could not be found again and stay unchanged.",
+      "cost_one": "Costs 1 request.",
+      "cost_other": "Costs {{count}} requests.",
+      "fast": "Apply automatically",
+      "choose": "Show variants",
+      "cancel": "Cancel",
+      "reading": "Reading the job posting.",
+      "progress": "Passage {{current}} of {{total}}",
+      "halt": {
+        "wahl": "Please pick a wording.",
+        "unbelegteAussagen": "This wording contains claims your documents do not back up. Please confirm them one by one.",
+        "faktenGeaendert": "This wording changes a figure or a date compared with your selection. Please check it before applying.",
+        "anbieterfehler": "The request failed.",
+        "antwortVerworfen": "The AI's answer was not usable."
+      },
+      "retry": "Try again",
+      "skip": "Skip this passage",
+      "stop": "Stop the run",
+      "done_one": "1 passage rewritten.",
+      "done_other": "{{count}} passages rewritten.",
+      "skipped_one": "1 passage stayed unchanged.",
+      "skipped_other": "{{count}} passages stayed unchanged.",
+      "stopped": "Stopped. What was applied stays in the letter."
+    },
+    "letterhead": {
+      "heading": "Letterhead",
+      "fields": {
+        "recipient": "Recipient",
+        "date": "Date",
+        "subject": "Subject",
+        "salutation": "Salutation"
+      },
+      "insert": "Insert",
+      "insertHint": "Replaces the marked passage. Ctrl+Z undoes it.",
+      "insertHintNoSelection": "Mark a passage in the letter first.",
+      "applied": {
+        "heading": "Applied automatically",
+        "change": "{{previous}} → {{next}}",
+        "missing": "not found, please insert",
+        "unchanged": "was already correct, nothing changed",
+        "hint": "Check what stayed behind: an old postal address is not replaced along with the name.",
+        "dismiss": "Got it",
+        "none": "No letterhead was found in the letter. Please insert the fields by hand."
+      },
+      "foreign": {
+        "badge_one": "1 other company",
+        "badge_other": "{{count}} other companies",
+        "heading_one": "The letter names another company.",
+        "heading_other": "The letter names other companies.",
+        "entry": "{{name}}, in paragraph {{number}}",
+        "body": "The name comes from an earlier application. The paragraphs are highlighted."
+      }
+    },
+    "gaps": {
+      "heading": "Requirements",
+      "count_one": "1 item",
+      "count_other": "{{count}} items",
+      "none": "No individual requirements could be read out of this job ad.",
+      "kind": {
+        "skill": "Technical skill",
+        "experience": "Work experience",
+        "education": "Education",
+        "language": "Language",
+        "soft": "Personal quality"
+      },
+      "status": {
+        "covered": "Covered",
+        "partial": "Partly covered",
+        "missing": "Not covered"
+      },
+      "evidence": "The AI's assessment: {{evidence}}",
+      "run": "Compare with my documents",
+      "again": "Compare again",
+      "running": "Comparing",
+      "hint": "Compares the requirements with your documents. Costs one request.",
+      "assessment": "The AI's assessment, not a quote. Please check."
+    },
+    "style": {
+      "heading": "Writing style",
+      "formalityLabel": "Formality",
+      "formalityHint": "Measured: {{measured}} of 100.",
+      "formalitySteps": {
+        "0": "very casual",
+        "1": "fairly casual",
+        "2": "neutral",
+        "3": "fairly formal",
+        "4": "very formal"
+      },
+      "lengthLabel": "Length",
+      "lengthSteps": {
+        "0": "much shorter",
+        "1": "a little shorter",
+        "2": "about the same",
+        "3": "a little longer",
+        "4": "much longer"
+      },
+      "traitsLabel": "Traits of your style",
+      "traitsHint": "One trait per line. Used in every rewrite.",
+      "measured": {
+        "address": "How the letter addresses the reader",
+        "sentenceLength": "Measured sentence length",
+        "sample": "Sample sentence from your letter"
+      },
+      "address": {
+        "sie": "formal (Sie)",
+        "du": "informal (du)",
+        "none": "no direct address"
+      },
+      "sentenceLength": "{{words}} words per sentence"
+    },
+    "cvStyle": {
+      "heading": "Entry form",
+      "formLabel": "How an entry starts",
+      "form": {
+        "verbFirst": "Verb first (\"Develops …\")",
+        "nounPhrase": "Noun phrase (\"Development of …\")",
+        "mixed": "mixed"
+      },
+      "tenseLabel": "Tense",
+      "tense": {
+        "present": "Present",
+        "past": "Past",
+        "mixed": "mixed: ongoing in present, finished in past"
+      },
+      "traitsHint": "One observation per line. Whatever stands here feeds every rewrite.",
+      "measured": {
+        "person": "Person",
+        "terminalPunctuation": "Punctuation at line end",
+        "bulletLength": "Usual length",
+        "sample": "Sample entry from your CV"
+      },
+      "person": {
+        "none": "no first person, entries name the activity",
+        "first": "First person"
+      },
+      "terminalPunctuation": {
+        "yes": "yes, entries end with a full stop",
+        "no": "no, entries end without punctuation"
+      },
+      "bulletLength": "{{words}} words per entry"
+    },
+    "language": {
+      "heading": "Which language should the letter be in?",
+      "intro": "The job ad is in {{ad}}, your cover letter in {{letter}}. Reworded passages are translated first and adapted afterwards.",
+      "names": {
+        "de": "German",
+        "en": "English"
+      },
+      "keep": "Stay with {{language}}",
+      "switch": "Switch to {{language}}",
+      "customs": {
+        "heading": "Different conventions in English-speaking countries",
+        "body": "A photo, date of birth and postal address are unusual there and in some places lead to an application being screened out."
+      }
+    },
+    "sidePanel": {
+      "label": "Letterhead, requirements and writing style",
+      "reference": "Marked passages and requirements"
+    },
+    "export": {
+      "heading": "Export",
+      "docx": "Word",
+      "pdf": "PDF",
+      "copy": "Text",
+      "working": "Creating the Word file.",
+      "pdfWorking": "Creating the PDF.",
+      "docxDone": "Word file created. The application is now in your list.",
+      "docxFailed": "The Word file could not be created.",
+      "pdfDone": "PDF created. The application is now in your list.",
+      "pdfFailed": "The PDF could not be created.",
+      "copyDone": "The text is in your clipboard.",
+      "copyFailed": "The text could not be copied. The browser denied access to the clipboard.",
+      "pdfTooltip": "Creates a PDF file with the original's typeface, margins and letterhead. The PDF is typeset afresh and comes very close to the original.",
+      "pdfBlockedTooltip": "This document contains a table. The PDF typesetter cannot lay out tables, so the result would lose its columns. The Word file passes the original through unchanged.",
+      "copyTooltip": "Puts the letter into the clipboard as plain text.",
+      "docxTooltip": "Hands over the Word file unchanged, with everything attached to it."
+    }
+  },
+  "settings": {
+    "storageUnavailable": "Your browser is not releasing its storage right now. Changes made here apply to this session only.",
+    "saveFailed": "The change could not be saved and has been undone. Please try again.",
+    "appearance": {
+      "heading": "Interface",
+      "label": "Display",
+      "options": {
+        "light": "Light",
+        "dark": "Dark",
+        "system": "Match the system"
+      }
+    },
+    "language": {
+      "label": "Language",
+      "options": {
+        "de": "Deutsch",
+        "en": "English"
+      }
+    },
+    "anonymize": {
+      "heading": "Privacy",
+      "label": "Replace personal data",
+      "hint": "Name, address, date of birth, phone and email go to the provider as placeholders.",
+      "off": "Without anonymisation your personal data goes to the chosen provider in the clear."
+    },
+    "truthMode": {
+      "label": "Truth boundary",
+      "options": {
+        "strict": "Strict",
+        "bridge": "Bridges",
+        "free": "Free"
+      },
+      "explanations": {
+        "strict": "Only rewrites what your documents say.",
+        "bridge": "Generalisations allowed, as long as your details back them up.",
+        "free": "Anything unbacked is highlighted, has to be confirmed one by one and blocks the export until then."
+      }
+    },
+    "key": {
+      "heading": "Provider and model",
+      "currentProvider": "Key stored",
+      "noProvider": "No key stored yet.",
+      "replace": "Replace key",
+      "cancelReplace": "Cancel"
+    },
+    "backup": {
+      "heading": "Backup",
+      "hint": "Application list, drafts and settings as a file. Without the API key.",
+      "export": "Download a backup",
+      "import": "Restore a backup",
+      "importWarning": "Restoring replaces everything you have; nothing is merged.",
+      "errors": {
+        "export": "The backup could not be created. Please try again.",
+        "import": "The file could not be restored. It is damaged, not an Applai backup, or from a newer version. What you had is unchanged."
+      },
+      "done": {
+        "export": "The backup file has been created. Your browser saves it wherever it keeps downloads.",
+        "import": "The backup has been restored."
+      }
+    },
+    "delete": {
+      "heading": "Delete all data",
+      "body": "Removes everything from this device, including the stored key.",
+      "action": "Delete all data",
+      "confirmTitle": "Really delete all data?",
+      "confirmBody": "The application list, drafts, settings and the stored API key will be removed. This cannot be undone; only a backup downloaded beforehand brings the list back.",
+      "confirm": "Yes, delete everything",
+      "cancel": "Cancel",
+      "done": "Everything has been deleted: application list, drafts, settings and the API key.",
+      "storageFailed": "The API key was deleted, but the application list, drafts and settings were not. Please reload the page and try again.",
+      "vaultFailed": "The application list, drafts and settings were deleted, but the stored API key was not. Please reload the page and try again.",
+      "bothFailed": "Nothing was deleted. Your browser is not releasing its storage right now. Please close other tabs with Applai, reload the page and try again.",
+      "keyStays": "What happens to the key at the provider",
+      "keyStaysBody": "Nothing. It stays there. Revoke it at the provider once you no longer need it."
+    },
+    "model": {
+      "label": "Model identifier",
+      "hint": "The provider list does not say what your plan covers; it holds no field for it. You can look it up in your provider console under “Rate limits”.",
+      "load": "Load models",
+      "loading": "Loading models",
+      "loaded_one": "1 model available",
+      "loaded_other": "{{count}} models available",
+      "choose": "Choose from the list",
+      "reset": "Use the default",
+      "current": "Default: {{model}}",
+      "needsKey": "The key must be unlocked to load the list.",
+      "showAll": "Show all models",
+      "filtered": "Only models that output text. On the free tier without Pro models, which it usually does not include.",
+      "chainHint": "When one runs out, the next takes over.",
+      "summary_one": "One model: {{model}}.",
+      "summary_other": "{{count}} models, {{model}} first.",
+      "manage": "Manage models",
+      "dialogTitle": "Models and order",
+      "done": "Done",
+      "empty": "None chosen. Applai uses the provider's default.",
+      "entry": "{{position}}. {{model}}",
+      "add": "Add",
+      "addLabel": "Add {{model}}",
+      "moveUp": "Move up",
+      "removeEntry": "Remove from the chain",
+      "addAll": "Add all in order",
+      "why": "What does my plan cover"
+    }
+  },
+  "vault": {
+    "locked": "Rewording needs the API key. You can unlock it on the start page."
+  },
+  "privacy": {
+    "heading": "Privacy and legal notice",
+    "lead": "This site stores nothing on a server. Your documents are processed entirely in your browser and are only transmitted to the AI provider you choose.",
+    "noServer": {
+      "heading": "No server, no accounts",
+      "body": "Applai is a pure browser application. There is no sign-in, no user account and no database on our side. Whoever runs this site never sees your documents: they are read from your device, edited there and saved there."
+    },
+    "provider": {
+      "heading": "What goes to the AI provider",
+      "body": "To reword a passage, your browser sends the selected text with its surroundings, the text of the job ad and a factual basis drawn from your documents directly to the provider whose key you have stored. The connection starts from your device, not from a server of this site.",
+      "anonymize": "Before sending, your name, postal address, date of birth, phone number and email address are replaced by placeholders and swapped back in the response. This replacement is on by default and can be switched off in Settings.",
+      "training": "On Google Gemini's free tier, Google states that content is used to improve their services. If you would rather it were not, use a paid key or a different provider.",
+      "linksHeading": "The three providers' terms"
+    },
+    "storage": {
+      "heading": "What your browser stores",
+      "key": "The API key is stored encrypted in your browser's database (IndexedDB). A paid key requires a password; without one, the key is bound to your device and cannot be read out. After half an hour of inactivity it locks automatically.",
+      "drafts": "A draft of your cover letter is saved every 20 seconds, also in IndexedDB. It is deleted after export, and after seven days at the latest.",
+      "applications": "Company, position and date of your applications form a list that exists only in your browser.",
+      "delete": "The \"Delete all data\" button in Settings removes every bit of it."
+    },
+    "hosting": {
+      "heading": "Delivery",
+      "body": "This site is hosted on Cloudflare Pages. When you open it, your browser transmits the details usual for any web request, including your IP address. No cookies are set, no tracking pixels are loaded and no analytics tools are embedded. Fonts are served from the same server as the application."
+    },
+    "rights": {
+      "heading": "Your rights",
+      "body": "Since no personal data of yours reaches the operator, there is nothing here to disclose or delete. For the data you send to an AI provider, that provider's terms apply and the provider is the point of contact."
+    },
+    "source": {
+      "heading": "Verifiability",
+      "body": "The complete source code is public. Anyone who wants to know what this application does can read it rather than take our word for it.",
+      "link": "Source code on GitHub"
+    },
+    "imprint": {
+      "heading": "Legal notice",
+      "body": "Information pursuant to section 5 DDG. This site is a private, non-commercial project.",
+      "operator": "Operator",
+      "contact": "Contact",
+      "placeholder": "To be filled in before publication."
+    }
+  }
+}

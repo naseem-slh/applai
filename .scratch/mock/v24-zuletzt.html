@@ -1,0 +1,720 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Applai · Zuletzt benutzt, vier Fassungen</title>
+    <style>
+      /* =====================================================================
+         Attrappe: „Zuletzt benutzt" auf der Vorbereiten-Seite.
+
+         Die Frage ist klein und die Antwort trotzdem nicht offensichtlich:
+         **Wo steht ein Angebot, das keine Aufgabe ist?**
+
+         Ein Zwischenstand aus einer früheren Sitzung ist nichts, was der
+         Nutzer sich vorgenommen hat. Er ist eine Abkürzung, die die Seite
+         anbietet. Die heutige Fassung stellt ihn als eigene Karte **über**
+         die Kacheln und schiebt damit die Arbeit nach unten — sie behandelt
+         das Angebot wie den Auftrag.
+
+         Vier Fassungen zum Durchklicken. Token, Schriften und Blattlage sind
+         wörtlich aus `src/styles/design.css` übernommen, damit die Attrappe
+         nicht neben der Anwendung steht.
+
+         ---------------------------------------------------------------------
+         HEUTE  Die Karte über den Kacheln. Überschrift, zwei Zeilen mit
+                Datum, vier Knöpfe. Rund 130px hoch, bevor die eigentliche
+                Seite anfängt.
+
+         A      **Auf der Kachel.** Das Angebot gehört zu der Fläche, die es
+                füllt. In der leeren Kachel liegt eine Marke mit dem
+                Dateinamen; ein Druck füllt sie, das Kreuz daneben verwirft
+                den Zwischenstand. Null zusätzliche Höhe, kein Satz.
+
+                Die Marke liegt **über** der Kachel, nicht in ihr: Die Kachel
+                ist selbst ein Knopf, und ein Knopf im Knopf ist kein
+                gültiges Auszeichnungsformat.
+
+         B      **Eine Zeile.** Unter den Kacheln, eine Zeile hoch: die
+                Namen als Knöpfe, am Ende ein Verwerfen. Der sichere Weg —
+                sofort verständlich, aber ohne Bezug zur Kachel.
+
+         C      **Der Notizzettel.** Ein gekippter Zettel auf dem Blatt neben
+                der Karte, in der Sprache der Kritzeleien. Er liegt außerhalb
+                der Karte und schiebt deshalb nichts. Braucht Platz zur
+                Seite und fällt unter 1140px weg. Darunter bräuchte er einen
+                Rückfall — und der wäre A.
+         ===================================================================== */
+
+      @font-face {
+        font-family: 'Fredoka';
+        font-style: normal;
+        font-display: swap;
+        font-weight: 400 700;
+        src: url('../../public/fonts/fredoka-variable-latin.woff2') format('woff2-variations');
+      }
+
+      @font-face {
+        font-family: 'Inter Variable';
+        font-style: normal;
+        font-display: swap;
+        font-weight: 100 900;
+        src: url('../../public/fonts/inter-variable-latin.woff2') format('woff2-variations');
+      }
+
+      :root {
+        color-scheme: light;
+        --paper: #ffffff;
+        --rule-step: 34px;
+        --rule: #c3d8ea;
+        --margin: #aecbe5;
+        --room-edge: transparent;
+        --doodle: rgb(23 27 60 / 0.18);
+        --on-room: var(--ink-strong);
+        --card-shadow: 0 16px 30px rgb(13 27 75 / 0.13);
+        --btn-shadow: 0 10px 18px rgb(13 27 75 / 0.14);
+        --line: #0d1b4b;
+        --line-soft: #3a4680;
+        --pop: #0d1b4b;
+        --pop-height: 6px;
+        --card: #fbf6ec;
+        --ink: #16205c;
+        --ink-strong: #0d1b4b;
+        --muted: #4e5885;
+        --field: #ffffff;
+        --accent: #ff7a45;
+        --accent-line: #c9531f;
+        --accent-deep: #b8461a;
+        --accent-ink: #2b1004;
+        --accent-text: #b8461a;
+        --accent-wash: #fff0e8;
+        --done: #22c98f;
+        --done-line: #0f8f64;
+        --done-deep: #0f8f64;
+        --done-ink: #06301f;
+        --done-text: #0b7050;
+        --done-wash: #ddf7ec;
+        --error: #d6293e;
+        --error-deep: #a01d2e;
+        --error-ink: #ffffff;
+        --page-line: #d5d9e8;
+        --page-shadow: 0 1px 2px rgb(13 27 75 / 0.07), 0 12px 28px rgb(13 27 75 / 0.13), 0 34px 68px rgb(13 27 75 / 0.1);
+        --overlay: rgb(10 14 45 / 0.5);
+        --focus: var(--accent-deep);
+        --space-xs: 0.5rem;
+        --space-sm: 0.75rem;
+        --space-md: 1rem;
+        --space-lg: 1.5rem;
+        --space-xl: 2rem;
+        --space-xxl: 3rem;
+        --text-display-size: clamp(1.75rem, 2.4vw + 1rem, 2.25rem);
+        --text-display-weight: 600;
+        --text-display-leading: 1.15;
+        --text-display-tracking: -0.02em;
+        --text-heading-size: 1.125rem;
+        --text-heading-weight: 600;
+        --text-heading-leading: 1.3;
+        --text-heading-tracking: normal;
+        --text-subheading-size: 1rem;
+        --text-subheading-weight: 600;
+        --text-subheading-leading: 1.3;
+        --text-subheading-tracking: normal;
+        --text-body-size: 1rem;
+        --text-body-weight: 400;
+        --text-body-leading: 1.6;
+        --text-body-tracking: normal;
+        --text-body-sm-size: 0.875rem;
+        --text-body-sm-weight: 400;
+        --text-body-sm-leading: 1.5;
+        --text-body-sm-tracking: normal;
+        --text-caption-size: 0.8125rem;
+        --text-caption-weight: 400;
+        --text-caption-leading: 1.5;
+        --text-caption-tracking: normal;
+        --text-label-size: 0.6875rem;
+        --text-label-weight: 600;
+        --text-label-leading: 1.3;
+        --text-label-tracking: 0.04em;
+        --focus-ring-color: var(--focus);
+        --focus-ring-width: 3px;
+        --focus-ring-offset: 3px;
+        --color-surface: var(--paper);
+        --color-surface-alt: var(--field);
+        --color-surface-raised: var(--card);
+        --color-surface-hover: var(--accent-wash);
+        --color-border: var(--line-soft);
+        --color-control-border: var(--line-soft);
+        --color-ink: var(--ink);
+        --color-ink-strong: var(--ink-strong);
+        --color-muted: var(--muted);
+        --color-accent: var(--accent);
+        --color-accent-light: var(--accent-line);
+        --color-accent-dark: var(--accent-deep);
+        --color-accent-contrast: var(--accent-ink);
+        --color-accent-text: var(--accent-text);
+        --color-accent-soft: var(--accent-wash);
+        --color-success: var(--done-text);
+        --color-error: var(--error);
+        --color-warning: var(--accent-text);
+        --color-info: var(--accent-text);
+        --color-overlay: var(--overlay);
+        --shadow-raised: 0 4px 0 var(--pop), var(--card-shadow);
+        --shadow-overlay: 0 10px 0 var(--pop), var(--card-shadow);
+        --btn-danger-fg: var(--error-ink);
+        --btn-danger-bg-hover: var(--error-deep);
+        --color-mark: #ffe0cf;
+        --color-mark-done: #cdf0e2;
+        --font-display: 'Fredoka', system-ui, sans-serif;
+        --font-body: 'Inter Variable', system-ui, sans-serif;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme='light']) {
+        color-scheme: dark;
+        --paper: #04061f;
+        --rule: rgb(255 255 255 / 0.075);
+        --margin: rgb(255 255 255 / 0.14);
+        --room-edge: rgb(0 0 0 / 0.45);
+        --doodle: rgb(255 255 255 / 0.085);
+        --on-room: var(--ink-strong);
+        --card-shadow: 0 16px 34px rgb(0 0 0 / 0.5);
+        --btn-shadow: 0 10px 20px rgb(0 0 0 / 0.45);
+        --line: #3b4794;
+        --line-soft: #5d66bd;
+        --pop: #2a3382;
+        --card: #1a2158;
+        --ink: #e7e9ff;
+        --ink-strong: #ffffff;
+        --muted: #9aa1d4;
+        --field: #0d1238;
+        --accent: #ff8f5e;
+        --accent-line: #ff8f5e;
+        --accent-deep: #b8461a;
+        --accent-ink: #2a0f05;
+        --accent-text: #ffa87e;
+        --accent-wash: #3a1f28;
+        --done: #2fd9a0;
+        --done-line: #2fd9a0;
+        --done-deep: #12996b;
+        --done-ink: #04281a;
+        --done-text: #46e0ae;
+        --done-wash: #0e3140;
+        --error: #ff8a7a;
+        --error-deep: #b8503f;
+        --error-ink: #2a0a06;
+        --page-line: #b9bfd4;
+        --page-shadow: 0 12px 32px rgb(0 0 0 / 0.55), 0 34px 76px rgb(0 0 0 / 0.45);
+        --overlay: rgb(0 0 0 / 0.6);
+        --focus: var(--accent-text);
+        }
+      }
+
+      :root[data-theme='dark'] {
+        color-scheme: dark;
+        --paper: #04061f;
+        --rule: rgb(255 255 255 / 0.075);
+        --margin: rgb(255 255 255 / 0.14);
+        --room-edge: rgb(0 0 0 / 0.45);
+        --doodle: rgb(255 255 255 / 0.085);
+        --on-room: var(--ink-strong);
+        --card-shadow: 0 16px 34px rgb(0 0 0 / 0.5);
+        --btn-shadow: 0 10px 20px rgb(0 0 0 / 0.45);
+        --line: #3b4794;
+        --line-soft: #5d66bd;
+        --pop: #2a3382;
+        --card: #1a2158;
+        --ink: #e7e9ff;
+        --ink-strong: #ffffff;
+        --muted: #9aa1d4;
+        --field: #0d1238;
+        --accent: #ff8f5e;
+        --accent-line: #ff8f5e;
+        --accent-deep: #b8461a;
+        --accent-ink: #2a0f05;
+        --accent-text: #ffa87e;
+        --accent-wash: #3a1f28;
+        --done: #2fd9a0;
+        --done-line: #2fd9a0;
+        --done-deep: #12996b;
+        --done-ink: #04281a;
+        --done-text: #46e0ae;
+        --done-wash: #0e3140;
+        --error: #ff8a7a;
+        --error-deep: #b8503f;
+        --error-ink: #2a0a06;
+        --page-line: #b9bfd4;
+        --page-shadow: 0 12px 32px rgb(0 0 0 / 0.55), 0 34px 76px rgb(0 0 0 / 0.45);
+        --overlay: rgb(0 0 0 / 0.6);
+        --focus: var(--accent-text);
+      }
+
+      /* --- Grundlage ----------------------------------------------------- */
+      *, *::before, *::after { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; }
+
+      body {
+        min-height: 100dvh;
+        background-color: var(--paper);
+        color: var(--ink);
+        font-family: var(--font-body);
+        font-size: 1rem;
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      button, input, textarea { font: inherit; color: inherit; }
+
+      :focus-visible {
+        outline: var(--focus-ring-width) solid var(--focus-ring-color);
+        outline-offset: var(--focus-ring-offset);
+      }
+
+      .sr-only {
+        position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+        overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0;
+      }
+
+      /* --- Der Raum ------------------------------------------------------ */
+      .room {
+        position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none;
+        background-image:
+          radial-gradient(circle at center, transparent 58%, var(--room-edge) 100%),
+          linear-gradient(90deg, transparent 0 14%, var(--margin) 14% calc(14% + 2px), transparent calc(14% + 2px)),
+          linear-gradient(var(--rule) 1.5px, transparent 1.5px);
+        background-size: 100% 100%, 100% 100%, 100% var(--rule-step);
+      }
+
+      .doodle { position: absolute; display: none; fill: none; stroke: var(--doodle); stroke-linecap: round; stroke-linejoin: round; }
+      @media (min-width: 1024px) { .doodle { display: block; } }
+      .doodle:nth-of-type(1) { top: 6%; left: 13%; width: 74px; rotate: -6deg; }
+      .doodle:nth-of-type(2) { top: 61%; left: 11%; width: 82px; rotate: -3deg; }
+      .doodle:nth-of-type(3) { top: 5%; right: 29%; width: 56px; rotate: 11deg; }
+      .doodle:nth-of-type(4) { top: 40%; right: 4%; width: 84px; rotate: -5deg; }
+
+      /* --- Die Werkbank der Attrappe -------------------------------------- */
+      .bench {
+        position: relative; z-index: 2;
+        display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
+        gap: 10px; padding: 14px 16px;
+      }
+
+      .bench__label {
+        font-family: var(--font-display); font-size: 0.8125rem; font-weight: 600;
+        color: var(--muted); letter-spacing: 0.02em;
+      }
+
+      .seg {
+        display: inline-flex; gap: 3px; padding: 3px;
+        background: var(--field); border: 3px solid var(--line-soft); border-radius: 999px;
+      }
+
+      .seg button {
+        padding: 6px 14px 7px; border: 3px solid transparent; border-radius: 999px;
+        background: none; font-family: var(--font-display); font-size: 0.8125rem;
+        font-weight: 600; white-space: nowrap; color: var(--muted); cursor: pointer;
+        transition: background-color 140ms ease-out, color 140ms ease-out;
+      }
+      .seg button:hover { color: var(--ink-strong); }
+      .seg button[aria-checked='true'] { background: var(--accent); border-color: var(--line); color: var(--accent-ink); }
+
+      /* --- Aufbau --------------------------------------------------------- */
+      .shell {
+        position: relative; z-index: 1; min-height: 100dvh;
+        display: flex; flex-direction: column; align-items: center;
+        gap: clamp(10px, 2vh, 26px); padding: 10px 16px 26px;
+      }
+
+      .topbar { width: 100%; max-width: 780px; display: flex; justify-content: center; align-items: center; }
+
+      .wordmark { position: relative; --breite: 300px; width: var(--breite); line-height: 0; margin-right: calc(var(--breite) * -0.1078); translate: 0 18px; }
+      .wordmark img { display: block; width: 100%; height: auto; }
+      .wordmark img.dark { display: none; }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme='light']) .wordmark img.light { display: none; }
+        :root:not([data-theme='light']) .wordmark img.dark { display: block; }
+      }
+      :root[data-theme='dark'] .wordmark img.light { display: none; }
+      :root[data-theme='dark'] .wordmark img.dark { display: block; }
+
+      .stage { width: 100%; max-width: 780px; display: flex; flex-direction: column; gap: 22px; margin: auto 0; position: relative; }
+
+      /* --- Die Karte ------------------------------------------------------ */
+      .panel {
+        position: relative; background: var(--card); border: 3px solid var(--line);
+        border-radius: var(--radius-card); box-shadow: 0 10px 0 var(--pop), var(--card-shadow);
+        padding: 24px; display: flex; flex-direction: column; gap: 16px;
+      }
+
+      /* --- Kacheln -------------------------------------------------------- */
+      .tiles { display: grid; grid-template-columns: 1fr; grid-auto-rows: 1fr; gap: 20px; }
+      @media (min-width: 640px) { .tiles { grid-template-columns: 1fr 1fr; } }
+
+      .tile-wrap { position: relative; display: flex; flex-direction: column; }
+
+      .tile {
+        position: relative; flex: 1; width: 100%; min-height: 106px;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        gap: 12px; padding: 18px 16px; overflow: hidden; cursor: pointer;
+        background: var(--field); border: 3px dashed var(--line-soft);
+        border-radius: var(--radius-tile); color: var(--ink); text-align: center;
+        transition: transform 220ms var(--ease-bounce), background-color 160ms ease-out, border-color 160ms ease-out;
+      }
+      .tile-wrap:nth-child(1) .tile:not(.is-loaded) { transform: rotate(-1.5deg); }
+      .tile-wrap:nth-child(2) .tile:not(.is-loaded) { transform: rotate(1.5deg); }
+      .tile:hover { transform: rotate(0deg) translateY(-3px); background: var(--accent-wash); border-color: var(--accent-line); }
+
+      .tile.is-loaded {
+        transform: rotate(0deg); background: var(--done-wash);
+        border-style: solid; border-color: var(--done-line);
+        background-image: repeating-linear-gradient(to bottom, transparent 0, transparent 21px,
+          color-mix(in oklab, var(--done) 22%, transparent) 21px, color-mix(in oklab, var(--done) 22%, transparent) 22px);
+        background-position: 0 30px;
+      }
+
+      .tile__plus { position: relative; width: 42px; height: 42px; color: var(--accent); flex: none; }
+      .tile__plus::before, .tile__plus::after { content: ''; position: absolute; background: currentColor; border-radius: 999px; }
+      .tile__plus::before { inset: 0 41%; }
+      .tile__plus::after { inset: 41% 0; }
+      .tile.is-loaded .tile__plus { display: none; }
+
+      .tile__name { position: relative; font-family: var(--font-display); font-size: 1.125rem; font-weight: 600; color: var(--ink-strong); }
+      .tile__file { position: relative; display: none; font-size: 0.8125rem; font-weight: 500; color: var(--done-text); }
+      .tile.is-loaded .tile__file { display: block; }
+
+      .tile__flag {
+        position: absolute; top: 12px; right: 12px; padding: 3px 11px; border-radius: 999px;
+        background: var(--card); border: 2px solid var(--line-soft);
+        font-family: var(--font-display); font-size: 0.6875rem; font-weight: 600;
+        letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted);
+      }
+      .tile.is-loaded .tile__flag { display: none; }
+
+      /* --- Felder --------------------------------------------------------- */
+      .block { display: flex; flex-direction: column; gap: 9px; }
+      .block__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 4px; }
+      .label { font-family: var(--font-display); font-size: 1.125rem; font-weight: 600; color: var(--ink-strong); }
+
+      textarea, input[type='text'] {
+        width: 100%; padding: 12px 16px; background: var(--field);
+        border: 3px solid var(--line-soft); border-radius: var(--radius-control);
+        transition: border-color 160ms ease-out;
+      }
+      textarea { min-height: 110px; resize: vertical; line-height: 1.65; }
+      textarea::placeholder { color: var(--muted); }
+      textarea:hover, input[type='text']:hover, textarea:focus-visible, input[type='text']:focus-visible { border-color: var(--accent-line); }
+
+      .hint { margin: 0; padding: 0 4px; font-size: 0.8125rem; line-height: 1.5; color: var(--muted); }
+
+      /* --- Knöpfe --------------------------------------------------------- */
+      .btn {
+        display: inline-flex; align-items: center; gap: 8px; flex: none;
+        padding: 9px 16px 10px; background: var(--field); border: 3px solid var(--line);
+        border-radius: 999px; box-shadow: 0 4px 0 var(--pop);
+        font-family: var(--font-display); font-size: 0.875rem; font-weight: 600;
+        color: var(--ink-strong); cursor: pointer;
+        transition: translate 180ms var(--ease-bounce), box-shadow 140ms ease-out,
+          background-color 140ms ease-out, color 140ms ease-out;
+      }
+      .btn:hover { background: var(--accent); color: var(--accent-ink); translate: 0 -2px; box-shadow: 0 6px 0 var(--pop); }
+      .btn:active { translate: 0 4px; box-shadow: 0 0 0 var(--pop); }
+
+      .btn--sm { padding: 6px 13px 7px; font-size: 0.8125rem; box-shadow: 0 3px 0 var(--pop); }
+      .btn--sm:hover { box-shadow: 0 5px 0 var(--pop); }
+      .btn--sm:active { box-shadow: 0 0 0 var(--pop); }
+
+      .btn--quiet { border-color: var(--line-soft); box-shadow: 0 3px 0 var(--line-soft); color: var(--muted); }
+      .btn--quiet:hover { box-shadow: 0 5px 0 var(--line-soft); }
+      .btn--quiet:active { box-shadow: 0 0 0 var(--line-soft); }
+
+      .go {
+        align-self: flex-end; display: inline-flex; align-items: center; gap: 12px;
+        padding: 10px 26px 12px; background: var(--accent); border: 3px solid var(--line);
+        border-radius: 999px; box-shadow: 0 6px 0 var(--accent-deep), var(--btn-shadow);
+        color: var(--accent-ink); font-family: var(--font-display); font-size: 1rem;
+        font-weight: 600; cursor: pointer;
+        transition: translate 180ms var(--ease-bounce), box-shadow 140ms ease-out;
+      }
+      .go:hover { translate: 0 -3px; box-shadow: 0 9px 0 var(--accent-deep), var(--btn-shadow); }
+      .go:active { translate: 0 6px; box-shadow: 0 0 0 var(--accent-deep); }
+      .go svg { width: 17px; height: 17px; rotate: 90deg; fill: currentColor; }
+
+      .icon-x {
+        display: grid; place-items: center; width: 26px; height: 26px; flex: none; padding: 0;
+        border-radius: 999px; border: 2px solid var(--line-soft); background: var(--card);
+        color: var(--muted); cursor: pointer; transition: color 140ms ease-out, border-color 140ms ease-out, background-color 140ms ease-out;
+      }
+      .icon-x:hover { color: var(--ink-strong); border-color: var(--accent-line); background: var(--accent-wash); }
+      .icon-x svg { width: 13px; height: 13px; fill: currentColor; }
+
+      /* =====================================================================
+         HEUTE — die Karte über den Kacheln
+         ===================================================================== */
+      .recall-card {
+        display: none; flex-direction: column; gap: 8px; padding: 16px;
+        background: var(--field); border: 3px solid var(--line-soft); border-radius: var(--radius-tile);
+      }
+      [data-variant='heute'] .recall-card { display: flex; }
+      .recall-card h2 { margin: 0; font-family: var(--font-display); font-size: 1rem; font-weight: 600; color: var(--ink-strong); }
+      .recall-card ul { display: flex; flex-direction: column; gap: 8px; list-style: none; margin: 0; padding: 0; }
+      .recall-card li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
+      .recall-card span { font-size: 0.875rem; color: var(--ink); }
+      .recall-card .knopfpaar { display: flex; gap: 8px; flex: none; }
+
+      /* =====================================================================
+         A — die Marke auf der Kachel
+
+         Sie liegt **über** der Kachel und nicht in ihr: Die Kachel ist selbst
+         ein Knopf. Deshalb sitzt sie absolut im Halter, nicht im Knopf.
+         ===================================================================== */
+      .recall-chip {
+        display: none; position: absolute; left: 50%; bottom: 12px; translate: -50% 0;
+        z-index: 2; align-items: center; gap: 6px; max-width: calc(100% - 24px);
+      }
+      [data-variant='a'] .tile-wrap:not(.is-loaded) .recall-chip { display: flex; }
+
+      .recall-chip__use {
+        display: inline-flex; align-items: center; gap: 6px; min-width: 0;
+        padding: 4px 12px 5px; border-radius: 999px;
+        background: var(--card); border: 2px solid var(--line);
+        box-shadow: 0 3px 0 var(--pop);
+        font-family: var(--font-display); font-size: 0.75rem; font-weight: 600;
+        color: var(--ink-strong); cursor: pointer; white-space: nowrap;
+        overflow: hidden; text-overflow: ellipsis;
+        transition: translate 180ms var(--ease-bounce), box-shadow 140ms ease-out, background-color 140ms ease-out, color 140ms ease-out;
+      }
+      .recall-chip__use:hover { background: var(--accent); color: var(--accent-ink); translate: 0 -2px; box-shadow: 0 5px 0 var(--pop); }
+      .recall-chip__use:active { translate: 0 3px; box-shadow: 0 0 0 var(--pop); }
+      .recall-chip .icon-x { width: 22px; height: 22px; }
+      .recall-chip .icon-x svg { width: 11px; height: 11px; }
+
+      /* Damit die Marke nicht auf dem Namen sitzt, rückt der Inhalt hoch. */
+      [data-variant='a'] .tile-wrap:not(.is-loaded) .tile { padding-bottom: 42px; }
+
+      /* =====================================================================
+         B — eine Zeile unter den Kacheln
+         ===================================================================== */
+      .recall-line { display: none; flex-wrap: wrap; align-items: center; gap: 8px 10px; padding: 0 4px; }
+      [data-variant='b'] .recall-line { display: flex; }
+      .recall-line__label { font-size: 0.8125rem; color: var(--muted); }
+
+      /* =====================================================================
+         C — der Notizzettel auf dem Blatt
+
+         Er liegt außerhalb der Karte und schiebt deshalb nichts. Unter 1140px
+         ist links kein Platz mehr: 780px Karte plus 190px Zettel plus Abstand
+         brauchen 1160px Fenster.
+         ===================================================================== */
+      .recall-note { display: none; position: absolute; z-index: 2; width: 212px; }
+      @media (min-width: 1140px) { [data-variant='c'] .recall-note { display: block; } }
+
+      .recall-note__paper {
+        display: flex; flex-direction: column; gap: 8px; padding: 14px;
+        background: var(--card); border: 3px solid var(--line);
+        border-radius: var(--radius-tile); box-shadow: 0 8px 0 var(--pop), var(--card-shadow);
+      }
+      .recall-note--letter { top: 24px; right: calc(100% + 34px); rotate: -3deg; }
+      .recall-note--cv { bottom: 40px; left: calc(100% + 34px); rotate: 2.5deg; }
+
+      .recall-note__head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+      .recall-note__kind { font-family: var(--font-display); font-size: 0.875rem; font-weight: 600; color: var(--ink-strong); }
+      .recall-note__file { font-size: 0.75rem; color: var(--muted); overflow-wrap: anywhere; }
+      .recall-note__row { display: flex; align-items: center; gap: 6px; }
+      .recall-note .btn--sm { flex: 1; justify-content: center; }
+    </style>
+  </head>
+
+  <body data-variant="heute">
+    <div class="room" aria-hidden="true">
+      <svg class="doodle" viewBox="0 0 60 60" stroke-width="2.1"><path d="M31 30c0-4-5-5-7-1s3 10 10 9 12-10 8-19S24 8 15 15" /></svg>
+      <svg class="doodle" viewBox="0 0 60 60" stroke-width="2"><path d="M4 34c6-14 15-15 17-4 1 7-7 9-8 2s8-12 17-6c6 4 8 12 16 7" /></svg>
+      <svg class="doodle" viewBox="0 0 60 60" stroke-width="2.3"><path d="M30 8c0 12 1 30 0 43" /><path d="M13 18c10 6 25 15 34 21" /><path d="M47 18c-9 6-24 15-34 21" /></svg>
+      <svg class="doodle" viewBox="0 0 60 60" stroke-width="2"><path d="M14 40c-7 0-8-10-1-11-1-10 13-13 17-5 5-7 17-2 15 7 7 1 6 9-1 9z" /></svg>
+    </div>
+
+    <!-- Die Werkbank gehört zur Attrappe, nicht zum Entwurf. -->
+    <div class="bench">
+      <span class="bench__label">Zuletzt benutzt</span>
+      <div class="seg" role="radiogroup" aria-label="Fassung" data-group="variant">
+        <button type="button" role="radio" aria-checked="true" data-value="heute">Heute</button>
+        <button type="button" role="radio" aria-checked="false" data-value="a">A · Kachel</button>
+        <button type="button" role="radio" aria-checked="false" data-value="b">B · Zeile</button>
+        <button type="button" role="radio" aria-checked="false" data-value="c">C · Zettel</button>
+      </div>
+      <span class="bench__label">Thema</span>
+      <div class="seg" role="radiogroup" aria-label="Darstellung" data-group="theme">
+        <button type="button" role="radio" aria-checked="false" data-value="light">Hell</button>
+        <button type="button" role="radio" aria-checked="false" data-value="dark">Dunkel</button>
+        <button type="button" role="radio" aria-checked="true" data-value="system">System</button>
+      </div>
+    </div>
+
+    <div class="shell">
+      <header class="topbar">
+        <div class="wordmark">
+          <span class="sr-only">Applai</span>
+          <img class="light" src="../../public/marke/logo-ruhe.webp" alt="" width="640" height="234" />
+          <img class="dark" src="../../public/marke/logo-ruhe-hell.webp" alt="" width="640" height="234" />
+        </div>
+      </header>
+
+      <main class="stage">
+        <h1 class="sr-only">Bewerbung vorbereiten</h1>
+
+        <!-- C · die zwei Zettel liegen auf dem Blatt, nicht in der Karte -->
+        <div class="recall-note recall-note--letter">
+          <div class="recall-note__paper">
+            <div class="recall-note__head">
+              <span class="recall-note__kind">Anschreiben</span>
+            </div>
+            <span class="recall-note__file">anschreiben.docx</span>
+            <div class="recall-note__row">
+              <button type="button" class="btn btn--sm">Weiterverwenden</button>
+              <button type="button" class="icon-x" aria-label="Zwischenstand des Anschreibens verwerfen">
+                <svg viewBox="0 0 256 256" aria-hidden="true" focusable="false"><path d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z" /></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="recall-note recall-note--cv">
+          <div class="recall-note__paper">
+            <div class="recall-note__head">
+              <span class="recall-note__kind">Lebenslauf</span>
+            </div>
+            <span class="recall-note__file">lebenslauf.docx</span>
+            <div class="recall-note__row">
+              <button type="button" class="btn btn--sm">Weiterverwenden</button>
+              <button type="button" class="icon-x" aria-label="Zwischenstand des Lebenslaufs verwerfen">
+                <svg viewBox="0 0 256 256" aria-hidden="true" focusable="false"><path d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z" /></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <!-- HEUTE · die Karte über den Kacheln -->
+          <section class="recall-card" aria-labelledby="recall-heading">
+            <h2 id="recall-heading">Zuletzt benutzt</h2>
+            <ul>
+              <li>
+                <span>Anschreiben, gespeichert am 15. August 2026</span>
+                <span class="knopfpaar">
+                  <button type="button" class="btn btn--sm">Weiterverwenden</button>
+                  <button type="button" class="btn btn--sm btn--quiet">Verwerfen</button>
+                </span>
+              </li>
+              <li>
+                <span>Lebenslauf, gespeichert am 15. August 2026</span>
+                <span class="knopfpaar">
+                  <button type="button" class="btn btn--sm">Weiterverwenden</button>
+                  <button type="button" class="btn btn--sm btn--quiet">Verwerfen</button>
+                </span>
+              </li>
+            </ul>
+          </section>
+
+          <div class="tiles">
+            <div class="tile-wrap">
+              <button type="button" class="tile">
+                <span class="tile__plus" aria-hidden="true"></span>
+                <span class="tile__name">Anschreiben</span>
+                <span class="tile__file"></span>
+              </button>
+              <!-- A · die Marke liegt über der Kachel -->
+              <span class="recall-chip">
+                <button type="button" class="recall-chip__use">anschreiben.docx</button>
+                <button type="button" class="icon-x" aria-label="Zwischenstand des Anschreibens verwerfen">
+                  <svg viewBox="0 0 256 256" aria-hidden="true" focusable="false"><path d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z" /></svg>
+                </button>
+              </span>
+            </div>
+
+            <div class="tile-wrap">
+              <button type="button" class="tile">
+                <span class="tile__flag">Optional</span>
+                <span class="tile__plus" aria-hidden="true"></span>
+                <span class="tile__name">Lebenslauf</span>
+                <span class="tile__file"></span>
+              </button>
+              <span class="recall-chip">
+                <button type="button" class="recall-chip__use">lebenslauf.docx</button>
+                <button type="button" class="icon-x" aria-label="Zwischenstand des Lebenslaufs verwerfen">
+                  <svg viewBox="0 0 256 256" aria-hidden="true" focusable="false"><path d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z" /></svg>
+                </button>
+              </span>
+            </div>
+          </div>
+
+          <!-- B · eine Zeile unter den Kacheln -->
+          <div class="recall-line">
+            <span class="recall-line__label">Zuletzt benutzt:</span>
+            <button type="button" class="btn btn--sm">Anschreiben</button>
+            <button type="button" class="btn btn--sm">Lebenslauf</button>
+            <button type="button" class="btn btn--sm btn--quiet">Verwerfen</button>
+          </div>
+
+          <div class="block">
+            <div class="block__head">
+              <label class="label" for="ad">Stellenausschreibung</label>
+              <button type="button" class="btn btn--sm">PDF</button>
+            </div>
+            <textarea id="ad" placeholder="Anzeige hier einfügen"></textarea>
+          </div>
+
+          <div class="block">
+            <label class="label" for="name">Ihr Name</label>
+            <input type="text" id="name" value="Marlene Ostwald" />
+            <p class="hint">Wird vor jeder Anfrage durch einen Platzhalter ersetzt.</p>
+          </div>
+
+          <button type="button" class="go">
+            Weiter
+            <svg viewBox="0 0 256 256" aria-hidden="true" focusable="false"><path d="M205.66,117.66a8,8,0,0,1-11.32,0L136,59.31V216a8,8,0,0,1-16,0V59.31L61.66,117.66a8,8,0,0,1-11.32-11.32l72-72a8,8,0,0,1,11.32,0l72,72A8,8,0,0,1,205.66,117.66Z" /></svg>
+          </button>
+        </div>
+      </main>
+    </div>
+
+    <script>
+      /* Eine Wahl je Gruppe. Die Fassung hängt am `data-variant` des Körpers,
+         damit sich jede Darstellung im Stylesheet ablesen lässt. */
+      document.querySelectorAll('.seg').forEach((gruppe) => {
+        gruppe.addEventListener('click', (ereignis) => {
+          const knopf = ereignis.target.closest('button')
+          if (knopf === null) return
+          gruppe.querySelectorAll('button').forEach((anderer) =>
+            anderer.setAttribute('aria-checked', String(anderer === knopf)),
+          )
+          if (gruppe.dataset.group === 'variant') {
+            document.body.dataset.variant = knopf.dataset.value
+          }
+          if (gruppe.dataset.group === 'theme') {
+            const wert = knopf.dataset.value
+            if (wert === 'system') document.documentElement.removeAttribute('data-theme')
+            else document.documentElement.setAttribute('data-theme', wert)
+          }
+        })
+      })
+
+      /* Die Marke füllt ihre Kachel — damit sich der Weg wirklich durchspielen
+         lässt und nicht nur behauptet wird. */
+      document.querySelectorAll('.recall-chip__use, .recall-note .btn').forEach((knopf) => {
+        knopf.addEventListener('click', () => {
+          const halter = knopf.closest('.tile-wrap')
+          const name = knopf.textContent.trim()
+          const ziel = halter ?? document.querySelectorAll('.tile-wrap')[
+            knopf.closest('.recall-note--cv') === null ? 0 : 1
+          ]
+          ziel.classList.add('is-loaded')
+          ziel.querySelector('.tile').classList.add('is-loaded')
+          ziel.querySelector('.tile__file').textContent =
+            name.includes('lebenslauf') || knopf.closest('.recall-note--cv') !== null
+              ? 'lebenslauf.docx'
+              : 'anschreiben.docx'
+          const zettel = knopf.closest('.recall-note')
+          if (zettel !== null) zettel.style.display = 'none'
+        })
+      })
+    </script>
+  </body>
+</html>

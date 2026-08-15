@@ -1,0 +1,1710 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Applai Arbeitsfläche</title>
+    <style>
+      /* =====================================================================
+         Attrappe: Arbeitsfläche (Anschreiben anpassen), im Thema der
+         Vorbereiten-Seite. Token, Blattlage und Kritzeleien wörtlich aus
+         v11-vorbereiten-verspielt.html.
+
+         Drei Spalten: links die Vormerkungen und die Anforderungen aus der
+         Anzeige, in der Mitte das Dokument, rechts Export und Stellschrauben.
+         Ab 1180px nebeneinander, darunter untereinander mit dem Dokument
+         zuoberst.
+
+         **Die Farben sagen den Stand, nicht die Worte.** Tangerine heißt
+         „hier ist noch etwas zu tun", Minze heißt „erledigt". Das gilt hier
+         durchgehend: an den hinterlegten Stellen im Brief, an den Nummern in
+         der Liste links, an den Anforderungen und am Fortschritt. Wörter wie
+         „offen" oder „erledigt" braucht die Seite deshalb nicht.
+
+         **Der Brief ist das einzige Blatt mit 8px Radius.** Alles andere hier
+         ist Bedienelement und trägt die Radien der Seite; das Blatt zeigt ein
+         Word-Dokument, und ein Word-Dokument hat keine runden Ecken.
+
+         Formen: Karte 34px · Kacheln 24px · Bedienelemente 16px · Knöpfe Pille
+                 · Brief 8px
+         ===================================================================== */
+
+      @font-face {
+        font-family: 'Fredoka';
+        font-style: normal;
+        font-display: swap;
+        font-weight: 400 700;
+        src: url('../../public/fonts/fredoka-variable-latin.woff2') format('woff2-variations');
+        unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+          U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191,
+          U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+      }
+
+      @font-face {
+        font-family: 'Inter Variable';
+        font-style: normal;
+        font-display: swap;
+        font-weight: 100 900;
+        src: url('../../public/fonts/inter-variable-latin.woff2') format('woff2-variations');
+      }
+
+      /* --- Farbe ---------------------------------------------------------
+         Helle Voreinstellung. Der Raum ist auch hier dunkel: Er ist die
+         Bühne, nicht die Arbeitsfläche. Was zwischen hell und dunkel
+         umschaltet, ist die Karte. */
+      :root {
+        color-scheme: light;
+
+        /* Der Raum ist ein liniertes DIN-A4-Blatt: papierweißer Grund,
+           Zeilen im klassischen Blassblau, links der rote Rand. Der
+           Zeilenabstand ist der von Lineatur 27, also 9mm, in CSS-Pixeln
+           bei 96dpi rund 34px. Der Rand steht bei 14% der Fensterbreite,
+           damit er auf jedem Fenster an derselben Stelle sitzt.
+
+           Kein Farbverlauf: Papier ist flach. Die Tiefe kommt allein aus
+           der leichten Abdunklung zu den Rändern hin. */
+        --paper: #ffffff;
+        --rule-step: 34px;
+        --rule: #c3d8ea;
+        --margin: #aecbe5;
+        --room-edge: transparent;
+        /* Bleistiftgrau für die Kritzeleien am Rand. Bewusst schwach: Sie
+           sind Papierspur, kein Inhalt. Wer sie liest, statt sie zu
+           bemerken, hat zu viel Aufmerksamkeit daran verloren. */
+        --doodle: rgb(23 27 60 / 0.18);
+        /* Der weiche Schatten unter der harten Kante. Er trägt die
+           Ablösung, die der Helligkeitsunterschied allein nicht schafft. */
+        --card-shadow: 0 16px 30px rgb(13 27 75 / 0.13);
+        --btn-shadow: 0 10px 18px rgb(13 27 75 / 0.14);
+
+        /* Die eine Kontur und die eine harte Kante. */
+        --line: #0d1b4b;
+        --line-soft: #3a4680;
+        --pop: #0d1b4b;
+
+        /* Die Karte ist beige, nicht weiß. Das Blatt darunter ist das
+           Papier und bleibt hell; abheben soll sich das, was daraufliegt.
+           1,08:1 gegen den Grund. Bei diesem Wert trägt nicht mehr die
+           Helligkeit, sondern der Farbton: warm gegen neutralweiß. Die
+           Ablösung machen die Tintenkontur, die harte Kante und der
+           Schatten darunter. */
+        --card: #fbf6ec;
+        --ink: #16205c;
+        --ink-strong: #0d1b4b;
+        --muted: #4e5885;
+
+        --field: #ffffff;
+
+        --accent: #ff7a45;
+        --accent-line: #c9531f;
+        --accent-deep: #b8461a;
+        --accent-ink: #2b1004;
+        --accent-text: #c9531f;
+        --accent-wash: #fff0e8;
+
+        --done: #22c98f;
+        --done-line: #0f8f64;
+        --done-deep: #0f8f64;
+        --done-ink: #06301f;
+        --done-text: #0b7050;
+        --done-wash: #ddf7ec;
+
+        --error: #d6293e;
+
+
+        --focus: var(--accent-deep);
+
+        --r-card: 34px;
+        --r-tile: 24px;
+        --r-control: 16px;
+        --pop-height: 6px;
+
+        --bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+        --font-display: 'Fredoka', system-ui, sans-serif;
+        --font-body: 'Inter Variable', system-ui, sans-serif;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme='light']) {
+          color-scheme: dark;
+
+          --paper: #04061f;
+          --rule: rgb(255 255 255 / 0.075);
+          --margin: rgb(255 255 255 / 0.14);
+          --card-shadow: 0 16px 34px rgb(0 0 0 / 0.5);
+          --btn-shadow: 0 10px 20px rgb(0 0 0 / 0.45);
+          --room-edge: rgb(0 0 0 / 0.45);
+          --doodle: rgb(255 255 255 / 0.085);
+
+          --line: #3b4794;
+          --line-soft: #5d66bd;
+          --pop: #2a3382;
+
+          --card: #1a2158;
+          --ink: #e7e9ff;
+          --ink-strong: #ffffff;
+          --muted: #9aa1d4;
+
+          --field: #0d1238;
+
+          --accent: #ff8f5e;
+          --accent-line: #ff8f5e;
+          --accent-deep: #b8461a;
+          --accent-ink: #2a0f05;
+          --accent-text: #ffa87e;
+          --accent-wash: #3a1f28;
+
+          --done: #2fd9a0;
+          --done-line: #2fd9a0;
+          --done-deep: #12996b;
+          --done-ink: #04281a;
+          --done-text: #46e0ae;
+          --done-wash: #0e3140;
+
+          --error: #ff8a7a;
+
+
+          --focus: var(--accent-text);
+        }
+      }
+
+      :root[data-theme='dark'] {
+        color-scheme: dark;
+
+        --paper: #04061f;
+        --rule: rgb(255 255 255 / 0.075);
+        --margin: rgb(255 255 255 / 0.14);
+        --card-shadow: 0 16px 34px rgb(0 0 0 / 0.5);
+        --btn-shadow: 0 10px 20px rgb(0 0 0 / 0.45);
+        --room-edge: rgb(0 0 0 / 0.45);
+        --doodle: rgb(255 255 255 / 0.085);
+
+        --line: #3b4794;
+        --line-soft: #5d66bd;
+        --pop: #2a3382;
+
+        --card: #1a2158;
+        --ink: #e7e9ff;
+        --ink-strong: #ffffff;
+        --muted: #9aa1d4;
+
+        --field: #0d1238;
+
+        --accent: #ff8f5e;
+        --accent-line: #ff8f5e;
+        --accent-deep: #b8461a;
+        --accent-ink: #2a0f05;
+        --accent-text: #ffa87e;
+        --accent-wash: #3a1f28;
+
+        --done: #2fd9a0;
+        --done-line: #2fd9a0;
+        --done-deep: #12996b;
+        --done-ink: #04281a;
+        --done-text: #46e0ae;
+        --done-wash: #0e3140;
+
+        --error: #ff8a7a;
+
+
+        --focus: var(--accent-text);
+      }
+
+      /* --- Grundlage ----------------------------------------------------- */
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        min-height: 100dvh;
+        background-color: var(--paper);
+        color: var(--ink);
+        font-family: var(--font-body);
+        font-size: 1rem;
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      button,
+      input,
+      textarea {
+        font: inherit;
+        color: inherit;
+      }
+
+      :focus-visible {
+        outline: 3px solid var(--focus);
+        outline-offset: 3px;
+      }
+
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+        border: 0;
+      }
+
+      /* --- Der Raum ------------------------------------------------------
+         Zwei Lagen: ein feines Punktraster über die ganze Fläche und eine
+         Handvoll Kritzeleien an den Rändern, wie sie beim Warten am Rand
+         eines Blattes entstehen: Spirale, Gesicht, Schlaufe, Stern, Wolke,
+         Pfeil, Bleistift.
+
+         **Sie bewegen sich nicht.** Das Konfetti vorher schwebte, weil es
+         über dem Blatt lag. Diese hier sind auf das Blatt gezeichnet, und
+         Bleistift wandert nicht.
+
+         Sie sind Zier, tragen deshalb aria-hidden und nehmen keine
+         Zeigerereignisse an. Unter 1024px fallen sie weg: Dort steht die
+         Karte über die ganze Breite und hätte sie ohnehin verdeckt. */
+      .room {
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        overflow: hidden;
+        pointer-events: none;
+        background-image:
+          radial-gradient(circle at center, transparent 58%, var(--room-edge) 100%),
+          linear-gradient(
+            90deg,
+            transparent 0 14%,
+            var(--margin) 14% calc(14% + 2px),
+            transparent calc(14% + 2px)
+          ),
+          linear-gradient(var(--rule) 1.5px, transparent 1.5px);
+        background-size:
+          100% 100%,
+          100% 100%,
+          100% var(--rule-step);
+      }
+
+      .doodle {
+        position: absolute;
+        display: none;
+        fill: none;
+        stroke: var(--doodle);
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      @media (min-width: 1024px) {
+        .doodle {
+          display: block;
+        }
+      }
+
+      /* Von Hand gesetzt, nicht gewürfelt: Der Rand eines Blattes ist nicht
+         gleichmäßig bekritzelt, aber er sieht in jeder Sitzung gleich aus.
+         Die leichten Drehungen nehmen den Formen die Werkzeugsauberkeit.
+
+         Verteilt wird über die ganze Fläche, nicht nur an den Seitenrändern:
+         Über und unter der Karte liegt genauso viel freies Blatt, und ein
+         Blatt, das nur links und rechts bekritzelt ist, sieht gerahmt aus
+         statt benutzt. Was hinter der Karte landet, verdeckt sie einfach. */
+      .doodle:nth-of-type(1) {
+        top: 6%;
+        left: 13%;
+        width: 74px;
+        rotate: -6deg;
+      }
+      .doodle:nth-of-type(2) {
+        top: 61%;
+        left: 11%;
+        width: 82px;
+        rotate: -3deg;
+      }
+      .doodle:nth-of-type(3) {
+        bottom: 9%;
+        left: 27%;
+        width: 64px;
+        rotate: 8deg;
+      }
+      .doodle:nth-of-type(4) {
+        top: 5%;
+        right: 29%;
+        width: 56px;
+        rotate: 11deg;
+      }
+      .doodle:nth-of-type(5) {
+        top: 40%;
+        right: 4%;
+        width: 84px;
+        rotate: -5deg;
+      }
+      .doodle:nth-of-type(6) {
+        bottom: 14%;
+        right: 13%;
+        width: 72px;
+        rotate: 6deg;
+      }
+
+      /* Der Krakelkopf sitzt in der Ecke und läuft über den Blattrand
+         hinaus, wie in der Vorlage. Angeschnitten sieht eine Kritzelei
+         gezeichnet aus; mittig und vollständig sieht sie platziert aus. */
+      .doodle:nth-of-type(7) {
+        bottom: 3%;
+        left: -26px;
+        width: 116px;
+        rotate: -4deg;
+      }
+
+
+      /* --- Aufbau ---------------------------------------------------------- */
+      /* Die Seite trägt keine Tintenkontur mehr. Die harte Kante gehört zu
+         dem, was man drückt; ein Blatt Papier liegt nur da. Statt Linie und
+         Kante also eine graue Haarlinie und ein weicher Schatten, wie ihn
+         ein Blatt auf einer Unterlage wirft. Das Vorschlagsfenster darüber
+         behält die volle Behandlung, die verspielte Sprache bleibt also da,
+         wo bedient wird. */
+      :root {
+        --page-line: #d5d9e8;
+        --page-shadow:
+          0 1px 2px rgb(13 27 75 / 0.07), 0 12px 28px rgb(13 27 75 / 0.13),
+          0 34px 68px rgb(13 27 75 / 0.1);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme='light']) {
+          --page-line: #b9bfd4;
+          --page-shadow: 0 12px 32px rgb(0 0 0 / 0.55), 0 34px 76px rgb(0 0 0 / 0.45);
+        }
+      }
+
+      :root[data-theme='dark'] {
+        --page-line: #b9bfd4;
+        --page-shadow: 0 12px 32px rgb(0 0 0 / 0.55), 0 34px 76px rgb(0 0 0 / 0.45);
+      }
+
+      .shell {
+        position: relative;
+        z-index: 1;
+        min-height: 100dvh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 18px;
+        padding: 18px 16px 56px;
+      }
+
+      /* Die Marke steht in der Mitte, der Umschalter links, Ablauf und
+         Einstellungen rechts. Dafür ein Raster mit drei Spalten statt einer
+         Flexzeile: Nur so sitzt die Marke wirklich mittig und nicht dort, wo
+         die beiden Nachbarn sie gerade hinlassen. Unter 720px fällt das
+         Raster weg, dort stehen die drei Teile untereinander und zentriert. */
+      .topbar {
+        width: 100%;
+        max-width: 1680px;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        gap: 12px 18px;
+      }
+
+      @media (min-width: 720px) {
+        .topbar {
+          display: grid;
+          grid-template-columns: 1fr auto 1fr;
+        }
+
+        .topbar > .seg {
+          grid-column: 1;
+          grid-row: 1;
+          justify-self: start;
+        }
+
+        .topbar .wordmark {
+          grid-column: 2;
+          grid-row: 1;
+        }
+
+        .topbar__right {
+          grid-column: 3;
+          grid-row: 1;
+          justify-self: end;
+        }
+      }
+
+      .wordmark {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-family: var(--font-display);
+        font-size: 1.375rem;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        color: var(--ink-strong);
+      }
+
+      .wordmark b {
+        font-weight: 600;
+        color: var(--accent);
+      }
+
+      .wordmark img {
+        flex: none;
+        height: 34px;
+        width: auto;
+      }
+
+      .topbar__right {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+
+      .steps {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+
+      .steps li {
+        width: 12px;
+        height: 12px;
+        border-radius: 999px;
+        border: 3px solid var(--line);
+        background: var(--field);
+      }
+
+      .steps li[aria-current='step'] {
+        width: 34px;
+        background: var(--accent);
+      }
+
+      .stage {
+        width: 100%;
+        max-width: 1680px;
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 18px;
+      }
+
+      @media (min-width: 1180px) {
+        .stage {
+          grid-template-columns: 16rem minmax(0, 1fr) 16rem;
+          align-items: start;
+        }
+      }
+
+      /* Das Dokument steht im Aufbau zuerst, damit Tastatur und
+         Vorlesesoftware zuerst an es kommen. An seinen Platz in der Mitte
+         kommt es erst über die Spaltenangabe. */
+      .col-doc {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+
+      @media (min-width: 1180px) {
+        .col-doc {
+          grid-column: 2;
+          grid-row: 1;
+        }
+        .col-left {
+          grid-column: 1;
+          grid-row: 1;
+        }
+        .col-right {
+          grid-column: 3;
+          grid-row: 1;
+        }
+      }
+
+      .col-left,
+      .col-right {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+
+      /* --- Karten ------------------------------------------------------------ */
+      .card {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 16px 18px 18px;
+        background: var(--card);
+        border: 3px solid var(--line);
+        border-radius: var(--r-card);
+        box-shadow: 0 8px 0 var(--pop), var(--card-shadow);
+      }
+
+      .card__head {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 10px;
+        margin: 0;
+        font-family: var(--font-display);
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--ink-strong);
+      }
+
+      .card__count {
+        font-family: var(--font-body);
+        font-size: 0.8125rem;
+        font-weight: 500;
+        color: var(--muted);
+        font-variant-numeric: tabular-nums;
+      }
+
+      .note {
+        margin: 0;
+        font-size: 0.8125rem;
+        line-height: 1.5;
+        color: var(--muted);
+      }
+
+      /* --- Vorgemerkte Stellen ------------------------------------------------
+         Die Nummer trägt den Stand: Tangerine offen, Minze erledigt. Ein Wort
+         daneben wäre dieselbe Auskunft ein zweites Mal. */
+      .marks {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+
+      .marks button {
+        width: 100%;
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 9px 11px;
+        text-align: left;
+        background: var(--field);
+        border: 3px solid var(--line-soft);
+        border-radius: var(--r-control);
+        font-size: 0.875rem;
+        line-height: 1.45;
+        color: var(--ink);
+        cursor: pointer;
+        transition:
+          border-color 140ms ease-out,
+          background-color 140ms ease-out;
+      }
+
+      .marks button:hover {
+        border-color: var(--accent-line);
+        background: var(--accent-wash);
+      }
+
+      .marks li[data-state='done'] button {
+        color: var(--muted);
+      }
+
+      .marks__num {
+        flex: none;
+        display: grid;
+        place-items: center;
+        width: 22px;
+        height: 22px;
+        border-radius: 999px;
+        border: 2px solid var(--line);
+        background: var(--accent);
+        font-family: var(--font-display);
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--accent-ink);
+      }
+
+      .marks li[data-state='done'] .marks__num {
+        background: var(--done);
+        color: var(--done-ink);
+      }
+
+      .marks__num svg {
+        width: 12px;
+        height: 12px;
+        fill: currentColor;
+      }
+
+      /* --- Anforderungen ------------------------------------------------------
+         Gedeckt ist minzfarben, offen bleibt neutral. Kein Prozentwert: Der
+         wäre erfunden. */
+      .reqs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+
+      .reqs li {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 11px 5px;
+        border-radius: 999px;
+        background: var(--field);
+        border: 2px solid var(--line-soft);
+        font-size: 0.8125rem;
+        color: var(--ink);
+      }
+
+      .reqs li[data-covered='yes'] {
+        background: var(--done-wash);
+        border-color: var(--done-line);
+        color: var(--done-text);
+        font-weight: 600;
+      }
+
+      .reqs svg {
+        width: 12px;
+        height: 12px;
+        fill: currentColor;
+      }
+
+      /* --- Umschalter der Unterlagen ------------------------------------------ */
+      .seg {
+        display: inline-flex;
+        align-self: flex-start;
+        padding: 3px;
+        gap: 3px;
+        background: var(--card);
+        border: 3px solid var(--line);
+        border-radius: 999px;
+        box-shadow: 0 4px 0 var(--pop);
+      }
+
+      .seg--plain {
+        align-self: stretch;
+        display: flex;
+        background: var(--field);
+        border-color: var(--line-soft);
+        box-shadow: none;
+      }
+
+      .seg button {
+        flex: 1;
+        padding: 7px 16px 8px;
+        border: 3px solid transparent;
+        border-radius: 999px;
+        background: none;
+        font-family: var(--font-display);
+        font-size: 0.875rem;
+        font-weight: 600;
+        white-space: nowrap;
+        color: var(--muted);
+        cursor: pointer;
+      }
+
+      .seg button:hover {
+        color: var(--ink-strong);
+      }
+
+      .seg button[aria-checked='true'] {
+        background: var(--accent);
+        border-color: var(--line);
+        color: var(--accent-ink);
+      }
+
+      /* --- Die Kopfzeile ------------------------------------------------------
+         Der Umschalter der Unterlage steht jetzt oben links neben der Marke.
+         Er gehört zur Anwendung, nicht zum Blatt: Er sagt, woran man
+         arbeitet, und nicht, was man damit macht. Die Mittelspalte trägt
+         dadurch nur noch die Seite, und die beginnt auf derselben Höhe wie
+         die beiden Seitenspalten.
+         --------------------------------------------------------------------- */
+      /* --- Aufklappbare Karten ------------------------------------------------
+         Stellen und Anforderungen sind Nachschlagelisten, keine Dauerauskunft.
+         Zugeklappt bleibt der Zähler stehen, und der ist das, was man im
+         Vorbeigehen wissen will. */
+      details.card > summary {
+        display: flex;
+        align-items: baseline;
+        gap: 10px;
+        cursor: pointer;
+        list-style: none;
+        margin: 0;
+        font-family: var(--font-display);
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--ink-strong);
+      }
+
+      details.card > summary::-webkit-details-marker {
+        display: none;
+      }
+
+      details.card > summary:hover {
+        color: var(--accent-text);
+      }
+
+      details.card > summary > span:first-child {
+        flex: 1;
+      }
+
+      details.card > summary svg {
+        flex: none;
+        align-self: center;
+        width: 16px;
+        height: 16px;
+        fill: var(--accent-line);
+        transition: rotate 200ms var(--bounce);
+      }
+
+      details.card[open] > summary {
+        margin-bottom: 12px;
+      }
+
+      details.card[open] > summary svg {
+        rotate: 180deg;
+      }
+
+      /* --- Die Auswahl in der linken Spalte ------------------------------------ */
+      .stack {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .btn--quiet {
+        margin-top: 6px;
+        border-color: var(--line-soft);
+        box-shadow: 0 3px 0 var(--line-soft);
+        color: var(--muted);
+      }
+
+      .btn--quiet:hover {
+        color: var(--ink-strong);
+        box-shadow: 0 5px 0 var(--line-soft);
+      }
+
+      .btn--quiet:active {
+        box-shadow: 0 0 0 var(--line-soft);
+      }
+
+      .btn--block {
+        width: 100%;
+        justify-content: center;
+      }
+
+      /* --- Das Blatt ----------------------------------------------------------
+         Weiß, nicht cremefarben: Es ist das Dokument, nicht die Oberfläche.
+         Und als Einziges mit 8px Radius, siehe Kopf. */
+      .sheet {
+        position: relative;
+        /* Das Blatt ist in beiden Themen weißes Papier: Es zeigt die
+           Word-Datei, und die sieht im Dunkelmodus nicht anders aus. Seine
+           Farben sind deshalb feste Werte und keine abgeleiteten. */
+        --mark-open: #ffe0cf;
+        --mark-open-line: #c9531f;
+        --mark-done: #cdf0e2;
+        --mark-done-line: #0f8f64;
+        --mark-active: #ff7a45;
+        --mark-active-ink: #2b1004;
+        --mark-active-line: #0d1b4b;
+        /* Die Seite hat das Verhältnis von A4 (1:1,414) und wird so groß
+           gezeigt, wie die Mittelspalte es zulässt: 860px statt der 794px
+           einer A4-Seite bei 96dpi, also leicht vergrößert. Das ist dasselbe,
+           was ein Textprogramm mit seiner Zoomstufe macht, und es hilft beim
+           Markieren. Die Ränder und die Schriftgröße wachsen mit, damit der
+           Zeilenumbruch der bleibt, den die Word-Datei später hat.
+
+           1080px sind das 1,36-fache einer A4-Seite und füllen die
+           Mittelspalte (1164px) bis auf einen schmalen Rand. Weiter geht es
+           nicht, ohne die Seitenspalten zu opfern, und die tragen den Stand
+           der Arbeit. */
+        max-width: 1080px;
+        margin: 0 auto;
+        min-height: 1527px;
+        padding: 55px 65px 71px;
+        background: #ffffff;
+        border: 2px solid var(--page-line);
+        border-radius: 8px;
+        box-shadow: var(--page-shadow);
+        color: #16205c;
+        font-size: 1.26rem;
+        line-height: 1.75;
+      }
+
+      :root[data-theme='dark'] .sheet,
+      :root:not([data-theme='light']) .sheet {
+        color: #16205c;
+      }
+
+      .sheet p {
+        margin: 0 0 21px;
+      }
+
+      .sheet p:last-of-type {
+        margin-bottom: 0;
+      }
+
+      .sheet__head {
+        margin-bottom: 37px;
+        font-size: 1.18rem;
+        color: #5c6494;
+      }
+
+      .sheet__head p {
+        margin: 0 0 33px;
+      }
+
+      .sheet__date {
+        text-align: right;
+      }
+
+      /* Hinterlegte Stellen. Offen tangerine, erledigt minzfarben, jeweils
+         mit einer kräftigeren Linie darunter, damit die Auszeichnung nicht
+         allein an der Farbe hängt. */
+      mark {
+        padding: 1px 0 2px;
+        background: var(--mark-open);
+        border-bottom: 3px solid var(--mark-open-line);
+        color: inherit;
+      }
+
+      mark[data-state='done'] {
+        background: var(--mark-done);
+        border-bottom-color: var(--mark-done-line);
+      }
+
+      mark[data-state='active'] {
+        background: var(--mark-active);
+        border-bottom-color: var(--mark-active-line);
+        color: var(--mark-active-ink);
+      }
+
+      /* --- Das Vorschlagsfenster ----------------------------------------------
+         Ein Vorschlag zur Zeit. Drei nebeneinander zwingen zum Vergleichen
+         von drei Sätzen, die sich in Nuancen unterscheiden; das ist mehr
+         Arbeit als das Umschreiben selbst. Die beiden anderen liegen
+         sichtbar darunter, damit klar bleibt, dass es sie gibt.
+         --------------------------------------------------------------------- */
+      .popover {
+        position: absolute;
+        left: 65px;
+        width: min(540px, calc(100% - 130px));
+        top: 0;
+        z-index: 3;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding: 14px 16px 16px;
+        background: var(--card);
+        border: 3px solid var(--line);
+        border-radius: var(--r-card);
+        box-shadow: 0 10px 0 var(--pop), var(--card-shadow);
+        color: var(--ink);
+        font-size: 0.9375rem;
+        line-height: 1.6;
+      }
+
+      .popover__head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .popover__head h3 {
+        margin: 0;
+        font-family: var(--font-display);
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--ink-strong);
+      }
+
+      /* Der Stapel. Die hinteren Karten sind versetzt, gedreht und blasser;
+         sie sind Auskunft über die Menge, nicht zum Lesen da. */
+      .deck {
+        position: relative;
+        list-style: none;
+        margin: 0;
+        padding: 0 0 34px;
+      }
+
+      .deck li {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 13px 15px 14px;
+        background: var(--field);
+        border: 3px solid var(--line-soft);
+        border-radius: var(--r-tile);
+        transition:
+          translate 280ms var(--bounce),
+          rotate 280ms var(--bounce),
+          scale 280ms var(--bounce),
+          opacity 200ms ease-out;
+      }
+
+      .deck li[data-pos='0'] {
+        position: relative;
+        z-index: 3;
+        border-color: var(--line);
+      }
+
+      .deck li[data-pos='1'] {
+        z-index: 2;
+        translate: 0 15px;
+        rotate: 1.5deg;
+        scale: 0.96;
+        opacity: 0.6;
+      }
+
+      .deck li[data-pos='2'] {
+        z-index: 1;
+        translate: 0 30px;
+        rotate: -1.8deg;
+        scale: 0.92;
+        opacity: 0.35;
+      }
+
+      /* Die hinteren Karten zeigen nur ihre Kante. Durchscheinender Text
+         unter der vorderen Karte sieht nach Fehler aus, nicht nach Stapel. */
+      .deck li:not([data-pos='0']) > * {
+        visibility: hidden;
+      }
+
+      .deck p {
+        margin: 0;
+        font-size: 0.9375rem;
+        line-height: 1.55;
+      }
+
+      .deck__len {
+        font-size: 0.75rem;
+        color: var(--muted);
+        font-variant-numeric: tabular-nums;
+      }
+
+      .nav {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .dots {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        list-style: none;
+        margin: 0 4px;
+        padding: 0;
+      }
+
+      .dots li {
+        width: 9px;
+        height: 9px;
+        border-radius: 999px;
+        border: 2px solid var(--line);
+        background: var(--field);
+      }
+
+      .dots li[aria-current='true'] {
+        width: 22px;
+        background: var(--accent);
+      }
+
+      .nav__spacer {
+        flex: 1;
+      }
+
+      /* Auf schmalen Fenstern schwebt nichts: Das Fenster reiht sich hinter
+         den Brief ein, und das Blatt hört auf, wenn der Text aufhört. Ein
+         schwebendes Feld über einem 390px breiten Brief verdeckt genau die
+         Stelle, zu der es gehört. */
+      @media (max-width: 719px) {
+        .sheet {
+          min-height: 0;
+        }
+
+        .popover {
+          position: static;
+          width: auto;
+          margin-top: 24px;
+        }
+      }
+
+      /* --- Regler --------------------------------------------------------------
+         Zwei Enden, dazwischen der Griff. Die Beschriftung steht an den Enden
+         und nicht als Überschrift darüber: Ein Regler, dessen Pole man liest,
+         braucht keinen Namen. */
+      .slider {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .slider__ends {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.75rem;
+        color: var(--muted);
+      }
+
+      input[type='range'] {
+        width: 100%;
+        height: 22px;
+        margin: 0;
+        background: none;
+        -webkit-appearance: none;
+        appearance: none;
+        cursor: pointer;
+      }
+
+      input[type='range']::-webkit-slider-runnable-track {
+        height: 14px;
+        border-radius: 999px;
+        background: var(--field);
+        border: 3px solid var(--line-soft);
+      }
+
+      input[type='range']::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        margin-top: -8px;
+        width: 24px;
+        height: 24px;
+        border-radius: 999px;
+        background: var(--accent);
+        border: 3px solid var(--line);
+      }
+
+      input[type='range']::-moz-range-track {
+        height: 14px;
+        border-radius: 999px;
+        background: var(--field);
+        border: 3px solid var(--line-soft);
+      }
+
+      input[type='range']::-moz-range-thumb {
+        width: 24px;
+        height: 24px;
+        border-radius: 999px;
+        background: var(--accent);
+        border: 3px solid var(--line);
+      }
+
+      /* --- Aufklapper ---------------------------------------------------------- */
+      details.fold {
+        border-top: 2px solid var(--line-soft);
+        padding-top: 4px;
+      }
+
+      details.fold summary {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 9px 0;
+        cursor: pointer;
+        list-style: none;
+        font-family: var(--font-display);
+        font-size: 0.9375rem;
+        font-weight: 600;
+        color: var(--ink-strong);
+      }
+
+      details.fold summary::-webkit-details-marker {
+        display: none;
+      }
+
+      details.fold summary svg {
+        flex: none;
+        width: 16px;
+        height: 16px;
+        fill: var(--accent-line);
+        transition: rotate 200ms var(--bounce);
+      }
+
+      details.fold[open] summary svg {
+        rotate: 180deg;
+      }
+
+      .fields {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding-bottom: 10px;
+      }
+
+      .fields label {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        font-size: 0.75rem;
+        color: var(--muted);
+      }
+
+      .fields input {
+        padding: 8px 12px;
+        background: var(--field);
+        border: 3px solid var(--line-soft);
+        border-radius: var(--r-control);
+        font-size: 0.875rem;
+        color: var(--ink);
+      }
+
+      .fields input:hover,
+      .fields input:focus-visible {
+        border-color: var(--accent-line);
+      }
+
+      /* --- Knöpfe --------------------------------------------------------------- */
+      .btns {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 9px 16px 10px;
+        background: var(--field);
+        border: 3px solid var(--line);
+        border-radius: 999px;
+        box-shadow: 0 4px 0 var(--pop);
+        font-family: var(--font-display);
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--ink-strong);
+        cursor: pointer;
+        transition:
+          transform 180ms var(--bounce),
+          box-shadow 140ms ease-out,
+          background-color 140ms ease-out;
+      }
+
+      .btn:hover {
+        background: var(--accent-wash);
+        border-color: var(--accent-line);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 0 var(--pop);
+      }
+
+      .btn:active {
+        transform: translateY(4px);
+        box-shadow: 0 0 0 var(--pop);
+      }
+
+      .btn svg {
+        width: 15px;
+        height: 15px;
+        fill: currentColor;
+      }
+
+      .btn--accent {
+        background: var(--accent);
+        color: var(--accent-ink);
+        box-shadow: 0 4px 0 var(--accent-deep);
+      }
+
+      .btn--accent:hover {
+        background: var(--accent);
+        box-shadow: 0 6px 0 var(--accent-deep);
+      }
+
+      .btn--accent:active {
+        box-shadow: 0 0 0 var(--accent-deep);
+      }
+
+      /* Ein gesperrter Knopf sah aus wie ein bedienbarer: Die Attrappe
+         hatte für .btn keinen gesperrten Zustand. */
+      .btn[disabled],
+      .btn[disabled]:hover {
+        cursor: not-allowed;
+        background: var(--field);
+        border-color: var(--line-soft);
+        color: var(--muted);
+        transform: none;
+        box-shadow: 0 4px 0 var(--line-soft);
+      }
+
+      .btn--sm {
+        padding: 6px 13px 7px;
+        font-size: 0.8125rem;
+        box-shadow: 0 3px 0 var(--pop);
+      }
+
+      .icon-button {
+        flex: none;
+        display: grid;
+        place-items: center;
+        width: 30px;
+        height: 30px;
+        padding: 0;
+        border-radius: 999px;
+        border: 3px solid var(--line-soft);
+        background: var(--field);
+        color: var(--ink);
+        cursor: pointer;
+      }
+
+      .icon-button:hover {
+        border-color: var(--accent-line);
+        background: var(--accent-wash);
+      }
+
+      .icon-button svg {
+        width: 14px;
+        height: 14px;
+        fill: currentColor;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="room" aria-hidden="true">
+      <!-- 1 · Spirale -->
+      <svg class="doodle" viewBox="0 0 60 60" stroke-width="2.1">
+        <path d="M31 30c0-4-5-5-7-1s3 10 10 9 12-10 8-19S24 8 15 15" />
+      </svg>
+
+      <!-- 2 · Schlaufe -->
+      <svg class="doodle" viewBox="0 0 60 60" stroke-width="2">
+        <path d="M4 34c6-14 15-15 17-4 1 7-7 9-8 2s8-12 17-6c6 4 8 12 16 7" />
+      </svg>
+
+      <!-- 3 · Bleistift -->
+      <svg class="doodle" viewBox="0 0 60 60" stroke-width="2.1">
+        <path d="M43 10l8 8-27 29-12 4 4-12z" />
+        <path d="M36 17l8 8" />
+        <path d="M16 39l8 8" />
+      </svg>
+
+      <!-- 4 · Stern -->
+      <svg class="doodle" viewBox="0 0 60 60" stroke-width="2.3">
+        <path d="M30 8c0 12 1 30 0 43" />
+        <path d="M13 18c10 6 25 15 34 21" />
+        <path d="M47 18c-9 6-24 15-34 21" />
+      </svg>
+
+      <!-- 5 · Wolke -->
+      <svg class="doodle" viewBox="0 0 60 60" stroke-width="2">
+        <path d="M14 40c-7 0-8-10-1-11-1-10 13-13 17-5 5-7 17-2 15 7 7 1 6 9-1 9z" />
+      </svg>
+
+      <!-- 6 · Pfeil -->
+      <svg class="doodle" viewBox="0 0 60 60" stroke-width="2.2">
+        <path d="M8 20c11 24 33 24 44 6" />
+        <path d="M52 26l-9 3" />
+        <path d="M52 26l-3 9" />
+      </svg>
+
+      <!-- 7 · Krakelkopf. Das Motiv aus der Vorlage: ein Gesicht in einer
+           krakeligen Umrandung, angeschnitten von der Blattkante. -->
+      <svg class="doodle" viewBox="0 0 64 64" stroke-width="2.1">
+        <path
+          d="M52 32a7.5 7.5 0 0 1-5 13.4 6.8 6.8 0 0 1-11.5 6.3 7.2 7.2 0 0 1-14.1-2.7 7 7 0 0 1-8.2-10.2 6.6 6.6 0 0 1 .6-13.8 7.4 7.4 0 0 1 8.2-10.3 7 7 0 0 1 14-2.7 7.2 7.2 0 0 1 11.3 7.1A6.9 6.9 0 0 1 52 32z"
+        />
+        <path d="M25 28v4.5" />
+        <path d="M39 28v4.5" />
+        <path d="M24 38c4 6 12 6 16 0" />
+      </svg>
+    </div>
+
+    <div class="shell">
+      <header class="topbar">
+        <div class="wordmark">
+          <img src="../../public/logo.webp" alt="" width="114" height="104" />
+          <span>appl<b>ai</b></span>
+        </div>
+        <div class="seg" role="radiogroup" aria-label="Unterlage">
+          <button type="button" role="radio" aria-checked="true">Anschreiben</button>
+          <button type="button" role="radio" aria-checked="false">Lebenslauf</button>
+        </div>
+        <div class="topbar__right">
+          <ol class="steps" aria-label="Ablauf">
+            <li><span class="sr-only">Schritt 1, Vorbereiten</span></li>
+            <li aria-current="step"><span class="sr-only">Schritt 2, Anschreiben anpassen</span></li>
+          </ol>
+          <button type="button" class="btn btn--sm">Einstellungen</button>
+        </div>
+      </header>
+
+      <main class="stage">
+        <h1 class="sr-only">Anschreiben anpassen</h1>
+
+        <!-- Das Dokument steht zuerst im Aufbau, damit Tastatur und
+             Vorlesesoftware zuerst an es kommen. -->
+        <div class="col-doc">
+          <div class="sheet">
+            <!-- Briefkopf nach DIN 5008: Absender, Anschriftfeld, Ort und
+                 Datum rechts, dann der Betreff. Er füllt das obere Drittel
+                 der Seite, und genau dafür ist es da. -->
+            <div class="sheet__head">
+              <p>
+                Jonna Bredereck<br />
+                Wilhelmshöher Allee 12<br />
+                34117 Kassel
+              </p>
+              <p>
+                Nutzfahrzeuge Kassel GmbH<br />
+                Frau Reinshagen<br />
+                Am Werkhof 8<br />
+                34123 Kassel
+              </p>
+              <p class="sheet__date">Kassel, 4. Mai 2026</p>
+            </div>
+
+            <p><strong>Bewerbung als Mechatronikerin für Nutzfahrzeuge</strong></p>
+
+            <p>Sehr geehrte Frau Reinshagen,</p>
+
+            <p>
+              <mark data-state="done">seit vier Jahren warte und repariere ich Nutzfahrzeuge in einem
+              Betrieb mit eigener Prüfstraße</mark>. Fehlerspeicher auszulesen und die Befunde
+              einzuordnen gehört dabei zu meiner täglichen Arbeit.
+            </p>
+
+            <p>
+              <mark data-state="active">Ihre Ausschreibung spricht mich an, weil ich gerne
+              eigenverantwortlich arbeite</mark> und mich in neue Systeme zügig einarbeite. Die
+              Begleitung der Abnahme kenne ich aus der Zusammenarbeit mit dem TÜV.
+            </p>
+
+            <p>
+              In der Prüfstraße habe ich zuletzt die jährliche Hauptuntersuchung von rund
+              vierzig Fahrzeugen vorbereitet und dabei eng mit den Prüfern abgestimmt, welche
+              Mängel vor der Vorführung behoben werden mussten.
+            </p>
+
+            <p>
+              Neue Diagnosesysteme arbeite ich mir selbst an, zuletzt beim Wechsel auf die
+              Software eines anderen Herstellers. Was ich dabei lerne, gebe ich an die
+              Auszubildenden im Betrieb weiter; zwei von ihnen habe ich im vergangenen Jahr
+              durch die Zwischenprüfung begleitet.
+            </p>
+
+            <p>
+              Hydraulik ist bisher nicht mein Schwerpunkt gewesen, wohl aber die Pneumatik der
+              Bremsanlagen. Ich gehe davon aus, dass ich mich dort ähnlich zügig einarbeite,
+              und würde eine Weiterbildung dazu gerne belegen.
+            </p>
+
+            <p>
+              Ein Wechsel nach Kassel wäre für mich ohne Umzug möglich. Frei bin ich zum
+              1. Juli, kurzfristiger nach Absprache.
+            </p>
+
+            <p>
+              <mark>Über eine Einladung zu einem Gespräch würde ich mich freuen.</mark>
+            </p>
+
+            <p>Mit freundlichen Grüßen<br />Jonna Bredereck</p>
+
+            <!-- Das Vorschlagsfenster hängt an der Stelle im Brief. -->
+            <div class="popover" role="dialog" aria-labelledby="vh">
+              <div class="popover__head">
+                <h3 id="vh">Vorschlag</h3>
+                <button type="button" class="icon-button" aria-label="Schließen"><svg viewBox="0 0 256 256" aria-hidden="true" focusable="false"><path d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z" /></svg></button>
+              </div>
+
+              <ul class="deck" id="deck">
+                <li data-pos="0">
+                  <p>
+                    Ihre Ausschreibung spricht mich an, weil ich Aufträge gerne selbstständig von
+                    der Annahme bis zur Abnahme führe
+                  </p>
+                  <span class="deck__len">118 Zeichen</span>
+                </li>
+                <li data-pos="1">
+                  <p>
+                    An Ihrer Ausschreibung reizt mich, dass ich eigenverantwortlich an Fahrzeugen
+                    arbeiten kann, für die ich die Verantwortung trage
+                  </p>
+                  <span class="deck__len">137 Zeichen</span>
+                </li>
+                <li data-pos="2">
+                  <p>
+                    Ihre Stelle passt zu mir, weil ich selbstständiges Arbeiten schätze und Befunde
+                    lieber selbst zu Ende bringe
+                  </p>
+                  <span class="deck__len">109 Zeichen</span>
+                </li>
+              </ul>
+
+              <div class="nav">
+                <button type="button" class="icon-button" id="prev" aria-label="Voriger Vorschlag"><svg viewBox="0 0 256 256" aria-hidden="true" focusable="false" style="rotate:-90deg"><path d="M205.66,117.66a8,8,0,0,1-11.32,0L136,59.31V216a8,8,0,0,1-16,0V59.31L61.66,117.66a8,8,0,0,1-11.32-11.32l72-72a8,8,0,0,1,11.32,0l72,72A8,8,0,0,1,205.66,117.66Z" /></svg></button>
+                <ol class="dots" id="dots" aria-label="Vorschlag 1 von 3">
+                  <li aria-current="true"></li>
+                  <li></li>
+                  <li></li>
+                </ol>
+                <button type="button" class="icon-button" id="next" aria-label="Nächster Vorschlag"><svg viewBox="0 0 256 256" aria-hidden="true" focusable="false" style="rotate:90deg"><path d="M205.66,117.66a8,8,0,0,1-11.32,0L136,59.31V216a8,8,0,0,1-16,0V59.31L61.66,117.66a8,8,0,0,1-11.32-11.32l72-72a8,8,0,0,1,11.32,0l72,72A8,8,0,0,1,205.66,117.66Z" /></svg></button>
+                <span class="nav__spacer"></span>
+                <button type="button" class="btn btn--sm btn--accent">Übernehmen</button>
+              </div>
+
+              <div class="btns">
+                <button type="button" class="btn btn--sm">Neu erzeugen</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Links: was gerade markiert ist, was vorgemerkt ist, was die
+             Anzeige verlangt. -->
+        <div class="col-left">
+          <section class="card" aria-labelledby="h-sel">
+            <h2 class="card__head" id="h-sel">
+              Auswahl <span class="card__count" id="selCount"></span>
+            </h2>
+            <p class="note" id="selStatus">Ziehen Sie über eine Textstelle.</p>
+            <div class="stack">
+              <button
+                type="button"
+                class="btn btn--accent btn--block"
+                id="rewrite"
+                aria-haspopup="dialog"
+                aria-expanded="true"
+                disabled
+              >
+                Umformulieren
+              </button>
+              <button type="button" class="btn btn--block">Ganzes Dokument</button>
+              <!-- Rückgängig gehört zur Auswahl, ist aber die Gegenbewegung
+                   zum Übernehmen und nicht Teil davon. Deshalb abgesetzt. -->
+              <button type="button" class="btn btn--block btn--quiet">Rückgängig</button>
+            </div>
+          </section>
+
+          <details class="card" open aria-labelledby="h-marks">
+            <summary id="h-marks">
+              <span>Stellen</span>
+              <span class="card__count">1 / 3</span>
+              <svg viewBox="0 0 256 256" aria-hidden="true" focusable="false">
+                <path
+                  d="M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z"
+                />
+              </svg>
+            </summary>
+            <ol class="marks">
+              <li data-state="done">
+                <button type="button">
+                  <span class="marks__num"><svg viewBox="0 0 256 256" aria-hidden="true" focusable="false"><path d="M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z" /></svg></span>
+                  <span>seit vier Jahren warte und repariere ich Nutzfahrzeuge …</span>
+                </button>
+              </li>
+              <li data-state="open">
+                <button type="button">
+                  <span class="marks__num">2</span>
+                  <span>Ihre Ausschreibung spricht mich an, weil ich gerne …</span>
+                </button>
+              </li>
+              <li data-state="open">
+                <button type="button">
+                  <span class="marks__num">3</span>
+                  <span>Über eine Einladung zu einem Gespräch würde ich …</span>
+                </button>
+              </li>
+            </ol>
+          </details>
+
+          <details class="card" open aria-labelledby="h-reqs">
+            <summary id="h-reqs">
+              <span>Anforderungen</span>
+              <span class="card__count">4 / 6</span>
+              <svg viewBox="0 0 256 256" aria-hidden="true" focusable="false">
+                <path
+                  d="M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z"
+                />
+              </svg>
+            </summary>
+            <ul class="reqs">
+              <li data-covered="yes"><svg viewBox="0 0 256 256" aria-hidden="true" focusable="false"><path d="M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z" /></svg> Nutzfahrzeuge</li>
+              <li data-covered="yes"><svg viewBox="0 0 256 256" aria-hidden="true" focusable="false"><path d="M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z" /></svg> Fehlerspeicher</li>
+              <li data-covered="yes"><svg viewBox="0 0 256 256" aria-hidden="true" focusable="false"><path d="M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z" /></svg> Abnahme</li>
+              <li data-covered="yes"><svg viewBox="0 0 256 256" aria-hidden="true" focusable="false"><path d="M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z" /></svg> Wartung</li>
+              <li>Hydraulik</li>
+              <li>Führerschein CE</li>
+            </ul>
+          </details>
+        </div>
+
+        <!-- Rechts: hinaus damit, und die Stellschrauben davor. -->
+        <div class="col-right">
+          <section class="card" aria-labelledby="h-export">
+            <h2 class="card__head" id="h-export">Export</h2>
+            <div class="btns">
+              <button type="button" class="btn btn--accent"><svg viewBox="0 0 256 256" aria-hidden="true" focusable="false"><path d="M224,144v64a8,8,0,0,1-8,8H40a8,8,0,0,1-8-8V144a8,8,0,0,1,16,0v56H208V144a8,8,0,0,1,16,0Zm-101.66,5.66a8,8,0,0,0,11.32,0l40-40a8,8,0,0,0-11.32-11.32L136,124.69V32a8,8,0,0,0-16,0v92.69L93.66,98.34a8,8,0,0,0-11.32,11.32Z" /></svg> Word</button>
+              <button type="button" class="btn"><svg viewBox="0 0 256 256" aria-hidden="true" focusable="false"><path d="M214.67,72H200V40a8,8,0,0,0-8-8H64a8,8,0,0,0-8,8V72H41.33C27.36,72,16,82.77,16,96v80a8,8,0,0,0,8,8H56v32a8,8,0,0,0,8,8H192a8,8,0,0,0,8-8V184h32a8,8,0,0,0,8-8V96C240,82.77,228.64,72,214.67,72ZM72,48H184V72H72ZM184,208H72V160H184Zm40-40H200V152a8,8,0,0,0-8-8H64a8,8,0,0,0-8,8v16H32V96c0-4.41,4.19-8,9.33-8H214.67c5.14,0,9.33,3.59,9.33,8Zm-24-52a12,12,0,1,1-12-12A12,12,0,0,1,200,116Z" /></svg> PDF</button>
+              <button type="button" class="btn"><svg viewBox="0 0 256 256" aria-hidden="true" focusable="false"><path d="M216,32H88a8,8,0,0,0-8,8V80H40a8,8,0,0,0-8,8V216a8,8,0,0,0,8,8H168a8,8,0,0,0,8-8V176h40a8,8,0,0,0,8-8V40A8,8,0,0,0,216,32ZM160,208H48V96H160Zm48-48H176V88a8,8,0,0,0-8-8H96V48H208Z" /></svg> Text</button>
+            </div>
+          </section>
+
+          <section class="card" aria-labelledby="h-tune">
+            <h2 class="card__head" id="h-tune">Ton</h2>
+
+            <div class="slider">
+              <input type="range" min="0" max="100" value="35" aria-label="Förmlich bis locker" />
+              <div class="slider__ends"><span>förmlich</span><span>locker</span></div>
+            </div>
+
+            <div class="slider">
+              <input type="range" min="0" max="100" value="60" aria-label="Kurz bis ausführlich" />
+              <div class="slider__ends"><span>kurz</span><span>ausführlich</span></div>
+            </div>
+
+            <details class="fold">
+              <summary>Wahrheitsgrenze <svg viewBox="0 0 256 256" aria-hidden="true" focusable="false"><path d="M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z" /></svg></summary>
+              <div class="seg seg--plain" role="radiogroup" aria-label="Wahrheitsgrenze">
+                <button type="button" role="radio" aria-checked="true">Streng</button>
+                <button type="button" role="radio" aria-checked="false">Brücken</button>
+                <button type="button" role="radio" aria-checked="false">Frei</button>
+              </div>
+              <p class="note" style="margin-top: 8px; padding-bottom: 10px">
+                Nur umformulieren, was in Ihren Unterlagen steht.
+              </p>
+            </details>
+
+            <details class="fold">
+              <summary>Briefkopf <svg viewBox="0 0 256 256" aria-hidden="true" focusable="false"><path d="M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z" /></svg></summary>
+              <div class="fields">
+                <label>Empfänger <input type="text" value="Nutzfahrzeuge Kassel GmbH" /></label>
+                <label>Betreff <input type="text" value="Bewerbung als Mechatronikerin" /></label>
+                <label>Datum <input type="text" value="4. Mai 2026" /></label>
+              </div>
+            </details>
+          </section>
+        </div>
+      </main>
+    </div>
+
+    <script>
+      /* Reihenauswahl: eine Wahl je Gruppe. */
+      document.querySelectorAll('.seg').forEach((group) => {
+        group.addEventListener('click', (event) => {
+          const button = event.target.closest('button')
+          if (button === null) return
+          group
+            .querySelectorAll('button')
+            .forEach((other) => other.setAttribute('aria-checked', String(other === button)))
+        })
+      })
+
+      /* Das Fenster hängt sich unter die gerade aktive Stelle, statt auf
+         einem festen Wert zu stehen. Sobald sich der Text ändert oder eine
+         andere Stelle gewählt wird, sitzt es weiter richtig. Auf schmalen
+         Fenstern steht es im Fluss, dort ist nichts zu setzen. */
+      const popover = document.querySelector('.popover')
+      const sheet = document.querySelector('.sheet')
+
+      function anchorPopover() {
+        if (getComputedStyle(popover).position !== 'absolute') return
+        const active = sheet.querySelector('mark[data-state="active"]')
+        if (active === null) return
+        const box = sheet.getBoundingClientRect()
+        const mark = active.getBoundingClientRect()
+        const height = popover.offsetHeight
+        const below = mark.bottom - box.top + 14
+        // Passt es unter der Stelle nicht mehr aufs Blatt, klappt es
+        // darüber. Ein Fenster, das unten aus der Seite ragt, sagt entweder
+        // nichts mehr oder verschiebt die ganze Seite.
+        const fits = below + height <= box.height - 24
+        const top = fits ? below : mark.top - box.top - height - 14
+        popover.style.top = `${Math.round(Math.max(24, top))}px`
+      }
+
+      anchorPopover()
+      window.addEventListener('resize', anchorPopover)
+
+      /* Die Auswahlleiste hängt am selben Zustand wie das Fenster: Was
+         markiert ist, sagt sie in Zeichen; ist nichts markiert, sagt sie,
+         wie man markiert. Der Hauptknopf ist genau dann bedienbar. */
+      const selStatus = document.getElementById('selStatus')
+      const selCount = document.getElementById('selCount')
+      const rewrite = document.getElementById('rewrite')
+
+      function syncToolbar() {
+        const active = sheet.querySelector('mark[data-state="active"]')
+        if (active === null) {
+          selCount.textContent = ''
+          selStatus.hidden = false
+          rewrite.disabled = true
+          return
+        }
+        // Der Zähler steht in der Überschrift, wie bei „Stellen 1 / 3" auch.
+        // Der Hinweis, wie man markiert, verschwindet dafür: Er erklärt eine
+        // Handlung, die gerade erledigt ist.
+        const count = active.textContent.replace(/\s+/g, ' ').trim().length
+        selCount.textContent = `${count} Zeichen`
+        selStatus.hidden = true
+        rewrite.disabled = false
+      }
+
+      syncToolbar()
+
+      /* Der Stapel. Blättern heißt: Die Karten bekommen neue Plätze, nicht
+         neuen Inhalt. So bleibt die Reihenfolge erhalten und die Bewegung
+         zeigt, woher der nächste Vorschlag kommt. */
+      const deck = document.getElementById('deck')
+      const cards = Array.from(deck.children)
+      const dots = Array.from(document.getElementById('dots').children)
+      let front = 0
+
+      function showCard(index) {
+        front = (index + cards.length) % cards.length
+        cards.forEach((card, i) => {
+          card.dataset.pos = String((i - front + cards.length) % cards.length)
+        })
+        dots.forEach((dot, i) => {
+          if (i === front) dot.setAttribute('aria-current', 'true')
+          else dot.removeAttribute('aria-current')
+        })
+        document
+          .getElementById('dots')
+          .setAttribute('aria-label', `Vorschlag ${front + 1} von ${cards.length}`)
+      }
+
+      popover.querySelector('.icon-button').addEventListener('click', () => {
+        sheet.querySelectorAll('mark').forEach((mark) => {
+          if (mark.dataset.state !== 'done') mark.dataset.state = ''
+        })
+        popover.hidden = true
+        syncToolbar()
+      })
+
+      document.getElementById('prev').addEventListener('click', () => showCard(front - 1))
+      document.getElementById('next').addEventListener('click', () => showCard(front + 1))
+
+      /* Eine Stelle in der Liste anwählen setzt sie im Brief aktiv. Mehr
+         Zustandsführung braucht die Attrappe nicht. */
+      const sheetMarks = Array.from(document.querySelectorAll('.sheet mark'))
+      document.querySelectorAll('.marks li').forEach((entry, index) => {
+        entry.querySelector('button').addEventListener('click', () => {
+          sheetMarks.forEach((mark, other) => {
+            if (mark.dataset.state === 'done') return
+            mark.dataset.state = other === index ? 'active' : ''
+          })
+          popover.hidden = false
+          anchorPopover()
+          syncToolbar()
+        })
+      })
+    </script>
+  </body>
+</html>

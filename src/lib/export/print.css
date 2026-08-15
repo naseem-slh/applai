@@ -1,0 +1,117 @@
+/*
+ * Das Blatt für den Drucker.
+ *
+ * **Nicht mehr der PDF-Export.** Der lief früher über den Druckdialog und
+ * setzte damit die Bildschirmdarstellung aufs Papier — die kennt vom
+ * Word-Original nur die Zeichen, nicht seine Schrift, seine Ränder oder
+ * seinen Briefkopf. Das Ergebnis hatte mit der Word-Datei nichts gemein
+ * außer dem Wortlaut. Ein PDF entsteht seit `src/lib/export/pdf/` aus dem
+ * Original selbst.
+ *
+ * **Warum dieses Blatt trotzdem bleibt.** Strg+P drückt jeder irgendwann,
+ * und dann soll ausschließlich der Brief auf dem Papier stehen, nicht die
+ * Werkzeugleiste. Es ist eine Bequemlichkeit, keine Zusage über Treue —
+ * dafür gibt es den Knopf daneben.
+ *
+ * Was dieses Blatt tut: Beim Drucken bleibt **ausschließlich** das Dokument
+ * stehen. Werkzeugleiste, Seitenspalte, Kopfzeile und jede Schaltfläche
+ * verschwinden.
+ *
+ * Warum über `visibility` und nicht über `display: none` auf den
+ * Geschwistern: Die Dokumentfläche liegt tief im Baum (Rahmen → Ansicht →
+ * Abschnitt → Karte). Jeden ihrer Vorfahren einzeln sichtbar zu lassen und
+ * jedes Geschwister auszublenden wäre eine Liste von Selektoren, die beim
+ * nächsten Umbau des Aufbaus still bricht. `visibility` vererbt sich und
+ * lässt sich am Ziel wieder einschalten, ohne dass das Blatt den Weg dorthin
+ * kennen muss.
+ */
+
+@media print {
+  /* Seitenränder wie bei einem Geschäftsbrief. Der Rand des Word-Originals
+     bleibt davon unberührt — er steckt in der `.docx` und geht nur den
+     Word-Export etwas an. */
+  @page {
+    margin: 2cm;
+  }
+
+  body {
+    background: #fff;
+    color: #000;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  /*
+   * Die Bildschirmseiten sind eine Darstellung, kein Papier. Auf dem Drucker
+   * bricht der Browser selbst um, nach den Maßen der echten Seite — bliebe
+   * die erzwungene Mindesthöhe stehen, drückte jede Bildschirmseite ihre
+   * rund 1270 px auf Papier, und die wirklichen Umbrüche verrutschten um
+   * ganze Seiten. Rahmen, Schatten und Abstand sind Bildschirmoptik und
+   * haben auf Papier ohnehin nichts verloren.
+   */
+  [data-page] {
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    border-radius: 0;
+    box-shadow: none;
+    break-inside: auto;
+  }
+
+  [data-print-document],
+  [data-print-document] * {
+    visibility: visible;
+  }
+
+  /* Aus dem Fluss genommen und an den Seitenanfang gesetzt: Sonst hielte die
+     ausgeblendete Umgebung ihren Platz und der Brief begänne mitten auf der
+     ersten Seite. */
+  [data-print-document] {
+    position: absolute;
+    inset: 0 auto auto 0;
+    /* `!important` — und zwar zwingend: Der Maßstabsregler der Arbeitsfläche
+       setzt Breite und Höchstbreite als **Stilangabe am Element** (siehe
+       `components/editor/zoom.ts`), und eine Stilangabe schlägt jede Regel
+       aus einer Datei. Ohne den Zusatz käme ein auf 60 % herausgezoomter
+       Brief auch auf 60 % seiner Größe aufs Papier — der Regler ist eine
+       Frage der Ansicht und hat auf dem Druck nichts zu suchen. */
+    width: 100% !important;
+    /* Papiermaße statt Bildschirmmaße: `72ch` sind auf dem Bildschirm eine
+       angenehme Zeilenlänge, im Druck aber eine willkürliche Breite. */
+    max-width: none !important;
+    padding: 0;
+    border: 0;
+    box-shadow: none;
+    background: transparent;
+    /* 11 pt und 1,5-facher Zeilenabstand sind die Maße eines gedruckten
+       Anschreibens. Der Bildschirm setzt größer, weil dort auf Abstand
+       gelesen wird. */
+    font-size: 11pt;
+    line-height: 1.5;
+    color: #000;
+  }
+
+  /* Die Absatzkonturen sind eine Auskunft der Oberfläche (festgehaltener
+     Absatz, unbelegte Aussage, fremde Firma) und gehören nicht auf das
+     Papier. */
+  [data-print-document] [data-paragraph-index] {
+    padding-left: 0;
+    border: 0;
+  }
+
+  /* Ein Absatz soll nicht über den Seitenumbruch zerrissen werden, und die
+     erste oder letzte Zeile nicht allein stehen bleiben. */
+  [data-print-document] [data-paragraph-index] {
+    orphans: 2;
+    widows: 2;
+    break-inside: avoid;
+  }
+
+  /* Der Fokusring der bearbeitbaren Fläche hat im Druck nichts zu suchen. */
+  [data-print-document]:focus,
+  [data-print-document]:focus-visible {
+    outline: none;
+  }
+}

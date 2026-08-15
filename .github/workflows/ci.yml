@@ -1,0 +1,107 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ====================
+  # LINT, TYPPRÜFUNG, TESTS, BUILD
+  # ====================
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Repository auschecken
+        uses: actions/checkout@v4
+
+      - name: Node.js einrichten
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - name: Abhängigkeiten installieren
+        run: npm ci
+
+      - name: Lint (--max-warnings=0)
+        run: npm run lint
+
+      - name: Typprüfung
+        run: npm run typecheck
+
+      - name: Tests
+        run: npm test
+
+      - name: Produktions-Build
+        run: npm run build
+
+  # ====================
+  # ENDE-ZU-ENDE UND BARRIEREFREIHEIT (Aufgabe 16)
+  # ====================
+  #
+  # Eigener Job, weil er Browser herunterlädt und deutlich länger läuft als
+  # die Unit-Tests. Er baut die Anwendung selbst (siehe playwright.config.ts,
+  # `webServer`): Die strenge CSP gilt nur für den gebauten Stand, und genau
+  # gegen sie soll geprüft werden.
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Repository auschecken
+        uses: actions/checkout@v4
+
+      - name: Node.js einrichten
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - name: Abhängigkeiten installieren
+        run: npm ci
+
+      # Nur Chromium: Das Projekt prüft eine Zusage über die Bauweise
+      # (keine fremden Hosts, CSP, Tastaturwege), keine Browserunterschiede.
+      - name: Browser installieren
+        run: npx playwright install --with-deps chromium
+
+      - name: Ende-zu-Ende-Tests
+        run: npm run e2e
+
+      - name: Bericht bei Fehlschlag sichern
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
+  # ====================
+  # SICHERHEITS-AUDIT (eigener Job, siehe Muster adg/.github/workflows/deploy.yml)
+  # ====================
+  security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Repository auschecken
+        uses: actions/checkout@v4
+
+      - name: Node.js einrichten
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - name: Abhängigkeiten installieren
+        run: npm ci
+
+      # Anders als in adg (dort `npm audit ... || true`): Applai hat nur eine
+      # Handvoll Abhängigkeiten, deren Vertrauenswürdigkeit das
+      # Sicherheitsversprechen der App trägt (G9) — ein Fund ist ein echtes
+      # Signal und muss den Workflow blockieren, kein stummes Vorbeilaufen.
+      - name: npm audit (gatend, ohne Fallback)
+        run: npm audit --audit-level=high

@@ -1,0 +1,1069 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Applai · Anschreiben anpassen</title>
+
+    <style>
+      /* ===================================================================
+         Attrappe für den Tab „Anschreiben anpassen".
+
+         Token wörtlich aus src/styles/design.css. Drei Änderungen gegenüber
+         dem Ist-Zustand:
+           1. Der Brief ist eine Seite und füllt die Spalte.
+           2. Blättergriffe tragen die Farben des Themas.
+           3. Der Exportkasten arbeitet mit Sinnbildern statt mit Absätzen.
+         =================================================================== */
+
+      @font-face {
+        font-family: 'Inter Variable';
+        font-style: normal;
+        font-display: swap;
+        font-weight: 100 900;
+        src: url('/public/fonts/inter-variable-latin.woff2') format('woff2-variations');
+      }
+
+      :root {
+        --color-surface: #f4fafc;
+        --color-surface-alt: #e8f4fa;
+        --color-surface-raised: #ffffff;
+        --color-border: #d9e8f0;
+        --color-ink: #03045e;
+        --color-ink-strong: #010229;
+        --color-muted: #4d5680;
+        --color-accent: #0077b6;
+        --color-accent-dark: #005c86;
+        --color-accent-contrast: #ffffff;
+        --color-accent-text: #00628f;
+        --color-success: #0d6e52;
+        --color-error: #b3261e;
+        --color-warning: #8a5200;
+        --color-surface-hover: #e2f2f8;
+        --color-accent-soft: #caf0f8;
+        --color-control-border: #6f7d95;
+        --shadow-raised: 0 1px 2px rgb(3 4 94 / 0.06), 0 2px 8px rgb(3 4 94 / 0.06);
+        --shadow-page: 0 1px 2px rgb(3 4 94 / 0.08), 0 8px 28px rgb(3 4 94 / 0.1);
+
+        --radius-sm: 4px;
+        --radius-md: 8px;
+        --radius-lg: 12px;
+
+        --text-heading-size: 1.5rem;
+        --text-subheading-size: 1.125rem;
+        --text-body-size: 1rem;
+        --text-body-sm-size: 0.875rem;
+        --text-label-size: 0.75rem;
+      }
+
+      :root[data-theme='dark'] {
+        --color-surface: #050a24;
+        --color-surface-alt: #0b1436;
+        --color-surface-raised: #0d1738;
+        --color-border: #1d2a55;
+        --color-ink: #e6f3f8;
+        --color-ink-strong: #ffffff;
+        --color-muted: #9db0cf;
+        --color-accent: #00b4d8;
+        --color-accent-dark: #0077b6;
+        --color-accent-contrast: #03045e;
+        --color-accent-text: #00b4d8;
+        --color-success: #4ec99a;
+        --color-error: #ff8a7a;
+        --color-warning: #e0a256;
+        --color-surface-hover: #142347;
+        --color-accent-soft: #0f2a4d;
+        --color-control-border: #7286a8;
+        --shadow-raised: 0 1px 2px rgb(0 0 0 / 0.4), 0 2px 8px rgb(0 0 0 / 0.32);
+        --shadow-page: 0 1px 2px rgb(0 0 0 / 0.5), 0 8px 28px rgb(0 0 0 / 0.45);
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      [hidden] {
+        display: none !important;
+      }
+
+      body {
+        margin: 0;
+        font-family: 'Inter Variable', system-ui, sans-serif;
+        background: var(--color-surface-alt);
+        color: var(--color-ink);
+        font-size: var(--text-body-size);
+        line-height: 1.7;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      button {
+        font: inherit;
+        cursor: pointer;
+      }
+
+      /* ------------------------------------------------------------------
+         BLÄTTERGRIFFE
+
+         Der Ist-Zustand zeigt die grauen Balken des Betriebssystems: im
+         dunklen Thema hell, im hellen Thema fremd. Sie werden aus den
+         Token abgeleitet, damit sie in beiden Themen mitgehen.
+
+         Firefox versteht scrollbar-width/-color, Chrome und Safari die
+         ::-webkit-Regeln. Wo beides gilt, gewinnt in Chrome das Standard-
+         Paar, deshalb wird es dort wieder zurückgestellt.
+         ------------------------------------------------------------------ */
+
+      .scroll {
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: color-mix(in oklab, var(--color-muted) 45%, transparent) transparent;
+      }
+
+      @supports selector(::-webkit-scrollbar) {
+        .scroll {
+          scrollbar-width: auto;
+          scrollbar-color: auto;
+        }
+
+        .scroll::-webkit-scrollbar {
+          width: 12px;
+          height: 12px;
+        }
+
+        .scroll::-webkit-scrollbar-track {
+          background: transparent;
+        }
+
+        /* Der durchsichtige Rand mit background-clip macht aus dem 12 px
+           breiten Griff eine 6 px schmale Pille, die frei im Rand steht. */
+        .scroll::-webkit-scrollbar-thumb {
+          background-color: color-mix(in oklab, var(--color-muted) 32%, transparent);
+          border: 3px solid transparent;
+          border-radius: 999px;
+          background-clip: content-box;
+        }
+
+        .scroll:hover::-webkit-scrollbar-thumb,
+        .scroll::-webkit-scrollbar-thumb:hover {
+          background-color: color-mix(in oklab, var(--color-muted) 62%, transparent);
+        }
+
+        .scroll::-webkit-scrollbar-corner {
+          background: transparent;
+        }
+      }
+
+      /* Vergleichsschalter der Attrappe: stellt die Griffe des Systems zurück. */
+      :root[data-scrollbars='system'] .scroll {
+        scrollbar-width: auto;
+        scrollbar-color: auto;
+      }
+
+      :root[data-scrollbars='system'] .scroll::-webkit-scrollbar {
+        width: initial;
+        height: initial;
+      }
+
+      :root[data-scrollbars='system'] .scroll::-webkit-scrollbar-thumb {
+        background-color: initial;
+        border: 0;
+        border-radius: 0;
+      }
+
+      /* --- Steuerleiste der Attrappe. Gehört nicht zum Entwurf. -------- */
+
+      .mockbar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 1.5rem;
+        padding: 0.75rem 1.5rem;
+        background: #10131c;
+        color: #cfd6e4;
+        font-size: var(--text-body-sm-size);
+        line-height: 1.4;
+      }
+
+      .mockbar strong {
+        color: #fff;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        font-size: var(--text-label-size);
+      }
+
+      .mockbar-group {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .mockbar-group > span {
+        opacity: 0.66;
+      }
+
+      .seg {
+        display: inline-flex;
+        border: 1px solid #333a4d;
+        border-radius: var(--radius-md);
+        overflow: hidden;
+      }
+
+      .seg button {
+        border: 0;
+        background: transparent;
+        color: #cfd6e4;
+        padding: 0.25rem 0.75rem;
+        font-size: var(--text-body-sm-size);
+      }
+
+      .seg button[aria-pressed='true'] {
+        background: #cfd6e4;
+        color: #10131c;
+        font-weight: 600;
+      }
+
+      /* --- Rahmen der Anwendung --------------------------------------- */
+
+      .app {
+        height: calc(100dvh - 3.25rem);
+        display: flex;
+        flex-direction: column;
+        background: var(--color-surface);
+      }
+
+      .appbar {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 0 1.5rem;
+        height: 56px;
+        border-bottom: 1px solid var(--color-border);
+        background: var(--color-surface-raised);
+        flex-shrink: 0;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-weight: 600;
+        color: var(--color-ink-strong);
+      }
+
+      .brand-mark {
+        width: 26px;
+        height: 26px;
+        border-radius: 999px;
+        background: var(--color-accent);
+        color: var(--color-accent-contrast);
+        display: grid;
+        place-items: center;
+        font-size: var(--text-body-sm-size);
+        font-weight: 600;
+      }
+
+      .steps {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        margin-left: 1rem;
+      }
+
+      .step {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.375rem 0.75rem;
+        border-radius: var(--radius-md);
+        font-size: var(--text-body-sm-size);
+        color: var(--color-muted);
+      }
+
+      .step[aria-current='step'] {
+        background: var(--color-accent-soft);
+        color: var(--color-ink-strong);
+        font-weight: 600;
+      }
+
+      .step-num {
+        width: 20px;
+        height: 20px;
+        border-radius: 999px;
+        display: grid;
+        place-items: center;
+        font-size: var(--text-label-size);
+        background: var(--color-border);
+        color: var(--color-muted);
+      }
+
+      .step[aria-current='step'] .step-num {
+        background: var(--color-accent);
+        color: var(--color-accent-contrast);
+      }
+
+      .appbar-end {
+        margin-left: auto;
+        display: flex;
+        gap: 1.5rem;
+        font-size: var(--text-body-sm-size);
+      }
+
+      .appbar-end a {
+        color: var(--color-accent-text);
+        text-decoration: none;
+      }
+
+      /* --- Drei Spalten -------------------------------------------------
+         Vorher 17rem / 1fr / 20rem. Die Seitenspalten schnitten Beschriftungen
+         ab, während in der Mitte rund 290 px neben dem Brief leer standen.
+         Jetzt bekommen beide Seiten Luft, und der Brief füllt trotzdem mehr
+         als vorher, weil er als Seite auf volle Breite geht.
+         ------------------------------------------------------------------ */
+
+      .work {
+        flex: 1;
+        min-height: 0;
+        display: grid;
+        grid-template-columns: 19rem minmax(0, 1fr) 21rem;
+      }
+
+      .rail {
+        min-height: 0;
+        padding: 1rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+      }
+
+      .rail-left {
+        border-right: 1px solid var(--color-border);
+      }
+
+      .rail-right {
+        border-left: 1px solid var(--color-border);
+        background: var(--color-surface-raised);
+      }
+
+      .card {
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-lg);
+        background: var(--color-surface-raised);
+        box-shadow: var(--shadow-raised);
+      }
+
+      .card-head {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid var(--color-border);
+      }
+
+      .card-head h2 {
+        margin: 0;
+        margin-right: auto;
+        font-size: var(--text-body-size);
+        font-weight: 600;
+        color: var(--color-ink-strong);
+        white-space: nowrap;
+      }
+
+      /* ------------------------------------------------------------------
+         AUF- UND ZUKLAPPEN
+
+         Jede Karte der rechten Spalte ist ein <details>. Die Kopfzeile ist
+         das <summary> und damit von Haus aus mit der Tastatur erreichbar,
+         mit Zustand für Vorlesewerkzeuge, ohne eigenes JavaScript.
+
+         Ist die Karte zu, trägt die Kopfzeile den aktuellen Wert. Sonst
+         müsste man aufklappen, nur um nachzusehen, was eingestellt ist.
+         ------------------------------------------------------------------ */
+
+      details.card > summary {
+        list-style: none;
+        cursor: pointer;
+      }
+
+      details.card > summary::-webkit-details-marker {
+        display: none;
+      }
+
+      details.card > summary .card-head {
+        border-bottom: 0;
+      }
+
+      details.card[open] > summary .card-head {
+        border-bottom: 1px solid var(--color-border);
+      }
+
+      details.card > summary:hover .card-head {
+        background: var(--color-surface-hover);
+        border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+      }
+
+      details.card > summary:focus-visible {
+        outline: 2px solid var(--color-accent);
+        outline-offset: 2px;
+        border-radius: var(--radius-lg);
+      }
+
+      .card-state {
+        font-size: var(--text-body-sm-size);
+        color: var(--color-muted);
+        white-space: nowrap;
+      }
+
+      details.card[open] > summary .card-state {
+        display: none;
+      }
+
+      .caret {
+        width: 16px;
+        height: 16px;
+        flex-shrink: 0;
+        color: var(--color-muted);
+        transition: transform 120ms cubic-bezier(0, 0, 0.2, 1);
+      }
+
+      details.card[open] .caret {
+        transform: rotate(180deg);
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .caret {
+          transition: none;
+        }
+      }
+
+      .card-body {
+        padding: 1rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+      }
+
+      .count {
+        font-size: var(--text-body-sm-size);
+        color: var(--color-muted);
+        white-space: nowrap;
+      }
+
+      .hint {
+        font-size: var(--text-body-sm-size);
+        line-height: 1.6;
+        color: var(--color-muted);
+        margin: 0;
+      }
+
+      .label {
+        display: block;
+        font-size: var(--text-body-sm-size);
+        font-weight: 500;
+        color: var(--color-ink-strong);
+      }
+
+      .req {
+        display: flex;
+        flex-direction: column;
+        gap: 0.125rem;
+      }
+
+      .req strong {
+        font-weight: 500;
+        color: var(--color-ink-strong);
+        font-size: var(--text-body-sm-size);
+        line-height: 1.5;
+      }
+
+      .req span {
+        font-size: var(--text-label-size);
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--color-muted);
+        font-weight: 600;
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        height: 2.5rem;
+        padding: 0 1rem;
+        border-radius: var(--radius-md);
+        border: 1px solid transparent;
+        font-size: var(--text-body-sm-size);
+        font-weight: 500;
+        white-space: nowrap;
+        transition: background-color 120ms cubic-bezier(0, 0, 0.2, 1);
+      }
+
+      .btn svg {
+        width: 18px;
+        height: 18px;
+        flex-shrink: 0;
+      }
+
+      .btn-primary {
+        background: var(--color-accent);
+        color: var(--color-accent-contrast);
+      }
+
+      .btn-primary:hover {
+        background: var(--color-accent-dark);
+      }
+
+      .btn-secondary {
+        background: var(--color-surface-raised);
+        border-color: var(--color-control-border);
+        color: var(--color-ink);
+      }
+
+      .btn-secondary:hover {
+        background: var(--color-surface-hover);
+      }
+
+      .btn-sm {
+        height: 2rem;
+        padding: 0 0.75rem;
+      }
+
+      .btn-quiet {
+        background: transparent;
+        border-color: transparent;
+        color: var(--color-muted);
+      }
+
+      .btn-quiet:hover {
+        background: var(--color-surface-hover);
+        color: var(--color-ink);
+      }
+
+      .btn:focus-visible,
+      select:focus-visible,
+      input:focus-visible,
+      summary:focus-visible {
+        outline: 2px solid var(--color-accent);
+        outline-offset: 2px;
+      }
+
+      select,
+      input[type='text'] {
+        width: 100%;
+        font: inherit;
+        font-size: var(--text-body-sm-size);
+        color: var(--color-ink);
+        background: var(--color-surface-raised);
+        border: 1px solid var(--color-control-border);
+        border-radius: var(--radius-md);
+        padding: 0.5rem 0.75rem;
+      }
+
+      /* --- Werkzeugzeile und Brief -------------------------------------- */
+
+      .middle {
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .toolbar {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+        padding: 0.625rem 1.5rem;
+        border-bottom: 1px solid var(--color-border);
+        background: var(--color-surface-raised);
+        flex-shrink: 0;
+      }
+
+      .toolbar .spacer {
+        margin-left: auto;
+      }
+
+      .toolbar .status {
+        font-size: var(--text-body-sm-size);
+        color: var(--color-muted);
+      }
+
+      .toolbar .divider {
+        width: 1px;
+        height: 1rem;
+        background: var(--color-border);
+      }
+
+      /* Fehlgeschlagener Modellaufruf: Meldung, Wortlaut des Anbieters im
+         Aufklapper, und ein Knopf nur dann, wenn ein neuer Versuch etwas
+         ändern kann. Bei aufgebrauchtem Kontingent gibt es keinen. */
+      .aierror {
+        border-left: 3px solid var(--color-error);
+        padding-left: 0.75rem;
+      }
+
+      .aierror > p {
+        margin: 0;
+        font-size: var(--text-body-sm-size);
+        line-height: 1.6;
+        color: var(--color-error);
+      }
+
+      .aierror details {
+        margin-top: 0.5rem;
+        font-size: var(--text-body-sm-size);
+      }
+
+      .aierror summary {
+        cursor: pointer;
+        color: var(--color-muted);
+        list-style: none;
+      }
+
+      .aierror summary::-webkit-details-marker {
+        display: none;
+      }
+
+      .aierror details p {
+        margin: 0.25rem 0 0;
+        color: var(--color-muted);
+        overflow-wrap: break-word;
+      }
+
+      .sheetwrap {
+        flex: 1;
+        min-height: 0;
+        padding: 1rem;
+        display: flex;
+        justify-content: center;
+      }
+
+      /* Der Brief als Seite: 21 cm Satzbreite wie ein A4-Blatt, mit
+         Seitenrändern statt Kartenpolsterung. Damit ist die Breite nicht
+         mehr willkürlich, sondern die des gedruckten Ergebnisses. */
+      .sheet {
+        width: 100%;
+        max-width: 900px;
+        /* Seitenverhältnis von A4. Der Brief hört damit dort auf, wo er auch
+           gedruckt aufhört, statt an einer frei gewählten Kartenhöhe. */
+        aspect-ratio: 210 / 297;
+        align-self: flex-start;
+        background: var(--color-surface-raised);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-page);
+        /* Seitenrand wie im Druck: 2 cm auf 21 cm Blattbreite sind 9,5 %.
+           In Prozent, damit der Rand mitwächst, wenn das Blatt schmaler
+           wird, statt den Satzspiegel zu erdrücken. */
+        padding: 9.5%;
+      }
+
+      .sheet p {
+        margin: 0 0 1.25rem;
+        line-height: 1.8;
+      }
+
+      .sheet p:last-child {
+        margin-bottom: 0;
+      }
+
+      .sheet .sig {
+        margin-top: 2rem;
+        color: var(--color-muted);
+      }
+
+      /* --- Regler ------------------------------------------------------- */
+
+      .slider {
+        display: flex;
+        flex-direction: column;
+        gap: 0.375rem;
+      }
+
+      .track {
+        position: relative;
+        height: 6px;
+        border-radius: 999px;
+        background: var(--color-border);
+      }
+
+      .track > i {
+        position: absolute;
+        inset: 0 30% 0 0;
+        border-radius: 999px;
+        background: var(--color-accent);
+      }
+
+      .track > b {
+        position: absolute;
+        top: 50%;
+        left: 70%;
+        width: 20px;
+        height: 20px;
+        margin: -10px 0 0 -10px;
+        border-radius: 999px;
+        background: var(--color-surface-raised);
+        border: 2px solid var(--color-accent);
+      }
+
+      .scale {
+        display: flex;
+        justify-content: space-between;
+        font-size: var(--text-label-size);
+        color: var(--color-muted);
+      }
+
+      .scale strong {
+        color: var(--color-ink-strong);
+        font-weight: 600;
+      }
+
+      /* --- Exportkasten -------------------------------------------------
+         Vorher: Überschrift, drei gleich breite Knöpfe untereinander und ein
+         Absatz von 16 Wörtern. Jetzt trägt jede Ausgabeform ein Sinnbild,
+         die lange Erklärung liegt hinter einem Verweis.
+         ------------------------------------------------------------------ */
+
+      .export-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.5rem;
+      }
+
+      .export-row .btn {
+        width: 100%;
+      }
+
+      .export .btn-primary {
+        width: 100%;
+        margin-bottom: 0.5rem;
+        height: 2.75rem;
+      }
+
+      details.why {
+        font-size: var(--text-body-sm-size);
+        margin-top: 0.75rem;
+      }
+
+      details.why > summary {
+        cursor: pointer;
+        color: var(--color-muted);
+        list-style: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.375rem;
+      }
+
+      details.why > summary::-webkit-details-marker {
+        display: none;
+      }
+
+      details.why > summary::after {
+        content: '+';
+        font-weight: 600;
+        color: var(--color-accent-text);
+      }
+
+      details.why[open] > summary::after {
+        content: '\2212';
+      }
+
+      details.why > p {
+        margin: 0.5rem 0 0;
+        color: var(--color-muted);
+        line-height: 1.6;
+      }
+
+      @media (max-width: 1200px) {
+        .work {
+          grid-template-columns: minmax(0, 1fr) 21rem;
+        }
+        .rail-left {
+          display: none;
+        }
+      }
+
+      @media (max-width: 820px) {
+        .work {
+          grid-template-columns: minmax(0, 1fr);
+        }
+        .rail-right {
+          display: none;
+        }
+        .sheet {
+          padding: 2rem 1.5rem;
+        }
+        .sheetwrap {
+          padding: 1rem;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="mockbar">
+      <strong>Attrappe</strong>
+      <div class="mockbar-group">
+        <span>Thema</span>
+        <div class="seg" id="seg-theme">
+          <button type="button" data-theme-choice="light" aria-pressed="true">hell</button>
+          <button type="button" data-theme-choice="dark" aria-pressed="false">dunkel</button>
+        </div>
+      </div>
+      <div class="mockbar-group">
+        <span>Zustand</span>
+        <div class="seg" id="seg-state">
+          <button type="button" data-state="normal" aria-pressed="true">normal</button>
+          <button type="button" data-state="fehler" aria-pressed="false">Kontingent leer</button>
+        </div>
+      </div>
+      <div class="mockbar-group">
+        <span>Blättergriffe</span>
+        <div class="seg" id="seg-scrollbars">
+          <button type="button" data-scrollbars="themed" aria-pressed="true">Thema</button>
+          <button type="button" data-scrollbars="system" aria-pressed="false">System</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="app">
+      <header class="appbar">
+        <span class="brand"><span class="brand-mark">A</span> Applai</span>
+        <nav class="steps" aria-label="Ablauf">
+          <span class="step"><span class="step-num">1</span> Vorbereiten</span>
+          <span class="step" aria-current="step"
+            ><span class="step-num">2</span> Anschreiben anpassen</span
+          >
+        </nav>
+        <div class="appbar-end">
+          <a href="#">Datenschutz</a>
+          <a href="#">Einstellungen</a>
+        </div>
+      </header>
+
+      <div class="work">
+        <!-- ---------------------------- linke Spalte ------------------- -->
+        <aside class="rail rail-left scroll">
+          <section class="card">
+            <div class="card-head">
+              <h2>Anforderungen</h2>
+              <span class="count">4 Punkte</span>
+            </div>
+            <div class="card-body" data-when="fehler" hidden>
+              <div class="aierror">
+                <p role="alert">
+                  Das kostenlose Tageskontingent von Gemini ist aufgebraucht. Es steht morgen wieder
+                  zur Verfügung, oder es kann ein eigener, kostenpflichtiger Schlüssel hinterlegt
+                  werden.
+                </p>
+                <details>
+                  <summary>Meldung des Anbieters</summary>
+                  <p lang="en">
+                    You exceeded your current quota, please check your plan and billing details.
+                  </p>
+                </details>
+              </div>
+            </div>
+
+            <div class="card-body" data-when="normal">
+              <div class="req">
+                <strong>Sehr gute Kenntnisse in TypeScript</strong>
+                <span>Fachliche Fähigkeit</span>
+              </div>
+              <div class="req">
+                <strong>Mehrjährige Erfahrung in der Frontend-Entwicklung</strong>
+                <span>Berufserfahrung</span>
+              </div>
+              <div class="req">
+                <strong>Sicheres Deutsch in Wort und Schrift</strong>
+                <span>Sprache</span>
+              </div>
+              <div class="req">
+                <strong>Freude an der Arbeit im Team</strong>
+                <span>Persönliche Eigenschaft</span>
+              </div>
+              <button type="button" class="btn btn-secondary btn-sm">
+                Mit meinen Unterlagen abgleichen
+              </button>
+            </div>
+          </section>
+
+          <section class="card">
+            <div class="card-head">
+              <h2>Vorgemerkte Stellen</h2>
+              <span class="count">2 Stellen</span>
+            </div>
+            <div class="card-body">
+              <p class="hint">1. „Meine Motivation ist hoch."</p>
+              <p class="hint">2. „Ich bringe Erfahrung mit."</p>
+            </div>
+          </section>
+        </aside>
+
+        <!-- ---------------------------- Mitte -------------------------- -->
+        <main class="middle">
+          <div class="toolbar">
+            <button type="button" class="btn btn-secondary btn-sm">Ganzes Dokument</button>
+            <button type="button" class="btn btn-primary btn-sm">Umformulieren lassen</button>
+            <button type="button" class="btn btn-quiet btn-sm">Rückgängig</button>
+            <span class="spacer"></span>
+            <!-- Was diese Sitzung gekostet hat, steht neben dem
+                 Sicherungsstand: zwei leise Auskünfte, durch einen Strich
+                 getrennt, damit sie nicht als ein Satz gelesen werden. -->
+            <span class="status">7 Anfragen in dieser Sitzung</span>
+            <span class="divider" aria-hidden="true"></span>
+            <span class="status">Zwischenstand gerade gesichert.</span>
+          </div>
+
+          <div class="sheetwrap scroll">
+            <article class="sheet">
+              <p>Sehr geehrte Frau Reinhardt,</p>
+              <p>
+                mit großem Interesse habe ich Ihre Ausschreibung für die Stelle als Entwicklerin
+                gelesen. Seit sechs Jahren arbeite ich an Weboberflächen, die täglich von mehreren
+                tausend Menschen benutzt werden, und seit vier davon überwiegend in TypeScript.
+              </p>
+              <p>
+                In meiner jetzigen Stelle bei der Hafenkontor Datentechnik verantworte ich das
+                Oberflächenteam eines Buchungssystems. Ich habe dort die Umstellung auf eine
+                komponentenbasierte Architektur begleitet und die Zugänglichkeit der Anwendung auf
+                WCAG 2.1 AA gebracht.
+              </p>
+              <p>
+                Was mich an Ihrer Ausschreibung besonders anspricht, ist die enge Zusammenarbeit
+                zwischen Entwicklung und Gestaltung. Genau an dieser Schnittstelle arbeite ich am
+                liebsten, und ich habe die Erfahrung gemacht, dass dort die besseren Entscheidungen
+                entstehen.
+              </p>
+              <p>
+                Über die Gelegenheit zu einem Gespräch würde ich mich freuen. Ab dem 1. Oktober bin
+                ich verfügbar.
+              </p>
+              <p class="sig">Mit freundlichen Grüßen<br />Marlene Ostwald</p>
+            </article>
+          </div>
+        </main>
+
+        <!-- ---------------------------- rechte Spalte ------------------ -->
+        <aside class="rail rail-right scroll">
+          <details class="card" open>
+            <summary>
+              <div class="card-head">
+                <h2>Wahrheitsgrenze</h2>
+                <span class="card-state">Streng</span>
+                <svg class="caret" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z"/></svg>
+              </div>
+            </summary>
+            <div class="card-body">
+              <select id="truth" aria-label="Wahrheitsgrenze">
+                <option>Streng</option>
+                <option>Abgeleitet</option>
+                <option>Frei</option>
+              </select>
+            </div>
+          </details>
+
+          <details class="card" open>
+            <summary>
+              <div class="card-head">
+                <h2>Briefkopf</h2>
+                <span class="card-state">4 Felder</span>
+                <svg class="caret" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z"/></svg>
+              </div>
+            </summary>
+            <div class="card-body">
+              <label class="label" for="recipient">Empfänger</label>
+              <input id="recipient" type="text" value="Musterwerk Solutions GmbH" />
+              <button type="button" class="btn btn-secondary btn-sm" style="align-self: flex-start">
+                Einsetzen
+              </button>
+            </div>
+          </details>
+
+          <details class="card" open>
+            <summary>
+              <div class="card-head">
+                <h2>Schreibstil</h2>
+                <span class="card-state">eher förmlich</span>
+                <svg class="caret" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z"/></svg>
+              </div>
+            </summary>
+            <div class="card-body">
+              <div class="slider">
+                <span class="label">Förmlichkeit</span>
+                <div class="track"><i></i><b></b></div>
+                <div class="scale">
+                  <span>sehr locker</span><strong>eher förmlich</strong><span>sehr förmlich</span>
+                </div>
+              </div>
+              <div class="slider">
+                <span class="label">Umfang</span>
+                <div class="track"><i style="inset: 0 50% 0 0"></i><b style="left: 50%"></b></div>
+                <div class="scale">
+                  <span>kürzer</span><strong>etwa gleich</strong><span>länger</span>
+                </div>
+              </div>
+            </div>
+          </details>
+
+          <details class="card" open>
+            <summary>
+              <div class="card-head">
+                <h2>Fertig? Dann hinaus damit</h2>
+                <svg class="caret" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z"/></svg>
+              </div>
+            </summary>
+            <div class="card-body">
+              <button type="button" class="btn btn-primary">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M224,144v64a8,8,0,0,1-8,8H40a8,8,0,0,1-8-8V144a8,8,0,0,1,16,0v56H208V144a8,8,0,0,1,16,0Zm-101.66,5.66a8,8,0,0,0,11.32,0l40-40a8,8,0,0,0-11.32-11.32L136,124.69V32a8,8,0,0,0-16,0v92.69L93.66,98.34a8,8,0,0,0-11.32,11.32Z"/></svg>
+                Word-Datei
+              </button>
+
+              <div class="export-row">
+                <button type="button" class="btn btn-secondary">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M214.67,72H200V40a8,8,0,0,0-8-8H64a8,8,0,0,0-8,8V72H41.33C27.36,72,16,82.77,16,96v80a8,8,0,0,0,8,8H56v32a8,8,0,0,0,8,8H192a8,8,0,0,0,8-8V184h32a8,8,0,0,0,8-8V96C240,82.77,228.64,72,214.67,72ZM72,48H184V72H72ZM184,208H72V160H184Zm40-40H200V152a8,8,0,0,0-8-8H64a8,8,0,0,0-8,8v16H32V96c0-4.41,4.19-8,9.33-8H214.67c5.14,0,9.33,3.59,9.33,8Zm-24-52a12,12,0,1,1-12-12A12,12,0,0,1,200,116Z"/></svg>
+                  PDF
+                </button>
+                <button type="button" class="btn btn-secondary" title="Legt den Brief als reinen Text in die Zwischenablage">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M216,32H88a8,8,0,0,0-8,8V80H40a8,8,0,0,0-8,8V216a8,8,0,0,0,8,8H168a8,8,0,0,0,8-8V176h40a8,8,0,0,0,8-8V40A8,8,0,0,0,216,32ZM160,208H48V96H160Zm48-48H176V88a8,8,0,0,0-8-8H96V48H208Z"/></svg>
+                  Text
+                </button>
+              </div>
+            </div>
+          </details>
+        </aside>
+      </div>
+    </div>
+
+    <script>
+      function wire(id, attr, apply) {
+        const group = document.getElementById(id)
+        group.addEventListener('click', (event) => {
+          const button = event.target.closest('button')
+          if (!button) return
+          for (const other of group.querySelectorAll('button')) {
+            other.setAttribute('aria-pressed', String(other === button))
+          }
+          apply(button.dataset[attr])
+        })
+      }
+
+      wire('seg-theme', 'themeChoice', (value) => {
+        document.documentElement.dataset.theme = value
+      })
+      wire('seg-scrollbars', 'scrollbars', (value) => {
+        document.documentElement.dataset.scrollbars = value
+      })
+      wire('seg-state', 'state', (value) => {
+        for (const el of document.querySelectorAll('[data-when]')) {
+          el.hidden = el.dataset.when !== value
+        }
+      })
+
+      document.documentElement.dataset.theme = 'light'
+      document.documentElement.dataset.scrollbars = 'themed'
+    </script>
+  </body>
+</html>

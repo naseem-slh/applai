@@ -1,0 +1,1201 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Applai Erststart</title>
+    <style>
+      /* =====================================================================
+         Attrappe: die Zustände vor der Vorbereiten-Seite.
+
+         Wer applai.pages.dev zum ersten Mal aufruft, sieht nicht die
+         Vorbereiten-Seite, sondern eine von fünf Vorstufen. Sie hängen alle
+         am Schlüsseltresor (siehe Start.tsx): laden, Datenschutzhinweis,
+         Schlüssel einrichten, entsperren, beschädigter Eintrag. Die Leiste
+         unten schaltet zwischen ihnen um.
+
+         **Hier steht der meiste Text der ganzen Anwendung.** Der Hinweis
+         allein hat rund 200 Wörter, die Schlüsseleinrichtung mit allen
+         Begründungen über 400. Gekürzt ist nichts davon: Es sind Zusagen
+         und Warnungen, und die dürfen nicht verschwinden. Sie stehen nur
+         nicht mehr alle gleichzeitig da.
+
+         Die vier Punkte des Hinweises sind auf ihre Kernsätze reduziert,
+         die Begründung liegt je hinter einem Aufklapper. Sichtbar sind
+         damit rund 45 Wörter statt 200. Bei der Einrichtung erscheint der
+         Passwortteil erst, wenn er gebraucht wird, also sobald über den
+         Schlüssel abgerechnet wird; vorher ist er nicht nur ausgegraut,
+         sondern gar nicht da.
+
+         Kein Schrittanzeiger in der Kopfzeile: Es gibt noch keinen Ablauf,
+         solange kein Schlüssel liegt. Nur die Marke, mittig.
+
+         Formen: Karte 34px · Kacheln 24px · Bedienelemente 16px · Knöpfe Pille
+         ===================================================================== */
+
+      @font-face {
+        font-family: 'Fredoka';
+        font-style: normal;
+        font-display: swap;
+        font-weight: 400 700;
+        src: url('../../public/fonts/fredoka-variable-latin.woff2') format('woff2-variations');
+        unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+          U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191,
+          U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+      }
+
+      @font-face {
+        font-family: 'Inter Variable';
+        font-style: normal;
+        font-display: swap;
+        font-weight: 100 900;
+        src: url('../../public/fonts/inter-variable-latin.woff2') format('woff2-variations');
+      }
+
+      /* --- Farbe ---------------------------------------------------------
+         Helle Voreinstellung. Der Raum ist auch hier dunkel: Er ist die
+         Bühne, nicht die Arbeitsfläche. Was zwischen hell und dunkel
+         umschaltet, ist die Karte. */
+      :root {
+        color-scheme: light;
+
+        /* Der Raum ist ein liniertes DIN-A4-Blatt: papierweißer Grund,
+           Zeilen im klassischen Blassblau, links der rote Rand. Der
+           Zeilenabstand ist der von Lineatur 27, also 9mm, in CSS-Pixeln
+           bei 96dpi rund 34px. Der Rand steht bei 14% der Fensterbreite,
+           damit er auf jedem Fenster an derselben Stelle sitzt.
+
+           Kein Farbverlauf: Papier ist flach. Die Tiefe kommt allein aus
+           der leichten Abdunklung zu den Rändern hin. */
+        --paper: #ffffff;
+        --rule-step: 34px;
+        --rule: #c3d8ea;
+        --margin: #aecbe5;
+        --room-edge: transparent;
+        /* Bleistiftgrau für die Kritzeleien am Rand. Bewusst schwach: Sie
+           sind Papierspur, kein Inhalt. Wer sie liest, statt sie zu
+           bemerken, hat zu viel Aufmerksamkeit daran verloren. */
+        --doodle: rgb(23 27 60 / 0.18);
+        /* Der weiche Schatten unter der harten Kante. Er trägt die
+           Ablösung, die der Helligkeitsunterschied allein nicht schafft. */
+        --card-shadow: 0 16px 30px rgb(13 27 75 / 0.13);
+        --btn-shadow: 0 10px 18px rgb(13 27 75 / 0.14);
+
+        /* Die eine Kontur und die eine harte Kante. */
+        --line: #0d1b4b;
+        --line-soft: #3a4680;
+        --pop: #0d1b4b;
+
+        /* Die Karte ist beige, nicht weiß. Das Blatt darunter ist das
+           Papier und bleibt hell; abheben soll sich das, was daraufliegt.
+           1,08:1 gegen den Grund. Bei diesem Wert trägt nicht mehr die
+           Helligkeit, sondern der Farbton: warm gegen neutralweiß. Die
+           Ablösung machen die Tintenkontur, die harte Kante und der
+           Schatten darunter. */
+        --card: #fbf6ec;
+        --ink: #16205c;
+        --ink-strong: #0d1b4b;
+        --muted: #4e5885;
+
+        --field: #ffffff;
+
+        --accent: #ff7a45;
+        --accent-line: #c9531f;
+        --accent-deep: #b8461a;
+        --accent-ink: #2b1004;
+        --accent-text: #c9531f;
+        --accent-wash: #fff0e8;
+
+        --done: #22c98f;
+        --done-line: #0f8f64;
+        --done-deep: #0f8f64;
+        --done-ink: #06301f;
+        --done-text: #0b7050;
+        --done-wash: #ddf7ec;
+
+        --error: #d6293e;
+
+
+        --focus: var(--accent-deep);
+
+        --r-card: 34px;
+        --r-tile: 24px;
+        --r-control: 16px;
+        --pop-height: 6px;
+
+        --bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+        --font-display: 'Fredoka', system-ui, sans-serif;
+        --font-body: 'Inter Variable', system-ui, sans-serif;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme='light']) {
+          color-scheme: dark;
+
+          --paper: #04061f;
+          --rule: rgb(255 255 255 / 0.075);
+          --margin: rgb(255 255 255 / 0.14);
+          --card-shadow: 0 16px 34px rgb(0 0 0 / 0.5);
+          --btn-shadow: 0 10px 20px rgb(0 0 0 / 0.45);
+          --room-edge: rgb(0 0 0 / 0.45);
+          --doodle: rgb(255 255 255 / 0.085);
+
+          --line: #3b4794;
+          --line-soft: #5d66bd;
+          --pop: #2a3382;
+
+          --card: #1a2158;
+          --ink: #e7e9ff;
+          --ink-strong: #ffffff;
+          --muted: #9aa1d4;
+
+          --field: #0d1238;
+
+          --accent: #ff8f5e;
+          --accent-line: #ff8f5e;
+          --accent-deep: #b8461a;
+          --accent-ink: #2a0f05;
+          --accent-text: #ffa87e;
+          --accent-wash: #3a1f28;
+
+          --done: #2fd9a0;
+          --done-line: #2fd9a0;
+          --done-deep: #12996b;
+          --done-ink: #04281a;
+          --done-text: #46e0ae;
+          --done-wash: #0e3140;
+
+          --error: #ff8a7a;
+
+
+          --focus: var(--accent-text);
+        }
+      }
+
+      :root[data-theme='dark'] {
+        color-scheme: dark;
+
+        --paper: #04061f;
+        --rule: rgb(255 255 255 / 0.075);
+        --margin: rgb(255 255 255 / 0.14);
+        --card-shadow: 0 16px 34px rgb(0 0 0 / 0.5);
+        --btn-shadow: 0 10px 20px rgb(0 0 0 / 0.45);
+        --room-edge: rgb(0 0 0 / 0.45);
+        --doodle: rgb(255 255 255 / 0.085);
+
+        --line: #3b4794;
+        --line-soft: #5d66bd;
+        --pop: #2a3382;
+
+        --card: #1a2158;
+        --ink: #e7e9ff;
+        --ink-strong: #ffffff;
+        --muted: #9aa1d4;
+
+        --field: #0d1238;
+
+        --accent: #ff8f5e;
+        --accent-line: #ff8f5e;
+        --accent-deep: #b8461a;
+        --accent-ink: #2a0f05;
+        --accent-text: #ffa87e;
+        --accent-wash: #3a1f28;
+
+        --done: #2fd9a0;
+        --done-line: #2fd9a0;
+        --done-deep: #12996b;
+        --done-ink: #04281a;
+        --done-text: #46e0ae;
+        --done-wash: #0e3140;
+
+        --error: #ff8a7a;
+
+
+        --focus: var(--accent-text);
+      }
+
+      /* --- Grundlage ----------------------------------------------------- */
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        min-height: 100dvh;
+        background-color: var(--paper);
+        color: var(--ink);
+        font-family: var(--font-body);
+        font-size: 1rem;
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      button,
+      input,
+      textarea {
+        font: inherit;
+        color: inherit;
+      }
+
+      :focus-visible {
+        outline: 3px solid var(--focus);
+        outline-offset: 3px;
+      }
+
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+        border: 0;
+      }
+
+      /* --- Der Raum ------------------------------------------------------
+         Zwei Lagen: ein feines Punktraster über die ganze Fläche und eine
+         Handvoll Kritzeleien an den Rändern, wie sie beim Warten am Rand
+         eines Blattes entstehen: Spirale, Gesicht, Schlaufe, Stern, Wolke,
+         Pfeil, Bleistift.
+
+         **Sie bewegen sich nicht.** Das Konfetti vorher schwebte, weil es
+         über dem Blatt lag. Diese hier sind auf das Blatt gezeichnet, und
+         Bleistift wandert nicht.
+
+         Sie sind Zier, tragen deshalb aria-hidden und nehmen keine
+         Zeigerereignisse an. Unter 1024px fallen sie weg: Dort steht die
+         Karte über die ganze Breite und hätte sie ohnehin verdeckt. */
+      .room {
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        overflow: hidden;
+        pointer-events: none;
+        background-image:
+          radial-gradient(circle at center, transparent 58%, var(--room-edge) 100%),
+          linear-gradient(
+            90deg,
+            transparent 0 14%,
+            var(--margin) 14% calc(14% + 2px),
+            transparent calc(14% + 2px)
+          ),
+          linear-gradient(var(--rule) 1.5px, transparent 1.5px);
+        background-size:
+          100% 100%,
+          100% 100%,
+          100% var(--rule-step);
+      }
+
+      .doodle {
+        position: absolute;
+        display: none;
+        fill: none;
+        stroke: var(--doodle);
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      @media (min-width: 1024px) {
+        .doodle {
+          display: block;
+        }
+      }
+
+      /* Von Hand gesetzt, nicht gewürfelt: Der Rand eines Blattes ist nicht
+         gleichmäßig bekritzelt, aber er sieht in jeder Sitzung gleich aus.
+         Die leichten Drehungen nehmen den Formen die Werkzeugsauberkeit.
+
+         Verteilt wird über die ganze Fläche, nicht nur an den Seitenrändern:
+         Über und unter der Karte liegt genauso viel freies Blatt, und ein
+         Blatt, das nur links und rechts bekritzelt ist, sieht gerahmt aus
+         statt benutzt. Was hinter der Karte landet, verdeckt sie einfach. */
+      .doodle:nth-of-type(1) {
+        top: 6%;
+        left: 13%;
+        width: 74px;
+        rotate: -6deg;
+      }
+      .doodle:nth-of-type(2) {
+        top: 61%;
+        left: 11%;
+        width: 82px;
+        rotate: -3deg;
+      }
+      .doodle:nth-of-type(3) {
+        bottom: 9%;
+        left: 27%;
+        width: 64px;
+        rotate: 8deg;
+      }
+      .doodle:nth-of-type(4) {
+        top: 5%;
+        right: 29%;
+        width: 56px;
+        rotate: 11deg;
+      }
+      .doodle:nth-of-type(5) {
+        top: 40%;
+        right: 4%;
+        width: 84px;
+        rotate: -5deg;
+      }
+      .doodle:nth-of-type(6) {
+        bottom: 14%;
+        right: 13%;
+        width: 72px;
+        rotate: 6deg;
+      }
+
+      /* Der Krakelkopf sitzt in der Ecke und läuft über den Blattrand
+         hinaus, wie in der Vorlage. Angeschnitten sieht eine Kritzelei
+         gezeichnet aus; mittig und vollständig sieht sie platziert aus. */
+      .doodle:nth-of-type(7) {
+        bottom: 3%;
+        left: -26px;
+        width: 116px;
+        rotate: -4deg;
+      }
+
+
+      :root {
+        --error-deep: #a01d2e;
+        --error-ink: #ffffff;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme='light']) {
+          --error-deep: #b8503f;
+          --error-ink: #2a0a06;
+        }
+      }
+
+      :root[data-theme='dark'] {
+        --error-deep: #b8503f;
+        --error-ink: #2a0a06;
+      }
+
+      /* --- Aufbau ---------------------------------------------------------- */
+      .shell {
+        position: relative;
+        z-index: 1;
+        min-height: 100dvh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 26px;
+        padding: 18px 16px 48px;
+      }
+
+      .topbar {
+        width: 100%;
+        max-width: 660px;
+        display: flex;
+        justify-content: center;
+      }
+
+      .wordmark {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-family: var(--font-display);
+        font-size: 1.5rem;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        color: var(--ink-strong);
+      }
+
+      .wordmark b {
+        font-weight: 600;
+        color: var(--accent);
+      }
+
+      .wordmark img {
+        flex: none;
+        height: 38px;
+        width: auto;
+      }
+
+      .stage {
+        width: 100%;
+        max-width: 660px;
+        margin: auto 0;
+      }
+
+      .screen[hidden] {
+        display: none;
+      }
+
+      .card {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        padding: 26px 26px 28px;
+        background: var(--card);
+        border: 3px solid var(--line);
+        border-radius: var(--r-card);
+        box-shadow: 0 10px 0 var(--pop), var(--card-shadow);
+      }
+
+      .card--danger {
+        border-color: var(--error);
+      }
+
+      h1 {
+        margin: 0;
+        font-family: var(--font-display);
+        font-size: 1.625rem;
+        font-weight: 600;
+        letter-spacing: -0.015em;
+        color: var(--ink-strong);
+      }
+
+      .lead {
+        margin: 0;
+        max-width: 52ch;
+        font-size: 1rem;
+        line-height: 1.6;
+        color: var(--muted);
+      }
+
+      .note {
+        margin: 0;
+        font-size: 0.8125rem;
+        line-height: 1.55;
+        color: var(--muted);
+      }
+
+      .warn {
+        margin: 0;
+        font-size: 0.875rem;
+        line-height: 1.55;
+        font-weight: 500;
+        color: var(--error);
+      }
+
+      /* --- Die vier Punkte ----------------------------------------------------
+         Der Kernsatz steht da, die Begründung liegt darunter. Was man
+         wissen muss, bevor man weitergeht, ist der Satz; alles Weitere
+         beantwortet eine Frage, die nicht jeder stellt. */
+      .facts {
+        display: flex;
+        flex-direction: column;
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+
+      .facts li {
+        border-top: 2px solid var(--line-soft);
+      }
+
+      .facts li:first-child {
+        border-top: 0;
+      }
+
+      .facts summary {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 14px 2px;
+        cursor: pointer;
+        list-style: none;
+        font-size: 0.9375rem;
+        line-height: 1.5;
+        font-weight: 500;
+        color: var(--ink-strong);
+      }
+
+      summary {
+        list-style: none;
+      }
+
+      summary::-webkit-details-marker {
+        display: none;
+      }
+
+      .facts summary:hover {
+        color: var(--accent-text);
+      }
+
+      .facts summary > span {
+        flex: 1;
+      }
+
+      .facts summary svg {
+        flex: none;
+        width: 16px;
+        height: 16px;
+        margin-top: 3px;
+        fill: var(--accent-line);
+        transition: rotate 200ms var(--bounce);
+      }
+
+      .facts details[open] summary svg {
+        rotate: 180deg;
+      }
+
+      .facts p {
+        margin: 0 0 14px;
+        max-width: 62ch;
+        font-size: 0.875rem;
+        line-height: 1.65;
+        color: var(--ink);
+      }
+
+      /* --- Felder ------------------------------------------------------------- */
+      .field {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      .label {
+        font-family: var(--font-display);
+        font-size: 0.9375rem;
+        font-weight: 600;
+        color: var(--ink-strong);
+      }
+
+      input[type='text'],
+      input[type='password'] {
+        width: 100%;
+        padding: 12px 15px;
+        background: var(--field);
+        border: 3px solid var(--line-soft);
+        border-radius: var(--r-control);
+        font-size: 0.9375rem;
+        color: var(--ink);
+      }
+
+      input:hover,
+      input:focus-visible {
+        border-color: var(--accent-line);
+      }
+
+      input::placeholder {
+        color: var(--muted);
+      }
+
+      /* --- Reihenauswahl ------------------------------------------------------- */
+      .seg {
+        display: flex;
+        padding: 3px;
+        gap: 3px;
+        background: var(--field);
+        border: 3px solid var(--line-soft);
+        border-radius: 999px;
+      }
+
+      .seg button {
+        flex: 1;
+        padding: 8px 14px 9px;
+        border: 3px solid transparent;
+        border-radius: 999px;
+        background: none;
+        font-family: var(--font-display);
+        font-size: 0.875rem;
+        font-weight: 600;
+        white-space: nowrap;
+        color: var(--muted);
+        cursor: pointer;
+      }
+
+      .seg button:hover {
+        color: var(--ink-strong);
+      }
+
+      .seg button[aria-checked='true'] {
+        background: var(--accent);
+        border-color: var(--line);
+        color: var(--accent-ink);
+      }
+
+      /* --- Weg zum Schlüssel ---------------------------------------------------
+         Vier Schritte, je eine Zeile. Sie wechseln mit dem Anbieter, deshalb
+         stehen sie im Skript und nicht dreimal im Aufbau. */
+      .steps {
+        display: flex;
+        flex-direction: column;
+        gap: 9px;
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        counter-reset: step;
+      }
+
+      .steps li {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        font-size: 0.875rem;
+        line-height: 1.5;
+        color: var(--ink);
+      }
+
+      .steps li::before {
+        counter-increment: step;
+        content: counter(step);
+        flex: none;
+        display: grid;
+        place-items: center;
+        width: 22px;
+        height: 22px;
+        margin-top: 1px;
+        border-radius: 999px;
+        border: 2px solid var(--line);
+        background: var(--accent);
+        font-family: var(--font-display);
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--accent-ink);
+      }
+
+      .divider {
+        height: 2px;
+        margin: 2px 0;
+        background: var(--line-soft);
+        opacity: 0.5;
+      }
+
+      /* Der Passwortteil ist nicht ausgegraut, sondern gar nicht da, solange
+         er nicht gebraucht wird. Ein gesperrtes Feld erklärt sich nicht. */
+      .pass[hidden] {
+        display: none;
+      }
+
+      .pass {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding: 16px 18px 18px;
+        background: var(--field);
+        border: 3px solid var(--line-soft);
+        border-radius: var(--r-tile);
+      }
+
+      /* --- Knöpfe --------------------------------------------------------------- */
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 9px;
+        padding: 12px 24px 13px;
+        background: var(--field);
+        border: 3px solid var(--line);
+        border-radius: 999px;
+        box-shadow: 0 5px 0 var(--pop);
+        font-family: var(--font-display);
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--ink-strong);
+        cursor: pointer;
+        transition:
+          transform 180ms var(--bounce),
+          box-shadow 140ms ease-out,
+          background-color 140ms ease-out;
+      }
+
+      .btn:hover {
+        background: var(--accent-wash);
+        border-color: var(--accent-line);
+        transform: translateY(-2px);
+        box-shadow: 0 7px 0 var(--pop);
+      }
+
+      .btn:active {
+        transform: translateY(5px);
+        box-shadow: 0 0 0 var(--pop);
+      }
+
+      .btn--accent {
+        background: var(--accent);
+        color: var(--accent-ink);
+        box-shadow: 0 5px 0 var(--accent-deep);
+      }
+
+      .btn--accent:hover {
+        background: var(--accent);
+        box-shadow: 0 7px 0 var(--accent-deep);
+      }
+
+      .btn--accent:active {
+        box-shadow: 0 0 0 var(--accent-deep);
+      }
+
+      .btn--danger {
+        background: var(--error);
+        border-color: var(--line);
+        color: var(--error-ink);
+        box-shadow: 0 5px 0 var(--error-deep);
+      }
+
+      .btn--sm {
+        padding: 8px 16px 9px;
+        font-size: 0.875rem;
+        box-shadow: 0 4px 0 var(--pop);
+      }
+
+      .btn--block {
+        width: 100%;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        padding-top: 4px;
+      }
+
+      /* --- Warten ---------------------------------------------------------------
+         Kein kreisender Zeiger: drei Perlen, die atmen. Sie tragen
+         data-motion-essential, weil eine Anzeige, die im reduzierten Modus
+         stehenbleibt, „abgestürzt" meldet statt „läuft noch". */
+      .waiting {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+        padding: 60px 0;
+      }
+
+      .waiting span {
+        width: 14px;
+        height: 14px;
+        border-radius: 999px;
+        border: 3px solid var(--line);
+        background: var(--card);
+      }
+
+      @media (prefers-reduced-motion: no-preference) {
+        .waiting span {
+          animation: breathe 1400ms cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        .waiting span:nth-child(2) {
+          animation-delay: 160ms;
+        }
+        .waiting span:nth-child(3) {
+          animation-delay: 320ms;
+        }
+      }
+
+      @keyframes breathe {
+        0%,
+        100% {
+          opacity: 0.4;
+        }
+        50% {
+          opacity: 1;
+        }
+      }
+
+      [data-motion-essential] {
+        animation-duration: 2800ms;
+      }
+
+      /* --- Steuerung der Attrappe ------------------------------------------------ */
+      .mockbar {
+        max-width: calc(100vw - 24px);
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: center;
+        gap: 6px;
+        padding: 7px 10px;
+        border-radius: 22px;
+        background: var(--card);
+        border: 2px solid var(--line-soft);
+        font-size: 0.75rem;
+        color: var(--muted);
+      }
+
+      .mockbar strong {
+        padding: 0 4px;
+        font-family: var(--font-display);
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        font-size: 0.6875rem;
+      }
+
+      .mockbar button {
+        padding: 4px 11px;
+        border-radius: 999px;
+        border: 2px solid var(--line-soft);
+        background: var(--field);
+        color: var(--ink);
+        font-size: 0.75rem;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      .mockbar button:hover {
+        border-color: var(--accent-line);
+        background: var(--accent-wash);
+      }
+
+      .mockbar button[aria-pressed='true'] {
+        background: var(--accent);
+        border-color: var(--line);
+        color: var(--accent-ink);
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="room" aria-hidden="true">
+      <!-- 1 · Spirale -->
+      <svg class="doodle" viewBox="0 0 60 60" stroke-width="2.1">
+        <path d="M31 30c0-4-5-5-7-1s3 10 10 9 12-10 8-19S24 8 15 15" />
+      </svg>
+
+      <!-- 2 · Schlaufe -->
+      <svg class="doodle" viewBox="0 0 60 60" stroke-width="2">
+        <path d="M4 34c6-14 15-15 17-4 1 7-7 9-8 2s8-12 17-6c6 4 8 12 16 7" />
+      </svg>
+
+      <!-- 3 · Bleistift -->
+      <svg class="doodle" viewBox="0 0 60 60" stroke-width="2.1">
+        <path d="M43 10l8 8-27 29-12 4 4-12z" />
+        <path d="M36 17l8 8" />
+        <path d="M16 39l8 8" />
+      </svg>
+
+      <!-- 4 · Stern -->
+      <svg class="doodle" viewBox="0 0 60 60" stroke-width="2.3">
+        <path d="M30 8c0 12 1 30 0 43" />
+        <path d="M13 18c10 6 25 15 34 21" />
+        <path d="M47 18c-9 6-24 15-34 21" />
+      </svg>
+
+      <!-- 5 · Wolke -->
+      <svg class="doodle" viewBox="0 0 60 60" stroke-width="2">
+        <path d="M14 40c-7 0-8-10-1-11-1-10 13-13 17-5 5-7 17-2 15 7 7 1 6 9-1 9z" />
+      </svg>
+
+      <!-- 6 · Pfeil -->
+      <svg class="doodle" viewBox="0 0 60 60" stroke-width="2.2">
+        <path d="M8 20c11 24 33 24 44 6" />
+        <path d="M52 26l-9 3" />
+        <path d="M52 26l-3 9" />
+      </svg>
+
+      <!-- 7 · Krakelkopf. Das Motiv aus der Vorlage: ein Gesicht in einer
+           krakeligen Umrandung, angeschnitten von der Blattkante. -->
+      <svg class="doodle" viewBox="0 0 64 64" stroke-width="2.1">
+        <path
+          d="M52 32a7.5 7.5 0 0 1-5 13.4 6.8 6.8 0 0 1-11.5 6.3 7.2 7.2 0 0 1-14.1-2.7 7 7 0 0 1-8.2-10.2 6.6 6.6 0 0 1 .6-13.8 7.4 7.4 0 0 1 8.2-10.3 7 7 0 0 1 14-2.7 7.2 7.2 0 0 1 11.3 7.1A6.9 6.9 0 0 1 52 32z"
+        />
+        <path d="M25 28v4.5" />
+        <path d="M39 28v4.5" />
+        <path d="M24 38c4 6 12 6 16 0" />
+      </svg>
+    </div>
+
+    <div class="shell">
+    <div class="mockbar">
+      <strong>Zustand</strong>
+      <button type="button" data-screen="s-laden">Laden</button>
+      <button type="button" data-screen="s-hinweis" aria-pressed="true">Hinweis</button>
+      <button type="button" data-screen="s-schluessel">Schlüssel</button>
+      <button type="button" data-screen="s-entsperren">Entsperren</button>
+      <button type="button" data-screen="s-beschaedigt">Beschädigt</button>
+      <span style="width: 2px; align-self: stretch; background: var(--line-soft); opacity: 0.4"></span>
+      <button type="button" id="mockTheme">Dunkel</button>
+    </div>
+
+      <header class="topbar">
+        <div class="wordmark">
+          <img src="../../public/logo.webp" alt="" width="114" height="104" />
+          <span>appl<b>ai</b></span>
+        </div>
+      </header>
+
+      <main class="stage">
+        <!-- 1 · Laden. Der Tresor meldet sich noch nicht. -->
+        <section class="screen" id="s-laden" hidden>
+          <div class="card">
+            <div class="waiting" role="status" data-motion-essential>
+              <span></span><span></span><span></span>
+              <span class="sr-only">Wird geladen</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- 2 · Der Erststart-Hinweis. -->
+        <section class="screen" id="s-hinweis">
+          <div class="card">
+            <h1>Bevor es losgeht</h1>
+            <p class="lead">
+              Applai läuft in Ihrem Browser. Vier Dinge sollten Sie trotzdem wissen.
+            </p>
+
+            <ul class="facts">
+        <li>
+          <details>
+            <summary><span>Ihre Texte gehen an den KI-Anbieter, den Sie wählen.</span><svg viewBox="0 0 256 256" aria-hidden="true" focusable="false"><path d="M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z" /></svg></summary>
+            <p>Anschreiben und Stellenausschreibung werden aus Ihrem Browser direkt an Google, OpenAI oder Anthropic gesendet, je nachdem, wen Sie wählen. Ohne diesen Schritt gibt es keine Formulierungsvorschläge. Name, Anschrift, Geburtsdatum, Telefonnummer und E-Mail-Adresse ersetzt Applai vorher durch Platzhalter; der übrige Text geht unverändert.</p>
+          </details>
+        </li>
+        <li>
+          <details>
+            <summary><span>Im kostenlosen Gemini-Tarif nutzt Google Ihre Texte zum Training.</span><svg viewBox="0 0 256 256" aria-hidden="true" focusable="false"><path d="M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z" /></svg></summary>
+            <p>Google verwendet Eingaben und Antworten des kostenlosen Tarifs, um seine Produkte und Modelle weiterzuentwickeln, und Menschen bei Google können sie dabei lesen. Für den kostenpflichtigen Tarif sagt Google das Gegenteil zu; OpenAI und Anthropic geben dasselbe für ihre Schnittstellen an.</p>
+          </details>
+        </li>
+        <li>
+          <details>
+            <summary><span>Ein Zwischenstand bleibt in Ihrem Browser.</span><svg viewBox="0 0 256 256" aria-hidden="true" focusable="false"><path d="M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z" /></svg></summary>
+            <p>Damit nichts verloren geht, legt Applai den Bearbeitungsstand in der Datenbank Ihres Browsers ab, zusammen mit der Bewerbungsliste und Ihren Einstellungen. Das Gerät verlässt davon nichts. Entwürfe werden nach dem Export gelöscht, spätestens nach sieben Tagen.</p>
+          </details>
+        </li>
+        <li>
+          <details>
+            <summary><span>„Alle Daten löschen" ist jederzeit erreichbar.</span><svg viewBox="0 0 256 256" aria-hidden="true" focusable="false"><path d="M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z" /></svg></summary>
+            <p>In den Einstellungen entfernt ein Knopf Bewerbungsliste, Entwürfe, Einstellungen und den hinterlegten API-Schlüssel in einem Zug. Danach ist auf diesem Gerät nichts mehr von Applai übrig.</p>
+          </details>
+        </li>
+            </ul>
+
+            <div class="actions">
+              <button type="button" class="btn btn--accent">Verstanden, weiter</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- 3 · Schlüssel einrichten. -->
+        <section class="screen" id="s-schluessel" hidden>
+          <div class="card">
+            <h1>Schlüssel einrichten</h1>
+            <p class="lead">
+              Applai hat kein Konto und keinen Server. Die Anfragen laufen über Ihren eigenen
+              Zugang.
+            </p>
+
+            <div class="field">
+              <span class="label" id="l-prov">Anbieter</span>
+              <div class="seg" role="radiogroup" aria-labelledby="l-prov" id="providers">
+                <button type="button" role="radio" aria-checked="true" data-p="gemini">Gemini</button>
+                <button type="button" role="radio" aria-checked="false" data-p="openai">OpenAI</button>
+                <button type="button" role="radio" aria-checked="false" data-p="anthropic">Anthropic</button>
+              </div>
+            </div>
+
+            <ol class="steps" id="steps"></ol>
+
+            <div class="divider" aria-hidden="true"></div>
+
+            <div class="field">
+              <label class="label" for="key">API-Schlüssel</label>
+              <input type="password" id="key" value="AQ.Ab8RN6J...9xQ" />
+              <p class="note" id="keyHint">
+                Wird verschlüsselt abgelegt und nur für Anfragen an Gemini benutzt.
+              </p>
+            </div>
+
+            <div class="field">
+              <span class="label" id="l-bill">Wird über diesen Schlüssel abgerechnet?</span>
+              <div class="seg" role="radiogroup" aria-labelledby="l-bill" id="billing">
+                <button type="button" role="radio" aria-checked="true" data-b="free">Nein</button>
+                <button type="button" role="radio" aria-checked="false" data-b="paid">Ja</button>
+              </div>
+              <p class="note">
+                Ein Google-Schlüssel sieht mit und ohne Abrechnung gleich aus. Applai kann das
+                nicht erkennen.
+              </p>
+            </div>
+
+            <!-- Erscheint erst, wenn abgerechnet wird. Dann ist es Pflicht. -->
+            <div class="pass" id="pass" hidden>
+              <span class="label">Passwort für diesen Schlüssel</span>
+              <p class="note">
+                Über diesen Schlüssel wird abgerechnet. Ohne Passwort läge das Material zum
+                Entschlüsseln neben dem Schlüssel im Browser.
+              </p>
+              <div class="field">
+                <label class="label" for="pw1" style="font-size: 0.8125rem">Passwort</label>
+                <input type="password" id="pw1" placeholder="Mindestens 12 Zeichen" />
+              </div>
+              <div class="field">
+                <label class="label" for="pw2" style="font-size: 0.8125rem">Wiederholen</label>
+                <input type="password" id="pw2" />
+              </div>
+              <details>
+                <summary class="note" style="cursor: pointer; color: var(--accent-text)">
+                  Warum so lang, und warum kein Zurücksetzen
+                </summary>
+                <p class="note" style="margin-top: 8px">
+                  Wer den verschlüsselten Eintrag aus dem Browser kopiert, kann danach in Ruhe
+                  Passwörter durchprobieren, so schnell seine Grafikkarte es hergibt. Niemand
+                  sperrt ihn nach zehn Fehlversuchen aus. Vier zufällige Wörter hintereinander
+                  sind leichter zu merken als eine kurze Folge aus Sonderzeichen und deutlich
+                  schwerer zu raten. Das Passwort wird nirgends gespeichert und lässt sich nicht
+                  zurücksetzen.
+                </p>
+              </details>
+            </div>
+
+            <div class="actions">
+              <button type="button" class="btn btn--accent">Schlüssel speichern</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- 4 · Entsperren. -->
+        <section class="screen" id="s-entsperren" hidden>
+          <div class="card">
+            <h1>Schlüssel entsperren</h1>
+            <p class="lead">
+              Für den hinterlegten Schlüssel haben Sie ein Passwort vergeben.
+            </p>
+
+            <div class="field">
+              <label class="label" for="pw">Passwort</label>
+              <input type="password" id="pw" />
+            </div>
+
+            <div class="actions">
+              <button type="button" class="btn btn--accent">Entsperren</button>
+            </div>
+
+            <details>
+              <summary class="note" style="cursor: pointer; color: var(--accent-text)">
+                Passwort vergessen
+              </summary>
+              <p class="note" style="margin-top: 8px">
+                Es lässt sich nicht zurücksetzen. Hinterlegen Sie in den Einstellungen einen
+                neuen Schlüssel. Bedenken Sie dabei: OpenAI und Anthropic zeigen einen Schlüssel
+                nur ein einziges Mal an.
+              </p>
+            </details>
+          </div>
+        </section>
+
+        <!-- 5 · Beschädigter Eintrag. -->
+        <section class="screen" id="s-beschaedigt" hidden>
+          <div class="card card--danger">
+            <h1>Der Schlüssel ließ sich nicht lesen</h1>
+            <p class="warn">
+              Laden Sie die Seite neu und schließen Sie andere Tabs mit Applai. Bleibt es dabei,
+              hilft nur löschen und neu hinterlegen.
+            </p>
+            <details>
+              <summary class="note" style="cursor: pointer; color: var(--accent-text)">
+                Woran es liegen kann
+              </summary>
+              <p class="note" style="margin-top: 8px">
+                Applai kann das nicht unterscheiden: Der Eintrag selbst kann beschädigt sein, der
+                Browser kann den Speicher aber auch nur gerade nicht freigeben, etwa im privaten
+                Modus oder während die Anwendung in einem zweiten Tab offen ist.
+              </p>
+            </details>
+            <div class="actions">
+              <button type="button" class="btn btn--danger">Gespeicherten Schlüssel löschen</button>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script>
+      /* Umschalter der Zustände. */
+      const screens = Array.from(document.querySelectorAll('.screen'))
+      document.querySelectorAll('[data-screen]').forEach((button) => {
+        button.addEventListener('click', () => {
+          screens.forEach((s) => {
+            s.hidden = s.id !== button.dataset.screen
+          })
+          document
+            .querySelectorAll('[data-screen]')
+            .forEach((o) => o.setAttribute('aria-pressed', String(o === button)))
+        })
+      })
+
+      /* Der Weg zum Schlüssel ist bei jedem Anbieter ein anderer. Die
+         Schritte stehen deshalb hier und nicht dreimal im Aufbau. */
+      const GUIDES = {
+        gemini: {
+          name: 'Gemini',
+          steps: [
+            'Bei Google AI Studio mit einem Google-Konto anmelden.',
+            '„Get API key" öffnen und einen neuen Schlüssel erzeugen.',
+            'Den Schlüssel kopieren. Neue beginnen mit „AQ.", ältere mit „AIza".',
+            'Ihn unten einfügen. Für den kostenlosen Tarif ist keine Zahlungsart nötig.',
+          ],
+        },
+        openai: {
+          name: 'OpenAI',
+          steps: [
+            'Bei der OpenAI-Plattform anmelden und eine Zahlungsart hinterlegen.',
+            'Unter „API keys" auf „Create new secret key" klicken.',
+            'Den Schlüssel sofort kopieren. Er wird nur ein einziges Mal angezeigt.',
+            'Ihn unten einfügen.',
+          ],
+        },
+        anthropic: {
+          name: 'Anthropic',
+          steps: [
+            'In der Claude Console anmelden und Guthaben aufladen.',
+            'Unter „Settings" → „API keys" auf „Create key" klicken.',
+            'Den Schlüssel sofort kopieren. Er wird nur ein einziges Mal angezeigt.',
+            'Ihn unten einfügen.',
+          ],
+        },
+      }
+
+      const stepList = document.getElementById('steps')
+      const keyHint = document.getElementById('keyHint')
+
+      function showGuide(provider) {
+        const guide = GUIDES[provider]
+        stepList.replaceChildren(
+          ...guide.steps.map((text) => {
+            const li = document.createElement('li')
+            li.textContent = text
+            return li
+          }),
+        )
+        keyHint.textContent = `Wird verschlüsselt abgelegt und nur für Anfragen an ${guide.name} benutzt.`
+      }
+
+      document.getElementById('providers').addEventListener('click', (event) => {
+        const button = event.target.closest('button')
+        if (button === null) return
+        document
+          .querySelectorAll('#providers button')
+          .forEach((o) => o.setAttribute('aria-checked', String(o === button)))
+        showGuide(button.dataset.p)
+      })
+
+      showGuide('gemini')
+
+      /* Der Passwortteil erscheint erst, wenn abgerechnet wird. Ein
+         gesperrtes Feld erklärt sich nicht; ein fehlendes wirft auch keine
+         Frage auf, solange es nicht gebraucht wird. */
+      const pass = document.getElementById('pass')
+      document.getElementById('billing').addEventListener('click', (event) => {
+        const button = event.target.closest('button')
+        if (button === null) return
+        document
+          .querySelectorAll('#billing button')
+          .forEach((o) => o.setAttribute('aria-checked', String(o === button)))
+        pass.hidden = button.dataset.b !== 'paid'
+      })
+
+      const themeButton = document.getElementById('mockTheme')
+      themeButton.addEventListener('click', () => {
+        const dark = document.documentElement.getAttribute('data-theme') === 'dark'
+        document.documentElement.setAttribute('data-theme', dark ? 'light' : 'dark')
+        themeButton.textContent = dark ? 'Dunkel' : 'Hell'
+      })
+    </script>
+  </body>
+</html>

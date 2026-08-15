@@ -1,0 +1,104 @@
+
+/* =========================================================================
+   1. Aufbau: Kopfzeile + Fortschrittsschiene
+   Die Schiene ist der Kern der Neugestaltung. Bisher lagen Unterlagen,
+   Stellenanzeige und Bewerbungsliste als gleich schwere Karten
+   untereinander; nichts sagte, was zuerst dran ist und was noch fehlt.
+   ========================================================================= */
+.topbar{position:sticky;top:0;z-index:40;background:var(--panel);border-bottom:1px solid var(--border)}
+.screen .topbar{top:53px}
+.topbar-in{display:flex;align-items:center;justify-content:space-between;gap:20px;height:60px}
+.brand{display:flex;align-items:center;gap:9px;font-weight:600;color:var(--ink-strong);letter-spacing:-.01em;text-decoration:none}
+.brand-mark{width:22px;height:22px;border-radius:6px;background:var(--accent);
+  display:grid;place-items:center;color:var(--accent-on);font-size:12px;font-weight:700}
+.topbar-right{display:flex;align-items:center;gap:6px}
+.topbar-link{padding:7px 11px;border-radius:var(--r-ctrl);font-size:14px;color:var(--muted);
+  background:none;border:0;cursor:pointer;transition:var(--step)}
+.topbar-link:hover{color:var(--ink);background:var(--sunken)}
+
+/* Der lokale Zustand, immer sichtbar: nichts verlässt das Gerät. */
+.local-badge{display:inline-flex;align-items:center;gap:7px;padding:5px 11px;
+  border-radius:var(--r-pill);background:var(--accent-soft);color:var(--accent);
+  font-size:12.5px;font-weight:500}
+.local-badge svg{width:13px;height:13px;flex:none}
+
+/* Fortschrittsschiene */
+.rail{background:var(--panel);border-bottom:1px solid var(--border)}
+.rail-in{display:flex;gap:0;overflow-x:auto;scrollbar-width:none}
+.rail-in::-webkit-scrollbar{display:none}
+.rail-step{flex:1 1 0;min-width:190px;display:flex;align-items:center;gap:11px;
+  padding:15px 4px 14px;border:0;border-bottom:2px solid transparent;background:none;
+  text-align:left;cursor:pointer;transition:var(--step)}
+.rail-step:disabled{cursor:not-allowed}
+.rail-num{flex:none;width:25px;height:25px;border-radius:var(--r-pill);display:grid;place-items:center;
+  border:1.5px solid var(--border-strong);color:var(--muted);
+  font-size:12.5px;font-weight:600;transition:var(--step)}
+.rail-label{display:block;font-size:14.5px;font-weight:500;color:var(--muted);line-height:1.3}
+.rail-sub{display:block;font-size:12.5px;color:var(--muted);opacity:.85;line-height:1.35;margin-top:1px}
+.rail-step[data-state="current"]{border-bottom-color:var(--accent)}
+.rail-step[data-state="current"] .rail-num{background:var(--accent);border-color:var(--accent);color:var(--accent-on)}
+.rail-step[data-state="current"] .rail-label{color:var(--ink-strong);font-weight:600}
+.rail-step[data-state="done"] .rail-num{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.rail-step[data-state="done"] .rail-label{color:var(--ink)}
+.rail-step[data-state="todo"]{opacity:.65}
+.rail-step:not(:disabled):hover .rail-label{color:var(--ink-strong)}
+
+/* Schritt-Inhalt */
+.step-head{margin:38px 0 26px}
+.step-head h1{font-size:clamp(1.6rem,2.2vw + 1rem,2.15rem);font-weight:600;
+  letter-spacing:-.02em;line-height:1.15;color:var(--ink-strong)}
+.step-head p{margin-top:9px;color:var(--muted);font-size:16.5px}
+
+/* Ablegefelder */
+.drops{display:grid;gap:18px;grid-template-columns:1fr}
+@media (min-width:820px){.drops{grid-template-columns:1fr 1fr}}
+.drop{position:relative;display:flex;flex-direction:column;gap:11px;padding:26px 22px;
+  border:1.5px dashed var(--border-strong);border-radius:var(--r-card);
+  background:var(--panel);text-align:left;cursor:pointer;transition:var(--step)}
+.drop:hover{border-color:var(--accent);background:var(--accent-soft)}
+.drop-icon{width:34px;height:34px;color:var(--muted)}
+.drop:hover .drop-icon{color:var(--accent)}
+.drop-title{font-weight:600;color:var(--ink-strong);font-size:15.5px}
+.drop-hint{font-size:13.5px;color:var(--muted);line-height:1.5}
+.drop-req{position:absolute;top:14px;right:14px;font-size:11.5px;font-weight:600;
+  letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+
+/* Gefüllt */
+.drop.is-filled{border-style:solid;border-color:var(--border);cursor:default;background:var(--panel)}
+.drop.is-filled:hover{background:var(--panel);border-color:var(--border)}
+.file-row{display:flex;align-items:flex-start;gap:13px}
+.file-badge{flex:none;width:38px;height:46px;border-radius:5px;background:var(--sunken);
+  border:1px solid var(--border);display:grid;place-items:center;
+  font-size:10px;font-weight:700;letter-spacing:.03em;color:var(--muted)}
+.file-meta{min-width:0;flex:1}
+.file-name{font-weight:500;color:var(--ink-strong);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.check{display:inline-flex;align-items:center;gap:6px;color:var(--accent);font-size:13px;font-weight:500;margin-top:3px}
+.check svg{width:14px;height:14px}
+
+/* Feldgruppe */
+.field{display:flex;flex-direction:column;gap:7px;margin-top:24px}
+.field label{font-size:14px;font-weight:500;color:var(--ink)}
+.field-hint{font-size:13px;color:var(--muted);line-height:1.5}
+.input,.textarea{width:100%;padding:11px 13px;border:1px solid var(--border-strong);
+  border-radius:var(--r-ctrl);background:var(--panel);color:var(--ink);
+  font:inherit;font-size:15px;transition:var(--step)}
+.textarea{min-height:190px;resize:vertical;line-height:1.6}
+.input::placeholder,.textarea::placeholder{color:var(--muted);opacity:.85}
+.input:focus,.textarea:focus{border-color:var(--accent);outline:2px solid var(--accent);outline-offset:-1px}
+
+/* Was aus der Anzeige gelesen wurde */
+.chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:13px}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:var(--r-pill);
+  background:var(--sunken);border:1px solid var(--border);font-size:13px;color:var(--ink)}
+.chip b{font-weight:600;color:var(--ink-strong)}
+
+/* Aktionsleiste. Sagt in Worten, was noch fehlt, direkt neben dem Knopf. */
+.actionbar{position:sticky;bottom:0;z-index:30;margin-top:34px;
+  background:var(--panel);border:1px solid var(--border);border-radius:var(--r-card);
+  box-shadow:var(--shadow-pop);padding:15px 20px;
+  display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px}
+.actionbar-say{font-size:14px;display:flex;align-items:center;gap:9px;min-width:0}
+.actionbar-say svg{width:17px;height:17px;flex:none}
+.say-todo{color:var(--muted)}
+.say-ready{color:var(--accent);font-weight:500}
+.bar-spacer{height:26px}

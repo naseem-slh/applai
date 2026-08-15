@@ -1,0 +1,31 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>
+endobj
+4 0 obj
+<< /Length 530 >>
+stream
+BT /F1 11 Tf 72 760 Td (Linke Spalte Zeile 1) Tj ET
+BT /F1 11 Tf 320 760 Td (Rechte Spalte Zeile 1) Tj ET
+BT /F1 11 Tf 72 740 Td (Linke Spalte Zeile 2) Tj ET
+BT /F1 11 Tf 320 740 Td (Rechte Spalte Zeile 2) Tj ET
+BT /F1 11 Tf 72 720 Td (Linke Spalte Zeile 3) Tj ET
+BT /F1 11 Tf 320 720 Td (Rechte Spalte Zeile 3) Tj ET
+BT /F1 11 Tf 72 700 Td (Linke Spalte Zeile 4) Tj ET
+BT /F1 11 Tf 320 700 Td (Rechte Spalte Zeile 4) Tj ET
+BT /F1 11 Tf 72 680 Td (Linke Spalte Zeile 5) Tj ET
+BT /F1 11 Tf 320 680 Td (Rechte Spalte Zeile 5) Tj ET
+endstream
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+trailer
+<< /Size 6 /Root 1 0 R >>
+%%EOF

@@ -1,0 +1,82 @@
+# Spezifikation — die 30 Entscheidungen
+
+Diese Tabelle ist die verbindliche Fassung. Quelle:
+[`docs/superpowers/plans/2026-08-11-applai-bauabschnitt-1.md`](superpowers/plans/2026-08-11-applai-bauabschnitt-1.md).
+Die 29. Entscheidung („Vorgemerkte Stellen") kam später dazu:
+[`docs/superpowers/specs/2026-08-12-vorgemerkte-stellen-design.md`](superpowers/specs/2026-08-12-vorgemerkte-stellen-design.md).
+Die 30. („Lebenslauf anpassen") eröffnet den zweiten Bauabschnitt:
+[`docs/superpowers/specs/2026-08-14-lebenslauf-design.md`](superpowers/specs/2026-08-14-lebenslauf-design.md).
+
+### Produkt und Auslieferung
+
+| Thema | Entscheidung |
+|---|---|
+| Nutzerkreis | Der Betreiber und Bekannte. Kein Produkt, keine Konten, kein Login. |
+| Form | Statische Web-App, im Browser lauffähig, überall erreichbar |
+| Hosting | Cloudflare Pages, kostenloser Tarif. Adresse zunächst `applai.pages.dev` |
+| Quellcode | Öffentlich auf GitHub — Nachprüfbarkeit ist das stärkste Datenschutzargument |
+| Mobil | Nutzbar, aber ohne Feinmarkierung; dort „Anzeige einfügen, Ergebnis lesen" |
+| Oberflächensprache | Deutsch und Englisch umschaltbar, Vorauswahl nach Browsersprache |
+| Optik | Ruhig, dokumentzentriert, modern und einladend statt klinisch. Hell als Grundeinstellung, dunkel wählbar |
+| Name | **Applai**, gesprochen wie *apply* |
+
+### KI und Sicherheit
+
+| Thema | Entscheidung |
+|---|---|
+| Anbieter | Gemini (Standard, kostenloser Tarif), OpenAI, Anthropic — fest verdrahtete Auswahl hinter einem gemeinsamen Adapter |
+| Schlüssel | Jeder Nutzer trägt seinen eigenen ein, geführt durch eine Anleitung. Bleibt in seinem Browser |
+| Schlüsselablage | Verschlüsselt in IndexedDB mit einem nicht auslesbaren WebCrypto-Schlüssel. **Passwortschutz ist Pflicht, sobald ein kostenpflichtiger Schlüssel erkannt wird**, sonst optional. Automatische Sperre nach Untätigkeit |
+| Ausleitungssperre | CSP `connect-src` auf die drei Anbieter begrenzt — verhindert Abfluss selbst bei kompromittierter Abhängigkeit |
+| Anonymisierung | Name, Anschrift, Geburtsdatum, Telefon, E-Mail werden vor dem Senden durch Platzhalter ersetzt und danach zurückgetauscht. **Standardmäßig an**, abschaltbar |
+| Hinweis für Zahlende | Einmaliger Hinweis bei kostenpflichtigem Schlüssel: Ausgabenlimit setzen, eigenen Schlüssel verwenden, Herkunftsbeschränkung aktivieren |
+| Erststart-Hinweis | Klartext darüber, dass Inhalte an den gewählten Anbieter gehen und der kostenlose Gemini-Tarif zum Training verwendet wird |
+
+### Eingaben
+
+| Thema | Entscheidung |
+|---|---|
+| Unterlagen | `.docx` (Hauptweg, Layout bleibt erhalten) oder `.pdf` (Lesen + Beta-Umwandlung). Ein **mehrspaltig gesetztes** PDF ist nicht anpassbar und zählt nur als Faktenquelle — die Umwandlung verschränkt seine Spalten |
+| Mindestanforderung | Anschreiben **oder** Lebenslauf muss vorhanden sein |
+| Stellenausschreibung | Eingefügter Text oder PDF. **Kein Link-Abruf** — bräuchte einen Vermittler und damit einen Server |
+| Anforderungsanalyse | Sichtbarer Zwischenschritt: die aus der Anzeige gezogenen Anforderungen sind einsehbar |
+| Unterlagenverwaltung | Kein Profilkonzept. Zuletzt benutzte Dateien werden vorgeschlagen |
+
+### Bearbeitung
+
+| Thema | Entscheidung |
+|---|---|
+| Reihenfolge | Anschreiben und Lebenslauf in **einer** Arbeitsfläche, umschaltbar. Der Lebenslauf trägt keinen Briefkopf, kein „ganzes Dokument" und nur den Längenregler |
+| Lebenslauf-Anpassung | **Beta**, sichtbar gekennzeichnet mit Prüfhinweis — dieselbe Linie wie bei PDF→Word. Benutzbar ohne Einschränkung; was fehlt, ist die Erfahrung aus mehreren Bewerbungssaisons, nicht eine Funktion |
+| Arbeitsumfang | Beim Vorbereiten wird gewählt, **welche** Unterlagen angepasst werden. Nicht Gewähltes bleibt reine Faktenquelle und wird nicht angefasst. In der Arbeitsfläche nachträglich änderbar |
+| Faktenbasis | Belegt wird ausschließlich der **hochgeladene** Stand, nie der laufende. Sonst würde eine erfundene Zeile im Lebenslauf zum Beleg für das Anschreiben |
+| Faktenprüfung | Deterministischer Abgleich je Variante: Zahlen und Datumsangaben müssen unverändert wiederkehren. Ein Befund sperrt „Übernehmen" bis zur Bestätigung. **Zahlwörter bleiben ungeprüft** — sonst nähme niemand die Warnung mehr ernst |
+| Auswahl | Freie Textmarkierung per Maus, beliebiger Bereich, auch satzübergreifend. Zusätzlich „ganzes Dokument" — **beim Anschreiben**; ein Lebenslauf wird absatzweise gewählt, sonst ebnete eine Umformulierung seine Gliederung ein. Mit dem Finger wählt ein Tippen den Absatz |
+| Vorgemerkte Stellen | Mehrere Stellen gleichzeitig vormerkbar, eine nach der anderen umformulierbar. Vormerkungen werden **je Dokument** gemerkt und beim nächsten Mal selbsttätig wiederhergestellt |
+| Ergebnis | **Drei Varianten** zur Auswahl, übernehmen oder verwerfen |
+| Stil | Stilprofil aus dem vorhandenen Dokument abgeleitet, einsehbar und korrigierbar. Der Lebenslauf bekommt ein **eigenes**: Aufzählungsform, Zeitform, Person, Schlusspunkt, Länge — Satzlänge und Anrede sagen über einen Aufzählungspunkt nichts. Zusätzlich zwei Schieberegler (förmlich↔locker, kurz↔ausführlich); am Lebenslauf nur die Länge |
+| Eigene Änderungen | Tippen überall möglich (Text ja, Formatierung nein) |
+| Wahrheitsgrenze | **Streng** als Grundregel. **Brücken** zuschaltbar (nur inhaltlich gedeckte Verallgemeinerungen). **Frei** zuschaltbar — mit farbiger Markierung, Einzelbestätigung und Exportsperre |
+| Lückenliste | Was die Anzeige verlangt, was gedeckt ist, was fehlt. **Kein Prozentwert** — er wäre erfunden |
+| Briefkopf | Empfänger, Datum, Betreff und Anrede werden vorgeschlagen und sind vor Übernahme prüfbar |
+| Fremdfirmen-Warnung | Deterministischer Abgleich: taucht im Text ein Firmenname auf, der nicht zur aktuellen Anzeige gehört, wird er markiert |
+| Sprache | Zielsprache = Sprache der Anzeige. **Nachfrage nur bei Abweichung.** Übersetzen und Anpassen sind getrennte Schritte. Hinweis auf abweichende Gepflogenheiten (Foto, Geburtsdatum, Anschrift) beim Wechsel ins Englische |
+
+### Ausgabe und Ablage
+
+| Thema | Entscheidung |
+|---|---|
+| Word-Export | Das Original mit gepatchten Textstellen — Schrift, Ränder, Kopfzeile unverändert |
+| PDF-Export | Im Browser aus dem Original neu gesetzt: Schrift, Grade, Ränder, Ausrichtung, Kopf- und Fußzeile samt Bildern. Schwebende Textfelder, Linien und Unterschriften stehen an ihrer Blattkoordinate; Bildschriften (Wingdings, Symbol) werden auf Unicode abgebildet. Metrikgleiche Schriften (Carlito, Liberation) halten den Zeilenumbruch. Ohne Tabellen, Aufzählungszeichen und Textumfluss. **Trägt ein Dokument eine Tabelle, ist der PDF-Export für es gesperrt** — sonst käme die Mappe still ohne ihre Tabelle heraus. Word-Export und Kopierfeld bleiben offen |
+| Kopierfeld | Reintext für Online-Formulare |
+| PDF→Word | **Beta**, einspaltig, sichtbar gekennzeichnet mit Prüfhinweis. Originaltreue folgt im zweiten Abschnitt |
+| Bewerbungsliste | Firma, Stelle, Datum. Nur im Browser. Hinweis bei doppelter Bewerbung |
+| Sicherung | Export und Import der Liste als Datei |
+| Entwürfe | Automatischer Zwischenstand, sichtbar angezeigt, gelöscht nach Export oder nach 7 Tagen |
+| Löschen | Knopf „Alle Daten löschen" |
+| Erweiterbarkeit | Speicherung hinter einer Schnittstelle, damit später ein Server dazukommen kann |
+
+### Nicht im zweiten Bauabschnitt
+
+Tabellensatz im PDF-Export · Umsortieren oder Gewichten von Lebenslauf-Einträgen
+· erzeugter Profilabschnitt · originalgetreue PDF-Umwandlung · Anschreiben ganz ohne Vorlage erstellen · lokale Modelle (Ollama) · serverseitige Liste · Bewerbungsverwaltung mit Status und Fristen · Link-Abruf von Stellenanzeigen

@@ -1,0 +1,898 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Applai · Einstellungen</title>
+
+    <style>
+      /* ===================================================================
+         Attrappe für die Einstellungen.
+
+         Token wörtlich aus src/styles/design.css. Drei Änderungen:
+           1. Zwei Spalten in einem 1100er Satzspiegel statt einer 672er Rinne.
+           2. Verwandtes steht zusammen: sieben Karten werden vier Gruppen.
+           3. Zwei- und dreiwertige Auswahlen sind Schalterreihen statt
+              Aufklapplisten. Alle Möglichkeiten sichtbar, ein Klick weniger,
+              und die Zeile füllt die Breite, statt sie leer zu lassen.
+         =================================================================== */
+
+      @font-face {
+        font-family: 'Inter Variable';
+        font-style: normal;
+        font-display: swap;
+        font-weight: 100 900;
+        src: url('/public/fonts/inter-variable-latin.woff2') format('woff2-variations');
+      }
+
+      :root {
+        --color-surface: #f4fafc;
+        --color-surface-alt: #e8f4fa;
+        --color-surface-raised: #ffffff;
+        --color-border: #d9e8f0;
+        --color-ink: #03045e;
+        --color-ink-strong: #010229;
+        --color-muted: #4d5680;
+        --color-accent: #0077b6;
+        --color-accent-dark: #005c86;
+        --color-accent-contrast: #ffffff;
+        --color-accent-text: #00628f;
+        --color-success: #0d6e52;
+        --color-error: #b3261e;
+        --color-warning: #8a5200;
+        --color-surface-hover: #e2f2f8;
+        --color-accent-soft: #caf0f8;
+        --color-control-border: #6f7d95;
+        --shadow-raised: 0 1px 2px rgb(3 4 94 / 0.06), 0 2px 8px rgb(3 4 94 / 0.06);
+
+        --radius-sm: 4px;
+        --radius-md: 8px;
+        --radius-lg: 12px;
+
+        --text-heading-size: 1.5rem;
+        --text-subheading-size: 1.125rem;
+        --text-body-size: 1rem;
+        --text-body-sm-size: 0.875rem;
+        --text-label-size: 0.75rem;
+      }
+
+      :root[data-theme='dark'] {
+        --color-surface: #050a24;
+        --color-surface-alt: #0b1436;
+        --color-surface-raised: #0d1738;
+        --color-border: #1d2a55;
+        --color-ink: #e6f3f8;
+        --color-ink-strong: #ffffff;
+        --color-muted: #9db0cf;
+        --color-accent: #00b4d8;
+        --color-accent-dark: #0077b6;
+        --color-accent-contrast: #03045e;
+        --color-accent-text: #00b4d8;
+        --color-success: #4ec99a;
+        --color-error: #ff8a7a;
+        --color-warning: #e0a256;
+        --color-surface-hover: #142347;
+        --color-accent-soft: #0f2a4d;
+        --color-control-border: #7286a8;
+        --shadow-raised: 0 1px 2px rgb(0 0 0 / 0.4), 0 2px 8px rgb(0 0 0 / 0.32);
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      [hidden] {
+        display: none !important;
+      }
+
+      body {
+        margin: 0;
+        font-family: 'Inter Variable', system-ui, sans-serif;
+        background: var(--color-surface-alt);
+        color: var(--color-ink);
+        font-size: var(--text-body-size);
+        line-height: 1.7;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      button {
+        font: inherit;
+        cursor: pointer;
+      }
+
+      /* Blättergriffe wie im Editor-Entwurf, aus denselben Token. */
+      .scroll {
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: color-mix(in oklab, var(--color-muted) 45%, transparent) transparent;
+      }
+
+      @supports selector(::-webkit-scrollbar) {
+        .scroll {
+          scrollbar-width: auto;
+          scrollbar-color: auto;
+        }
+
+        .scroll::-webkit-scrollbar {
+          width: 12px;
+        }
+
+        .scroll::-webkit-scrollbar-track {
+          background: transparent;
+        }
+
+        .scroll::-webkit-scrollbar-thumb {
+          background-color: color-mix(in oklab, var(--color-muted) 32%, transparent);
+          border: 3px solid transparent;
+          border-radius: 999px;
+          background-clip: content-box;
+        }
+
+        .scroll:hover::-webkit-scrollbar-thumb {
+          background-color: color-mix(in oklab, var(--color-muted) 62%, transparent);
+        }
+      }
+
+      /* --- Steuerleiste der Attrappe ------------------------------------ */
+
+      .mockbar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 1.5rem;
+        padding: 0.75rem 1.5rem;
+        background: #10131c;
+        color: #cfd6e4;
+        font-size: var(--text-body-sm-size);
+        line-height: 1.4;
+      }
+
+      .mockbar strong {
+        color: #fff;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        font-size: var(--text-label-size);
+      }
+
+      .mockbar-group {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .mockbar-group > span {
+        opacity: 0.66;
+      }
+
+      .mockseg {
+        display: inline-flex;
+        border: 1px solid #333a4d;
+        border-radius: var(--radius-md);
+        overflow: hidden;
+      }
+
+      .mockseg button {
+        border: 0;
+        background: transparent;
+        color: #cfd6e4;
+        padding: 0.25rem 0.75rem;
+        font-size: var(--text-body-sm-size);
+      }
+
+      .mockseg button[aria-pressed='true'] {
+        background: #cfd6e4;
+        color: #10131c;
+        font-weight: 600;
+      }
+
+      /* --- Rahmen der Anwendung ----------------------------------------- */
+
+      .app {
+        height: calc(100dvh - 3.25rem);
+        display: flex;
+        flex-direction: column;
+        background: var(--color-surface);
+      }
+
+      .appbar {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 0 1.5rem;
+        height: 56px;
+        border-bottom: 1px solid var(--color-border);
+        background: var(--color-surface-raised);
+        flex-shrink: 0;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-weight: 600;
+        color: var(--color-ink-strong);
+      }
+
+      .brand-mark {
+        width: 26px;
+        height: 26px;
+        border-radius: 999px;
+        background: var(--color-accent);
+        color: var(--color-accent-contrast);
+        display: grid;
+        place-items: center;
+        font-size: var(--text-body-sm-size);
+        font-weight: 600;
+      }
+
+      .steps {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        margin-left: 1rem;
+      }
+
+      .step {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.375rem 0.75rem;
+        border-radius: var(--radius-md);
+        font-size: var(--text-body-sm-size);
+        color: var(--color-muted);
+      }
+
+      .step-num {
+        width: 20px;
+        height: 20px;
+        border-radius: 999px;
+        display: grid;
+        place-items: center;
+        font-size: var(--text-label-size);
+        background: var(--color-border);
+        color: var(--color-muted);
+      }
+
+      .appbar-end {
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+        font-size: var(--text-body-sm-size);
+      }
+
+      .appbar-end a {
+        color: var(--color-accent-text);
+        text-decoration: none;
+      }
+
+      .appbar-end a[aria-current='page'] {
+        background: var(--color-accent-soft);
+        color: var(--color-ink-strong);
+        font-weight: 600;
+        padding: 0.375rem 0.75rem;
+        border-radius: var(--radius-md);
+      }
+
+      /* --- Seite --------------------------------------------------------- */
+
+      .page {
+        flex: 1;
+        min-height: 0;
+        padding: 2rem 1.5rem 3rem;
+      }
+
+      .wrap {
+        max-width: 1100px;
+        margin: 0 auto;
+      }
+
+      h1 {
+        font-size: var(--text-heading-size);
+        line-height: 1.3;
+        font-weight: 600;
+        color: var(--color-ink-strong);
+        margin: 0 0 1.5rem;
+      }
+
+      /* Zwei Karten je Zeile, paarweise auf gleicher Ober- und Unterkante.
+         Die niedrigere Karte wird auf die Höhe der höheren gezogen; ihr
+         Inhalt rückt dafür in die Mitte, damit die gewonnene Höhe wie Rand
+         aussieht und nicht wie ein abgeschnittener Boden. */
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1.5rem;
+      }
+
+      .card {
+        display: flex;
+        flex-direction: column;
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-lg);
+        background: var(--color-surface-raised);
+        box-shadow: var(--shadow-raised);
+        padding: 1.5rem;
+      }
+
+      .card-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+      }
+
+      .card > h2 {
+        margin: 0 0 1rem;
+        font-size: var(--text-subheading-size);
+        line-height: 1.4;
+        font-weight: 600;
+        color: var(--color-ink-strong);
+      }
+
+      .row {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 0.75rem 0;
+        border-top: 1px solid var(--color-border);
+      }
+
+      .row:first-of-type {
+        border-top: 0;
+        padding-top: 0;
+      }
+
+      .row:last-child {
+        padding-bottom: 0;
+      }
+
+      .row-text {
+        margin-right: auto;
+        min-width: 0;
+      }
+
+      .row-text .label {
+        display: block;
+        font-size: var(--text-body-sm-size);
+        font-weight: 500;
+        color: var(--color-ink-strong);
+        line-height: 1.5;
+      }
+
+      .hint {
+        font-size: var(--text-body-sm-size);
+        line-height: 1.6;
+        color: var(--color-muted);
+        margin: 0.25rem 0 0;
+      }
+
+      .hint-warn {
+        color: var(--color-warning);
+      }
+
+      /* Schalterreihe: löst die Aufklapplisten mit zwei und drei Werten ab. */
+      .choice {
+        display: inline-flex;
+        border: 1px solid var(--color-control-border);
+        border-radius: var(--radius-md);
+        overflow: hidden;
+        flex-shrink: 0;
+      }
+
+      .choice button {
+        border: 0;
+        border-left: 1px solid var(--color-control-border);
+        background: var(--color-surface-raised);
+        color: var(--color-ink);
+        font-size: var(--text-body-sm-size);
+        padding: 0.375rem 0.875rem;
+        height: 2.25rem;
+        white-space: nowrap;
+      }
+
+      .choice button:first-child {
+        border-left: 0;
+      }
+
+      .choice button:hover {
+        background: var(--color-surface-hover);
+      }
+
+      .choice button[aria-pressed='true'] {
+        background: var(--color-accent);
+        color: var(--color-accent-contrast);
+        font-weight: 600;
+      }
+
+      .choice-wide {
+        display: flex;
+        width: 100%;
+      }
+
+      .choice-wide button {
+        flex: 1;
+      }
+
+      /* Schalter, Maße aus DESIGN.md: 44 x 24, Knauf 18, Weg 20. */
+      .switch {
+        flex-shrink: 0;
+        width: 44px;
+        height: 24px;
+        border-radius: 999px;
+        border: 1px solid var(--color-control-border);
+        background: var(--color-surface-raised);
+        padding: 2px;
+        display: flex;
+        align-items: center;
+      }
+
+      .switch > span {
+        width: 18px;
+        height: 18px;
+        border-radius: 999px;
+        background: var(--color-control-border);
+        transition: transform 120ms cubic-bezier(0, 0, 0.2, 1);
+      }
+
+      .switch[aria-checked='true'] {
+        background: var(--color-accent);
+        border-color: var(--color-accent);
+      }
+
+      .switch[aria-checked='true'] > span {
+        background: var(--color-accent-contrast);
+        transform: translateX(20px);
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        height: 2.5rem;
+        padding: 0 1rem;
+        border-radius: var(--radius-md);
+        border: 1px solid transparent;
+        font-size: var(--text-body-sm-size);
+        font-weight: 500;
+        white-space: nowrap;
+        transition: background-color 120ms cubic-bezier(0, 0, 0.2, 1);
+      }
+
+      .btn svg {
+        width: 18px;
+        height: 18px;
+        flex-shrink: 0;
+      }
+
+      .btn-secondary {
+        background: var(--color-surface-raised);
+        border-color: var(--color-control-border);
+        color: var(--color-ink);
+      }
+
+      .btn-secondary:hover {
+        background: var(--color-surface-hover);
+      }
+
+      .btn-danger {
+        background: transparent;
+        border-color: var(--color-error);
+        color: var(--color-error);
+      }
+
+      .btn-danger:hover {
+        background: color-mix(in oklab, var(--color-error) 10%, transparent);
+      }
+
+      .btn-sm {
+        height: 2rem;
+        padding: 0 0.75rem;
+      }
+
+      .btn:focus-visible,
+      .choice button:focus-visible,
+      .switch:focus-visible,
+      summary:focus-visible {
+        outline: 2px solid var(--color-accent);
+        outline-offset: 2px;
+      }
+
+      .buttons {
+        display: flex;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+      }
+
+      .chain-head {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 0.5rem;
+      }
+
+      .chain-head .label {
+        margin-right: auto;
+      }
+
+      /* Die Kette ist eine geordnete Liste, weil die Reihenfolge die
+         Aussage ist: erst dieses Modell, dann jenes. Die Ziffern stehen
+         deshalb da und sind nicht bloß Aufzählungszeichen. */
+      .chain {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+
+      .chain li {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.375rem 0;
+        border-top: 1px solid var(--color-border);
+      }
+
+      .chain li:first-child {
+        border-top: 0;
+      }
+
+      .chain .pos {
+        width: 1.25rem;
+        font-size: var(--text-body-sm-size);
+        color: var(--color-muted);
+        font-variant-numeric: tabular-nums;
+      }
+
+      .chain code {
+        margin-right: auto;
+        font-family: ui-monospace, monospace;
+        font-size: var(--text-body-sm-size);
+        color: var(--color-ink-strong);
+      }
+
+      .iconbtn {
+        display: inline-grid;
+        place-items: center;
+        width: 2rem;
+        height: 2rem;
+        border: 0;
+        border-radius: var(--radius-md);
+        background: transparent;
+        color: var(--color-muted);
+      }
+
+      .iconbtn svg {
+        width: 16px;
+        height: 16px;
+      }
+
+      .iconbtn:hover:not([disabled]) {
+        background: var(--color-surface-hover);
+        color: var(--color-ink);
+      }
+
+      .iconbtn[disabled] {
+        opacity: 0.35;
+        cursor: not-allowed;
+      }
+
+      .iconbtn:focus-visible {
+        outline: 2px solid var(--color-accent);
+        outline-offset: 2px;
+      }
+
+      .provider {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
+
+      .provider strong {
+        font-weight: 600;
+        color: var(--color-ink-strong);
+      }
+
+      .stack {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+      }
+
+      /* Die Karte „Alle Daten löschen" trägt die einzige unumkehrbare
+         Handlung der Anwendung und steht deshalb abgesetzt unter dem
+         Raster, nicht zwischen Darstellung und Sprache. */
+      .danger {
+        margin-top: 1.5rem;
+        /* .card gibt die Spaltenrichtung vor; hier stehen Text und Knopf
+           nebeneinander, nicht übereinander. */
+        flex-direction: row;
+        align-items: center;
+        gap: 1.5rem;
+        flex-wrap: wrap;
+        border-color: color-mix(in oklab, var(--color-error) 35%, var(--color-border));
+      }
+
+      .danger .row-text {
+        min-width: 16rem;
+      }
+
+      .danger h2 {
+        margin: 0;
+        font-size: var(--text-body-size);
+      }
+
+      details.more {
+        font-size: var(--text-body-sm-size);
+        margin-top: 0.5rem;
+      }
+
+      details.more > summary {
+        cursor: pointer;
+        color: var(--color-accent-text);
+        list-style: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.375rem;
+      }
+
+      details.more > summary::-webkit-details-marker {
+        display: none;
+      }
+
+      details.more > summary::after {
+        content: '+';
+        font-weight: 600;
+      }
+
+      details.more[open] > summary::after {
+        content: '\2212';
+      }
+
+      details.more > p {
+        margin: 0.5rem 0 0;
+        color: var(--color-muted);
+        line-height: 1.6;
+      }
+
+      @media (max-width: 900px) {
+        .grid {
+          columns: 1;
+        }
+        .page {
+          padding: 1.5rem 1rem 2rem;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="mockbar">
+      <strong>Attrappe</strong>
+      <div class="mockbar-group">
+        <span>Thema</span>
+        <div class="mockseg" id="seg-theme">
+          <button type="button" data-theme-choice="light" aria-pressed="true">hell</button>
+          <button type="button" data-theme-choice="dark" aria-pressed="false">dunkel</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="app">
+      <header class="appbar">
+        <span class="brand"><span class="brand-mark">A</span> Applai</span>
+        <nav class="steps" aria-label="Ablauf">
+          <span class="step"><span class="step-num">1</span> Vorbereiten</span>
+          <span class="step"><span class="step-num">2</span> Anschreiben anpassen</span>
+        </nav>
+        <div class="appbar-end">
+          <a href="#">Datenschutz</a>
+          <a href="#" aria-current="page">Einstellungen</a>
+        </div>
+      </header>
+
+      <main class="page scroll">
+        <div class="wrap">
+          <h1>Einstellungen</h1>
+
+          <div class="grid">
+            <!-- ---------------------------- Oberfläche ------------------ -->
+            <section class="card">
+              <h2>Oberfläche</h2>
+              <div class="card-content">
+
+                <div class="row">
+                  <span class="row-text"><span class="label">Darstellung</span></span>
+                  <div class="choice" role="group" aria-label="Darstellung">
+                    <button type="button" aria-pressed="false">Hell</button>
+                    <button type="button" aria-pressed="false">Dunkel</button>
+                    <button type="button" aria-pressed="true">Wie das System</button>
+                  </div>
+                </div>
+
+                <div class="row">
+                  <span class="row-text"><span class="label">Sprache</span></span>
+                  <div class="choice" role="group" aria-label="Sprache">
+                    <button type="button" aria-pressed="true">Deutsch</button>
+                    <button type="button" aria-pressed="false">English</button>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- ---------------------------- Privatsphäre ---------------- -->
+            <section class="card">
+              <h2>Privatsphäre</h2>
+              <div class="card-content">
+
+                <div class="row">
+                  <span class="row-text">
+                    <span class="label">Persönliche Daten ersetzen</span>
+                    <p class="hint">
+                      Name, Anschrift, Geburtsdatum, Telefon und E-Mail gehen als Platzhalter zum
+                      Anbieter.
+                    </p>
+                  </span>
+                  <span class="switch" role="switch" aria-checked="true" tabindex="0"
+                    ><span></span
+                  ></span>
+                </div>
+
+                <div class="row" style="display: block">
+                  <span class="label" style="display: block; margin-bottom: 0.5rem"
+                    >Wahrheitsgrenze</span
+                  >
+                  <div class="choice choice-wide" role="group" aria-label="Wahrheitsgrenze">
+                    <button type="button" aria-pressed="true">Streng</button>
+                    <button type="button" aria-pressed="false">Brücken</button>
+                    <button type="button" aria-pressed="false">Frei</button>
+                  </div>
+                  <p class="hint">Nur umformulieren, was in Ihren Unterlagen steht.</p>
+                </div>
+              </div>
+            </section>
+
+            <!-- ------------------- Anbieter und Modell ------------------ -->
+            <section class="card">
+              <h2>Anbieter und Modell</h2>
+              <div class="card-content">
+                <div class="row">
+                  <span class="row-text provider">
+                    <strong>Gemini</strong>
+                    <span class="hint" style="margin: 0">Schlüssel hinterlegt</span>
+                  </span>
+                  <button type="button" class="btn btn-secondary btn-sm">Schlüssel ersetzen</button>
+                </div>
+
+                <div class="row" style="display: block">
+                  <div class="chain-head">
+                    <span class="label">Modellkette</span>
+                    <button type="button" class="btn btn-secondary btn-sm">Modelle laden</button>
+                  </div>
+
+                  <ol class="chain">
+                    <li>
+                      <span class="pos">1</span>
+                      <code>gemini-3.6-flash</code>
+                      <button type="button" class="iconbtn" aria-label="Nach oben" disabled>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M205.66,117.66a8,8,0,0,1-11.32,0L136,59.31V216a8,8,0,0,1-16,0V59.31L61.66,117.66a8,8,0,0,1-11.32-11.32l72-72a8,8,0,0,1,11.32,0l72,72A8,8,0,0,1,205.66,117.66Z"/></svg>
+                      </button>
+                      <button type="button" class="iconbtn" aria-label="Aus der Kette nehmen">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z"/></svg>
+                      </button>
+                    </li>
+                    <li>
+                      <span class="pos">2</span>
+                      <code>gemini-3.6-pro</code>
+                      <button type="button" class="iconbtn" aria-label="Nach oben">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M205.66,117.66a8,8,0,0,1-11.32,0L136,59.31V216a8,8,0,0,1-16,0V59.31L61.66,117.66a8,8,0,0,1-11.32-11.32l72-72a8,8,0,0,1,11.32,0l72,72A8,8,0,0,1,205.66,117.66Z"/></svg>
+                      </button>
+                      <button type="button" class="iconbtn" aria-label="Aus der Kette nehmen">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z"/></svg>
+                      </button>
+                    </li>
+                  </ol>
+
+                  <p class="hint">Ist eines erschöpft, übernimmt das nächste.</p>
+
+                  <details class="more">
+                    <summary>Welches Modell deckt mein Tarif ab</summary>
+                    <p>
+                      Die Liste des Anbieters sagt es nicht, sie enthält kein Feld dazu. Nachsehen
+                      können Sie es in der Konsole Ihres Anbieters unter „Rate limits".
+                    </p>
+                  </details>
+                </div>
+              </div>
+            </section>
+
+            <!-- ---------------------------- Sicherung ------------------- -->
+            <section class="card">
+              <h2>Sicherung</h2>
+              <div class="card-content">
+                <div class="stack">
+                  <p class="hint" style="margin: 0">
+                    Bewerbungsliste, Zwischenstände und Einstellungen als Datei. Ohne API-Schlüssel.
+                  </p>
+                  <div class="buttons">
+                    <button type="button" class="btn btn-secondary">Herunterladen</button>
+                    <button type="button" class="btn btn-secondary">Einspielen</button>
+                  </div>
+                  <p class="hint hint-warn" style="margin: 0">
+                    Einspielen ersetzt den vorhandenen Bestand vollständig.
+                  </p>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <!-- ---------------------------- Löschen ----------------------- -->
+          <section class="card danger">
+            <span class="row-text">
+              <h2>Alle Daten löschen</h2>
+              <p class="hint">
+                Entfernt alles von diesem Gerät, auch den hinterlegten Schlüssel.
+              </p>
+              <details class="more">
+                <summary>Was mit dem Schlüssel beim Anbieter passiert</summary>
+                <p>
+                  Nichts. Er bleibt dort bestehen. Ziehen Sie ihn beim Anbieter zurück, wenn Sie ihn
+                  nicht mehr brauchen.
+                </p>
+              </details>
+            </span>
+            <button type="button" class="btn btn-danger">Alle Daten löschen</button>
+          </section>
+        </div>
+      </main>
+    </div>
+
+    <script>
+      // Schalterreihen im Mock bedienbar machen, damit der gewählte Zustand
+      // sichtbar wird. In React übernimmt das ein Radix-ToggleGroup.
+      for (const group of document.querySelectorAll('.choice')) {
+        group.addEventListener('click', (event) => {
+          const button = event.target.closest('button')
+          if (!button) return
+          for (const other of group.querySelectorAll('button')) {
+            other.setAttribute('aria-pressed', String(other === button))
+          }
+        })
+      }
+
+      const modeHints = {
+        Streng: 'Nur umformulieren, was in Ihren Unterlagen steht.',
+        Brücken: 'Verallgemeinerungen erlaubt, solange Ihre Angaben sie decken.',
+        Frei: 'Nicht Belegtes wird markiert, muss bestätigt werden und sperrt bis dahin den Export.',
+      }
+
+      const truthGroup = document.querySelector('[aria-label="Wahrheitsgrenze"]')
+      const truthHint = truthGroup.parentElement.querySelector('.hint')
+      truthGroup.addEventListener('click', (event) => {
+        const button = event.target.closest('button')
+        if (button) truthHint.textContent = modeHints[button.textContent.trim()]
+      })
+
+      for (const item of document.querySelectorAll('.switch')) {
+        item.addEventListener('click', () => {
+          item.setAttribute('aria-checked', item.getAttribute('aria-checked') === 'false')
+        })
+      }
+
+      const themeGroup = document.getElementById('seg-theme')
+      themeGroup.addEventListener('click', (event) => {
+        const button = event.target.closest('button')
+        if (!button) return
+        for (const other of themeGroup.querySelectorAll('button')) {
+          other.setAttribute('aria-pressed', String(other === button))
+        }
+        document.documentElement.dataset.theme = button.dataset.themeChoice
+      })
+
+      document.documentElement.dataset.theme = 'light'
+    </script>
+  </body>
+</html>

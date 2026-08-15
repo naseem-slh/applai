@@ -1,0 +1,20 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "bounce-easing",
+        "value": "cubic-bezier(0.34, 1.56, 0.64, 1)",
+        "createdAt": "2026-08-14T21:03:30.287Z",
+        "reason": "Die federnde Kurve der abgenommenen Attrappen (--ease-bounce): Druckpunkt, Einrasten des Schalters, Aufklappen. Trägt die Mechanik dieser Welt, keine Zierde."
+      },
+      {
+        "rule": "overused-font",
+        "value": "inter",
+        "createdAt": "2026-08-14T21:03:38.500Z",
+        "reason": "Leise Haelfte der Paarung mit Fredoka: Inter traegt nur, was gelesen wird (Anzeigentext, Eingaben, Hinweise, der Brief). Selbst gehostet wegen G2, Latein-Subset wegen Umlauten und ss."
+      }
+    ]
+  }
+}

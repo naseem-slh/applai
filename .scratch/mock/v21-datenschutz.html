@@ -1,0 +1,1151 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Applai Datenschutz mit Figuren</title>
+    <style>
+      /* =====================================================================
+         Attrappe: Datenschutz und Impressum, im Thema der Vorbereiten-Seite.
+         Zweiter Durchgang: die gezeichnete Marke und zwei Figuren.
+
+         Token, Blattlage und Kritzeleien sind wörtlich aus
+         v11-vorbereiten-verspielt.html übernommen, damit beide Seiten im
+         selben Farbraum stehen und nicht in einem nachgebauten.
+
+         **Ein Rechtstext lässt sich nicht kürzen, aber anders sortieren.**
+         Die bisherige Seite stellt sieben Abschnitte Fließtext hintereinander,
+         rund 450 Wörter, und beantwortet die eine Frage, die tatsächlich
+         gestellt wird, erst auf halber Strecke: Wo landet, was ich hier
+         ablege?
+
+         Die Antwort steht jetzt zuerst und ist ein Weg, kein Bestand: links
+         was auf dem Gerät bleibt, rechts was an den Anbieter geht, dazwischen
+         eine gestrichelte Grenze mit dem Pfeil, der sie überschreitet, und
+         der Angabe, was dabei ersetzt wird. Darunter als Grundlinie der
+         Satz, um den es geht: über unseren Server geht nichts. Damit sind
+         rund 70 Wörter sichtbar statt 450.
+
+         **Gestrichen ist nichts.** Jeder Satz der bisherigen Seite steht
+         weiterhin da, hinter sechs Aufklappern. Das ist der Unterschied
+         zwischen „kürzen" und „wegräumen": Eine Pflichtangabe darf nicht
+         verschwinden, sie muss aber auch nicht vor dem stehen, der sie nicht
+         sucht.
+
+         Formen: Karte 34px · Kacheln 24px · Bedienelemente 16px · Knöpfe Pille
+         ===================================================================== */
+
+      @font-face {
+        font-family: 'Fredoka';
+        font-style: normal;
+        font-display: swap;
+        font-weight: 400 700;
+        src: url('../../public/fonts/fredoka-variable-latin.woff2') format('woff2-variations');
+        unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+          U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191,
+          U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+      }
+
+      @font-face {
+        font-family: 'Inter Variable';
+        font-style: normal;
+        font-display: swap;
+        font-weight: 100 900;
+        src: url('../../public/fonts/inter-variable-latin.woff2') format('woff2-variations');
+      }
+
+      /* --- Farbe ---------------------------------------------------------
+         Helle Voreinstellung. Der Raum ist auch hier dunkel: Er ist die
+         Bühne, nicht die Arbeitsfläche. Was zwischen hell und dunkel
+         umschaltet, ist die Karte. */
+      :root {
+        color-scheme: light;
+
+        /* Der Raum ist ein liniertes DIN-A4-Blatt: papierweißer Grund,
+           Zeilen im klassischen Blassblau, links der rote Rand. Der
+           Zeilenabstand ist der von Lineatur 27, also 9mm, in CSS-Pixeln
+           bei 96dpi rund 34px. Der Rand steht bei 14% der Fensterbreite,
+           damit er auf jedem Fenster an derselben Stelle sitzt.
+
+           Kein Farbverlauf: Papier ist flach. Die Tiefe kommt allein aus
+           der leichten Abdunklung zu den Rändern hin. */
+        --paper: #ffffff;
+        --rule-step: 34px;
+        --rule: #c3d8ea;
+        --margin: #aecbe5;
+        --room-edge: transparent;
+        /* Bleistiftgrau für die Kritzeleien am Rand. Bewusst schwach: Sie
+           sind Papierspur, kein Inhalt. Wer sie liest, statt sie zu
+           bemerken, hat zu viel Aufmerksamkeit daran verloren. */
+        --doodle: rgb(23 27 60 / 0.18);
+        /* Der weiche Schatten unter der harten Kante. Er trägt die
+           Ablösung, die der Helligkeitsunterschied allein nicht schafft. */
+        --card-shadow: 0 16px 30px rgb(13 27 75 / 0.13);
+        --btn-shadow: 0 10px 18px rgb(13 27 75 / 0.14);
+
+        /* Die eine Kontur und die eine harte Kante. */
+        --line: #0d1b4b;
+        --line-soft: #3a4680;
+        --pop: #0d1b4b;
+
+        /* Die Karte ist beige, nicht weiß. Das Blatt darunter ist das
+           Papier und bleibt hell; abheben soll sich das, was daraufliegt.
+           1,08:1 gegen den Grund. Bei diesem Wert trägt nicht mehr die
+           Helligkeit, sondern der Farbton: warm gegen neutralweiß. Die
+           Ablösung machen die Tintenkontur, die harte Kante und der
+           Schatten darunter. */
+        --card: #fbf6ec;
+        --ink: #16205c;
+        --ink-strong: #0d1b4b;
+        --muted: #4e5885;
+
+        --field: #ffffff;
+
+        --accent: #ff7a45;
+        --accent-line: #c9531f;
+        --accent-deep: #b8461a;
+        --accent-ink: #2b1004;
+        --accent-text: #c9531f;
+        --accent-wash: #fff0e8;
+
+        --done: #22c98f;
+        --done-line: #0f8f64;
+        --done-deep: #0f8f64;
+        --done-ink: #06301f;
+        --done-text: #0b7050;
+        --done-wash: #ddf7ec;
+
+        --error: #d6293e;
+
+
+        --focus: var(--accent-deep);
+
+        --r-card: 34px;
+        --r-tile: 24px;
+        --r-control: 16px;
+        --pop-height: 6px;
+
+        --bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+        --font-display: 'Fredoka', system-ui, sans-serif;
+        --font-body: 'Inter Variable', system-ui, sans-serif;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme='light']) {
+          color-scheme: dark;
+
+          --paper: #04061f;
+          --rule: rgb(255 255 255 / 0.075);
+          --margin: rgb(255 255 255 / 0.14);
+          --card-shadow: 0 16px 34px rgb(0 0 0 / 0.5);
+          --btn-shadow: 0 10px 20px rgb(0 0 0 / 0.45);
+          --room-edge: rgb(0 0 0 / 0.45);
+          --doodle: rgb(255 255 255 / 0.085);
+
+          --line: #3b4794;
+          --line-soft: #5d66bd;
+          --pop: #2a3382;
+
+          --card: #1a2158;
+          --ink: #e7e9ff;
+          --ink-strong: #ffffff;
+          --muted: #9aa1d4;
+
+          --field: #0d1238;
+
+          --accent: #ff8f5e;
+          --accent-line: #ff8f5e;
+          --accent-deep: #b8461a;
+          --accent-ink: #2a0f05;
+          --accent-text: #ffa87e;
+          --accent-wash: #3a1f28;
+
+          --done: #2fd9a0;
+          --done-line: #2fd9a0;
+          --done-deep: #12996b;
+          --done-ink: #04281a;
+          --done-text: #46e0ae;
+          --done-wash: #0e3140;
+
+          --error: #ff8a7a;
+
+
+          --focus: var(--accent-text);
+        }
+      }
+
+      :root[data-theme='dark'] {
+        color-scheme: dark;
+
+        --paper: #04061f;
+        --rule: rgb(255 255 255 / 0.075);
+        --margin: rgb(255 255 255 / 0.14);
+        --card-shadow: 0 16px 34px rgb(0 0 0 / 0.5);
+        --btn-shadow: 0 10px 20px rgb(0 0 0 / 0.45);
+        --room-edge: rgb(0 0 0 / 0.45);
+        --doodle: rgb(255 255 255 / 0.085);
+
+        --line: #3b4794;
+        --line-soft: #5d66bd;
+        --pop: #2a3382;
+
+        --card: #1a2158;
+        --ink: #e7e9ff;
+        --ink-strong: #ffffff;
+        --muted: #9aa1d4;
+
+        --field: #0d1238;
+
+        --accent: #ff8f5e;
+        --accent-line: #ff8f5e;
+        --accent-deep: #b8461a;
+        --accent-ink: #2a0f05;
+        --accent-text: #ffa87e;
+        --accent-wash: #3a1f28;
+
+        --done: #2fd9a0;
+        --done-line: #2fd9a0;
+        --done-deep: #12996b;
+        --done-ink: #04281a;
+        --done-text: #46e0ae;
+        --done-wash: #0e3140;
+
+        --error: #ff8a7a;
+
+
+        --focus: var(--accent-text);
+      }
+
+      /* --- Grundlage ----------------------------------------------------- */
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        min-height: 100dvh;
+        background-color: var(--paper);
+        color: var(--ink);
+        font-family: var(--font-body);
+        font-size: 1rem;
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      button,
+      input,
+      textarea {
+        font: inherit;
+        color: inherit;
+      }
+
+      :focus-visible {
+        outline: 3px solid var(--focus);
+        outline-offset: 3px;
+      }
+
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+        border: 0;
+      }
+
+      /* --- Der Raum ------------------------------------------------------
+         Zwei Lagen: ein feines Punktraster über die ganze Fläche und eine
+         Handvoll Kritzeleien an den Rändern, wie sie beim Warten am Rand
+         eines Blattes entstehen: Spirale, Gesicht, Schlaufe, Stern, Wolke,
+         Pfeil, Bleistift.
+
+         **Sie bewegen sich nicht.** Das Konfetti vorher schwebte, weil es
+         über dem Blatt lag. Diese hier sind auf das Blatt gezeichnet, und
+         Bleistift wandert nicht.
+
+         Sie sind Zier, tragen deshalb aria-hidden und nehmen keine
+         Zeigerereignisse an. Unter 1024px fallen sie weg: Dort steht die
+         Karte über die ganze Breite und hätte sie ohnehin verdeckt. */
+      .room {
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        overflow: hidden;
+        pointer-events: none;
+        background-image:
+          radial-gradient(circle at center, transparent 58%, var(--room-edge) 100%),
+          linear-gradient(
+            90deg,
+            transparent 0 14%,
+            var(--margin) 14% calc(14% + 2px),
+            transparent calc(14% + 2px)
+          ),
+          linear-gradient(var(--rule) 1.5px, transparent 1.5px);
+        background-size:
+          100% 100%,
+          100% 100%,
+          100% var(--rule-step);
+      }
+
+      .doodle {
+        position: absolute;
+        display: none;
+        fill: none;
+        stroke: var(--doodle);
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      @media (min-width: 1024px) {
+        .doodle {
+          display: block;
+        }
+      }
+
+      /* Von Hand gesetzt, nicht gewürfelt: Der Rand eines Blattes ist nicht
+         gleichmäßig bekritzelt, aber er sieht in jeder Sitzung gleich aus.
+         Die leichten Drehungen nehmen den Formen die Werkzeugsauberkeit.
+
+         Verteilt wird über die ganze Fläche, nicht nur an den Seitenrändern:
+         Über und unter der Karte liegt genauso viel freies Blatt, und ein
+         Blatt, das nur links und rechts bekritzelt ist, sieht gerahmt aus
+         statt benutzt. Was hinter der Karte landet, verdeckt sie einfach. */
+      .doodle:nth-of-type(1) {
+        top: 6%;
+        left: 13%;
+        width: 74px;
+        rotate: -6deg;
+      }
+      .doodle:nth-of-type(2) {
+        top: 61%;
+        left: 11%;
+        width: 82px;
+        rotate: -3deg;
+      }
+      .doodle:nth-of-type(3) {
+        bottom: 9%;
+        left: 27%;
+        width: 64px;
+        rotate: 8deg;
+      }
+      .doodle:nth-of-type(4) {
+        top: 5%;
+        right: 29%;
+        width: 56px;
+        rotate: 11deg;
+      }
+      .doodle:nth-of-type(5) {
+        top: 40%;
+        right: 4%;
+        width: 84px;
+        rotate: -5deg;
+      }
+      .doodle:nth-of-type(6) {
+        bottom: 14%;
+        right: 13%;
+        width: 72px;
+        rotate: 6deg;
+      }
+
+      /* Der Krakelkopf sitzt in der Ecke und läuft über den Blattrand
+         hinaus, wie in der Vorlage. Angeschnitten sieht eine Kritzelei
+         gezeichnet aus; mittig und vollständig sieht sie platziert aus. */
+      .doodle:nth-of-type(7) {
+        bottom: 3%;
+        left: -26px;
+        width: 116px;
+        rotate: -4deg;
+      }
+
+
+      /* --- Aufbau ---------------------------------------------------------- */
+      .shell {
+        position: relative;
+        z-index: 1;
+        min-height: 100dvh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 22px;
+        padding: 22px 16px 96px;
+      }
+
+      /* Drei Spalten, außen gleich breit: Der Zurück-Knopf steht links, die
+         Marke in der Mitte der Seite — und zwar in der Mitte der Seite, nicht
+         in der Mitte des Restes neben dem Knopf. */
+      .topbar {
+        width: 100%;
+        max-width: 780px;
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;
+        align-items: center;
+        gap: 16px;
+      }
+
+      .topbar .mini {
+        grid-column: 1;
+        grid-row: 1;
+        justify-self: start;
+      }
+
+      /* --- Marke -----------------------------------------------------------
+         Wie auf der Vorbereiten-Seite, nur kleiner: Dort ist sie der Eingang
+         und darf groß auftreten, hier ist die Kopfzeile Wegweiser zu einer
+         Unterseite. Zeigt man auf den Bleistift, erschrickt er auch hier.
+
+         Rechts im Bild stehen 11,4% leer, der Platz für die ausschlagenden
+         Arme, links 0,6%. Der negative Rand rechnet die Hälfte des
+         Unterschieds heraus, damit die Mitte die Mitte des Schriftzugs ist. */
+      .wordmark {
+        position: relative;
+        grid-column: 2;
+        grid-row: 1;
+        --breite: 200px;
+        width: var(--breite);
+        margin-right: calc(var(--breite) * -0.1078);
+        line-height: 0;
+      }
+
+      .wordmark img {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+
+      .wordmark__anim {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+      }
+
+      /* Ruhebild und erstes Bild der Bewegung sind Punkt für Punkt gleich,
+         der Wechsel braucht deshalb keine Blende. */
+      .wordmark.is-playing .wordmark__anim {
+        opacity: 1;
+      }
+
+      .wordmark.is-playing .wordmark__rest {
+        opacity: 0;
+      }
+
+      /* Alle vier Regeln nennen ausdrücklich `img`, damit sie so schwer
+         wiegen wie `.wordmark img` darüber. */
+      .wordmark img.wordmark__rest--dark {
+        display: none;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme='light']) .wordmark img.wordmark__rest--light {
+          display: none;
+        }
+
+        :root:not([data-theme='light']) .wordmark img.wordmark__rest--dark {
+          display: block;
+        }
+      }
+
+      :root[data-theme='dark'] .wordmark img.wordmark__rest--light {
+        display: none;
+      }
+
+      :root[data-theme='dark'] .wordmark img.wordmark__rest--dark {
+        display: block;
+      }
+
+      /* Auf dem Telefon frisst die Beschriftung des Zurück-Knopfes die
+         Seitenspalte auf: Er braucht 120px, die Spalte hätte 96px, also
+         wächst sie und schiebt die Marke aus der Mitte. Dort ist die Mitte
+         nicht zu halten, ohne dem Knopf sein Wort zu nehmen — also steht
+         eines links, eines rechts, wie in jeder schmalen Kopfzeile. */
+      @media (max-width: 560px) {
+        .topbar {
+          display: flex;
+          /* Umgekehrte Laufrichtung, weil die Marke im Markup zuerst steht:
+             So bleibt der Zurück-Knopf links, wo er auf den breiten Fenstern
+             auch steht, und springt nicht über die Schwelle hinweg die Seite. */
+          flex-direction: row-reverse;
+          justify-content: space-between;
+        }
+
+        .wordmark {
+          --breite: 150px;
+          margin-right: 0;
+        }
+      }
+
+      .stage {
+        width: 100%;
+        max-width: 780px;
+        display: flex;
+        flex-direction: column;
+        gap: 22px;
+        margin: auto 0;
+      }
+
+      /* --- Die Antwort ------------------------------------------------------
+         Der ganze Rest der Seite beantwortet eine einzige Frage: Wo landet,
+         was ich hier ablege? Sie steht deshalb zuerst und in einem Satz. */
+      .lede {
+        margin: 0;
+        padding: 0 6px;
+        font-family: var(--font-display);
+        font-size: clamp(1.75rem, 3.4vw + 1rem, 2.5rem);
+        font-weight: 600;
+        line-height: 1.15;
+        letter-spacing: -0.02em;
+        color: var(--ink-strong);
+      }
+
+      .sub {
+        margin: 10px 0 0;
+        padding: 0 6px;
+        max-width: 56ch;
+        font-size: 1.0625rem;
+        line-height: 1.6;
+        color: var(--muted);
+      }
+
+      .panel {
+        background: var(--card);
+        border: 3px solid var(--line);
+        border-radius: var(--r-card);
+        box-shadow: 0 10px 0 var(--pop), var(--card-shadow);
+        padding: 22px;
+      }
+
+      @media (min-width: 640px) {
+        .panel {
+          padding: 26px;
+        }
+      }
+
+      /* --- Die Grenze --------------------------------------------------------
+         Drei gleich große Kacheln nebeneinander zeigten einen Bestand. Die
+         Frage ist aber keine nach einem Bestand, sondern nach einem Weg:
+         Was bleibt hier, was geht raus, und was passiert dabei?
+
+         Deshalb jetzt zwei Seiten und eine gestrichelte Linie dazwischen,
+         auf der ein Pfeil steht. Und der Satz „bei uns liegt nichts" ist
+         keine dritte Kachel mehr, sondern die Grundlinie unter beiden: Der
+         Server ist kein drittes Ziel, er ist das, was auf diesem Weg fehlt.
+         --------------------------------------------------------------------- */
+      .flow {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 20px;
+      }
+
+      /* --- Die zwei Wachen ---------------------------------------------------
+         Die Karte zeigt einen Weg: links, was hierbleibt, rechts, was
+         hinausgeht. Die beiden Figuren sagen zu je einer Seite dasselbe noch
+         einmal, ohne ein Wort mehr:
+
+           Links steht sie unter dem Schirm, es regnet auf den Schirm und
+           nicht auf sie. Rechts trägt sie eine Sonnenbrille: Sie geht hinaus,
+           aber sie wird nicht erkannt — dieselbe Aussage wie „ohne Ihren
+           Namen" auf der Linie dazwischen.
+
+         **Sie stehen im Raum, nicht an der Karte.** Sie liegen darum im
+         Blatt, zusammen mit den Kritzeleien, und nicht in der Karte: Wer an
+         der Karte hängt, richtet sich nach ihr aus und liest sich als ihre
+         Beigabe. Wer auf dem Blatt steht, steht auf dem Blatt.
+
+         **Gleich groß heißt: gleich große Person, nicht gleich großes Bild.**
+         Beim Schirm nehmen Wolke und Schirm die halbe Bildhöhe ein; bei
+         gleicher Bildhöhe wäre die Person darunter deutlich kleiner als die
+         mit der Sonnenbrille. Die Maße unten sind aus der gemessenen
+         Kopfbreite gerechnet, beide auf 66px Kopf (siehe assets.py).
+
+         Der waagerechte Ort hängt an der Mitte des Fensters, nicht am
+         Blattrand: `50% + halbe Kartenbreite + Abstand`. So bleibt der
+         Abstand zur Karte auf jedem Fenster derselbe. Senkrecht steht die
+         eine hoch, die andere tief — auf einer Linie läsen sie sich als
+         Ornament. */
+      .guard {
+        position: absolute;
+        display: none;
+      }
+
+      .guard img {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+
+      /* 390px ist die halbe Kartenbreite. Unter 1140px bleibt daneben kein
+         Platz mehr, dann bleiben beide weg. */
+      @media (min-width: 1140px) {
+        .guard {
+          display: block;
+        }
+      }
+
+      .guard--bleibt {
+        top: 19vh;
+        right: calc(50% + 416px);
+        width: 129px;
+        rotate: -4deg;
+      }
+
+      .guard--geht {
+        bottom: 8vh;
+        left: calc(50% + 398px);
+        width: 87px;
+        rotate: 5deg;
+      }
+
+      @media (min-width: 720px) {
+        .flow {
+          grid-template-columns: 1fr auto 1fr;
+          gap: 0 30px;
+          align-items: start;
+        }
+      }
+
+      .side {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .side__head {
+        margin: 0;
+        font-family: var(--font-display);
+        font-size: 1.0625rem;
+        font-weight: 600;
+        color: var(--ink-strong);
+      }
+
+      /* Reine Textzeilen: keine Aufzählungspunkte, keine Chips, keine
+         Trennlinien je Eintrag. Die Zuordnung macht die Spalte, in der die
+         Zeile steht, alles Weitere wäre Zierrat auf einer Rechtsseite. */
+      .items {
+        display: flex;
+        flex-direction: column;
+        gap: 7px;
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        font-size: 0.9375rem;
+        line-height: 1.5;
+        color: var(--ink);
+      }
+
+      /* Die Bahn zwischen beiden Seiten. Senkrecht ab 720px, darunter
+         waagerecht, damit der Pfeil in der gestapelten Fassung nach unten
+         zeigt statt ins Leere. */
+      .lane {
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;
+        align-items: center;
+        gap: 12px;
+      }
+
+      @media (min-width: 720px) {
+        .lane {
+          grid-template-columns: none;
+          grid-template-rows: 1fr auto 1fr;
+          justify-items: center;
+          gap: 12px 0;
+          align-self: stretch;
+          min-height: 190px;
+        }
+      }
+
+      .lane__line {
+        border-top: 3px dashed var(--line-soft);
+      }
+
+      @media (min-width: 720px) {
+        .lane__line {
+          border-top: 0;
+          border-left: 3px dashed var(--line-soft);
+          height: 100%;
+        }
+      }
+
+      .lane__badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin: 0;
+        padding: 6px 14px 7px;
+        white-space: nowrap;
+        border-radius: 999px;
+        background: var(--done-wash);
+        border: 3px solid var(--done-line);
+        font-family: var(--font-display);
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--done-text);
+      }
+
+      .lane__badge svg {
+        flex: none;
+        width: 17px;
+        height: 17px;
+        fill: currentColor;
+        rotate: 180deg;
+      }
+
+      @media (min-width: 720px) {
+        .lane__badge svg {
+          rotate: 90deg;
+        }
+      }
+
+      /* Die Grundlinie. Ein Satz, und das Wort, auf das es ankommt, groß. */
+      .base {
+        grid-column: 1 / -1;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        justify-content: center;
+        gap: 4px 12px;
+        margin: 4px 0 0;
+        padding: 20px 0 2px;
+        border-top: 3px solid var(--line-soft);
+        text-align: center;
+      }
+
+      .base span {
+        font-size: 0.9375rem;
+        color: var(--muted);
+      }
+
+      .base b {
+        font-family: var(--font-display);
+        font-size: 2rem;
+        font-weight: 600;
+        line-height: 1;
+        color: var(--done-text);
+      }
+
+      /* --- Das Kleingedruckte -----------------------------------------------
+         Nichts davon ist gestrichen. Es ist zugeklappt, und das ist der
+         Unterschied: Ein Rechtstext darf nicht kürzer werden, aber er muss
+         auch nicht vor dem stehen, der ihn nicht sucht. */
+      .fine {
+        display: flex;
+        flex-direction: column;
+        padding: 6px 22px;
+      }
+
+      .fine details {
+        border-bottom: 2px solid var(--line-soft);
+      }
+
+      .fine details:last-of-type {
+        border-bottom: 0;
+      }
+
+      .fine summary {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        padding: 15px 2px;
+        cursor: pointer;
+        list-style: none;
+        font-family: var(--font-display);
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--ink-strong);
+      }
+
+      .fine summary::-webkit-details-marker {
+        display: none;
+      }
+
+      .fine summary:hover {
+        color: var(--accent-text);
+      }
+
+      .fine summary svg {
+        flex: none;
+        width: 18px;
+        height: 18px;
+        fill: var(--accent-line);
+        transition: rotate 200ms var(--bounce);
+      }
+
+      .fine details[open] summary svg {
+        rotate: 180deg;
+      }
+
+      .fine p {
+        margin: 0 0 14px;
+        max-width: 68ch;
+        font-size: 0.9375rem;
+        line-height: 1.65;
+        color: var(--ink);
+      }
+
+      .fine a {
+        color: var(--accent-text);
+        font-weight: 600;
+      }
+
+      /* --- Impressum --------------------------------------------------------
+         Pflichtangabe, kein Abschnitt zum Lesen. Deshalb klein, am Ende, in
+         zwei Zeilen. */
+      .imprint {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        gap: 6px 18px;
+        padding: 0 8px;
+        font-size: 0.8125rem;
+        line-height: 1.6;
+        color: var(--muted);
+      }
+
+      .imprint h2 {
+        margin: 0;
+        font-family: var(--font-display);
+        font-size: 0.8125rem;
+        font-weight: 600;
+        color: var(--ink-strong);
+      }
+
+      /* --- Knöpfe ------------------------------------------------------------ */
+      .mini {
+        flex: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 9px;
+        padding: 8px 18px 9px;
+        background: var(--field);
+        border: 3px solid var(--line);
+        border-radius: 999px;
+        box-shadow: 0 4px 0 var(--pop);
+        font-family: var(--font-display);
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--ink-strong);
+        cursor: pointer;
+        transition:
+          transform 180ms var(--bounce),
+          box-shadow 140ms ease-out,
+          background-color 140ms ease-out;
+      }
+
+      .mini svg {
+        width: 16px;
+        height: 16px;
+        rotate: 90deg;
+        fill: currentColor;
+      }
+
+      .mini:hover {
+        background: var(--accent-wash);
+        border-color: var(--accent-line);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 0 var(--pop);
+      }
+
+      .mini:active {
+        transform: translateY(4px);
+        box-shadow: 0 0 0 var(--pop);
+      }
+
+      /* --- Steuerung der Attrappe -------------------------------------------- */
+    </style>
+  </head>
+
+  <body>
+    <div class="room" aria-hidden="true">
+      <!-- 1 · Spirale -->
+      <svg class="doodle" viewBox="0 0 60 60" stroke-width="2.1">
+        <path d="M31 30c0-4-5-5-7-1s3 10 10 9 12-10 8-19S24 8 15 15" />
+      </svg>
+
+      <!-- 2 · Schlaufe -->
+      <svg class="doodle" viewBox="0 0 60 60" stroke-width="2">
+        <path d="M4 34c6-14 15-15 17-4 1 7-7 9-8 2s8-12 17-6c6 4 8 12 16 7" />
+      </svg>
+
+      <!-- 3 · Bleistift -->
+      <svg class="doodle" viewBox="0 0 60 60" stroke-width="2.1">
+        <path d="M43 10l8 8-27 29-12 4 4-12z" />
+        <path d="M36 17l8 8" />
+        <path d="M16 39l8 8" />
+      </svg>
+
+      <!-- 4 · Stern -->
+      <svg class="doodle" viewBox="0 0 60 60" stroke-width="2.3">
+        <path d="M30 8c0 12 1 30 0 43" />
+        <path d="M13 18c10 6 25 15 34 21" />
+        <path d="M47 18c-9 6-24 15-34 21" />
+      </svg>
+
+      <!-- 5 · Wolke -->
+      <svg class="doodle" viewBox="0 0 60 60" stroke-width="2">
+        <path d="M14 40c-7 0-8-10-1-11-1-10 13-13 17-5 5-7 17-2 15 7 7 1 6 9-1 9z" />
+      </svg>
+
+      <!-- 6 · Pfeil -->
+      <svg class="doodle" viewBox="0 0 60 60" stroke-width="2.2">
+        <path d="M8 20c11 24 33 24 44 6" />
+        <path d="M52 26l-9 3" />
+        <path d="M52 26l-3 9" />
+      </svg>
+
+      <!-- 7 · Krakelkopf. Das Motiv aus der Vorlage: ein Gesicht in einer
+           krakeligen Umrandung, angeschnitten von der Blattkante. -->
+      <svg class="doodle" viewBox="0 0 64 64" stroke-width="2.1">
+        <path
+          d="M52 32a7.5 7.5 0 0 1-5 13.4 6.8 6.8 0 0 1-11.5 6.3 7.2 7.2 0 0 1-14.1-2.7 7 7 0 0 1-8.2-10.2 6.6 6.6 0 0 1 .6-13.8 7.4 7.4 0 0 1 8.2-10.3 7 7 0 0 1 14-2.7 7.2 7.2 0 0 1 11.3 7.1A6.9 6.9 0 0 1 52 32z"
+        />
+        <path d="M25 28v4.5" />
+        <path d="M39 28v4.5" />
+        <path d="M24 38c4 6 12 6 16 0" />
+      </svg>
+
+      <div class="guard guard--bleibt">
+        <img src="../../public/figuren/schirm.webp" alt="" width="419" height="640" />
+      </div>
+      <div class="guard guard--geht">
+        <img src="../../public/figuren/inkognito.webp" alt="" width="413" height="640" />
+      </div>
+    </div>
+
+    <div class="shell">
+      <header class="topbar">
+        <div
+          class="wordmark"
+          data-anim-light="../../public/marke/logo-schreck.webp"
+          data-anim-dark="../../public/marke/logo-schreck-hell.webp"
+        >
+          <span class="sr-only">Applai</span>
+          <img
+            class="wordmark__rest wordmark__rest--light"
+            src="../../public/marke/logo-ruhe.webp"
+            alt=""
+            width="640"
+            height="234"
+          />
+          <img
+            class="wordmark__rest wordmark__rest--dark"
+            src="../../public/marke/logo-ruhe-hell.webp"
+            alt=""
+            width="640"
+            height="234"
+          />
+          <img class="wordmark__anim" alt="" width="640" height="234" />
+        </div>
+        <button type="button" class="mini">
+          <svg viewBox="0 0 256 256" aria-hidden="true" focusable="false"><path d="M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z" /></svg>
+          Zurück
+        </button>
+      </header>
+
+      <main class="stage">
+        <div>
+          <h1 class="lede">Ihre Unterlagen bleiben in Ihrem Browser.</h1>
+          <p class="sub">
+            Nur die Stelle, die Sie umschreiben lassen, geht an Ihren Anbieter.
+          </p>
+        </div>
+
+        <div class="panel flow">
+          <section class="side" aria-labelledby="stays">
+            <h2 class="side__head" id="stays">Bleibt auf Ihrem Gerät</h2>
+            <ul class="items">
+              <li>Anschreiben und Lebenslauf</li>
+              <li>Ihr Schlüssel, verschlüsselt</li>
+              <li>Der Zwischenstand</li>
+              <li>Die Bewerbungsliste</li>
+            </ul>
+          </section>
+
+          <div class="lane">
+            <span class="lane__line" aria-hidden="true"></span>
+            <p class="lane__badge"><svg viewBox="0 0 256 256" aria-hidden="true" focusable="false"><path d="M205.66,117.66a8,8,0,0,1-11.32,0L136,59.31V216a8,8,0,0,1-16,0V59.31L61.66,117.66a8,8,0,0,1-11.32-11.32l72-72a8,8,0,0,1,11.32,0l72,72A8,8,0,0,1,205.66,117.66Z" /></svg> ohne Ihren Namen</p>
+            <span class="lane__line" aria-hidden="true"></span>
+          </div>
+
+          <section class="side" aria-labelledby="leaves">
+            <h2 class="side__head" id="leaves">Geht an Ihren KI-Anbieter</h2>
+            <ul class="items">
+              <li>Die markierte Stelle</li>
+              <li>Die Stellenanzeige</li>
+              <li>Die Faktenbasis daraus</li>
+            </ul>
+          </section>
+
+          <p class="base">
+            <span>Über unseren Server geht</span>
+            <b>nichts.</b>
+          </p>
+        </div>
+
+        <div class="panel fine">
+        <details>
+          <summary>Kein Server, keine Konten<svg viewBox="0 0 256 256" aria-hidden="true" focusable="false"><path d="M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z" /></svg></summary>
+          <p>Applai ist eine reine Browser-Anwendung. Es gibt keine Anmeldung, kein Nutzerkonto und keine Datenbank auf unserer Seite. Der Betreiber dieser Seite sieht Ihre Unterlagen nie: Sie werden von Ihrem Gerät gelesen, dort bearbeitet und dort wieder gespeichert.</p>
+        </details>
+        <details>
+          <summary>Was an den KI-Anbieter geht<svg viewBox="0 0 256 256" aria-hidden="true" focusable="false"><path d="M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z" /></svg></summary>
+          <p>Zum Umformulieren schickt Ihr Browser die markierte Textstelle mit ihrem Umfeld, den Text der Stellenanzeige und eine Faktenbasis aus Ihren Unterlagen direkt an den Anbieter, dessen Schlüssel Sie hinterlegt haben. Die Verbindung geht von Ihrem Gerät aus, nicht über einen Server dieser Seite.</p>
+          <p>Vor dem Senden werden Name, Anschrift, Geburtsdatum, Telefonnummer und E-Mail-Adresse durch Platzhalter ersetzt und in der Antwort wieder zurückgetauscht. Diese Ersetzung ist standardmäßig eingeschaltet und lässt sich in den Einstellungen abschalten.</p>
+          <p>Beim kostenlosen Tarif von Google Gemini werden Inhalte laut Google zur Verbesserung der Dienste verwendet. Wer das nicht möchte, nimmt einen kostenpflichtigen Schlüssel oder einen anderen Anbieter.</p>
+          <p><a href="#">Die Bestimmungen der drei Anbieter</a></p>
+        </details>
+        <details>
+          <summary>Was Ihr Browser speichert<svg viewBox="0 0 256 256" aria-hidden="true" focusable="false"><path d="M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z" /></svg></summary>
+          <p>Der API-Schlüssel liegt verschlüsselt in der Datenbank Ihres Browsers (IndexedDB). Bei einem kostenpflichtigen Schlüssel ist ein Passwort Pflicht; ohne Passwort ist der Schlüssel an Ihr Gerät gebunden und nicht auslesbar. Nach einer halben Stunde ohne Nutzung wird er automatisch gesperrt.</p>
+          <p>Ein Zwischenstand Ihres Anschreibens wird alle 20 Sekunden gespeichert, ebenfalls in IndexedDB. Er wird nach dem Export gelöscht, spätestens nach sieben Tagen.</p>
+          <p>Firma, Stelle und Datum Ihrer Bewerbungen bilden eine Liste, die nur in Ihrem Browser steht.</p>
+          <p>Der Knopf „Alle Daten löschen" in den Einstellungen entfernt alles davon restlos.</p>
+        </details>
+        <details>
+          <summary>Auslieferung<svg viewBox="0 0 256 256" aria-hidden="true" focusable="false"><path d="M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z" /></svg></summary>
+          <p>Diese Seite liegt bei Cloudflare Pages. Beim Aufruf überträgt Ihr Browser die für jede Web-Anfrage üblichen Angaben, darunter Ihre IP-Adresse. Es werden keine Cookies gesetzt, keine Zählpixel geladen und keine Analysewerkzeuge eingebunden. Schriftarten liegen auf demselben Server wie die Anwendung.</p>
+        </details>
+        <details>
+          <summary>Ihre Rechte<svg viewBox="0 0 256 256" aria-hidden="true" focusable="false"><path d="M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z" /></svg></summary>
+          <p>Da beim Betreiber keine personenbezogenen Daten von Ihnen anfallen, gibt es hier nichts, worüber Auskunft zu erteilen oder was zu löschen wäre. Für die Daten, die Sie an einen KI-Anbieter senden, gelten dessen Bestimmungen; die Ansprechstelle ist dann der Anbieter.</p>
+        </details>
+        <details>
+          <summary>Nachprüfbarkeit<svg viewBox="0 0 256 256" aria-hidden="true" focusable="false"><path d="M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z" /></svg></summary>
+          <p>Der vollständige Quelltext ist öffentlich. Wer wissen will, was diese Anwendung tut, kann es nachlesen, statt es glauben zu müssen.</p>
+          <p><a href="#">Quelltext auf GitHub</a></p>
+        </details>
+        </div>
+
+        <section class="imprint" aria-labelledby="imprint">
+          <h2 id="imprint">Impressum</h2>
+          <span>Angaben gemäß § 5 DDG. Privat, nicht gewerblich.</span>
+          <span>Betreiber: <em>vor der Veröffentlichung eintragen</em></span>
+          <span>Kontakt: <em>vor der Veröffentlichung eintragen</em></span>
+        </section>
+      </main>
+    </div>
+
+    <script>
+      /* =====================================================================
+         Der Schriftzug erschrickt, wenn man auf ihn zeigt.
+
+         Eine bewegte WebP-Datei lässt sich nicht zurückspulen. Dieselbe
+         Quelle noch einmal zuzuweisen setzt den Lauf nicht zurück: Der
+         Browser behält die entschlüsselte Fassung und macht mitten im Lauf
+         weiter. Eine frische Objektadresse zwingt ihn zu einem neuen
+         Entschlüsseln, und damit fängt die Bewegung wieder beim ersten Bild
+         an. Geholt wird die Datei trotzdem nur einmal; danach liegt sie als
+         Klumpen bereit und jedes Zeigen kostet nichts mehr.
+
+         Im Ruhezustand hat das bewegte Bild keine Quelle. Wer nie hinzeigt,
+         lädt die halbe Megabyte also nie.
+         ===================================================================== */
+      const wordmark = document.querySelector('.wordmark')
+      const wordmarkAnim = wordmark.querySelector('.wordmark__anim')
+      const sparsam = matchMedia('(prefers-reduced-motion: reduce)')
+
+      const klumpen = new Map()
+      let zaehler = 0
+      let zeigtHin = false
+      let laufendeAdresse = null
+      let tippUhr = null
+
+      /** Hell oder dunkel — dieselbe Antwort für Systemwahl und ausdrückliche
+       *  Wahl, weil beide `color-scheme` setzen. */
+      function istDunkel() {
+        return getComputedStyle(document.documentElement).colorScheme.trim() === 'dark'
+      }
+
+      function freigeben(adresse) {
+        if (adresse && adresse.indexOf('blob:') === 0) URL.revokeObjectURL(adresse)
+      }
+
+      /** Holt die Datei einmal und hält sie als Klumpen fest.
+       *
+       *  Zwei Wege, weil dieselbe Seite an zwei Orten läuft: Über http(s)
+       *  holt sie der Browser. Steckt die Datei dagegen schon als
+       *  data:-Adresse in der Seite — so liegt die Fassung zum Herzeigen
+       *  vor —, dann verbietet die Inhaltsrichtlinie das Holen, und wir
+       *  entschlüsseln die Base64-Zeichen eben selbst. */
+      function alsKlumpen(quelle) {
+        if (quelle.indexOf('data:') !== 0) {
+          return fetch(quelle).then((antwort) => antwort.blob())
+        }
+        const roh = atob(quelle.slice(quelle.indexOf(',') + 1))
+        const bytes = new Uint8Array(roh.length)
+        for (let i = 0; i < roh.length; i += 1) bytes[i] = roh.charCodeAt(i)
+        return Promise.resolve(new Blob([bytes], { type: 'image/webp' }))
+      }
+
+      function frischeAdresse(quelle) {
+        if (!klumpen.has(quelle)) klumpen.set(quelle, alsKlumpen(quelle))
+        return klumpen
+          .get(quelle)
+          .then((daten) => URL.createObjectURL(daten))
+          .catch(() => {
+            /* Über file:// verbietet der Browser das Holen. Dann tut es ein
+               veränderter Adresszusatz: Auch er erzwingt neues Entschlüsseln.
+               Bei einer data:-Adresse ginge das nicht — ein Zusatz wäre dort
+               Teil der Daten —, also läuft die Bewegung eben weiter, wo sie
+               stand. */
+            return quelle.indexOf('data:') === 0 ? quelle : quelle + '?n=' + ++zaehler
+          })
+      }
+
+      function erschrecken() {
+        if (sparsam.matches) return
+        zeigtHin = true
+        const quelle = istDunkel() ? wordmark.dataset.animDark : wordmark.dataset.animLight
+        frischeAdresse(quelle).then((adresse) => {
+          if (!zeigtHin) {
+            freigeben(adresse)
+            return
+          }
+          freigeben(laufendeAdresse)
+          laufendeAdresse = adresse
+          wordmarkAnim.src = adresse
+          const zeigen = () => {
+            if (zeigtHin) wordmark.classList.add('is-playing')
+          }
+          if (wordmarkAnim.decode) wordmarkAnim.decode().then(zeigen, zeigen)
+          else wordmarkAnim.onload = zeigen
+        })
+      }
+
+      function beruhigen() {
+        zeigtHin = false
+        clearTimeout(tippUhr)
+        wordmark.classList.remove('is-playing')
+        wordmarkAnim.removeAttribute('src')
+      }
+
+      wordmark.addEventListener('pointerenter', (ereignis) => {
+        if (ereignis.pointerType !== 'touch') erschrecken()
+      })
+      wordmark.addEventListener('pointerleave', beruhigen)
+
+      /* Auf dem Finger gibt es kein Zeigen. Ein Tippen spielt den Lauf
+         einmal ab (drei Sekunden) und hört dann von selbst auf. */
+      wordmark.addEventListener('pointerdown', (ereignis) => {
+        if (ereignis.pointerType !== 'touch') return
+        erschrecken()
+        clearTimeout(tippUhr)
+        tippUhr = setTimeout(beruhigen, 3000)
+      })
+
+      /* Nichts läuft weiter, wenn niemand hinsieht. */
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) beruhigen()
+      })
+    </script>
+  </body>
+</html>

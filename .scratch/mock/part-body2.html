@@ -1,0 +1,121 @@
+
+<!-- ====================================================================
+     Ansicht 2: Vorbereiten, in drei Schritten
+     Bisher lagen Unterlagen, Stellenanzeige, Bewerbungsliste und der
+     Weiter-Knopf als gleich schwere Karten untereinander auf einer Seite.
+     Jetzt trägt jeder Schritt eine Aufgabe, und die Schiene oben sagt
+     jederzeit, wo man steht und was noch fehlt.
+     ==================================================================== -->
+<section class="screen is-on" id="s-start" aria-label="Bewerbung vorbereiten">
+  <header class="topbar">
+    <div class="shell topbar-in">
+      <a class="brand" href="#" onclick="return false"><span class="brand-mark">A</span> Applai</a>
+      <div class="topbar-right">
+        <span class="local-badge"><svg viewBox="0 0 24 24"><use href="#i-lock"/></svg> Alles auf diesem Gerät</span>
+        <button class="topbar-link">Einstellungen</button>
+      </div>
+    </div>
+  </header>
+
+  <nav class="rail" aria-label="Fortschritt">
+    <div class="shell rail-in">
+      <button class="rail-step" data-step="1" data-state="current">
+        <span class="rail-num">1</span>
+        <span><span class="rail-label">Unterlagen</span><span class="rail-sub" data-sub="1">Anschreiben oder Lebenslauf</span></span>
+      </button>
+      <button class="rail-step" data-step="2" data-state="todo">
+        <span class="rail-num">2</span>
+        <span><span class="rail-label">Stellenanzeige</span><span class="rail-sub" data-sub="2">Text einfügen</span></span>
+      </button>
+      <button class="rail-step" data-step="3" data-state="todo">
+        <span class="rail-num">3</span>
+        <span><span class="rail-label">Schreiben</span><span class="rail-sub" data-sub="3">Anpassen und ausgeben</span></span>
+      </button>
+    </div>
+  </nav>
+
+  <div class="shell">
+    <!-- Schritt 1 -->
+    <div class="step-pane is-on" data-pane="1">
+      <div class="step-head">
+        <h1>Welche Unterlagen haben Sie?</h1>
+        <p class="prose">Eines von beiden genügt. Liegen beide vor, hat die KI mehr belegte Fakten zur Verfügung und muss weniger offenlassen.</p>
+      </div>
+
+      <div class="drops">
+        <button class="drop" data-drop="letter">
+          <span class="drop-req">Empfohlen</span>
+          <svg class="drop-icon" viewBox="0 0 24 24"><use href="#i-doc"/></svg>
+          <span class="drop-title">Anschreiben</span>
+          <span class="drop-hint">Das Dokument, das angepasst wird. Als .docx bleibt Ihr Layout beim Export unverändert erhalten.</span>
+        </button>
+
+        <button class="drop" data-drop="cv">
+          <span class="drop-req">Optional</span>
+          <svg class="drop-icon" viewBox="0 0 24 24"><use href="#i-doc"/></svg>
+          <span class="drop-title">Lebenslauf</span>
+          <span class="drop-hint">Dient nur als Faktenquelle. Er wird nicht verändert und nicht exportiert.</span>
+        </button>
+      </div>
+
+      <div class="field" data-name-field hidden>
+        <label for="uname">Ihr Name</label>
+        <input class="input" id="uname" value="Merle Ostwald" autocomplete="name">
+        <span class="field-hint">Aus dem Dokument gelesen. Der Name wird vor jeder Anfrage durch einen Platzhalter ersetzt, deshalb muss er stimmen.</span>
+      </div>
+
+      <div class="actionbar">
+        <span class="actionbar-say say-todo" data-say="1">
+          <svg viewBox="0 0 24 24"><use href="#i-info"/></svg>
+          Legen Sie mindestens eine Unterlage ab, um fortzufahren.
+        </span>
+        <button class="btn btn-primary btn-lg" data-next="2" disabled>
+          Weiter <svg width="17" height="17" viewBox="0 0 24 24"><use href="#i-right"/></svg>
+        </button>
+      </div>
+      <div class="bar-spacer"></div>
+    </div>
+
+    <!-- Schritt 2 -->
+    <div class="step-pane" data-pane="2" hidden>
+      <div class="step-head">
+        <h1>Auf welche Stelle bewerben Sie sich?</h1>
+        <p class="prose">Fügen Sie den Text der Ausschreibung ein. Applai liest daraus Firma, Position und Anforderungen und vergleicht sie mit Ihren Unterlagen.</p>
+      </div>
+
+      <div class="field" style="margin-top:0">
+        <label for="jobad">Text der Stellenausschreibung</label>
+        <textarea class="textarea" id="jobad" placeholder="Ausschreibung hier einfügen"></textarea>
+        <span class="field-hint">Oder <button class="btn btn-ghost btn-sm" style="padding:2px 6px" data-fill-ad>eine PDF-Datei einlesen</button>. Der Text bleibt in diesem Browser, bis Sie eine Textstelle umschreiben lassen.</span>
+      </div>
+
+      <div data-ad-read hidden>
+        <p class="small muted" style="margin-top:20px">Daraus gelesen:</p>
+        <div class="chips">
+          <span class="chip">Firma <b>Kernbauer Verfahrenstechnik</b></span>
+          <span class="chip">Position <b>Technische Redakteurin</b></span>
+          <span class="chip">Ort <b>Ingolstadt</b></span>
+          <span class="chip">Anforderungen <b>7 erkannt</b></span>
+        </div>
+        <p class="small muted" style="margin-top:14px;display:flex;gap:8px;align-items:flex-start">
+          <svg width="16" height="16" viewBox="0 0 24 24" style="flex:none;margin-top:2px;color:var(--warn)"><use href="#i-warn"/></svg>
+          Sie haben sich am 4. Mai 2026 schon einmal bei Kernbauer Verfahrenstechnik beworben, damals als Dokumentationsingenieurin.
+        </p>
+      </div>
+
+      <div class="actionbar">
+        <span class="actionbar-say say-todo" data-say="2">
+          <svg viewBox="0 0 24 24"><use href="#i-info"/></svg>
+          Fügen Sie den Text der Ausschreibung ein.
+        </span>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-secondary btn-lg" data-next="1">Zurück</button>
+          <button class="btn btn-primary btn-lg" data-next="3" disabled>
+            Zur Arbeitsfläche <svg width="17" height="17" viewBox="0 0 24 24"><use href="#i-right"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="bar-spacer"></div>
+    </div>
+  </div>
+</section>

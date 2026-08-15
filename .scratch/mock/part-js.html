@@ -1,0 +1,203 @@
+
+<script>
+/* Genug Verhalten, um die Abläufe zu beurteilen. Keine echten Dateien,
+   kein echter Modellaufruf. */
+const $  = (s,r=document)=>r.querySelector(s)
+const $$ = (s,r=document)=>[...r.querySelectorAll(s)]
+
+/* ---- Ansichten ---- */
+function show(id){
+  $$('.screen').forEach(s=>s.classList.toggle('is-on', s.id==='s-'+id))
+  $$('.harness-nav button').forEach(b=>b.setAttribute('aria-current', String(b.dataset.go===id)))
+  window.scrollTo({top:0})
+}
+document.addEventListener('click', e=>{
+  const go = e.target.closest('[data-go]')
+  if (go){ show(go.dataset.go) }
+})
+
+/* ---- Erscheinungsbild ---- */
+const themeBtn = $('#theme')
+themeBtn.addEventListener('click', ()=>{
+  const dark = document.documentElement.getAttribute('data-theme')==='dark'
+  document.documentElement.setAttribute('data-theme', dark?'light':'dark')
+  themeBtn.textContent = dark?'Dunkel':'Hell'
+})
+
+/* ---- Schritt 1 und 2 ---- */
+const state = { letter:false, cv:false, ad:false, step:1 }
+
+function railState(){
+  $$('.rail-step').forEach(b=>{
+    const n = +b.dataset.step
+    b.dataset.state = n===state.step ? 'current' : (n<state.step ? 'done' : 'todo')
+    b.disabled = n>state.step
+  })
+  $('[data-sub="1"]').textContent = state.letter||state.cv
+    ? [state.letter&&'Anschreiben', state.cv&&'Lebenslauf'].filter(Boolean).join(' und ')
+    : 'Anschreiben oder Lebenslauf'
+  $('[data-sub="2"]').textContent = state.ad ? 'Kernbauer Verfahrenstechnik' : 'Text einfügen'
+}
+
+function gate(){
+  const ok1 = state.letter || state.cv
+  const b1 = $('[data-next="2"]'), s1 = $('[data-say="1"]')
+  b1.disabled = !ok1
+  s1.className = 'actionbar-say ' + (ok1?'say-ready':'say-todo')
+  s1.lastChild.textContent = ok1
+    ? ' Bereit für den nächsten Schritt.'
+    : ' Legen Sie mindestens eine Unterlage ab, um fortzufahren.'
+  $('[data-name-field]').hidden = !ok1
+
+  const b2 = $('[data-next="3"]'), s2 = $('[data-say="2"]')
+  b2.disabled = !state.ad
+  s2.className = 'actionbar-say ' + (state.ad?'say-ready':'say-todo')
+  s2.lastChild.textContent = state.ad
+    ? ' Anzeige gelesen. Sie können mit dem Schreiben beginnen.'
+    : ' Fügen Sie den Text der Ausschreibung ein.'
+  railState()
+}
+
+const FILES = {
+  letter:{name:'Anschreiben_Ostwald.docx', kind:'DOCX', note:'6 Absätze, Layout bleibt erhalten'},
+  cv:{name:'Lebenslauf_Ostwald.pdf', kind:'PDF', note:'2 Seiten, nur als Faktenquelle'}
+}
+$$('.drop').forEach(drop=>{
+  drop.addEventListener('click', ()=>{
+    if (drop.classList.contains('is-filled')) return
+    const f = FILES[drop.dataset.drop]
+    drop.classList.add('is-filled')
+    drop.innerHTML = `<div class="file-row">
+        <span class="file-badge">${f.kind}</span>
+        <span class="file-meta">
+          <span class="file-name">${f.name}</span>
+          <span class="drop-hint" style="display:block">${f.note}</span>
+          <span class="check"><svg viewBox="0 0 24 24"><use href="#i-check"/></svg> Eingelesen</span>
+        </span>
+      </div>`
+    state[drop.dataset.drop] = true
+    gate()
+  })
+})
+
+const AD = `Technische Redakteurin (m/w/d)
+Kernbauer Verfahrenstechnik GmbH, Ingolstadt
+
+Ihre Aufgaben: Erstellung und Pflege der technischen Dokumentation unserer Anlagen nach Maschinenrichtlinie, enge Abstimmung mit Konstruktion und Montage, Weiterentwicklung unseres modularen Redaktionssystems.
+
+Ihr Profil: Abgeschlossenes Studium oder vergleichbare Qualifikation, mehrjährige Erfahrung in der technischen Redaktion, sicherer Umgang mit strukturierten Redaktionssystemen, Englisch in Wort und Schrift, Grundkenntnisse der SPS-Programmierung von Vorteil.`
+
+const ta = $('#jobad')
+ta.addEventListener('input', ()=>{
+  state.ad = ta.value.trim().length > 40
+  $('[data-ad-read]').hidden = !state.ad
+  gate()
+})
+$('[data-fill-ad]').addEventListener('click', ()=>{
+  ta.value = AD
+  ta.dispatchEvent(new Event('input'))
+})
+
+$$('[data-next]').forEach(b=>b.addEventListener('click', ()=>{
+  const n = +b.dataset.next
+  if (n===3){ show('editor'); return }
+  state.step = n
+  $$('.step-pane').forEach(p=>p.hidden = +p.dataset.pane !== n)
+  railState(); window.scrollTo({top:0,behavior:'smooth'})
+}))
+$$('.rail-step').forEach(b=>b.addEventListener('click', ()=>{
+  const n = +b.dataset.step
+  if (n>state.step) return
+  state.step = n
+  $$('.step-pane').forEach(p=>p.hidden = +p.dataset.pane !== n)
+  railState()
+}))
+
+/* ---- Arbeitsfläche ---- */
+const VARIANTS = [
+  { tag:'Näher am Original',
+    text:'Was mich an Ihrer Ausschreibung besonders anspricht, ist die enge Verzahnung von Redaktion und Konstruktion. Seit 2023 sitze ich in der Entwicklungsbesprechung mit am Tisch, statt fertige Zeichnungen im Nachhinein zu beschreiben. Die Rückfragen aus der Montage sind dadurch messbar zurückgegangen.',
+    src:'Belegt durch Absatz 3 Ihres Anschreibens' },
+  { tag:'Knapper',
+    text:'Redaktion und Konstruktion greifen bei Ihnen ineinander, und genau so arbeite ich seit 2023: mit in der Entwicklungsbesprechung, nicht nachgelagert. Die Rückfragen aus der Montage sind seither messbar zurückgegangen.',
+    src:'Belegt durch Absatz 3 Ihres Anschreibens' },
+  { tag:'Auf die Anzeige zugeschnitten',
+    text:'Ihre Ausschreibung nennt die enge Abstimmung mit Konstruktion und Montage an erster Stelle. Diesen Weg gehe ich seit 2023: Ich bin Teil der Entwicklungsbesprechung, statt fertige Zeichnungen nachträglich zu beschreiben, und die Rückfragen aus der Montage sind messbar zurückgegangen.',
+    src:'Belegt durch Absatz 3, Anforderung „Zusammenarbeit mit der Konstruktion“' }
+]
+
+let picked = null
+const coach = $('#coach'), box = $('#variants'), list = $('#vlist')
+
+$$('#sheet p[data-pick]').forEach(p=>{
+  p.addEventListener('click', ()=>{
+    $$('#sheet p.is-picked').forEach(o=>o.classList.remove('is-picked'))
+    p.classList.add('is-picked')
+    picked = p
+    coach.classList.add('is-gone')
+    ask()
+  })
+})
+$('[data-pickall]').addEventListener('click', ()=>{
+  $$('#sheet p[data-pick]').forEach(o=>o.classList.add('is-picked'))
+  picked = null; coach.classList.add('is-gone'); ask()
+})
+
+function ask(){
+  box.classList.add('is-on')
+  list.innerHTML = `<div class="vcard"><div class="pending">
+      <span class="pending-dots" data-motion-essential><i></i><i></i><i></i></span>
+      Applai liest Ihren Stil und formuliert drei Vorschläge</div>
+      <div class="vskel" style="width:96%"></div><div class="vskel" style="width:88%"></div><div class="vskel" style="width:64%"></div>
+    </div>`
+  box.scrollIntoView({behavior:'smooth', block:'nearest'})
+  clearTimeout(ask._t)
+  ask._t = setTimeout(fill, 1500)
+}
+
+function fill(){
+  list.innerHTML = VARIANTS.map((v,i)=>`
+    <div class="vcard">
+      <div class="vcard-top">
+        <span class="vtag">${v.tag}</span>
+        <span class="small muted">Vorschlag ${i+1} von 3</span>
+      </div>
+      <p>${v.text}</p>
+      <span class="vsrc"><svg viewBox="0 0 24 24"><use href="#i-check"/></svg> ${v.src}</span>
+      <div class="vcard-acts">
+        <button class="btn btn-primary btn-sm" data-take="${i}">Übernehmen</button>
+        <button class="btn btn-ghost btn-sm" data-again>Anders formulieren</button>
+      </div>
+    </div>`).join('')
+}
+
+list.addEventListener('click', e=>{
+  const take = e.target.closest('[data-take]')
+  if (take && picked){
+    picked.textContent = VARIANTS[+take.dataset.take].text
+    picked.classList.remove('is-picked')
+    box.classList.remove('is-on')
+    picked = null
+    return
+  }
+  if (e.target.closest('[data-again]')) ask()
+})
+
+$$('[data-truth]').forEach(b=>b.addEventListener('click', ()=>{
+  $$('[data-truth]').forEach(o=>o.setAttribute('aria-pressed','false'))
+  b.setAttribute('aria-pressed','true')
+  const free = b.textContent.trim().startsWith('Freier')
+  const bar = $('.export-state')
+  bar.innerHTML = free
+    ? '<svg viewBox="0 0 24 24" style="color:var(--warn)"><use href="#i-warn"/></svg> Freier Modus. Jede unbelegte Aussage wird markiert und muss einzeln bestätigt werden, bevor der Export freigegeben ist.'
+    : '<svg viewBox="0 0 24 24"><use href="#i-check"/></svg> Alle Aussagen sind durch Ihre Unterlagen belegt. Export ist frei.'
+}))
+
+$$('.aside-tab').forEach(t=>t.addEventListener('click', ()=>{
+  $$('.aside-tab').forEach(o=>o.setAttribute('aria-selected','false'))
+  t.setAttribute('aria-selected','true')
+  $$('.aside-pane').forEach(p=>p.classList.toggle('is-on', p.dataset.paneA===t.dataset.tab))
+}))
+
+gate()
+</script>
