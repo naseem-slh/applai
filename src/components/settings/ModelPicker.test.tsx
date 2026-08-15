@@ -24,7 +24,11 @@ function provider(overrides: Partial<LlmProvider> = {}): LlmProvider {
   }
 }
 
-function setup(overrides: Partial<ModelPickerProps> = {}) {
+/**
+ * Aufbauen und das Fenster öffnen — dort steht seit dem Umbau alles außer der
+ * Standzeile. `{ open: false }` prüft, was die Karte selbst zeigt.
+ */
+function setup(overrides: Partial<ModelPickerProps> = {}, { open = true } = {}) {
   const props: ModelPickerProps = {
     provider: provider(),
     apiKey: 'test-key',
@@ -35,14 +39,13 @@ function setup(overrides: Partial<ModelPickerProps> = {}) {
     ...overrides,
   }
   render(<ModelPicker {...props} />)
+  if (open) fireEvent.click(screen.getByRole('button', { name: t('settings.model.manage') }))
   return props
 }
 
 describe('ModelPicker', () => {
-  it('nennt das voreingestellte Modell, solange nichts gewählt ist', () => {
-    setup()
-    // Beides steht seit dem Aufräumen in einer Zeile statt in zweien:
-    // dass keines gewählt ist, und welches dann greift.
+  it('nennt in der Karte das voreingestellte Modell, solange nichts gewählt ist', () => {
+    setup({}, { open: false })
     expect(
       screen.getByText(
         (_, element) =>
@@ -52,6 +55,28 @@ describe('ModelPicker', () => {
           ),
       ),
     ).toBeInTheDocument()
+  })
+
+  it('zeigt in der Karte nur den Stand, die Kette erst im Fenster', () => {
+    const chain = ['gemini-3.1-flash-lite', 'gemini-2.5-flash', 'gemini-flash-latest']
+    setup({ chain }, { open: false })
+
+    // Die Zeile sagt, wie viele es sind und welches zuerst gefragt wird.
+    expect(
+      screen.getByText(
+        t('settings.model.summary', { count: chain.length, model: chain[0] }),
+      ),
+    ).toBeInTheDocument()
+    // Elf Zeilen mit zweiundzwanzig Knöpfen standen hier einmal. Jetzt keine.
+    expect(screen.queryByRole('button', { name: t('settings.model.moveUp') })).toBeNull()
+    expect(screen.queryByRole('button', { name: t('settings.model.load') })).toBeNull()
+    expect(screen.queryByRole('button', { name: t('settings.model.reset') })).toBeNull()
+
+    // Und hinter dem Knopf steht alles davon.
+    fireEvent.click(screen.getByRole('button', { name: t('settings.model.manage') }))
+    expect(screen.getAllByRole('button', { name: t('settings.model.moveUp') })).toHaveLength(3)
+    expect(screen.getByRole('button', { name: t('settings.model.load') })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: t('settings.model.reset') })).toBeInTheDocument()
   })
 
   it('sagt ausdrücklich, dass die Liste den kostenlosen Tarif nicht ausweist', () => {
