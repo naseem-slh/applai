@@ -42,7 +42,7 @@ test.describe('PDF-Export', () => {
 
     // Anders als früher über den Druckdialog ist eine erzeugte Datei ein
     // eindeutiger Abschluss — die Bewerbung steht danach in der Liste.
-    await page.getByRole('link', { name: t('nav.start') }).click()
+    await page.getByRole('link', { name: t('editor.backToStart') }).click()
     await page.getByRole('button', { name: t('start.applications.open', { count: 1 }) }).click()
     await expect(page.getByRole('dialog').getByRole('cell', { name: 'Musterwerk Solutions' })).toBeVisible()
   })

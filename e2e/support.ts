@@ -172,7 +172,10 @@ export async function completeOnboarding(page: Page): Promise<void> {
   await page.getByRole('option', { name: t('onboarding.key.billingFree') }).click()
 
   await page.getByRole('button', { name: t('onboarding.key.submit') }).click()
-  await page.getByRole('heading', { name: t('start.documents.heading') }).waitFor()
+  // Die Einstiegsseite trägt seit der Übernahme der Attrappen keine
+  // Zwischenüberschrift „Unterlagen" mehr — die zwei Kacheln sagen von
+  // selbst, was sie sind. Der Weiter-Knopf steht dafür immer da.
+  await page.getByRole('button', { name: t('start.continue') }).waitFor()
 }
 
 /** Anschreiben, Name und Stellenausschreibung eintragen und weitergehen. */
@@ -184,7 +187,7 @@ export async function fillStartPage(page: Page, jobAdText = JOB_AD_TEXT): Promis
   await page.getByText(t('start.files.loaded', { name: 'anschreiben.docx' })).waitFor()
 
   await page.getByLabel(t('start.name.label'), { exact: true }).fill('Marlene Ostwald')
-  await page.getByLabel(t('start.jobAd.label'), { exact: true }).fill(jobAdText)
+  await page.getByLabel(t('start.jobAd.heading'), { exact: true }).fill(jobAdText)
 
   await page.getByRole('button', { name: t('start.continue') }).click()
 }
@@ -205,7 +208,7 @@ export async function fillStartPageCvOnly(page: Page, jobAdText = JOB_AD_TEXT): 
   await page.getByText(t('start.files.loaded', { name: 'anschreiben.docx' })).waitFor()
 
   await page.getByLabel(t('start.name.label'), { exact: true }).fill('Marlene Ostwald')
-  await page.getByLabel(t('start.jobAd.label'), { exact: true }).fill(jobAdText)
+  await page.getByLabel(t('start.jobAd.heading'), { exact: true }).fill(jobAdText)
 
   await page.getByRole('button', { name: t('start.continue') }).click()
 }

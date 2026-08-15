@@ -122,7 +122,7 @@ test('lässt das Kontextmenü dem Browser, auch auf einer Wellenlinie', async ({
 
 test('legt beim Doppelklick auf einen Befund keine Vormerkung an', async ({ page }) => {
   await tippeSatzEin(page)
-  await expect(page.getByText(t('editor.marks.count', { count: 0 }))).toBeVisible()
+  await expect(page.getByText(t('editor.marks.none'))).toBeVisible()
 
   const stelle = await befund(page, 'seid')
   expect(stelle).not.toBeNull()
@@ -130,7 +130,7 @@ test('legt beim Doppelklick auf einen Befund keine Vormerkung an', async ({ page
 
   // Die Korrektur gewinnt, die Merkliste bleibt leer.
   await expect(menu(page)).toBeVisible()
-  await expect(page.getByText(t('editor.marks.count', { count: 0 }))).toBeVisible()
+  await expect(page.getByText(t('editor.marks.none'))).toBeVisible()
 })
 
 test('merkt eine von Hand gezogene Stelle weiterhin vor', async ({ page }) => {
@@ -144,7 +144,9 @@ test('merkt eine von Hand gezogene Stelle weiterhin vor', async ({ page }) => {
   await page.mouse.move(von!.x + 14, von!.y, { steps: 8 })
   await page.mouse.up()
 
-  await expect(page.getByText(t('editor.marks.count', { count: 1 }))).toBeVisible()
+  // Der Zähler in der Kopfzeile der Liste: „0 / 1" — keine erledigt, eine
+  // vorgemerkt.
+  await expect(page.getByText(t('editor.marks.tally', { done: 0, total: 1 }))).toBeVisible()
 })
 
 test('übernimmt einen Befund auch aus der Liste', async ({ page }) => {

@@ -15,6 +15,38 @@ import Start from './Start'
 
 const t = i18n.getFixedT(i18n.resolvedLanguage ?? 'de')
 
+/**
+ * Das Angebot eines Zwischenstands. Beide Knöpfe tragen die Unterlage im
+ * Namen: Zweimal „Weiterverwenden" auf einer Seite wäre für eine
+ * Vorlesesoftware nicht auseinanderzuhalten.
+ *
+ * Ob es als Zettel neben der Karte oder als Marke in der Kachel dasteht,
+ * entscheidet die Fensterbreite — der Name ist in beiden Fassungen derselbe,
+ * und genau das prüfen diese Abfragen mit.
+ */
+function recallButton(action: 'use' | 'discard', slot: 'letter' | 'cv') {
+  return screen.getByRole('button', {
+    name: `${t(`start.recent.${action}`)} ${t(`start.files.${slot}`)}`,
+  })
+}
+
+function recallOffer(slot: 'letter' | 'cv') {
+  return screen.queryByRole('button', {
+    name: `${t('start.recent.use')} ${t(`start.files.${slot}`)}`,
+  })
+}
+
+/**
+ * Was noch fehlt, steht seit der Übernahme der Attrappen nicht mehr sichtbar
+ * neben dem Knopf: Das sagt die Seite selbst — tangerine Kachel, leeres Feld,
+ * grauer Knopf. Für den Vorleser steht es weiterhin da, in einer Zeile
+ * unmittelbar vor dem Knopf, weil ihm keine Farbe etwas sagt.
+ */
+function fehlendeAngaben(): string {
+  const zeile = screen.queryByText(new RegExp(t('start.missing.heading')))
+  return zeile?.textContent ?? ''
+}
+
 // Erkennbar erfundene, aber namensförmige Kopfzeile: `detectHeadName`
 // nimmt die erste Zeile aus zwei bis vier großgeschriebenen Wörtern.
 const LETTER_TEXT = 'Marlene Ostwald\nBuchenweg 4\n12345 Beispielstadt\n\nSehr geehrte Damen und Herren,'
@@ -92,7 +124,8 @@ describe('Start — Onboarding und Tresorzustände', () => {
     const { user } = setup({ status: 'empty' })
 
     expect(screen.getByRole('heading', { name: t('onboarding.privacy.heading') })).toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: t('start.documents.heading') })).toBeNull()
+    // Der Hinweis steht **vor** der Arbeitsfläche, nicht neben ihr.
+    expect(screen.queryByRole('button', { name: t('start.continue') })).toBeNull()
 
     await user.click(screen.getByRole('button', { name: t('onboarding.privacy.accept') }))
 
@@ -130,7 +163,7 @@ describe('Start — Unterlagen', () => {
     await chooseFile(user, 'letter', docxFile())
     await screen.findByText(t('start.files.loaded', { name: 'anschreiben.docx' }))
 
-    await user.type(screen.getByLabelText(t('start.jobAd.label')), 'Wir suchen eine Entwicklerin.')
+    await user.type(screen.getByLabelText(t('start.jobAd.heading')), 'Wir suchen eine Entwicklerin.')
 
     expect(continueButton()).toBeEnabled()
     await user.click(continueButton())
@@ -146,7 +179,7 @@ describe('Start — Unterlagen', () => {
 
     await chooseFile(user, 'cv', docxFile('lebenslauf.docx'))
     await screen.findByText(t('start.files.loaded', { name: 'lebenslauf.docx' }))
-    await user.type(screen.getByLabelText(t('start.jobAd.label')), 'Wir suchen eine Entwicklerin.')
+    await user.type(screen.getByLabelText(t('start.jobAd.heading')), 'Wir suchen eine Entwicklerin.')
 
     expect(continueButton()).toBeEnabled()
   })
@@ -156,17 +189,17 @@ describe('Start — Unterlagen', () => {
     setup()
 
     expect(continueButton()).toBeDisabled()
-    expect(screen.getByText(t('start.missing.document'))).toBeInTheDocument()
-    expect(screen.getByText(t('start.missing.jobAd'))).toBeInTheDocument()
+    expect(fehlendeAngaben()).toContain(t('start.missing.document'))
+    expect(fehlendeAngaben()).toContain(t('start.missing.jobAd'))
   })
 
   it('blockiert weiterhin, solange nur die Anzeige dasteht', async () => {
     const { user } = setup()
 
-    await user.type(screen.getByLabelText(t('start.jobAd.label')), 'Wir suchen eine Entwicklerin.')
+    await user.type(screen.getByLabelText(t('start.jobAd.heading')), 'Wir suchen eine Entwicklerin.')
 
     expect(continueButton()).toBeDisabled()
-    expect(screen.getByText(t('start.missing.document'))).toBeInTheDocument()
+    expect(fehlendeAngaben()).toContain(t('start.missing.document'))
   })
 
   it('gibt den beiden Ablegefeldern unterscheidbare Knopfnamen', () => {
@@ -268,12 +301,12 @@ describe('Start — der Name des Nutzers (Übergabe 1)', () => {
     })
 
     await chooseFile(user, 'letter', docxFile())
-    await user.type(screen.getByLabelText(t('start.jobAd.label')), 'Wir suchen eine Entwicklerin.')
+    await user.type(screen.getByLabelText(t('start.jobAd.heading')), 'Wir suchen eine Entwicklerin.')
 
     const field = await screen.findByLabelText(t('start.name.label'))
     expect(field).toHaveValue('')
     expect(continueButton()).toBeDisabled()
-    expect(screen.getByText(t('start.missing.userName'))).toBeInTheDocument()
+    expect(fehlendeAngaben()).toContain(t('start.missing.userName'))
 
     await user.type(field, 'Marlene Ostwald')
 
@@ -311,7 +344,7 @@ describe('Start — Stellenausschreibung', () => {
     await user.upload(jobAdInput, new File(['x'], 'anzeige.pdf', { type: 'application/pdf' }))
 
     await waitFor(() =>
-      expect(screen.getByLabelText(t('start.jobAd.label'))).toHaveValue(
+      expect(screen.getByLabelText(t('start.jobAd.heading'))).toHaveValue(
         'Aus dem PDF gelesener Anzeigentext',
       ),
     )
@@ -338,7 +371,7 @@ describe('Start — Bewerbungsliste und Doppelbewerbung', () => {
     expect(screen.queryByRole('alert')).toBeNull()
 
     await user.type(
-      screen.getByLabelText(t('start.jobAd.label')),
+      screen.getByLabelText(t('start.jobAd.heading')),
       'Die Nordwerk Systeme GmbH sucht Verstärkung.',
     )
 
@@ -388,12 +421,13 @@ describe('Start — zuletzt benutzte Dokumente', () => {
     })
     const { user } = setup({ storage })
 
-    await screen.findByRole('heading', { name: t('start.recent.heading') })
-    await user.click(screen.getByRole('button', { name: t('start.recent.use') }))
+    await waitFor(() => expect(recallOffer('letter')).not.toBeNull())
+    await user.click(recallButton('use', 'letter'))
 
     expect(screen.getByText(t('start.files.loaded', { name: t('start.files.fromDraft') }))).toBeInTheDocument()
     expect(screen.getByLabelText(t('start.name.label'))).toHaveValue('Marlene Ostwald')
-    expect(screen.queryByRole('heading', { name: t('start.recent.heading') })).toBeNull()
+    // Angenommen heißt weg: Das Angebot verschwindet mit der gefüllten Kachel.
+    expect(recallOffer('letter')).toBeNull()
   })
 
   it('löscht einen verworfenen Zwischenstand wirklich', async () => {
@@ -404,8 +438,8 @@ describe('Start — zuletzt benutzte Dokumente', () => {
     })
     const { user } = setup({ storage })
 
-    await screen.findByRole('heading', { name: t('start.recent.heading') })
-    await user.click(screen.getByRole('button', { name: t('start.recent.discard') }))
+    await waitFor(() => expect(recallOffer('cv')).not.toBeNull())
+    await user.click(recallButton('discard', 'cv'))
 
     expect(storage.deleteDraft).toHaveBeenCalledWith(CV_DRAFT_ID)
     expect(storage.state.drafts.size).toBe(0)
@@ -428,7 +462,7 @@ describe('Start — Übergabe an die Arbeitsfläche', () => {
 
     await chooseFile(user, 'letter', docxFile())
     await screen.findByText(t('start.files.loaded', { name: 'anschreiben.docx' }))
-    await user.type(screen.getByLabelText(t('start.jobAd.label')), 'Wir suchen eine Entwicklerin.')
+    await user.type(screen.getByLabelText(t('start.jobAd.heading')), 'Wir suchen eine Entwicklerin.')
     await user.click(continueButton())
 
     await waitFor(() => expect(storage.saveDraft).toHaveBeenCalledTimes(1))
@@ -457,9 +491,9 @@ describe('Start — Übergabe an die Arbeitsfläche', () => {
     })
     const { user } = setup({ storage })
 
-    await screen.findByRole('heading', { name: t('start.recent.heading') })
-    await user.click(screen.getByRole('button', { name: t('start.recent.use') }))
-    await user.type(screen.getByLabelText(t('start.jobAd.label')), 'Wir suchen eine Entwicklerin.')
+    await waitFor(() => expect(recallOffer('letter')).not.toBeNull())
+    await user.click(recallButton('use', 'letter'))
+    await user.type(screen.getByLabelText(t('start.jobAd.heading')), 'Wir suchen eine Entwicklerin.')
     await user.click(continueButton())
 
     await waitFor(() => expect(storage.saveDraft).toHaveBeenCalledTimes(1))
@@ -478,7 +512,7 @@ describe('Start — Übergabe an die Arbeitsfläche', () => {
     })
 
     expect(screen.getByText(t('start.files.loaded', { name: 'anschreiben.docx' }))).toBeInTheDocument()
-    expect(screen.getByLabelText(t('start.jobAd.label'))).toHaveValue('Wir suchen eine Entwicklerin.')
+    expect(screen.getByLabelText(t('start.jobAd.heading'))).toHaveValue('Wir suchen eine Entwicklerin.')
     expect(continueButton()).toBeEnabled()
   })
 
@@ -489,7 +523,7 @@ describe('Start — Übergabe an die Arbeitsfläche', () => {
 
     await chooseFile(user, 'letter', docxFile())
     await screen.findByText(t('start.files.loaded', { name: 'anschreiben.docx' }))
-    await user.type(screen.getByLabelText(t('start.jobAd.label')), 'Wir suchen eine Entwicklerin.')
+    await user.type(screen.getByLabelText(t('start.jobAd.heading')), 'Wir suchen eine Entwicklerin.')
     await user.click(continueButton())
 
     await waitFor(() => expect(setSession).toHaveBeenCalled())

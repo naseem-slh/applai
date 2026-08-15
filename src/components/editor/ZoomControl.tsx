@@ -2,9 +2,8 @@ import { Slider as SliderPrimitive } from 'radix-ui'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
-import { MinusIcon, PlusIcon } from '@/components/ui/icons'
 import { cn } from '@/lib/utils'
-import { ZOOM_MAX, ZOOM_MIN, ZOOM_STEP, steppedZoom } from './zoom'
+import { ZOOM_MAX, ZOOM_MIN, ZOOM_STEP } from './zoom'
 
 /**
  * Der Maßstabsregler — die Zoomleiste am unteren Rand der Arbeitsfläche.
@@ -19,12 +18,15 @@ import { ZOOM_MAX, ZOOM_MIN, ZOOM_STEP, steppedZoom } from './zoom'
  * demselben Radix-Primitiv, festgehalten in DESIGN.md unter „Der
  * Maßstabsregler". Ein drittes gibt es nicht.
  *
- * **Warum unten rechts und schwebend.** Dort sitzt der Zoom in Word, in jedem
- * PDF-Betrachter und in jedem Zeichenprogramm. Die Leiste über dem Blatt kam
- * nicht in Frage: Sie ist bereits so breit, dass sie unterhalb von rund
- * 1330 px Fensterbreite umbricht (siehe die Notiz in `DocumentColumn`), und
- * ein weiteres Bedienelement darin hätte den Umbruch auf jedes übliche
- * Notebook vorgezogen.
+ * **Warum in der Spalte und nicht schwebend über dem Blatt.** Schwebend war
+ * er eine vierte Ebene, die nichts verdeckte, aber auch nirgends dazugehörte.
+ * Unter der Ausgabe steht er bei dem, was mit dem Blatt geschieht.
+ *
+ * **Warum nur Schiene und Zahl.** Davor standen hier vier Bedienelemente für
+ * eine einzige Zahl: ein Minus, eine Schiene, ein Plus und der Stand. Die
+ * beiden Knöpfe machten dasselbe wie ein Pfeiltastendruck auf der Schiene und
+ * dasselbe wie ein Zug mit dem Finger. Geblieben sind die Schiene und der
+ * Stand — und der Stand ist zugleich der Weg zurück auf 100 %.
  *
  * **Warum keine Raste bei 100 %.** Bei Word liegt 100 % mitten in der Spanne
  * und braucht eine Raste, damit man sie trifft. Hier ist 100 % das obere Ende
@@ -52,17 +54,11 @@ export function ZoomControl({ zoom, onZoomChange, onZoomCommit, className }: Zoo
   }
 
   return (
-    <Card variant="raised" padding="none" className={cn('flex items-center gap-2 p-2', className)}>
-      <Button
-        variant="ghost"
-        size="sm"
-        aria-label={t('editor.zoom.out')}
-        disabled={zoom <= ZOOM_MIN}
-        onClick={() => commit(steppedZoom(zoom, -1))}
-      >
-        <MinusIcon />
-      </Button>
-
+    <Card
+      variant="default"
+      padding="none"
+      className={cn('flex items-center gap-3 px-3 py-2', className)}
+    >
       <SliderPrimitive.Root
         min={ZOOM_MIN}
         max={ZOOM_MAX}
@@ -70,45 +66,23 @@ export function ZoomControl({ zoom, onZoomChange, onZoomCommit, className }: Zoo
         value={[zoom]}
         onValueChange={([next]) => onZoomChange(next)}
         onValueCommit={([next]) => onZoomCommit(next)}
-        className="relative flex w-28 touch-none items-center select-none"
+        className="relative flex flex-1 touch-none items-center select-none"
       >
-        <SliderPrimitive.Track
-          className={cn(
-            'relative h-1.5 w-full grow overflow-hidden rounded-full',
-            'border border-[var(--color-control-border)]',
-            'bg-[var(--color-surface-alt)]',
-          )}
-        >
-          <SliderPrimitive.Range className="absolute h-full bg-[var(--color-accent)]" />
+        <SliderPrimitive.Track className="relative h-[14px] w-full grow overflow-hidden rounded-pill border-[3px] border-[var(--line-soft)] bg-[var(--field)]">
+          <SliderPrimitive.Range className="absolute h-full bg-[var(--accent)]" />
         </SliderPrimitive.Track>
+        {/* Name und Wert gehören an den Griff, nicht an die Schiene: Dort
+            sitzt `role="slider"`. */}
         <SliderPrimitive.Thumb
-          className={cn(
-            'focus-ring block size-5 rounded-full border-2',
-            'border-[var(--color-accent)] bg-[var(--color-surface-raised)]',
-            'shadow-[var(--shadow-raised)] transition-colors',
-          )}
+          className="focus-ring block size-6 rounded-pill border-[3px] border-[var(--line)] bg-[var(--accent)]"
           aria-label={t('editor.zoom.label')}
-          // Der Griff sagt „60 %" an, nicht „60" — die Einheit trägt hier die
-          // ganze Bedeutung.
           aria-valuetext={percent}
         />
       </SliderPrimitive.Root>
 
-      <Button
-        variant="ghost"
-        size="sm"
-        aria-label={t('editor.zoom.in')}
-        disabled={zoom >= ZOOM_MAX}
-        onClick={() => commit(steppedZoom(zoom, 1))}
-      >
-        <PlusIcon />
-      </Button>
-
-      {/* Der Stand ist zugleich der Weg zurück auf 100 %, wie das Prozentfeld
-          in Word. Sein zugänglicher Name beginnt mit genau dem sichtbaren
-          Text („60 %, auf 100 % zurücksetzen"): WCAG 2.5.3 verlangt, dass der
-          Name enthält, was dasteht — sonst spricht eine Sprachsteuerung den
-          Knopf nicht an. */}
+      {/* Der Stand ist zugleich der Weg zurück: ein Klick stellt 100 % her.
+          Deshalb ein Knopf und keine Beschriftung — und deshalb sagt sein
+          Name beides, den Stand und was ein Druck bewirkt. */}
       <Button
         variant="ghost"
         size="sm"

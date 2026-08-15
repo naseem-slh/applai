@@ -1,46 +1,40 @@
 import type { MouseEvent, ReactNode } from 'react'
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/Button'
+import { Card } from '@/components/ui/Card'
 import { FIELD_HINT_CLASS } from '@/components/ui/Field'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/Popover'
 import { cn } from '@/lib/utils'
 import type { EditorSelection } from './documentSelection'
 
 /**
- * Die Leiste über dem Dokument: was gerade markiert ist, wie man etwas
- * markiert, und der Hinweis auf die eine Nebenwirkung, die eine Markierung
- * über mehrere Absätze haben kann.
+ * Die Karte „Auswahl" in der linken Spalte: was gerade markiert ist und was
+ * damit geschehen kann.
  *
- * Das Rechnen selbst steht in `documentSelection.ts`, das Nachhalten in
- * `useDocumentSelection.ts`. Diese Datei zeigt nur an und löst aus — so
- * bleibt die Offset-Abbildung ohne Oberfläche prüfbar.
+ * **Sie stand bis zur Übernahme der Attrappen als Leiste über dem Blatt.**
+ * Das kostete zweierlei. Der Brief begann nicht mehr auf derselben Höhe wie
+ * die Karten links und rechts, sondern erst unterhalb eines Streifens, der
+ * über die ganze Mittelspalte lief. Und die Knöpfe standen nebeneinander in
+ * einer Zeile, die bei 1280 px Fenster 630 px Inhalt in 592 px unterbringen
+ * musste — die Reihe brach um, und die Leiste wuchs beim Markieren.
  *
- * **Eine Zeile mit fester Hoehe (Variante A).** Die Leiste waechst und
- * schrumpft nicht mehr, waehrend markiert wird: Sie stand vorher zwischen 87
- * und 237 px, je nach Zustand, und schob den Brief bei jeder Markierung ein
- * Stueck nach unten. Deshalb steht hier genau eine Reihe, deren Hoehe die
- * Knopfreihe bestimmt. Was zustandsabhaengig ist, wechselt seinen Inhalt,
- * nicht sein Mass:
+ * Als Karte in der Spalte ist beides weg: Die Knöpfe stehen untereinander
+ * und über die volle Spaltenbreite, jeder so breit wie der nächste, und die
+ * Mittelspalte trägt nur noch das Blatt.
  *
- * - Der Umfang ist eine Umschaltgruppe, ein Bedienelement statt zweier
- *   gleichrangiger Knoepfe.
- * - Aus zwei Zeilen Prosa wird ein Zaehler. Was markiert ist, zeigt der Brief
- *   selbst; die Leiste hat es nur wiederholt. Der volle Satz bleibt fuer
- *   Hilfsmittel erhalten (`sr-only`), damit die Ansage nicht auf eine nackte
- *   Zahl zusammenfaellt.
- * - Der Hinweis auf festgehaltene Absaetze steht als kurzer Vermerk in der
- *   Zeile; die Einzelheiten kommen im Popover dazu (siehe `RetainedNote`).
- * - Es gibt keinen Knopf zum Aufheben. Ein Klick in die vorgemerkte Stelle
- *   nimmt sie weg, ein Klick woanders im Brief verlegt die Markierung; der
- *   Knopf war derselbe zweite Handgriff, den schon das Vormerken losgeworden
- *   ist, und er kostete die Breite, die der Rest der Zeile braucht.
+ * **Die Reihenfolge der drei Knöpfe ist die Reihenfolge der Handlung.**
+ * Zuerst das, was man mit der Markierung vorhat (`actions` — der Auslöser
+ * für die Vorschläge, als einziger in der Akzentfarbe). Darunter das, was
+ * die Markierung *setzt* (ganzes Dokument, aktueller Absatz). Ganz unten und
+ * abgesetzt „Rückgängig": Es gehört zur Auswahl, ist aber die Gegenbewegung
+ * zum Übernehmen und nicht Teil davon.
  *
- * **Es gibt keinen Knopf zum Vormerken mehr.** Eine markierte Stelle *ist*
+ * **Es gibt keinen Knopf zum Vormerken.** Eine markierte Stelle *ist*
  * vorgemerkt — das Markieren selbst ist die Geste. Ein Klick in eine
  * vorgemerkte Stelle hebt sie wieder auf, eine überschneidende Markierung
- * ersetzt sie. Ein eigener Knopf wäre ein zweiter Handgriff für etwas, das
- * der erste schon gesagt hat. Die Liste in der Seitenspalte (`MarkPanel`)
- * zeigt, was daraus geworden ist.
+ * ersetzt sie. Die Liste darunter (`MarkPanel`) zeigt, was daraus geworden
+ * ist.
  *
  * **Die verrutschende Unterschriftsgrafik (Weitergabe aus Aufgabe 3).**
  * Ein Absatz, der ein Bild, eine Tabellenzelle oder einen Abschnittswechsel
@@ -51,6 +45,10 @@ import type { EditorSelection } from './documentSelection'
  * Hinweis nennt den Absatz und den Grund; `DocumentView` hebt denselben
  * Absatz im Text hervor, damit der Nutzer ihn findet und seine Markierung
  * gegebenenfalls verkleinert.
+ *
+ * Das Rechnen selbst steht in `documentSelection.ts`, das Nachhalten in
+ * `useDocumentSelection.ts`. Diese Datei zeigt nur an und löst aus — so
+ * bleibt die Offset-Abbildung ohne Oberfläche prüfbar.
  */
 
 export interface SelectionLayerProps {
@@ -75,17 +73,29 @@ export interface SelectionLayerProps {
   caretParagraph: number | null
   onSelectWholeDocument: () => void
   onSelectParagraph: (index: number) => void
+  /** Rückgängig — steht abgesetzt am Fuß der Knopfreihe. */
+  onUndo: () => void
+  canUndo: boolean
   /**
-   * Anbau für Aufgabe 14b: Was mit der Markierung geschehen soll
-   * (`VariantPopover` samt Auslöser). Steht am Ende der Knopfreihe und
-   * bekommt dieselbe `EditorSelection`, die hier angezeigt wird.
+   * Was mit der Markierung geschehen soll (`VariantPopover` samt Auslöser).
+   * Steht als Erstes und ist der einzige Knopf in der Akzentfarbe.
    *
-   * Wer dort einen Knopf einhängt, verhindert an ihm das Voreingestellte
-   * des `mousedown` (siehe unten) — sonst legt der Browser beim Klicken die
+   * Wer hier einen Knopf einhängt, verhindert an ihm das Voreingestellte des
+   * `mousedown` (siehe unten) — sonst legt der Browser beim Klicken die
    * Markierung zusammen und die Hervorhebung im Text verschwindet, während
    * der Nutzer noch auswählt.
    */
   actions?: ReactNode
+  /**
+   * Ein dauerhafter Hinweis zum sichtbaren Dokument — heute der Beta-Vermerk
+   * des Lebenslaufs. Kein `role="status"`: Er steht schon da, bevor der
+   * Nutzer etwas tut.
+   */
+  notice?: ReactNode
+  /** Der Zustand der Auswertungen. */
+  status?: ReactNode
+  /** Sicherungsstand und Anfragenzähler, als leise Zeile am Fuß. */
+  footer?: ReactNode
 }
 
 export function SelectionLayer({
@@ -95,11 +105,17 @@ export function SelectionLayer({
   caretParagraph,
   onSelectWholeDocument,
   onSelectParagraph,
+  onUndo,
+  canUndo,
   actions,
+  notice,
+  status,
+  footer,
 }: SelectionLayerProps) {
   const { t } = useTranslation()
+  const headingId = useId()
 
-  // Ein Klick in die Leiste soll die Markierung im Text nicht zusammenlegen.
+  // Ein Klick in die Karte soll die Markierung im Text nicht zusammenlegen.
   // Der Zustand überlebt das ohnehin (`useDocumentSelection` beachtet nur
   // Änderungen innerhalb der Dokumentfläche), die sichtbare Hervorhebung
   // nicht.
@@ -109,96 +125,113 @@ export function SelectionLayer({
 
   const retained = selection?.inspection.retained.filter((entry) => entry.position > 0) ?? []
   const showsShiftWarning = selection?.inspection.mayShiftContent === true && retained.length > 0
+  const showsParagraph = caretParagraph !== null && (fineSelection || !allowWholeDocument)
 
   return (
-    // `min-h-8` haelt das Mass der Zeile auch dann, wenn rechts nichts steht:
-    // Die Knopfreihe ist 2rem hoch, und genau so hoch bleibt die Leiste.
-    <div className="flex min-h-8 items-center gap-3">
-      {/* Der Umfang als eine Umschaltgruppe. Die Aussenkontur sitzt am
-          Rahmen, die Knoepfe darin geben ihre eigene ab, damit die Gruppe
-          als ein Bedienelement gelesen wird und nicht als zwei. */}
-      <div className="flex shrink-0 overflow-hidden rounded-md border border-[var(--color-control-border)]">
-        {allowWholeDocument && (
-          <Button
-            variant="secondary"
-            size="sm"
-            className="rounded-none border-0"
-            onMouseDown={keepSelection}
-            onClick={onSelectWholeDocument}
-          >
-            {t('editor.selection.wholeDocument')}
-          </Button>
-        )}
-        {/* Der Absatzknopf erscheint mit einem genauen Zeigegerät immer — und
-            ohne eines nur dort, wo „Ganzes Dokument" fehlt. Beim Anschreiben
-            bleibt es damit bei der Zusage aus `docs/spec.md` („Mit dem Finger
-            ist nur das ganze Dokument wählbar"); der Lebenslauf, der das
-            ganze Dokument nicht anbietet, braucht dagegen unterwegs einen
-            Weg, und das Antippen eines Absatzes ist er. */}
-        {caretParagraph !== null && (fineSelection || !allowWholeDocument) && (
-          // Sichtbar steht „Absatz", der Name bleibt „Aktueller Absatz":
-          // In der Zeile zaehlt jede Breite, vorgelesen zaehlt die Bedeutung.
-          <Button
-            variant="secondary"
-            size="sm"
-            className={cn(
-              'rounded-none border-0',
-              allowWholeDocument && 'border-l border-[var(--color-control-border)]',
-            )}
-            aria-label={t('editor.selection.currentParagraph')}
-            onMouseDown={keepSelection}
-            onClick={() => onSelectParagraph(caretParagraph)}
-          >
-            {t('editor.selection.paragraphShort')}
-          </Button>
-        )}
-      </div>
-
-      <span aria-hidden="true" className="h-5 w-px shrink-0 bg-[var(--color-border)]" />
-
-      {/* Dauerhafte Zustandsauskunft, deshalb `role="status"` und kein
-          `role="alert"`: Sie steht schon da, bevor der Nutzer etwas tut.
-          `min-w-0` ist noetig, damit der Hinweis kuerzen darf statt die
-          Zeile aufzublaehen. */}
-      <div role="status" className="flex min-w-0 flex-1 items-center gap-2">
-        {selection === null ? (
-          <p className={cn(FIELD_HINT_CLASS, 'truncate')}>
-            {fineSelection
-              ? t('editor.selection.none')
-              : allowWholeDocument
-                ? t('editor.selection.touch')
-                : t('editor.selection.touchParagraph')}
-          </p>
-        ) : (
-          <>
-            <p className="inline-flex h-6 shrink-0 items-center rounded-sm bg-[var(--color-accent-soft)] px-2 text-[length:var(--text-body-sm-size)] font-medium text-[var(--color-accent-text)] tabular-nums">
+    <Card asChild variant="default" padding="md">
+      <section aria-labelledby={headingId} className="flex flex-col gap-3">
+        <h2
+          id={headingId}
+          className="flex items-baseline justify-between gap-3 font-display text-[length:var(--text-subheading-size)] font-semibold text-[var(--ink-strong)]"
+        >
+          {t('editor.selection.heading')}
+          {selection !== null && (
+            <span className={cn(FIELD_HINT_CLASS, 'font-sans font-normal tabular-nums')}>
               <span aria-hidden="true">
                 {t('editor.selection.chars', { chars: selection.text.length })}
               </span>
-              {/* Vorgelesen bleibt es der ganze Satz. Eine nackte Zahl waere
+              {/* Vorgelesen bleibt es der ganze Satz. Eine nackte Zahl wäre
                   als Ansage nicht zu verstehen. */}
               <span className="sr-only">
                 {t('editor.selection.summary', { chars: selection.text.length })}
               </span>
-            </p>
-            {showsShiftWarning && <RetainedNote retained={retained} />}
-          </>
-        )}
-      </div>
+            </span>
+          )}
+        </h2>
 
-      {actions}
-    </div>
+        {/* Dauerhafte Zustandsauskunft, deshalb `role="status"` und kein
+            `role="alert"`: Sie steht schon da, bevor der Nutzer etwas tut. */}
+        <div role="status" className="flex flex-col gap-2">
+          {selection === null && (
+            <p className={FIELD_HINT_CLASS}>
+              {fineSelection
+                ? t('editor.selection.none')
+                : allowWholeDocument
+                  ? t('editor.selection.touch')
+                  : t('editor.selection.touchParagraph')}
+            </p>
+          )}
+          {showsShiftWarning && <RetainedNote retained={retained} />}
+        </div>
+
+        {/* Untereinander und über die volle Breite: In einer Spalte von
+            16rem stünde eine Reihe aus drei Knöpfen ohnehin nicht
+            nebeneinander, und gleich breite Knöpfe untereinander lesen sich
+            als eine Folge von Möglichkeiten statt als drei Fundstücke. */}
+        <div className="flex flex-col gap-2">
+          {actions}
+          {allowWholeDocument && (
+            <Button
+              variant="secondary"
+              className="w-full"
+              onMouseDown={keepSelection}
+              onClick={onSelectWholeDocument}
+            >
+              {t('editor.selection.wholeDocument')}
+            </Button>
+          )}
+          {/* Der Absatzknopf erscheint mit einem genauen Zeigegerät immer —
+              und ohne eines nur dort, wo „Ganzes Dokument" fehlt. Beim
+              Anschreiben bleibt es damit bei der Zusage aus `docs/spec.md`
+              („Mit dem Finger ist nur das ganze Dokument wählbar"); der
+              Lebenslauf, der das ganze Dokument nicht anbietet, braucht
+              dagegen unterwegs einen Weg, und das Antippen eines Absatzes
+              ist er. */}
+          {showsParagraph && (
+            <Button
+              variant="secondary"
+              className="w-full"
+              onMouseDown={keepSelection}
+              onClick={() => onSelectParagraph(caretParagraph)}
+            >
+              {t('editor.selection.currentParagraph')}
+            </Button>
+          )}
+          {/* Abgesetzt: Rückgängig gehört zur Auswahl, ist aber die
+              Gegenbewegung zum Übernehmen und nicht Teil davon. */}
+          <Button
+            variant="ghost"
+            className="mt-1 w-full"
+            disabled={!canUndo}
+            onClick={onUndo}
+          >
+            {t('editor.undo')}
+          </Button>
+        </div>
+
+        {notice}
+        {status}
+
+        {/* Sicherungsstand und Anfragenzähler. Sie bleiben sichtbar, statt
+            unterhalb einer Fensterbreite zu verschwinden: Ohne sie fehlt dem
+            Nutzer die Bestätigung, dass sein Zwischenstand gesichert ist. */}
+        {footer !== undefined && (
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-t-2 border-[var(--line-soft)] pt-3">
+            {footer}
+          </div>
+        )}
+      </section>
+    </Card>
   )
 }
 
 /**
- * Der Vermerk auf festgehaltene Absaetze.
+ * Der Vermerk auf festgehaltene Absätze.
  *
- * In der Zeile steht nur, **dass** etwas stehen bleibt, damit die Leiste ihr
- * Mass behaelt. Welcher Absatz es ist, warum, und was man dagegen tun kann,
- * steht im Popover: Das ist die Auskunft, die vor stillem Datenverlust
- * schuetzt, und sie darf nicht verlorengehen, nur weil die Zeile kurz sein
- * soll.
+ * In der Karte steht nur, **dass** etwas stehen bleibt. Welcher Absatz es
+ * ist, warum, und was man dagegen tun kann, steht im Popover: Das ist die
+ * Auskunft, die vor stillem Datenverlust schützt, und sie darf nicht
+ * verlorengehen, nur weil die Karte kurz sein soll.
  */
 function RetainedNote({ retained }: { retained: EditorSelection['inspection']['retained'] }) {
   const { t } = useTranslation()
@@ -208,17 +241,16 @@ function RetainedNote({ retained }: { retained: EditorSelection['inspection']['r
       <PopoverTrigger asChild>
         <button
           type="button"
-          // In `--color-error`, nicht in `--color-warning`: Letzteres
-          // erreicht auf keiner hellen Flaeche 4,5:1 (siehe DESIGN.md). Als
-          // Konturfarbe am hervorgehobenen Absatz bleibt es zulaessig.
-          className="focus-ring shrink-0 truncate rounded-sm text-[length:var(--text-body-sm-size)] leading-[var(--text-body-sm-leading)] font-medium text-[var(--color-error)] underline decoration-dotted underline-offset-2"
+          // In `--error`, nicht in einer Warnfarbe: Sie muss als Fließtext
+          // 4,5:1 erreichen (siehe DESIGN.md, Kontrast).
+          className="focus-ring w-fit rounded-control text-left text-[length:var(--text-caption-size)] leading-[var(--text-caption-leading)] font-medium text-[var(--error)] underline decoration-dotted underline-offset-2"
           onMouseDown={(event) => event.preventDefault()}
         >
           {t('editor.retained.short', { count: retained.length })}
         </button>
       </PopoverTrigger>
       <PopoverContent align="start" className="flex flex-col gap-2">
-        <p className="text-[length:var(--text-body-sm-size)] leading-[var(--text-body-sm-leading)] font-medium text-[var(--color-error)]">
+        <p className="text-[length:var(--text-body-sm-size)] leading-[var(--text-body-sm-leading)] font-medium text-[var(--error)]">
           {t('editor.retained.heading')}
         </p>
         <ul className={FIELD_HINT_CLASS}>

@@ -17,21 +17,22 @@ describe('Input', () => {
 
     const field = screen.getByLabelText('Passwort')
     expect(field).toHaveAttribute('type', 'password')
-    // Dieselbe Höhe und Kontur wie der Auslöser der Auswahlliste — daran
-    // hängt, dass Feld und Auswahl nebeneinander als eine Bauform gelesen
-    // werden (siehe DESIGN.md).
-    expect(field.className).toContain('h-10')
-    expect(field.className).toContain('border-[var(--color-control-border)]')
+    // Dieselbe Polsterung und Kontur wie der Auslöser der Auswahlliste —
+    // daran hängt, dass Feld und Auswahl nebeneinander als eine Bauform
+    // gelesen werden (siehe DESIGN.md).
+    expect(field.className).toContain('py-3')
+    expect(field.className).toContain('border-[var(--line-soft)]')
+    expect(field.className).toContain('rounded-control')
   })
 
   it('lässt eine von außen übergebene Klasse gegen die Vorgabe gewinnen', () => {
-    // Der cn()-Vertrag aus 13a: tailwind-merge löst die Höhe auf, statt sie
-    // zu überlagern.
-    render(<Input aria-label="Kurz" className="h-8" />)
+    // Der cn()-Vertrag aus 13a: tailwind-merge löst die Polsterung auf,
+    // statt sie zu überlagern.
+    render(<Input aria-label="Kurz" className="py-1" />)
 
     const field = screen.getByLabelText('Kurz')
-    expect(field.className).toContain('h-8')
-    expect(field.className).not.toContain('h-10')
+    expect(field.className).toContain('py-1')
+    expect(field.className).not.toContain('py-3')
   })
 })
 
@@ -42,7 +43,7 @@ describe('Textarea', () => {
     const field = screen.getByLabelText('Anzeige')
     expect(field.tagName).toBe('TEXTAREA')
     expect(field).toHaveAttribute('rows', '4')
-    expect(field.className).toContain('min-h-32')
+    expect(field.className).toContain('min-h-[150px]')
     expect(field.className).toContain('resize-y')
   })
 

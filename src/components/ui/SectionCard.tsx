@@ -45,7 +45,9 @@ export function SectionCard({
         <Heading
           id={headingId}
           className={cn(
-            'font-semibold text-[var(--color-ink-strong)]',
+            // Überschriften werden erkannt, nicht gelesen — deshalb Fredoka
+            // (siehe DESIGN.md, Abschnitt Schrift).
+            'font-display font-semibold text-[var(--ink-strong)]',
             headingLevel === 2
               ? 'text-[length:var(--text-heading-size)] leading-[var(--text-heading-leading)]'
               : 'text-[length:var(--text-subheading-size)] leading-[var(--text-subheading-leading)]',

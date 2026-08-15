@@ -1,37 +1,92 @@
 @import 'tailwindcss';
 
 /*
- * Design-Token als CSS-Variablen — Quelle der Wahrheit ist DESIGN.md
- * (YAML-Kopfzeile). Bei Änderungen beide Dateien synchron halten.
+ * Tailwind sucht seine Klassen von sich aus im ganzen Baum, sofern nicht
+ * `.gitignore` es verbietet. Eingecheckt sind hier aber auch die Attrappen
+ * (`.scratch/mock/*.html`, reines HTML mit eigenen Klassennamen), die
+ * Skill-Beschreibungen unter `.claude/` und die Planungsunterlagen — in allen
+ * dreien stehen Zeichenfolgen, die wie Utility-Klassen aussehen. Tailwind
+ * erzeugt daraufhin Regeln, die keine Ansicht je benutzt.
  *
- * --font-sans und --radius-{sm,md,lg} liegen bewusst in @theme statt in
- * :root: Tailwind 4 nutzt exakt diese Variablennamen selbst als
- * Standard-Theme (siehe tailwindcss/theme.css). @theme ist der
- * dokumentierte Weg, sie zu überschreiben, damit Tailwinds eigene Klassen
- * (font-sans, rounded-sm/md/lg) automatisch unsere Werte verwenden, statt
- * sich nur zufällig durch die Layer-Reihenfolge durchzusetzen.
+ * Nachgemessen kostete das rund ein Viertel des ausgelieferten Stylesheets.
+ * `e2e/` und `docs/` stehen aus demselben Grund dabei; die Oberfläche liegt
+ * ausschließlich unter `src/` und `index.html`.
+ */
+@source not '../../.scratch';
+@source not '../../.claude';
+@source not '../../.agents';
+@source not '../../.codex';
+@source not '../../.github';
+@source not '../../docs';
+@source not '../../e2e';
+
+/*
+ * Design-Token als CSS-Variablen — Quelle der Wahrheit ist DESIGN.md
+ * (YAML-Kopfzeile). Bei Änderungen beide Dateien synchron halten;
+ * `src/styles/design.test.ts` wacht darüber.
+ *
+ * Die Werte stammen wörtlich aus den abgenommenen Attrappen in
+ * `.scratch/mock/` (v20 bis v23). Sie sind dort über mehrere Durchgänge auf
+ * Kontrast geprüft worden und werden hier übernommen, nicht neu bestimmt.
+ *
+ * **Was in @theme steht und was in :root.** Tailwind liest den Wert eines
+ * @theme-Tokens beim Erzeugen der Utility-Klasse aus und schreibt ihn direkt
+ * hinein — die dunkle Variante könnte ihn danach nicht mehr überstimmen.
+ * Farben, Schatten und alles Umschaltbare stehen deshalb in :root und werden
+ * als `var()` verbraucht. In @theme gehört nur, was Tailwind selbst so
+ * benennt und was keine dunkle Fassung braucht: Schriften, Radien,
+ * Beschleunigungskurven, `--default-transition-*` und die `--animate-*`.
+ * Nur dort kennt Tailwind eine eigene Utility dafür (`font-display`,
+ * `rounded-card`, `ease-bounce`).
  */
 @theme {
-  --font-sans: 'Inter Variable', sans-serif;
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
+  /* Zwei Familien, zwei Aufgaben. Fredoka (rund, spielzeughaft) für Marke,
+     Beschriftungen und Knöpfe — alles, was erkannt wird. Inter für alles,
+     was gelesen wird: Anzeigentext, Eingaben, Hinweise, Dateinamen.
+     `--font-sans` ist Tailwinds eigener Name für die Grundschrift und
+     deshalb der Ort für Inter; `font-body` bräuchte ein zweites Token mit
+     demselben Wert. */
+  --font-sans: 'Inter Variable', system-ui, sans-serif;
+  --font-display: 'Fredoka', system-ui, sans-serif;
+
+  /* Formen: Karte 34px · Kacheln 24px · Bedienelemente 16px · Knöpfe Pille
+     · Brief 8px. Der Brief ist das einzige Blatt mit 8px: Er zeigt ein
+     Word-Dokument, und ein Word-Dokument hat keine runden Ecken. */
+  --radius-card: 34px;
+  --radius-tile: 24px;
+  --radius-control: 16px;
+  --radius-sheet: 8px;
+  --radius-pill: 9999px;
+
+  /* Tailwinds eigene Stufen zeigen auf dieselben drei Formen, damit ein
+     vergessenes `rounded-md` nicht in die alte Welt zurückfällt. */
+  --radius-sm: var(--radius-control);
+  --radius-md: var(--radius-tile);
+  --radius-lg: var(--radius-card);
+
+  /* Die federnde Kurve der Attrappen. Sie trägt jede Bewegung, die einen
+     Druckpunkt oder ein Einrasten hat — Knopf, Schalter, Aufklapper. */
+  --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
 
   /* Bewegung. --default-transition-* und --animate-* sind nach derselben
      Regel wie oben Tailwind-eigene Variablennamen: Tailwind setzt sie in
-     jede transition-/animate-Utility ein. 120 ms und ease-out sind die
-     Vorgabe für jeden Zustandswechsel (Farbe, Umrandung, Verschiebung) —
-     spürbar, aber ohne Nachschwingen. */
-  --default-transition-duration: 120ms;
+     jede transition-/animate-Utility ein. 140 ms und ease-out sind die
+     Vorgabe für jeden Zustandswechsel von Farbe und Kontur — dieselbe
+     Dauer, die die Attrappen für `background-color` und `border-color`
+     führen. */
+  --default-transition-duration: 140ms;
   --default-transition-timing-function: cubic-bezier(0, 0, 0.2, 1);
 
   /* Ein- und Ausblenden von Überlagerungen. Kommen 180 ms herein und
-     120 ms wieder heraus — Erscheinen darf man wahrnehmen, Verschwinden
+     140 ms wieder heraus — Erscheinen darf man wahrnehmen, Verschwinden
      soll nicht warten lassen. */
   --animate-overlay-in: applai-overlay-in 180ms cubic-bezier(0, 0, 0.2, 1);
-  --animate-overlay-out: applai-overlay-out 120ms cubic-bezier(0, 0, 0.2, 1);
-  --animate-content-in: applai-content-in 180ms cubic-bezier(0, 0, 0.2, 1);
-  --animate-content-out: applai-content-out 120ms cubic-bezier(0, 0, 0.2, 1);
+  --animate-overlay-out: applai-overlay-out 140ms cubic-bezier(0, 0, 0.2, 1);
+  /* Der Inhalt einer Überlagerung kommt federnd herein, wie alles in dieser
+     Welt, das erscheint. Hinaus geht er glatt: Ein Nachschwingen beim
+     Schließen hielte auf. */
+  --animate-content-in: applai-content-in 180ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  --animate-content-out: applai-content-out 140ms cubic-bezier(0, 0, 0.2, 1);
 
   @keyframes applai-overlay-in {
     from {
@@ -54,7 +109,7 @@
   @keyframes applai-content-in {
     from {
       opacity: 0;
-      transform: scale(0.98);
+      transform: scale(0.96);
     }
     to {
       opacity: 1;
@@ -69,7 +124,7 @@
     }
     to {
       opacity: 0;
-      transform: scale(0.98);
+      transform: scale(0.96);
     }
   }
 
@@ -96,6 +151,131 @@
       opacity: 1;
     }
   }
+
+  /* Die Ladeanzeige der Ablegekachel: Das Blatt füllt sich einmal von unten
+     nach oben. Kein kreisender Zeiger, sondern dieselbe Form, die gleich
+     das Ergebnis trägt — und ein einmaliger, vollständiger Lauf statt eines
+     Pulsschlags, der mitten in der Bewegung abgeschnitten wird. */
+  --animate-fill: applai-fill 700ms cubic-bezier(0.33, 0, 0.2, 1) forwards;
+
+  @keyframes applai-fill {
+    from {
+      height: 0%;
+    }
+    to {
+      height: 100%;
+    }
+  }
+
+  /* Sobald alles beisammen ist, wippt der Weiter-Knopf einmal. */
+  --animate-pop: applai-pop 480ms cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  @keyframes applai-pop {
+    0% {
+      transform: scale(1);
+    }
+    45% {
+      transform: scale(1.07);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+
+  /* Eine abgewiesene Datei schüttelt ihre Kachel. */
+  --animate-shake: applai-shake 420ms ease-out;
+
+  @keyframes applai-shake {
+    0%,
+    100% {
+      transform: translateX(0);
+    }
+    20% {
+      transform: translateX(-8px);
+    }
+    40% {
+      transform: translateX(7px);
+    }
+    60% {
+      transform: translateX(-4px);
+    }
+    80% {
+      transform: translateX(3px);
+    }
+  }
+
+  /* Die Figur springt auf, sobald alles beisammen ist. */
+  --animate-aufspringen: applai-aufspringen 520ms cubic-bezier(0.16, 1, 0.3, 1);
+
+  @keyframes applai-aufspringen {
+    0% {
+      translate: -50% 16px;
+      scale: 0.84;
+    }
+    55% {
+      translate: -50% -9px;
+      scale: 1.05;
+    }
+    100% {
+      translate: -50% 0;
+      scale: 1;
+    }
+  }
+}
+
+/*
+ * Dunkel gilt auf zwei Wegen, und beide müssen wirken: die Systemeinstellung
+ * (solange keine ausdrückliche helle Wahl sie übersteuert) und die
+ * ausdrückliche Wahl in den Einstellungen. Tailwinds eingebaute
+ * `dark:`-Variante kennt nur den ersten. Sie wird deshalb hier ersetzt,
+ * damit jede Ansicht mit `dark:` beide Wege auf einmal bedient.
+ */
+@custom-variant dark {
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) & {
+      @slot;
+    }
+  }
+
+  :root[data-theme='dark'] & {
+    @slot;
+  }
+}
+
+/*
+ * Drei Stufen nach Fenster**höhe**. Tailwind kennt von Haus aus nur Breiten;
+ * die Einstiegsseite muss aber ausgefüllt ohne Rollen ins Fenster passen —
+ * mit Datei, Anzeige und ausgeklapptem Namensfeld —, und das ist eine Frage
+ * der Höhe.
+ *
+ * **Die Schwellen sind gemessen, nicht übernommen.** Die Attrappe führt
+ * 840/730/680; sie trägt aber fünf Blöcke nicht, die die Anwendung braucht —
+ * den Arbeitsumfang je Unterlage, den Hinweis unter der Anzeige, den
+ * Aufklapper „Warum kein Link", die Bewerbungsliste und die Fußzeile mit
+ * Datenschutz und Impressum. Zusammen sind das rund 160px, und die
+ * Schwellen wandern entsprechend nach oben: Jede Stufe beginnt dort, wo die
+ * Fassung **über** ihr nicht mehr ins Fenster passt (nachgemessen mit
+ * abgelegter Datei, Anzeigentext und ausgeklapptem Namensfeld).
+ *
+ * Sie stehen nach den Breitenvarianten und gewinnen deshalb gegen sie — genau
+ * die Reihenfolge, die die Attrappe über die Quelltextreihenfolge herstellt.
+ */
+@custom-variant short {
+  @media (max-height: 1000px) {
+    @slot;
+  }
+}
+
+@custom-variant shorter {
+  @media (max-height: 860px) {
+    @slot;
+  }
+}
+
+@custom-variant shortest {
+  @media (max-height: 760px) {
+    @slot;
+  }
 }
 
 @font-face {
@@ -110,40 +290,116 @@
     U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
+@font-face {
+  font-family: 'Fredoka';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400 700;
+  src: url('/fonts/fredoka-variable-latin.woff2') format('woff2-variations');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191,
+    U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* ---------------------------------------------------------------------------
+   Farbe — helle Voreinstellung
+
+   **Was hier die Formen trennt, ist die Kontur, nicht der Helligkeits-
+   unterschied.** Jede Fläche bekommt eine dicke Tintenlinie und darunter
+   eine harte Kante in derselben Tinte, wie bei einem Aufkleber. Genau das
+   hält Zeichentrick-Oberflächen zusammen.
+
+   Zwei Linienstärken, mehr nicht: Tinte (`--line`) für Karte und Knöpfe,
+   weiche Tinte (`--line-soft`) für Kacheln und Eingabefelder. Daran hängt
+   die ganze Hierarchie.
+
+   Farbe hat zwei Rollen, jede genau eine Farbe: Tangerine heißt „hier ist
+   etwas zu tun", Minze heißt „erledigt". Deshalb braucht die Oberfläche
+   keine Worte, um ihren Stand mitzuteilen.
+   --------------------------------------------------------------------------- */
 :root {
-  /* Farben — helle Grundfläche (Standard)
+  color-scheme: light;
 
-     Blaue Palette nach Vorgabe:
-       #03045E Tiefes Zwielicht · #0077B6 Kräftiges Blau · #00B4D8 Türkis
-       #90E0EF Milchglasblau · #CAF0F8 Helles Cyan
+  /* Der Raum ist ein liniertes DIN-A4-Blatt: papierweißer Grund, Zeilen im
+     klassischen Blassblau, links der rote Rand. Der Zeilenabstand ist der
+     von Lineatur 27, also 9mm, in CSS-Pixeln bei 96dpi rund 34px. Der Rand
+     steht bei 14% der Fensterbreite, damit er auf jedem Fenster an
+     derselben Stelle sitzt.
 
-     #90E0EF kommt im hellen Modus nicht vor: Es erreicht auf keiner hellen
-     Fläche 4,5:1 und wäre dort reine Zierde. Im dunklen Modus trägt es als
-     accent-light. */
-  --color-surface: #f4fafc;
-  --color-surface-alt: #e8f4fa;
-  --color-surface-raised: #ffffff;
-  --color-border: #d9e8f0;
-  --color-ink: #03045e;
-  --color-ink-strong: #010229;
-  --color-muted: #4d5680;
-  --color-accent: #0077b6;
-  --color-accent-light: #00b4d8;
-  --color-accent-dark: #005c86;
-  --color-accent-contrast: #ffffff;
-  /* Der Akzent **als Schrift**. Als Füllung trägt #0077b6 jede Fläche
-     (mindestens 4,6:1, WCAG 1.4.11 verlangt 3:1), als Fließtext verfehlt er
-     auf `surface-alt` (4,35), `surface-hover` (4,24) und `accent-soft`
-     (4,02) die 4,5:1. Wer den Akzent schreibt statt füllt, nimmt deshalb
-     dieses Token: mindestens 5,5:1 auf allen fünf hellen Flächen. */
-  --color-accent-text: #00628f;
-  --color-success: #0d6e52;
-  --color-error: #b3261e;
-  --color-warning: #8a5200;
-  --color-info: #0077b6;
+     Kein Farbverlauf: Papier ist flach. Die Tiefe kommt allein aus der
+     leichten Abdunklung zu den Rändern hin. */
+  --paper: #ffffff;
+  --rule-step: 34px;
+  --rule: #c3d8ea;
+  --margin: #aecbe5;
+  --room-edge: transparent;
+  /* Bleistiftgrau für die Kritzeleien am Rand. Bewusst schwach: Sie sind
+     Papierspur, kein Inhalt. Wer sie liest, statt sie zu bemerken, hat zu
+     viel Aufmerksamkeit daran verloren. */
+  --doodle: rgb(23 27 60 / 0.18);
+  --on-room: var(--ink-strong);
+  /* Der weiche Schatten unter der harten Kante. Er trägt die Ablösung, die
+     der Helligkeitsunterschied allein nicht schafft. */
+  --card-shadow: 0 16px 30px rgb(13 27 75 / 0.13);
+  --btn-shadow: 0 10px 18px rgb(13 27 75 / 0.14);
 
-  /* Radius ohne Tailwind-Pendant — sm/md/lg stehen in @theme oben */
-  --radius-pill: 9999px;
+  /* Die eine Kontur und die eine harte Kante. */
+  --line: #0d1b4b;
+  --line-soft: #3a4680;
+  --pop: #0d1b4b;
+  --pop-height: 6px;
+
+  /* Die Karte ist beige, nicht weiß. Das Blatt darunter ist das Papier und
+     bleibt hell; abheben soll sich das, was daraufliegt. 1,08:1 gegen den
+     Grund. Bei diesem Wert trägt nicht mehr die Helligkeit, sondern der
+     Farbton: warm gegen neutralweiß. Die Ablösung machen die Tintenkontur,
+     die harte Kante und der Schatten darunter. */
+  --card: #fbf6ec;
+  --ink: #16205c;
+  --ink-strong: #0d1b4b;
+  --muted: #4e5885;
+
+  --field: #ffffff;
+
+  --accent: #ff7a45;
+  --accent-line: #c9531f;
+  --accent-deep: #b8461a;
+  --accent-ink: #2b1004;
+  /* Der Akzent **als Schrift**. Nicht #c9531f wie die Konturfarbe daneben:
+     Als Fließtext erreicht der nur 4,43:1 auf dem Blatt, 4,11 auf der Karte
+     und 3,98 auf der Akzentwäsche und verfehlt damit 4,5:1 (WCAG 1.4.3) —
+     die Verweise im Kleingedruckten der Datenschutzseite stehen darin. Als
+     Kontur genügt #c9531f weiterhin, dort gilt 3:1; deshalb bleibt
+     --accent-line unverändert und nur der Schriftton wandert eine Stufe
+     tiefer, auf den Wert, den die Palette als --accent-deep ohnehin führt.
+     Damit 5,34 / 4,96 / 4,81. */
+  --accent-text: #b8461a;
+  --accent-wash: #fff0e8;
+
+  --done: #22c98f;
+  --done-line: #0f8f64;
+  --done-deep: #0f8f64;
+  --done-ink: #06301f;
+  --done-text: #0b7050;
+  --done-wash: #ddf7ec;
+
+  --error: #d6293e;
+  --error-deep: #a01d2e;
+  --error-ink: #ffffff;
+
+  /* Das Blatt der Arbeitsfläche. Es bleibt in beiden Themen weiß — es zeigt
+     die Word-Datei, und die sieht im Dunkelmodus nicht anders aus. Nur seine
+     Kontur und sein Schatten gehen mit dem Thema mit, weil sie zur
+     Oberfläche gehören und nicht zum Dokument. */
+  --page-line: #d5d9e8;
+  --page-shadow:
+    0 1px 2px rgb(13 27 75 / 0.07), 0 12px 28px rgb(13 27 75 / 0.13),
+    0 34px 68px rgb(13 27 75 / 0.1);
+
+  /* Abdunklung hinter einem Dialog. */
+  --overlay: rgb(10 14 45 / 0.5);
+
+  --focus: var(--accent-deep);
 
   /* Abstände */
   --space-xs: 0.5rem;
@@ -153,176 +409,213 @@
   --space-xl: 2rem;
   --space-xxl: 3rem;
 
-  /* Typografie — Schriftfamilie steht in @theme oben (--font-sans) */
-  --text-display-size: clamp(1.75rem, 3vw + 1rem, 2.75rem);
-  --text-display-weight: 600;
-  --text-display-leading: 1.2;
-  --text-display-tracking: -0.01em;
+  /* ---------------------------------------------------------------------
+     Typografie
 
-  --text-heading-size: 1.5rem;
+     Zwei Familien, klar getrennt: Was erkannt wird, steht in Fredoka
+     (Titel, Überschriften, Beschriftungen, Knöpfe), was gelesen wird, in
+     Inter (Fließtext, Eingaben, Hinweise). Die Familien selbst stehen in
+     @theme; hier stehen Größe, Schnitt, Zeilenhöhe und Laufweite.
+     --------------------------------------------------------------------- */
+  --text-display-size: clamp(1.75rem, 2.4vw + 1rem, 2.25rem);
+  --text-display-weight: 600;
+  --text-display-leading: 1.15;
+  --text-display-tracking: -0.02em;
+
+  --text-heading-size: 1.125rem;
   --text-heading-weight: 600;
   --text-heading-leading: 1.3;
   --text-heading-tracking: normal;
 
-  --text-subheading-size: 1.125rem;
-  --text-subheading-weight: 500;
-  --text-subheading-leading: 1.4;
+  --text-subheading-size: 1rem;
+  --text-subheading-weight: 600;
+  --text-subheading-leading: 1.3;
   --text-subheading-tracking: normal;
 
   /* Fließtext — großzügige Zeilenhöhe, damit sich das Anschreiben liest wie
      ein Dokument, nicht wie eine dichte Oberfläche. */
   --text-body-size: 1rem;
   --text-body-weight: 400;
-  --text-body-leading: 1.7;
+  --text-body-leading: 1.6;
   --text-body-tracking: normal;
 
   --text-body-sm-size: 0.875rem;
   --text-body-sm-weight: 400;
-  --text-body-sm-leading: 1.6;
+  --text-body-sm-leading: 1.5;
   --text-body-sm-tracking: normal;
 
-  --text-label-size: 0.75rem;
+  /* Hinweis- und Erklärzeilen unter einem Bedienelement. Eine Stufe unter
+     body-sm, weil sie neben ihm steht und nicht mit ihm konkurrieren soll. */
+  --text-caption-size: 0.8125rem;
+  --text-caption-weight: 400;
+  --text-caption-leading: 1.5;
+  --text-caption-tracking: normal;
+
+  /* Die Marke an einer Kachel („Optional"). Versalien, klein, Fredoka. */
+  --text-label-size: 0.6875rem;
   --text-label-weight: 600;
   --text-label-leading: 1.3;
-  --text-label-tracking: 0.06em;
-
-  /* ---------------------------------------------------------------------
-     Komponenten-Token (Aufgabe 13)
-
-     Abgeleitete Werte für die Primitive unter src/components/ui. Sie stehen
-     bewusst hier und nicht in @theme: Tailwind liest Farb- und
-     Schattenwerte beim Erzeugen der Utility-Klasse aus und setzt sie dort
-     ein (um shadow-<farbe> zu ermöglichen) — die dunkle Variante weiter
-     unten könnte sie danach nicht mehr überschreiben. Verbraucht werden
-     sie deshalb als bg-[var(--token)], shadow-[var(--token)] usw.
-     --------------------------------------------------------------------- */
-
-  /* Flächen */
-  /* Anfassbare Fläche unter dem Zeiger (Geisterknopf, Listeneintrag).
-     Fließtext in --color-muted gehört nie darauf — dort reicht der
-     Kontrast nicht mehr für 4,5:1, siehe DESIGN.md. */
-  --color-surface-hover: #e2f2f8;
-  /* Getönte Fläche für ausgewählte und hervorgehobene Einträge. */
-  --color-accent-soft: #caf0f8;
-  /* Kontur von Bedienelementen (Auswahl, Schalter, Regler, zweiter Knopf).
-     Deutlich kräftiger als --color-border, weil die Kontur hier das
-     Element überhaupt erst erkennbar macht und dafür 3:1 gegen jede
-     Fläche erreichen muss (WCAG 1.4.11). */
-  --color-control-border: #6f7d95;
-  /* Abdunklung hinter einem Dialog. */
-  --color-overlay: rgb(3 4 94 / 0.42);
-
-  /* Hinterlegung vorgemerkter Stellen im Brief (siehe ::highlight weiter
-     unten). Bewusst **kein** Blau: Der Akzent ist schon für „gerade
-     ausgewählt" vergeben, und die Auswahlfarbe des Browsers ist in den
-     meisten Fällen ebenfalls blau. Drei Blautöne übereinander wären nicht
-     mehr auseinanderzuhalten. Sand und ein blasses Grün lassen sich von
-     beidem unterscheiden und tragen --color-ink mit über 13:1. */
-  --color-mark: #ffe9a8;
-  --color-mark-done: #cdebd6;
-
-  /* Knöpfe. Die Zeigerfarbe des Hauptknopfes läuft im hellen Modus nach
-     unten (accent-dark) und im dunklen nach oben (accent-light) — deshalb
-     ein eigenes Token statt einer festen Ableitung. */
-  --btn-primary-bg-hover: var(--color-accent-dark);
-  --btn-danger-bg-hover: #8f1e17;
-  --btn-danger-fg: #ffffff;
-
-  /* Höhenstaffelung — drei Ebenen (siehe DESIGN.md), von denen zwei einen
-     Schatten brauchen: die flache Grundfläche kommt ohne aus, `raised`
-     hebt eine Karte heraus, `overlay` liegt unter Dialog, Popover,
-     Auswahlliste und Tooltip. Warm getönt statt reinem Schwarz, damit der
-     Schatten zur Papierfläche passt. In der dunklen Variante kommt eine
-     Lichtkante oben dazu: ein Schlagschatten auf dunklem Grund ist nicht
-     zu sehen, die Kante trägt die Höhe. */
-  --shadow-raised: 0 1px 2px rgb(3 4 94 / 0.06), 0 2px 8px rgb(3 4 94 / 0.06);
-  --shadow-overlay:
-    0 4px 12px rgb(3 4 94 / 0.08), 0 16px 32px rgb(3 4 94 / 0.14);
+  --text-label-tracking: 0.04em;
 
   /* Fokusring — eine Behandlung für alle Primitive, siehe @utility
-     focus-ring weiter unten. Die Farbe folgt --color-accent und braucht
-     deshalb keine eigene dunkle Entsprechung. */
-  --focus-ring-color: var(--color-accent);
-  --focus-ring-width: 2px;
-  --focus-ring-offset: 2px;
+     focus-ring weiter unten. Die Farbe folgt --focus und braucht deshalb
+     keine eigene dunkle Entsprechung. 3px statt 2px: In einer Welt aus
+     3px-Konturen wäre ein 2px-Ring die dünnste Linie auf dem Bildschirm. */
+  --focus-ring-color: var(--focus);
+  --focus-ring-width: 3px;
+  --focus-ring-offset: 3px;
+
+  /* -------------------------------------------------------------------
+     Brücken auf die vorige Benennung
+
+     Bis zur Übernahme der Attrappen hieß jede Farbe `--color-…`. Rund
+     fünfzig Dateien verbrauchen diese Namen — die Erststart-Zustände, die
+     Karten der Arbeitsfläche, die Onboarding-Ansichten. Sie erben die neue
+     Welt über diese Brücken, statt in einem Zug umgeschrieben zu werden;
+     das hielte weder der Umfang noch die Prüfbarkeit aus.
+
+     Es sind reine Durchreichungen: Sie folgen der dunklen Fassung ihres
+     Ziels von selbst und brauchen deshalb keinen eigenen Eintrag in den
+     Dunkelblöcken. Wer eine Datei ohnehin anfasst, ersetzt den alten Namen
+     durch den neuen; ist ein Name nirgends mehr in Gebrauch
+     (`grep -rn '--color-…' src/`), fällt seine Brücke weg.
+     ------------------------------------------------------------------- */
+  --color-surface: var(--paper);
+  --color-surface-alt: var(--field);
+  --color-surface-raised: var(--card);
+  --color-surface-hover: var(--accent-wash);
+  --color-border: var(--line-soft);
+  --color-control-border: var(--line-soft);
+  --color-ink: var(--ink);
+  --color-ink-strong: var(--ink-strong);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-light: var(--accent-line);
+  --color-accent-dark: var(--accent-deep);
+  --color-accent-contrast: var(--accent-ink);
+  --color-accent-text: var(--accent-text);
+  --color-accent-soft: var(--accent-wash);
+  --color-success: var(--done-text);
+  --color-error: var(--error);
+  --color-warning: var(--accent-text);
+  --color-info: var(--accent-text);
+  --color-overlay: var(--overlay);
+  --shadow-raised: 0 4px 0 var(--pop), var(--card-shadow);
+  --shadow-overlay: 0 10px 0 var(--pop), var(--card-shadow);
+  --btn-danger-fg: var(--error-ink);
+  --btn-danger-bg-hover: var(--error-deep);
+
+  /* Die Hinterlegung vorgemerkter Stellen liegt auf dem Blatt und ist
+     deshalb wie das Blatt in beiden Themen dieselbe (siehe --page-line). */
+  --color-mark: #ffe0cf;
+  --color-mark-done: #cdf0e2;
 }
 
 /* Dunkle Variante über die Systemeinstellung — greift nur, solange keine
    ausdrückliche Nutzerwahl ([data-theme="light"]) das übersteuert. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --color-surface: #050a24;
-    --color-surface-alt: #0b1436;
-    --color-surface-raised: #0d1738;
-    --color-border: #1d2a55;
-    --color-ink: #e6f3f8;
-    --color-ink-strong: #ffffff;
-    --color-muted: #9db0cf;
-    --color-accent: #00b4d8;
-    --color-accent-light: #90e0ef;
-    --color-accent-dark: #0077b6;
-    --color-accent-contrast: #03045e;
-    --color-accent-text: #00b4d8;
-    --color-success: #4ec99a;
-    --color-error: #ff8a7a;
-    --color-warning: #e0a256;
-    --color-info: #00b4d8;
+    color-scheme: dark;
 
-    /* Komponenten-Token, dunkle Entsprechung (siehe :root oben) */
-    --color-surface-hover: #142347;
-    --color-accent-soft: #0f2a4d;
-    --color-control-border: #7286a8;
-    --color-overlay: rgb(0 0 0 / 0.66);
-    --color-mark: #4a3d12;
-    --color-mark-done: #1d3d2c;
-    --btn-primary-bg-hover: var(--color-accent-light);
-    --btn-danger-bg-hover: #ffb0a3;
-    --btn-danger-fg: #2a0a06;
-    --shadow-raised:
-      inset 0 1px 0 rgb(255 255 255 / 0.05), 0 1px 2px rgb(0 0 0 / 0.32),
-      0 2px 8px rgb(0 0 0 / 0.28);
-    --shadow-overlay:
-      inset 0 1px 0 rgb(255 255 255 / 0.07), 0 4px 12px rgb(0 0 0 / 0.4),
-      0 16px 32px rgb(0 0 0 / 0.5);
+    --paper: #04061f;
+    --rule: rgb(255 255 255 / 0.075);
+    --margin: rgb(255 255 255 / 0.14);
+    --room-edge: rgb(0 0 0 / 0.45);
+    --doodle: rgb(255 255 255 / 0.085);
+    --on-room: var(--ink-strong);
+    --card-shadow: 0 16px 34px rgb(0 0 0 / 0.5);
+    --btn-shadow: 0 10px 20px rgb(0 0 0 / 0.45);
+
+    --line: #3b4794;
+    --line-soft: #5d66bd;
+    --pop: #2a3382;
+
+    --card: #1a2158;
+    --ink: #e7e9ff;
+    --ink-strong: #ffffff;
+    --muted: #9aa1d4;
+
+    --field: #0d1238;
+
+    --accent: #ff8f5e;
+    --accent-line: #ff8f5e;
+    --accent-deep: #b8461a;
+    --accent-ink: #2a0f05;
+    --accent-text: #ffa87e;
+    --accent-wash: #3a1f28;
+
+    --done: #2fd9a0;
+    --done-line: #2fd9a0;
+    --done-deep: #12996b;
+    --done-ink: #04281a;
+    --done-text: #46e0ae;
+    --done-wash: #0e3140;
+
+    --error: #ff8a7a;
+    --error-deep: #b8503f;
+    --error-ink: #2a0a06;
+
+    --page-line: #b9bfd4;
+    --page-shadow: 0 12px 32px rgb(0 0 0 / 0.55), 0 34px 76px rgb(0 0 0 / 0.45);
+
+    /* Der Schleier der Attrappe (`rgb(10 14 45 / 0.5)`) hellte das dunkle
+       Blatt auf, statt es abzudunkeln — dort war nie ein Dialog im
+       Dunkelmodus zu sehen. Reines Schwarz dunkelt in beide Richtungen. */
+    --overlay: rgb(0 0 0 / 0.6);
+
+    --focus: var(--accent-text);
   }
 }
 
 /* Dunkle Variante über eine ausdrückliche Nutzerwahl in den Einstellungen
    (übersteuert die Systemeinstellung in beide Richtungen, siehe oben). */
 :root[data-theme='dark'] {
-  --color-surface: #050a24;
-  --color-surface-alt: #0b1436;
-  --color-surface-raised: #0d1738;
-  --color-border: #1d2a55;
-  --color-ink: #e6f3f8;
-  --color-ink-strong: #ffffff;
-  --color-muted: #9db0cf;
-  --color-accent: #00b4d8;
-  --color-accent-light: #90e0ef;
-  --color-accent-dark: #0077b6;
-  --color-accent-contrast: #03045e;
-  --color-accent-text: #00b4d8;
-  --color-success: #4ec99a;
-  --color-error: #ff8a7a;
-  --color-warning: #e0a256;
-  --color-info: #00b4d8;
+  color-scheme: dark;
 
-  /* Komponenten-Token, dunkle Entsprechung (siehe :root oben) */
-  --color-surface-hover: #142347;
-  --color-accent-soft: #0f2a4d;
-  --color-control-border: #7286a8;
-  --color-overlay: rgb(0 0 0 / 0.66);
-  --color-mark: #4a3d12;
-  --color-mark-done: #1d3d2c;
-  --btn-primary-bg-hover: var(--color-accent-light);
-  --btn-danger-bg-hover: #ffb0a3;
-  --btn-danger-fg: #2a0a06;
-  --shadow-raised:
-    inset 0 1px 0 rgb(255 255 255 / 0.05), 0 1px 2px rgb(0 0 0 / 0.32),
-    0 2px 8px rgb(0 0 0 / 0.28);
-  --shadow-overlay:
-    inset 0 1px 0 rgb(255 255 255 / 0.07), 0 4px 12px rgb(0 0 0 / 0.4),
-    0 16px 32px rgb(0 0 0 / 0.5);
+  --paper: #04061f;
+  --rule: rgb(255 255 255 / 0.075);
+  --margin: rgb(255 255 255 / 0.14);
+  --room-edge: rgb(0 0 0 / 0.45);
+  --doodle: rgb(255 255 255 / 0.085);
+  --on-room: var(--ink-strong);
+  --card-shadow: 0 16px 34px rgb(0 0 0 / 0.5);
+  --btn-shadow: 0 10px 20px rgb(0 0 0 / 0.45);
+
+  --line: #3b4794;
+  --line-soft: #5d66bd;
+  --pop: #2a3382;
+
+  --card: #1a2158;
+  --ink: #e7e9ff;
+  --ink-strong: #ffffff;
+  --muted: #9aa1d4;
+
+  --field: #0d1238;
+
+  --accent: #ff8f5e;
+  --accent-line: #ff8f5e;
+  --accent-deep: #b8461a;
+  --accent-ink: #2a0f05;
+  --accent-text: #ffa87e;
+  --accent-wash: #3a1f28;
+
+  --done: #2fd9a0;
+  --done-line: #2fd9a0;
+  --done-deep: #12996b;
+  --done-ink: #04281a;
+  --done-text: #46e0ae;
+  --done-wash: #0e3140;
+
+  --error: #ff8a7a;
+  --error-deep: #b8503f;
+  --error-ink: #2a0a06;
+
+  --page-line: #b9bfd4;
+  --page-shadow: 0 12px 32px rgb(0 0 0 / 0.55), 0 34px 76px rgb(0 0 0 / 0.45);
+
+  --overlay: rgb(0 0 0 / 0.6);
+
+  --focus: var(--accent-text);
 }
 
 /* Hinterlegung vorgemerkter Stellen. `::highlight` färbt einen Bereich
@@ -331,13 +624,20 @@
    bleiben muss (ein <span> um ein Wort würde jede Bereichsrechnung
    verschieben). Wirksam sind dort nur color, background-color,
    text-decoration, text-shadow und -webkit-text-stroke; Polsterung, Rahmen
-   und Radius ignoriert der Browser. */
+   und Radius ignoriert der Browser.
+
+   Keine Linie darunter: Die vorgemerkte Stelle steht doppelt da — als
+   Hinterlegung auf dem Blatt und als Eintrag in der Karte „Auswahl"
+   daneben. Die Bedeutung hängt damit nicht an der Farbe allein, und der
+   Brief bleibt ein Brief statt eines angestrichenen Schulhefts. */
 ::highlight(applai-mark) {
   background-color: var(--color-mark);
 }
 
 ::highlight(applai-mark-done) {
   background-color: var(--color-mark-done);
+  text-decoration: underline solid #0f8f64 3px;
+  text-underline-offset: 2px;
 }
 
 /* Die Wellenlinie der Textprüfung — dieselbe Bauart wie in Word, und aus
@@ -350,11 +650,10 @@
    durchläuft: Bei einem Befund von zwei Zeichen bliebe von einer Linie, die
    um jedes g und j herumspringt, kaum etwas übrig.
 
-   Rot und nicht Gelb: `--color-warning` erreicht als Textfarbe nirgends
-   4,5:1 (DESIGN.md, „Kontrast"), und eine Linie unter dem Wort liest sich
-   wie eine Auszeichnung des Worts. */
+   Fester Rotwert und kein Token: Sie liegt auf dem Blatt, und das Blatt ist
+   in beiden Themen weiß. */
 ::highlight(applai-proofreading) {
-  text-decoration: underline wavy var(--color-error);
+  text-decoration: underline wavy #d6293e;
   text-decoration-skip-ink: none;
 }
 
@@ -363,8 +662,54 @@
    `box-shadow`: der Ring übernimmt den Radius des Elements von selbst und
    wird von überlaufenden Containern nicht beschnitten. Der Versatz legt ihn
    auf die dahinterliegende Fläche, sodass er auch auf einem gefüllten
-   Akzentknopf sichtbar bleibt (der Akzent erreicht gegen jede Fläche
-   mindestens 5,3:1). */
+   Akzentknopf sichtbar bleibt. */
+/* ---------------------------------------------------------------------------
+   Der Raum
+
+   Ein liniertes DIN-A4-Blatt aus drei Lagen, von hinten nach vorn gelesen:
+   die Zeilen, der rote Rand bei 14 % der Fensterbreite, die Abdunklung zu den
+   Rändern hin. Der Zeilenabstand ist der von Lineatur 27 (9 mm, bei 96 dpi
+   rund 34 px) und steht als `--rule-step`.
+
+   Kein Farbverlauf im Papier selbst: Papier ist flach. Die einzige Tiefe
+   kommt aus der Abdunklung (`--room-edge`), und die ist im Hellen
+   durchsichtig — dort braucht ein weißes Blatt keine Vignette.
+
+   Der Rand hängt an der Fensterbreite und nicht an der Inhaltsbreite: So
+   sitzt er auf jedem Fenster an derselben Stelle, wie bei einem echten
+   Blatt.
+   --------------------------------------------------------------------------- */
+@utility room-paper {
+  background-image:
+    radial-gradient(circle at center, transparent 58%, var(--room-edge) 100%),
+    linear-gradient(
+      90deg,
+      transparent 0 14%,
+      var(--margin) 14% calc(14% + 2px),
+      transparent calc(14% + 2px)
+    ),
+    linear-gradient(var(--rule) 1.5px, transparent 1.5px);
+  background-size:
+    100% 100%,
+    100% 100%,
+    100% var(--rule-step);
+}
+
+/* Die geladene Ablegekachel trägt ein liniertes Blatt als Textur. Sie sagt
+   „hier liegt etwas", ohne ein Wort dafür zu brauchen — eine Textur, kein
+   Sinnbild. Der Versatz von 30px setzt die erste Linie unter die
+   Beschriftung. */
+@utility tile-ruled {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 21px,
+    color-mix(in oklab, var(--done) 22%, transparent) 21px,
+    color-mix(in oklab, var(--done) 22%, transparent) 22px
+  );
+  background-position: 0 30px;
+}
+
 @utility focus-ring {
   &:focus-visible {
     outline: var(--focus-ring-width) solid var(--focus-ring-color);
@@ -385,24 +730,177 @@
   }
 }
 
-/* Grundregel: der Ring ist die Vorgabe, nicht die Ausnahme. Was der
-   Browser von sich aus fokussierbar macht, bekommt ihn auch ohne die
-   Utility-Klasse — sonst fällt jedes in 13b–15 vergessene Element auf den
-   Ring des Browsers zurück, und darauf weist kein Werkzeug hin (axe prüft
-   Fokusdarstellung nicht).
+/* Der Ring ist für die **Tastatur** da.
 
-   Zwei Einschränkungen machen die Regel ungefährlich:
+   Überall sonst regelt das `:focus-visible` von selbst: Ein angeklickter
+   Knopf erfüllt es nicht und bekommt keinen Ring. Bei **Textfeldern** macht
+   der Browser eine Ausnahme, und zwar mit Absicht — sie nehmen Tasten
+   entgegen, also gilt jeder Fokus darauf als tastaturtauglich. Wer in das
+   Anzeigenfeld klickt, bekäme deshalb denselben Ring wie jemand, der hintabt,
+   obwohl er genau weiß, wo er hingefahren ist.
 
-   - `:where()` setzt die Spezifität auf null, und der base-Layer läuft vor
-     den Utilities. Jede Klasse am Element gewinnt also weiterhin — auch
-     `focus-ring-inset` mit seinem negativen Versatz und `focus:outline-none`
-     am Dialog.
-   - `[tabindex="-1"]` ist ausgenommen. Genau das setzt Radix an die
-     Flächen, die es beim Öffnen selbst fokussiert (Dialog- und
-     Popover-Inhalt über FocusScope, Inhalt und Einträge der
-     Auswahlliste). Ein Ring um eine ganze offene Liste wäre irreführend —
-     den Fokus zeigen die Elemente darin. */
+   Die Eingabeart steht als `data-eingabe` am Wurzelelement; gesetzt wird sie
+   in `useInputModality`, und dort steht auch, warum nur die Tabulatortaste
+   zählt. **Ohne diese Auskunft bleibt der Ring**: Das ist der Zustand, in dem
+   er zu sehen ist, und der gehört bei einem Fokusring an den Anfang.
+
+   Der Fokus bleibt trotzdem sichtbar — die Kontur des Feldes wechselt auf
+   Tangerine. Als *alleinige* Auskunft wäre sie zu schwach (2,0:1 in der
+   Helligkeit gegen die weiche Tinte, ein Sprung nur im Farbton); deshalb
+   fällt der Ring hier und nicht überall.
+
+   **Ohne Layer.** Die Regel muss zwei Dinge schlagen: die Grundregel im
+   base-Layer, die jedem fokussierbaren Element den Ring gibt, und die Utility
+   `focus-ring` am Element selbst. Ungeschichtetes CSS gewinnt gegen jeden
+   Layer, also gegen beide. */
+:root[data-eingabe='zeiger'] :is(input, textarea):focus-visible {
+  outline: none;
+}
+
+/* ---------------------------------------------------------------------------
+   Der Stapel
+
+   Ein Vorschlag zur Zeit. Drei nebeneinander zwingen zum Vergleichen von drei
+   Sätzen, die sich in Nuancen unterscheiden — das ist mehr Arbeit als das
+   Umschreiben selbst. Die beiden anderen liegen versetzt darunter: Sie sind
+   Auskunft über die Menge, nicht zum Lesen da.
+
+   Geblättert wird über `data-pos` am Eintrag, nicht über neuen Inhalt in einer
+   Karte. So bleibt die Reihenfolge erhalten, und die Bewegung zeigt, woher der
+   nächste Vorschlag kommt.
+
+   Nur der vorderste Eintrag steht im Fluss; er bestimmt die Höhe des Stapels.
+   Die Polsterung unten lässt Platz für die Kanten der hinteren beiden.
+   --------------------------------------------------------------------------- */
+@utility deck {
+  /* Der Platz unter dem vordersten Vorschlag, in dem die Kanten der beiden
+     anderen liegen. */
+  --deck-tail: 34px;
+
+  position: relative;
+  padding-bottom: var(--deck-tail);
+
+  /* Die hinteren Karten stehen auf die Höhe der vordersten gespannt statt auf
+     ihre eigene: Ein kurzer Vorschlag hinter einem langen verschwände sonst
+     ganz, und aus dem Stapel würde eine einzelne Karte. */
+  & > li {
+    position: absolute;
+    inset: 0 0 var(--deck-tail);
+    transition:
+      translate 280ms var(--ease-bounce),
+      rotate 280ms var(--ease-bounce),
+      scale 280ms var(--ease-bounce),
+      opacity 200ms var(--default-transition-timing-function);
+  }
+
+  & > li[data-pos='0'] {
+    position: relative;
+    /* Zurück in den Fluss: Der vorderste Vorschlag gibt dem Stapel seine
+       Höhe, und ein `bottom` verschöbe ihn dabei nach oben. */
+    inset: auto;
+    z-index: 3;
+  }
+
+  & > li[data-pos='1'] {
+    z-index: 2;
+    translate: 0 15px;
+    rotate: 1.5deg;
+    scale: 0.96;
+    opacity: 0.6;
+  }
+
+  & > li[data-pos='2'] {
+    z-index: 1;
+    translate: 0 30px;
+    rotate: -1.8deg;
+    scale: 0.92;
+    opacity: 0.35;
+  }
+
+  /* Die hinteren Karten zeigen nur ihre Kante. Durchscheinender Text unter der
+     vorderen Karte sieht nach Fehler aus, nicht nach Stapel. `visibility`
+     statt `display`, damit sie ihre Höhe behalten — sonst bliebe von der
+     Kante ein Strich. */
+  & > li:not([data-pos='0']) > * {
+    visibility: hidden;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Die harte Kante
+
+   Kein `border-bottom`, sondern ein Schatten ohne Weichzeichnung, plus der
+   weiche Schatten dahinter. Nur als Schatten folgt die Kante dem Radius des
+   Elements, und nur so lässt sie sich beim Drücken auf null fahren, während
+   das Element um dieselbe Höhe nach unten wandert.
+
+   Drei Stellschrauben am Element:
+
+     --pop-height   Höhe der Kante (Knöpfe 6px, Nebenknöpfe 3–4px, Karten 8–10px)
+     --pop-color    Farbe der Kante, wenn sie von der Tinte abweicht
+     --pop-shadow   der weiche Schatten dahinter; ohne Angabe keiner
+
+   `pop` ist die ruhende Fassung für Flächen (Karte, Dialog, Popover).
+   --------------------------------------------------------------------------- */
+@utility pop {
+  box-shadow:
+    0 var(--pop-height, 8px) 0 var(--pop-color, var(--pop)),
+    var(--pop-shadow, 0 0 0 transparent);
+}
+
+/* `pop-press` ist dieselbe Kante mit dem Druckpunkt daran — die Vorlage für
+   jedes Bedienelement, das man anfasst.
+
+   Unter dem Zeiger hebt sich das Element um `--pop-lift` und die Kante wächst
+   um denselben Betrag: Es kommt einem entgegen, ohne seinen Fußpunkt zu
+   verlassen. Beim Drücken wandert es um die volle Kantenhöhe nach unten und
+   die Kante verschwindet — das ist der Druckpunkt, und er ist ein Zustand,
+   keine Animation.
+
+   Beide Zustände sind ausdrücklich gegen `:disabled` und Radix' `data-disabled`
+   abgesichert: Ein gesperrter Knopf, der sich unter dem Zeiger hebt,
+   verspricht etwas, das er nicht hält. */
+@utility pop-press {
+  box-shadow:
+    0 var(--pop-height, 4px) 0 var(--pop-color, var(--pop)),
+    var(--pop-shadow, 0 0 0 transparent);
+  transition:
+    translate 180ms var(--ease-bounce),
+    box-shadow 140ms var(--default-transition-timing-function),
+    background-color 140ms var(--default-transition-timing-function),
+    border-color 140ms var(--default-transition-timing-function),
+    color 140ms var(--default-transition-timing-function);
+
+  &:hover:not(:disabled, [data-disabled], [aria-disabled='true']) {
+    translate: 0 calc(var(--pop-lift, 2px) * -1);
+    box-shadow:
+      0 calc(var(--pop-height, 4px) + var(--pop-lift, 2px)) 0
+        var(--pop-color, var(--pop)),
+      var(--pop-shadow, 0 0 0 transparent);
+  }
+
+  &:active:not(:disabled, [data-disabled], [aria-disabled='true']) {
+    translate: 0 var(--pop-height, 4px);
+    box-shadow: 0 0 0 var(--pop-color, var(--pop));
+  }
+}
+
 @layer base {
+  /* Grundregel: der Ring ist die Vorgabe, nicht die Ausnahme. Was der
+     Browser von sich aus fokussierbar macht, bekommt ihn auch ohne die
+     Utility-Klasse — sonst fällt jedes vergessene Element auf den Ring des
+     Browsers zurück, und darauf weist kein Werkzeug hin (axe prüft
+     Fokusdarstellung nicht).
+
+     Zwei Einschränkungen machen die Regel ungefährlich:
+
+     - `:where()` setzt die Spezifität auf null, und der base-Layer läuft vor
+       den Utilities. Jede Klasse am Element gewinnt also weiterhin — auch
+       `focus-ring-inset` mit seinem negativen Versatz und
+       `focus:outline-none` am Dialog.
+     - `[tabindex="-1"]` ist ausgenommen. Genau das setzt Radix an die
+       Flächen, die es beim Öffnen selbst fokussiert. Ein Ring um eine ganze
+       offene Liste wäre irreführend — den Fokus zeigen die Elemente darin. */
   :where(
     a[href],
     button,
@@ -416,6 +914,45 @@
     outline: var(--focus-ring-width) solid var(--focus-ring-color);
     outline-offset: var(--focus-ring-offset);
   }
+
+  /* Der Aufklapper trägt sein Dreieck selbst; in dieser Welt sitzt an
+     seiner Stelle ein gezeichneter Pfeil. */
+  summary {
+    list-style: none;
+  }
+
+  summary::-webkit-details-marker {
+    display: none;
+  }
+
+  /* Auf dem Finger wartet der Browser nach jedem Tippen 300 ms darauf, ob
+     ein zweites folgt (Doppeltippen zum Zoomen). `manipulation` sagt ihm,
+     dass es das hier nicht gibt — der Druckpunkt kommt sofort statt nach
+     einer gefühlten Verzögerung. Der Zoom über zwei Finger bleibt. */
+  :where(
+    a[href],
+    button,
+    summary,
+    [role='button'],
+    [role='radio'],
+    [role='switch'],
+    label
+  ) {
+    touch-action: manipulation;
+  }
+
+  /* Die graue Kachel, die Android beim Antippen über jedes Element legt,
+     verdeckt genau die Farbe, mit der diese Oberfläche antwortet. Sie wird
+     nicht abgeschaltet, sondern durch die eigene Akzentwäsche ersetzt. */
+  html {
+    -webkit-tap-highlight-color: color-mix(in oklab, var(--accent) 22%, transparent);
+  }
+
+  /* Überschriften brechen ausgeglichen um, statt ein einzelnes Wort in die
+     letzte Zeile zu schicken. */
+  :where(h1, h2, h3) {
+    text-wrap: balance;
+  }
 }
 
 /* Wer reduzierte Bewegung eingestellt hat, bekommt dieselben Zustände ohne
@@ -427,10 +964,9 @@
    passt auf schmückende Bewegung, nicht auf Bewegung mit Aufgabe: ein
    Wartezeiger, der nach einer Umdrehung stehenbleibt (iteration-count 1)
    oder in 1 ms durchrast, meldet „abgestürzt" statt „läuft noch". Solche
-   Anzeigen — ab Aufgabe 14 die „Antwort wird erzeugt"-Anzeige — setzen das
-   Attribut und bleiben dann selbst dafür verantwortlich, im reduzierten
-   Modus ruhig zu sein: ein langsames Auf- und Abblenden, kein schnelles
-   Kreisen, nichts Blitzendes. */
+   Anzeigen setzen das Attribut und bleiben dann selbst dafür
+   verantwortlich, im reduzierten Modus ruhig zu sein: ein langsames Auf-
+   und Abblenden, kein schnelles Kreisen, nichts Blitzendes. */
 @media (prefers-reduced-motion: reduce) {
   *:not([data-motion-essential]),
   *:not([data-motion-essential])::before,
@@ -449,12 +985,13 @@
 }
 
 body {
-  background-color: var(--color-surface);
-  color: var(--color-ink);
+  background-color: var(--paper);
+  color: var(--ink);
   font-family: var(--font-sans);
   font-size: var(--text-body-size);
   font-weight: var(--text-body-weight);
   line-height: var(--text-body-leading);
+  -webkit-font-smoothing: antialiased;
 }
 
 /* ---------------------------------------------------------------------------
@@ -462,7 +999,7 @@ body {
 
    Ohne diese Regeln zeichnet das Betriebssystem sie: im hellen Thema ein
    fremdes Grau, im dunklen ein zu heller Balken, der die einzige Fläche der
-   Anwendung ist, die nicht mitschaltet. Sie werden deshalb aus `--color-muted`
+   Anwendung ist, die nicht mitschaltet. Sie werden deshalb aus `--muted`
    abgeleitet und gehen mit beiden Themen mit, ohne eigene Farbwerte zu
    brauchen.
 
@@ -477,7 +1014,7 @@ body {
    --------------------------------------------------------------------------- */
 * {
   scrollbar-width: thin;
-  scrollbar-color: color-mix(in oklab, var(--color-muted) 45%, transparent) transparent;
+  scrollbar-color: color-mix(in oklab, var(--muted) 45%, transparent) transparent;
 }
 
 @supports selector(::-webkit-scrollbar) {
@@ -497,13 +1034,13 @@ body {
   }
 
   ::-webkit-scrollbar-thumb {
-    background-color: color-mix(in oklab, var(--color-muted) 32%, transparent);
+    background-color: color-mix(in oklab, var(--muted) 32%, transparent);
     border: 3px solid transparent;
     border-radius: var(--radius-pill, 9999px);
     background-clip: content-box;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background-color: color-mix(in oklab, var(--color-muted) 62%, transparent);
+    background-color: color-mix(in oklab, var(--muted) 62%, transparent);
   }
 }

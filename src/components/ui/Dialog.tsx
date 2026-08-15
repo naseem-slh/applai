@@ -3,34 +3,19 @@ import { Dialog as DialogPrimitive } from 'radix-ui'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
 import { Button } from './Button'
+import { XIcon } from './icons'
 
 // Dialog — modale Überlagerung. Der Inhalt liegt im Portal, die Abdunklung
 // scrollt bei zu hohem Inhalt mit. Radix übernimmt Fokusfalle, Escape,
 // Klick daneben und aria-modal; hier kommt nur das Aussehen dazu.
+//
+// Die Attrappen kennen keine Tastaturbedienung — sie sind reines HTML. Genau
+// deshalb bleibt Radix: Das Aussehen kommt aus der Attrappe, das Verhalten
+// aus dem Primitiv.
 
 export const Dialog = DialogPrimitive.Root
 export const DialogTrigger = DialogPrimitive.Trigger
 export const DialogClose = DialogPrimitive.Close
-
-// Ein einziges Sinnbild statt eines Sinnbild-Pakets — G2 verbietet
-// Laufzeit-Ressourcen von fremden Hosts, und eine Bibliothek für drei
-// Glyphen wäre gegen G9.
-function CloseGlyph() {
-  return (
-    <svg
-      viewBox="0 0 16 16"
-      className="size-4"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      aria-hidden="true"
-      focusable="false"
-    >
-      <path d="M4 4l8 8M12 4l-8 8" />
-    </svg>
-  )
-}
 
 export interface DialogContentProps
   extends ComponentProps<typeof DialogPrimitive.Content> {
@@ -50,7 +35,10 @@ export function DialogContent({
     <DialogPrimitive.Portal>
       <DialogPrimitive.Overlay
         className={cn(
-          'fixed inset-0 z-50 overflow-y-auto bg-[var(--color-overlay)]',
+          // `overscroll-contain`: Ist der Dialog zu Ende gerollt, soll die
+          // Seite dahinter nicht weiterrollen — sonst steht man nach dem
+          // Schließen an einer anderen Stelle als vorher.
+          'fixed inset-0 z-50 overflow-y-auto overscroll-contain bg-[var(--overlay)]',
           'data-[state=open]:animate-overlay-in data-[state=closed]:animate-overlay-out',
         )}
       >
@@ -59,8 +47,14 @@ export function DialogContent({
         <div className="flex min-h-full items-center justify-center p-4">
           <DialogPrimitive.Content
             className={cn(
-              'relative w-full max-w-lg rounded-lg border border-[var(--color-border)]',
-              'bg-[var(--color-surface-raised)] p-6 shadow-[var(--shadow-overlay)]',
+              // Dieselbe Bauform wie eine Karte auf dem Blatt — dieselbe
+              // Tinte, derselbe Radius, dieselbe harte Kante. Eine
+              // Überlagerung ist in dieser Welt keine andere Materie,
+              // sondern dieselbe eine Ebene höher; getragen wird das von der
+              // Abdunklung darunter, nicht von einer eigenen Gestalt.
+              'pop relative w-full max-w-[460px] rounded-card border-[3px]',
+              'border-[var(--line)] bg-[var(--card)] p-6 text-[var(--ink)]',
+              '[--pop-height:10px] [--pop-shadow:var(--card-shadow)]',
               // Radix setzt den Fokus beim Öffnen auf diesen Kasten. Ein
               // Ring um den ganzen Dialog wäre irreführend — den Fokus
               // zeigen die bedienbaren Elemente darin.
@@ -74,11 +68,11 @@ export function DialogContent({
             <DialogPrimitive.Close asChild>
               <Button
                 variant="ghost"
-                size="icon"
+                size="iconSm"
                 className="absolute top-3 right-3"
                 aria-label={closeLabel ?? t('ui.dialog.close')}
               >
-                <CloseGlyph />
+                <XIcon />
               </Button>
             </DialogPrimitive.Close>
           </DialogPrimitive.Content>
@@ -97,8 +91,11 @@ export function DialogTitle({
   return (
     <DialogPrimitive.Title
       className={cn(
-        'pr-10 text-[length:var(--text-heading-size)] font-semibold',
-        'leading-[var(--text-heading-leading)] text-[var(--color-ink-strong)]',
+        // pr-12 hält die Zeile vom Schließknopf frei: Der ist 30 px breit
+        // und sitzt mit 12 px Abstand in der Ecke. Das Maß folgt seiner
+        // Größe, nicht der Abstandsskala.
+        'pr-12 font-display text-[length:var(--text-heading-size)] font-semibold',
+        'leading-[var(--text-heading-leading)] text-[var(--ink-strong)]',
         className,
       )}
       {...props}
@@ -112,7 +109,7 @@ export function DialogDescription({
 }: ComponentProps<typeof DialogPrimitive.Description>) {
   return (
     <DialogPrimitive.Description
-      className={cn('mt-2 text-[var(--color-muted)]', className)}
+      className={cn('mt-2 text-[var(--muted)]', className)}
       {...props}
     />
   )

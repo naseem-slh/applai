@@ -3,11 +3,10 @@
     "name": "Applai"
   },
   "nav": {
-    "start": "Vorbereiten",
-    "editor": "Unterlagen anpassen",
     "settings": "Einstellungen",
-    "label": "Hauptnavigation",
-    "privacy": "Datenschutz"
+    "privacy": "Datenschutz",
+    "back": "Zurück",
+    "home": "Zurück zur Einstiegsseite"
   },
   "routes": {
     "start": {
@@ -160,14 +159,9 @@
   "start": {
     "intro": "Legen Sie Ihr Anschreiben ab, fügen Sie die Stellenausschreibung ein, und gehen Sie weiter zur Arbeitsfläche. Alles bleibt in diesem Browser, bis Sie eine Textstelle umschreiben lassen.",
     "storageUnavailable": "Der Browser gibt seinen Speicher gerade nicht frei. Sie können weiterarbeiten, aber Applai merkt sich nichts davon: kein Zwischenstand, keine Einstellungen, keine Bewerbungsliste. Im privaten Modus ist das normal.",
-    "documents": {
-      "heading": "Unterlagen"
-    },
     "files": {
       "letter": "Anschreiben",
-      "letterDescription": "DOCX behält beim Export sein Layout.",
       "cv": "Lebenslauf",
-      "cvDescription": "Dient als Faktenbasis, wird nicht bearbeitet.",
       "choose": "Auswählen",
       "replace": "Ersetzen",
       "remove": "Entfernen",
@@ -180,7 +174,6 @@
         "passwordProtected": "Diese PDF-Datei ist passwortgeschützt. Bitte entfernen Sie den Schutz und wählen Sie sie erneut.",
         "unreadable": "Die Datei ließ sich nicht lesen. Möglicherweise ist sie beschädigt oder trotz ihrer Endung kein Word- oder PDF-Dokument."
       },
-      "formats": "DOCX oder PDF",
       "optional": "Optional"
     },
     "pdf": {
@@ -189,12 +182,9 @@
     },
     "scope": {
       "label": "Für diese Bewerbung anpassen",
-      "hint": "Nicht angehakt: Die Unterlage bleibt unverändert und dient nur als Beleg für das, was in der anderen steht.",
       "blocked": "Mehrspaltige PDF-Dateien lassen sich nicht anpassen. Als Beleg zählt der Text trotzdem."
     },
     "recent": {
-      "heading": "Zuletzt benutzt",
-      "body": "Aus diesem Browser liegt noch ein Zwischenstand vor. Sie können damit weiterarbeiten, statt die Datei erneut zu suchen. Zwischenstände werden nach sieben Tagen von selbst gelöscht.",
       "letter": "Anschreiben, gespeichert am {{date}}",
       "cv": "Lebenslauf, gespeichert am {{date}}",
       "use": "Weiterverwenden",
@@ -207,12 +197,10 @@
     },
     "jobAd": {
       "heading": "Stellenausschreibung",
-      "label": "Text der Anzeige",
-      "hint": "Je vollständiger, desto genauer die Anforderungsliste.",
-      "pdfLabel": "Aus PDF einlesen",
-      "pdfHint": "Ein Link ließe sich nur über einen Server abrufen, der die Seite für Sie holt. Applai hat bewusst keinen.",
+      "pdfLabel": "PDF",
       "reading": "PDF wird gelesen …",
-      "pdfWhy": "Warum kein Link zur Anzeige"
+      "pdfAria": "Stellenanzeige aus PDF einlesen",
+      "placeholder": "Anzeige hier einfügen"
     },
     "applications": {
       "heading": "Bewerbungsliste",
@@ -231,7 +219,7 @@
       "userName": "Ihr Name",
       "scope": "mindestens eine Unterlage zum Anpassen"
     },
-    "continue": "Weiter zur Arbeitsfläche"
+    "continue": "Weiter"
   },
   "editor": {
     "loading": "Das Anschreiben wird gelesen.",
@@ -270,8 +258,6 @@
     "zoom": {
       "label": "Maßstab",
       "value": "{{percent}} %",
-      "out": "Kleiner",
-      "in": "Größer",
       "reset": "{{percent}} %, auf 100 % zurücksetzen"
     },
     "switch": {
@@ -284,6 +270,7 @@
       "cv": "Die Lebenslauf-Anpassung ist neu. Bitte lesen Sie jede übernommene Formulierung durch, bevor Sie die Datei verwenden: besonders Zeiträume, Titel und Zahlen."
     },
     "selection": {
+      "heading": "Auswahl",
       "wholeDocument": "Ganzes Dokument",
       "currentParagraph": "Aktueller Absatz",
       "paragraphShort": "Absatz",
@@ -295,10 +282,7 @@
     },
     "marks": {
       "heading": "Vorgemerkte Stellen",
-      "count_one": "1 Stelle",
-      "count_other": "{{count}} Stellen",
       "none": "Markierte Textstellen stehen hier.",
-      "progress": "{{done}} von {{total}} erledigt",
       "entry": "{{number}}. „{{text}}“",
       "select": "Diese Stelle markieren",
       "done": "Erledigt",
@@ -312,7 +296,8 @@
         "body": "Diese Stellen stehen so nicht mehr im Brief.",
         "dismiss": "Verwerfen"
       },
-      "keep": "Für die nächste Bewerbung behalten"
+      "keep": "Für die nächste Bewerbung behalten",
+      "tally": "{{done}} / {{total}}"
     },
     "retained": {
       "heading": "Ihre Markierung reicht über festen Inhalt hinweg.",
@@ -335,11 +320,15 @@
     },
     "variants": {
       "trigger": "Umformulieren lassen",
-      "heading": "Drei Vorschläge",
+      "heading": "Vorschlag",
       "pending": "Antwort wird erzeugt",
       "cancel": "Abbrechen",
       "retry": "Erneut versuchen",
-      "option": "Vorschlag {{number}}",
+      "regenerate": "Neu erzeugen",
+      "close": "Schließen",
+      "previous": "Voriger Vorschlag",
+      "next": "Nächster Vorschlag",
+      "position": "Vorschlag {{number}} von {{count}}",
       "apply": "Übernehmen",
       "length": "{{chars}} Zeichen",
       "unbacked": {
@@ -553,11 +542,10 @@
       "reference": "Vormerkungen und Anforderungen"
     },
     "export": {
-      "heading": "Fertig? Dann hinaus damit",
-      "docx": "Word-Datei",
+      "heading": "Export",
+      "docx": "Word",
       "pdf": "PDF",
       "copy": "Text",
-      "pdfHint": "Das PDF wird neu gesetzt und kommt dem Original sehr nahe.",
       "working": "Die Word-Datei wird erzeugt.",
       "pdfWorking": "Das PDF wird erzeugt.",
       "docxDone": "Word-Datei erzeugt. Die Bewerbung steht in Ihrer Liste.",
@@ -566,9 +554,10 @@
       "pdfFailed": "Das PDF konnte nicht erzeugt werden.",
       "copyDone": "Der Text liegt in der Zwischenablage.",
       "copyFailed": "Der Text konnte nicht kopiert werden. Der Browser hat den Zugriff auf die Zwischenablage abgelehnt.",
-      "pdfTooltip": "Erzeugt eine PDF-Datei mit Schrift, Rändern und Briefkopf des Originals.",
+      "pdfTooltip": "Erzeugt eine PDF-Datei mit Schrift, Rändern und Briefkopf des Originals. Das PDF wird neu gesetzt und kommt dem Original sehr nahe.",
       "pdfBlockedTooltip": "Diese Unterlage enthält eine Tabelle. Der PDF-Satz kann Tabellen nicht setzen, das Ergebnis wäre ohne ihre Spalten. Die Word-Datei gibt das Original unverändert weiter.",
-      "copyTooltip": "Legt den Brief als reinen Text in die Zwischenablage."
+      "copyTooltip": "Legt den Brief als reinen Text in die Zwischenablage.",
+      "docxTooltip": "Reicht die Word-Datei unverändert weiter, mit allem, was daran hängt."
     }
   },
   "settings": {
@@ -660,6 +649,11 @@
       "showAll": "Alle Modelle anzeigen",
       "filtered": "Nur Modelle, die Text ausgeben. Beim kostenlosen Tarif ohne Pro-Modelle, die dort meist nicht enthalten sind.",
       "chainHint": "Ist eines erschöpft, übernimmt das nächste.",
+      "summary_one": "Ein Modell: {{model}}.",
+      "summary_other": "{{count}} Modelle, zuerst {{model}}.",
+      "manage": "Modelle verwalten",
+      "dialogTitle": "Modelle und Reihenfolge",
+      "done": "Fertig",
       "empty": "Keines gewählt. Applai nimmt die Voreinstellung des Anbieters.",
       "entry": "{{position}}. {{model}}",
       "add": "Hinzufügen",

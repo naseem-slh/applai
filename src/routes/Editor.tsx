@@ -11,6 +11,7 @@ import {
 } from '@/components/app/appContext'
 import { CvStyleProfilePanel } from '@/components/editor/CvStyleProfilePanel'
 import { DocumentColumn } from '@/components/editor/DocumentColumn'
+import { Wordmark } from '@/components/app/Wordmark'
 import { DocumentSwitch, type DocumentKind } from '@/components/editor/DocumentSwitch'
 import { ExportBar, type ExportDocument } from '@/components/editor/ExportBar'
 import { GapList } from '@/components/editor/GapList'
@@ -18,10 +19,19 @@ import { LanguagePrompt } from '@/components/editor/LanguagePrompt'
 import { LetterheadPanel } from '@/components/editor/LetterheadPanel'
 import { applyLetterhead, type LetterheadApplication } from '@/components/editor/letterheadApply'
 import { MarkPanel } from '@/components/editor/MarkPanel'
+import { SelectionLayer } from '@/components/editor/SelectionLayer'
+import { VariantPopover } from '@/components/editor/VariantPopover'
+import { DraftStatus } from '@/components/editor/DraftStatus'
+import { ApiUsageStatus } from '@/components/app/ApiUsageStatus'
 import { ProofreadingPanel } from '@/components/editor/ProofreadingPanel'
 import { StyleProfilePanel } from '@/components/editor/StyleProfilePanel'
+import { ZoomControl } from '@/components/editor/ZoomControl'
 import { TruthModeSwitch } from '@/components/editor/TruthModeSwitch'
-import type { EditorSelection } from '@/components/editor/documentSelection'
+import {
+  paragraphRange,
+  wholeDocumentRange,
+  type EditorSelection,
+} from '@/components/editor/documentSelection'
 import { findForeignCompanies } from '@/components/editor/foreignCompanies'
 import { ReapplyDialog } from '@/components/editor/ReapplyDialog'
 import { ReapplyStatus } from '@/components/editor/ReapplyStatus'
@@ -40,6 +50,7 @@ import { usePrecisePointer } from '@/components/editor/usePrecisePointer'
 import { useWideViewport } from '@/components/editor/useWideViewport'
 import { clampZoom } from '@/components/editor/zoom'
 import { Button } from '@/components/ui/Button'
+import { GearIcon } from '@/components/ui/icons'
 import { Card } from '@/components/ui/Card'
 import { FIELD_HINT_CLASS } from '@/components/ui/Field'
 import { providerFor, withSignal } from '@/lib/ai/provider'
@@ -807,10 +818,52 @@ function EditorWorkspace({ session }: { session: StartSession }) {
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      {/* Den Titel trägt der Schrittreiter in der Kopfzeile bereits sichtbar.
-          Hier bleibt er für Vorlesesoftware stehen, damit die Ansicht eine
-          Ebene-1-Überschrift behält, ohne sie zweimal zu zeigen. */}
+    <div className="flex flex-1 flex-col px-4 pt-[18px]">
+      {/* Links die Marke, rechts die Wahl der Unterlage und das Zahnrad.
+          Dazwischen nichts: Die Ablaufpunkte zählten Schritte, die sich von
+          selbst zählen. */}
+      <header className="flex w-full flex-wrap items-center justify-between gap-x-[18px] gap-y-3">
+        {/* 220px — hier ist die Marke Wegweiser neben der Arbeit, nicht der
+            Eingang wie auf der Einstiegsseite, und bleibt deshalb kleiner als
+            dort (280px).
+
+            `ml-4` rückt sie um einen Schritt aus der Flucht der Karten
+            darunter heraus: Der Bleistift schlägt nach links oben aus, und
+            bündig zur Kartenkante sähe die Marke aus, als hinge sie am Rand
+            des Fensters. */}
+        <Link
+          to="/"
+          aria-label={t('editor.backToStart')}
+          className="focus-ring ml-4 rounded-control"
+        >
+          <Wordmark className="[--breite:220px]" />
+        </Link>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <DocumentSwitch
+            available={available}
+            active={activeKind}
+            onChange={setActive}
+            // Der Lebenslauf ist neu und ausdrücklich als Beta
+            // gekennzeichnet — dieselbe Linie wie bei der PDF-Umwandlung
+            // (`docs/spec.md`). Fällt die Kennzeichnung weg, fällt hier ein
+            // Wort weg.
+            beta={BETA_DOCUMENTS}
+          />
+          {/* Ein Zahnrad ohne Wort. Genau deshalb trägt es ein übersetztes
+              `aria-label` — siehe DESIGN.md, Sinnbilder. */}
+          <Button asChild variant="secondary" size="icon" aria-label={t('nav.settings')}>
+            <Link to="/settings">
+              <GearIcon className="size-5" />
+            </Link>
+          </Button>
+        </div>
+      </header>
+
+      {/* Den Titel trägt die Kopfzeile über die Marke und den Brief bereits
+          sichtbar. Hier bleibt er für Vorlesesoftware stehen, damit die
+          Ansicht eine Ebene-1-Überschrift behält, ohne sie zweimal zu
+          zeigen. */}
       <h1 className="sr-only">{t('routes.editor.heading')}</h1>
 
       {/* Drei Spalten über die volle Fensterbreite: links, was die Anzeige
@@ -836,6 +889,20 @@ function EditorWorkspace({ session }: { session: StartSession }) {
           'grid min-h-0 flex-1 grid-cols-1',
           'lg:grid-cols-[minmax(0,1fr)_21rem] lg:grid-rows-[minmax(0,1fr)]',
           'xl:grid-cols-[19rem_minmax(0,1fr)_21rem]',
+          // Platz für den Kopf der Spähenden. Sie steht 134px über der
+          // Oberkante der Spalte (175px Breite × 538/640 × 0,9131); ohne
+          // diesen Versatz wäre ihre Mütze ab. Nachgemessen: Die Kopfzeile
+          // ist mit der 220px breiten Marke 98px hoch, 134 − 98 = 36, also
+          // 40px. Wächst die Marke, schrumpft dieser Wert — die Summe aus
+          // beidem bleibt, was die Figur über sich braucht.
+          //
+          // Die Bühne rückt dafür nach unten, mitsamt den Karten links und
+          // rechts — nicht die Kopfzeile: Die Figur schaut über das Blatt,
+          // nicht über die Marke.
+          //
+          // Erst ab 560px nötig. Darunter bricht die Kopfzeile auf zwei
+          // Zeilen um und schafft den Platz von allein.
+          'min-[560px]:mt-10',
         )}
       >
         {/* Beide Dokumente stehen im Aufbau, das ruhende auf `display: none`.
@@ -846,16 +913,6 @@ function EditorWorkspace({ session }: { session: StartSession }) {
             einen `display: none`-Teilbaum aus, eine zweite Auszeichnung
             braucht es dafür nicht. */}
         <div className="flex min-h-0 flex-col lg:col-start-1 lg:row-start-1 xl:col-start-2">
-          <DocumentSwitch
-            available={available}
-            active={activeKind}
-            onChange={setActive}
-            // Der Lebenslauf ist neu und ausdrücklich als Beta
-            // gekennzeichnet — dieselbe Linie wie bei der PDF-Umwandlung
-            // (`docs/spec.md`). Fällt die Kennzeichnung weg, fällt hier ein
-            // Wort weg.
-            beta={BETA_DOCUMENTS}
-          />
           {letter !== null && (
             <section
               aria-labelledby={`${headingId}-letter`}
@@ -866,24 +923,9 @@ function EditorWorkspace({ session }: { session: StartSession }) {
                 headingId={`${headingId}-letter`}
                 claimsHeadingId={`${claimsHeadingId}-letter`}
                 heading={t('editor.document.heading')}
-                fineSelection={precise}
-                rewrite={rewriteLetter}
-                rewriteReady={analysis.status === 'ready' && style !== null}
-                onUndo={undoAll}
                 zoom={zoom}
-                onZoomChange={setDraggedZoom}
-                onZoomCommit={commitZoom}
                 foreignParagraphs={foreign.paragraphs}
                 letterheadParagraphs={application?.changes.map((change) => change.paragraph) ?? []}
-                // Der Auswertungsstand gehört der **Bewerbung** und steht
-                // deshalb genau einmal da — beim sichtbaren Dokument. Zweimal
-                // im Aufbau wäre es dieselbe Meldung an zwei Stellen, und
-                // eine davon in einem verborgenen Teilbaum.
-                status={
-                  activeKind === 'letter' ? (
-                    <AnalysisStatus analysis={analysis} hasKey={apiKey !== null} />
-                  ) : undefined
-                }
               />
             </section>
           )}
@@ -897,29 +939,8 @@ function EditorWorkspace({ session }: { session: StartSession }) {
                 headingId={`${headingId}-cv`}
                 claimsHeadingId={`${claimsHeadingId}-cv`}
                 heading={t('editor.document.cvHeading')}
-                fineSelection={precise}
-                // Kein „Ganzes Dokument": Ein Lebenslauf am Stück
-                // umformuliert verliert seine Gliederung — Überschriften,
-                // Datumsspalten, Tabellenzellen. Gewählt wird absatzweise.
-                allowWholeDocument={false}
-                rewrite={rewriteCv}
-                rewriteReady={analysis.status === 'ready' && cvStyle !== null}
-                onUndo={undoAll}
                 zoom={zoom}
-                onZoomChange={setDraggedZoom}
-                onZoomCommit={commitZoom}
                 foreignParagraphs={cvForeign.paragraphs}
-                notice={
-                  <p className={FIELD_HINT_CLASS}>
-                    <strong className="font-semibold">{t('editor.beta.badge')}</strong>{' '}
-                    {t('editor.beta.cv')}
-                  </p>
-                }
-                status={
-                  activeKind === 'cv' ? (
-                    <AnalysisStatus analysis={analysis} hasKey={apiKey !== null} />
-                  ) : undefined
-                }
               />
             </section>
           )}
@@ -928,8 +949,8 @@ function EditorWorkspace({ session }: { session: StartSession }) {
         {/* Sammelbehälter der beiden Spalten, siehe `xl:contents` oben. */}
         <div
           className={cn(
-            'flex min-h-0 flex-col border-[var(--color-border)]',
-            'lg:col-start-2 lg:row-start-1 lg:overflow-y-auto lg:border-l',
+            'flex min-h-0 flex-col',
+            'lg:col-start-2 lg:row-start-1 lg:overflow-y-auto',
             'xl:contents',
           )}
         >
@@ -943,11 +964,74 @@ function EditorWorkspace({ session }: { session: StartSession }) {
             // war. Ein Bereich muss seine natürliche Höhe behalten; scrollen
             // soll die Spalte.
             className={cn(
-              'flex flex-col gap-3 border-t border-[var(--color-border)] p-4 lg:border-t-0',
-              'xl:col-start-1 xl:row-start-1 xl:min-h-0 xl:overflow-y-auto xl:border-r',
+              // **Keine Trennlinien zwischen den Spalten.** Auf dem linierten
+              // Blatt las sich eine durchgezogene Kontur als schwarzer Strich
+              // quer über das Papier — und sie hatte nichts zu trennen: Jede
+              // Karte bringt ihre eigene Tinte mit, und dazwischen liegt
+              // Blatt. Getrennt wird über den Zwischenraum.
+              'flex flex-col gap-3 p-4',
+              'xl:col-start-1 xl:row-start-1 xl:min-h-0 xl:overflow-y-auto',
               '[&>*]:shrink-0',
             )}
           >
+            {/* Die Auswahlkarte steht zuoberst: Sie trägt die eine
+                Handlung, um die sich diese Ansicht dreht. Sie zeigt immer
+                das **sichtbare** Dokument — welches das ist, entscheidet der
+                Umschalter in der Kopfzeile. */}
+            <SelectionLayer
+              selection={activeWorkspace.selection}
+              fineSelection={precise}
+              // Kein „Ganzes Dokument" beim Lebenslauf: Er ist eine
+              // Gliederung aus Überschriften, Datumsspalten und Einträgen,
+              // und eine Umformulierung am Stück macht daraus Fließtext.
+              // Dort wird absatzweise gewählt.
+              allowWholeDocument={activeKind !== 'cv'}
+              caretParagraph={activeWorkspace.caretParagraph}
+              onSelectWholeDocument={() => {
+                const docx = activeWorkspace.document
+                if (docx !== null) activeWorkspace.select(wholeDocumentRange(docx))
+              }}
+              onSelectParagraph={(index) => {
+                const docx = activeWorkspace.document
+                if (docx === null) return
+                const range = paragraphRange(docx, index)
+                if (range !== null) {
+                  activeWorkspace.select(range)
+                  activeWorkspace.markHandle.toggle(range)
+                }
+              }}
+              onUndo={undoAll}
+              canUndo={activeWorkspace.canUndo}
+              actions={
+                <VariantPopover
+                  selection={activeWorkspace.selection}
+                  rewrite={activeKind === 'cv' ? rewriteCv : rewriteLetter}
+                  ready={
+                    analysis.status === 'ready' &&
+                    (activeKind === 'cv' ? cvStyle !== null : style !== null)
+                  }
+                  onApply={activeWorkspace.applyVariant}
+                />
+              }
+              notice={
+                activeKind === 'cv' ? (
+                  <p className={FIELD_HINT_CLASS}>
+                    <strong className="font-semibold">{t('editor.beta.badge')}</strong>{' '}
+                    {t('editor.beta.cv')}
+                  </p>
+                ) : undefined
+              }
+              // Der Auswertungsstand gehört der **Bewerbung** und steht
+              // deshalb genau einmal da.
+              status={<AnalysisStatus analysis={analysis} hasKey={apiKey !== null} />}
+              footer={
+                <>
+                  <DraftStatus state={activeWorkspace.draft} />
+                  <ApiUsageStatus />
+                </>
+              }
+            />
+
             {/* Die Merkliste zeigt die Stellen des **sichtbaren** Dokuments.
                 Sie ist dokumentunabhängig gebaut; welche Stellen darin
                 stehen, entscheidet der Umschalter. */}
@@ -994,13 +1078,16 @@ function EditorWorkspace({ session }: { session: StartSession }) {
               // Merkliste nach unten, mit der man tatsächlich arbeitet.
               <GapList requirements={analysis.jobAd.requirements} gaps={gaps} defaultOpen={false} />
             )}
+
           </aside>
 
           <aside
             aria-label={t('editor.sidePanel.label')}
             className={cn(
-              'flex flex-col gap-3 border-t border-[var(--color-border)] p-4',
-              'xl:col-start-3 xl:row-start-1 xl:min-h-0 xl:overflow-y-auto xl:border-t-0 xl:border-l',
+              // Siehe die Spalte links: getrennt wird über den Zwischenraum,
+              // nicht über eine Linie.
+              'flex flex-col gap-3 p-4',
+              'xl:col-start-3 xl:row-start-1 xl:min-h-0 xl:overflow-y-auto',
               // Siehe die Spalte links: sonst quetschen sich die Bereiche
               // gegenseitig, statt dass die Spalte blättert.
               '[&>*]:shrink-0',
@@ -1013,12 +1100,13 @@ function EditorWorkspace({ session }: { session: StartSession }) {
                 Am Fuß lag beides unter drei aufklappbaren Bereichen und war
                 auf einem kleineren Fenster nur nach dem Blättern zu sehen. */}
             <div>
-              {/* Der Export gehört der **Bewerbung**: Er zeigt jede Unterlage
-                  im Arbeitsumfang, nicht nur die sichtbare. Wer beide
-                  angepasst hat, sieht hier, was noch fehlt, und muss zum
-                  Herunterladen nicht erst umschalten. */}
+              {/* Heruntergeladen wird, was oben gewählt ist: Derselbe
+                  Umschalter, der das Blatt wechselt, wechselt auch die
+                  Datei. Sechs Knöpfe für zwei Unterlagen waren vier zu
+                  viel. */}
               <ExportBar
                 documents={exportDocuments}
+                activeKind={activeKind}
                 company={jobAd?.company ?? null}
                 onExported={handleExported}
                 onNextPosting={() => setReapplyOpen(true)}
@@ -1032,6 +1120,21 @@ function EditorWorkspace({ session }: { session: StartSession }) {
               />
             </div>
 
+            {/* Der Maßstab steht unter der Ausgabe, nicht mehr schwebend über
+                dem Blatt. Über dem Blatt war er eine vierte Ebene, die nichts
+                verdeckte, aber auch nirgends dazugehörte; hier steht er bei
+                dem, was mit dem Blatt geschieht. */}
+            <ZoomControl zoom={zoom} onZoomChange={setDraggedZoom} onZoomCommit={commitZoom} />
+
+            {/* **Die Stellschrauben stehen unter der Ausgabe.** Sie
+                gehören zusammen: Was die Formulierung einstellt, wirkt sich
+                auf das aus, was am Ende herausgeht. Zugeklappt, weil es
+                nachgesehen und selten geändert wird — der Export darüber
+                bleibt damit der eine Knopf, den man in dieser Spalte sucht.
+
+                Die linke Spalte trägt dafür nur, was zur **Stelle** gehört:
+                die Auswahl, die vorgemerkten Stellen und die Anforderungen
+                aus der Anzeige. */}
             {/* Der Wahrheitsmodus stand bisher unter der Markierungsleiste.
                 Er gilt für die ganze Sitzung und nicht für diese eine
                 Markierung, gehört also zu den Stellschrauben. */}
@@ -1094,6 +1197,7 @@ function EditorWorkspace({ session }: { session: StartSession }) {
                 defaultOpen={false}
               />
             )}
+
           </aside>
         </div>
       </div>

@@ -3,8 +3,9 @@ import { Popover as PopoverPrimitive } from 'radix-ui'
 import { cn } from '@/lib/utils'
 
 // Popover — nicht-modale Überlagerung am Auslöser. Bewusst ohne Pfeil: die
-// Verankerung genügt, und ein Pfeil bekäme die 1-px-Kontur der Fläche nicht
-// sauber mit.
+// Verankerung genügt, und ein Pfeil bekäme weder die 3 px dicke Kontur der
+// Fläche noch die harte Kante darunter sauber mit — er wäre die einzige
+// Stelle der Oberfläche, an der die Tinte abreißt.
 
 export const Popover = PopoverPrimitive.Root
 export const PopoverTrigger = PopoverPrimitive.Trigger
@@ -23,9 +24,10 @@ export function PopoverContent({
         align={align}
         sideOffset={sideOffset}
         className={cn(
-          'z-50 w-72 rounded-lg border border-[var(--color-border)]',
-          'bg-[var(--color-surface-raised)] p-4 shadow-[var(--shadow-overlay)]',
-          'text-[var(--color-ink)]',
+          // Dieselbe Bauform wie eine Karte, eine Ebene höher — siehe Dialog.
+          'pop z-50 w-72 rounded-card border-[3px] border-[var(--line)]',
+          'bg-[var(--card)] p-4 text-[var(--ink)]',
+          '[--pop-height:10px] [--pop-shadow:var(--card-shadow)]',
           // Wie beim Dialog: der Fokus wandert in den Inhalt, ein Ring um
           // die ganze Fläche wäre irreführend.
           'focus:outline-none',

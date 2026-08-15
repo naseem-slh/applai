@@ -304,7 +304,7 @@ export function KeySetup({ keyVault, onSaved, className }: KeySetupProps) {
             href={PROVIDER_LINKS[provider].keys}
             target="_blank"
             rel="noopener noreferrer"
-            className="focus-ring mt-3 inline-block rounded-sm text-[length:var(--text-body-sm-size)] text-[var(--color-accent)] underline underline-offset-2 hover:decoration-2"
+            className="focus-ring mt-3 inline-block rounded-sm text-[length:var(--text-body-sm-size)] text-[var(--accent-text)] underline underline-offset-2 hover:decoration-2"
           >
             {t('onboarding.key.guideLink', { provider: providerLabel })}
           </a>

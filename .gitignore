@@ -57,3 +57,7 @@ playwright/.cache/
 # Claude-Code-Arbeitsbereiche und lokale Einstellungen
 .claude/worktrees/
 .claude/settings.local.json
+
+# Der Zwischenspeicher des Gestaltungsmelders. Seine Ausnahmen
+# (.impeccable/config.json) gehören ins Repository, seine Prüfsummen nicht.
+.impeccable/hook.cache.json

@@ -6,9 +6,15 @@ import { cn } from '@/lib/utils'
 // dunkle Darstellung). Kein Formularfeld mit Speichern-Knopf.
 //
 // Der Zustand hängt nie allein an der Farbe: der Knauf steht links oder
-// rechts, und Radix meldet role="switch" mit aria-checked. Aus 24 px Höhe,
-// 44 px Breite, 1 px Kontur und 2 px Innenabstand bleiben 18 px für den
-// Knauf und 20 px Weg — deshalb translate-x-5.
+// rechts, und Radix meldet role="switch" mit aria-checked. Minze heißt an —
+// dieselbe Farbe, die überall sonst „erledigt" sagt.
+//
+// **Die Maße stammen aus der Attrappe und rechnen sich auf.** 62 × 34 außen,
+// davon 3 px Kontur ringsum, macht 56 × 28 innen. Der Knauf ist 24 px groß
+// und sitzt mit 2 px Luft oben, unten und an seiner Seite; sein Weg ist
+// 56 − 24 − 2 − 2 = 28 px, deshalb `translate-x-7`. Ein Schalter lebt davon,
+// flacher zu sein als die Felder um ihn herum; auf Feldhöhe gebracht wäre er
+// als Schalter nicht mehr zu erkennen.
 export function Switch({
   className,
   ...props
@@ -16,24 +22,24 @@ export function Switch({
   return (
     <SwitchPrimitive.Root
       className={cn(
-        'focus-ring inline-flex h-6 w-11 shrink-0 items-center rounded-full',
-        'border p-0.5 transition-colors',
-        'data-[state=unchecked]:border-[var(--color-control-border)]',
-        'data-[state=unchecked]:bg-[var(--color-surface-alt)]',
-        'data-[state=checked]:border-[var(--color-accent)]',
-        'data-[state=checked]:bg-[var(--color-accent)]',
-        'disabled:pointer-events-none disabled:opacity-50',
+        'focus-ring relative inline-flex h-[34px] w-[62px] shrink-0 items-center',
+        'rounded-pill border-[3px] border-[var(--line)] p-0 transition-colors',
+        'data-[state=unchecked]:bg-[var(--field)]',
+        'data-[state=checked]:bg-[var(--done)]',
+        'disabled:cursor-not-allowed disabled:opacity-50',
         className,
       )}
       {...props}
     >
       <SwitchPrimitive.Thumb
         className={cn(
-          'pointer-events-none block size-4.5 rounded-full transition-transform',
+          'pointer-events-none absolute top-0.5 left-0.5 block size-6 rounded-pill',
+          'border-[3px] border-[var(--line)] bg-[var(--card)]',
+          // Federnd, nicht gleitend: Der Knauf rastet ein, wie alles in
+          // dieser Welt, das einen Anschlag hat.
+          'transition-transform duration-200 ease-bounce',
           'data-[state=unchecked]:translate-x-0',
-          'data-[state=unchecked]:bg-[var(--color-muted)]',
-          'data-[state=checked]:translate-x-5',
-          'data-[state=checked]:bg-[var(--color-accent-contrast)]',
+          'data-[state=checked]:translate-x-7',
         )}
       />
     </SwitchPrimitive.Root>

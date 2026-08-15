@@ -2,6 +2,7 @@ import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/Button'
 import { Switch } from '@/components/ui/Switch'
+import { CheckIcon, XIcon } from '@/components/ui/icons'
 import { FIELD_HINT_CLASS } from '@/components/ui/Field'
 import type { MarkAnchor } from '@/lib/storage/adapter'
 import { cn } from '@/lib/utils'
@@ -30,10 +31,12 @@ import type { MarksRestore } from './useMarks'
  * folgenden nach. Genau das ist gewollt: Der Nutzer sucht die dritte Stelle
  * von oben, nicht die Stelle mit der Kennung 3.
  *
- * **Die Farbe im Text trägt hier keine Bedeutung.** Welche Stellen
- * vorgemerkt und welche erledigt sind, steht in dieser Liste im Wort —
- * die Hinterlegung im Brief (`useMarkHighlight`) ist die zweite Spur, nicht
- * die einzige (DESIGN.md, „Kontrast").
+ * **Die Nummer trägt den Stand.** Tangerine heißt offen, Minze mit Haken
+ * heißt erledigt — dieselben zwei Farben, die überall in dieser Oberfläche
+ * dasselbe sagen. Ein Wort daneben wäre dieselbe Auskunft ein zweites Mal.
+ * Für den, der die Farben nicht unterscheidet, steht sie trotzdem im Text:
+ * Der Zähler in der Kopfzeile nennt „1 / 3", und der Haken ist eine Form,
+ * keine Färbung.
  */
 
 /** Wie viele Zeichen einer Stelle in der Liste stehen. */
@@ -81,7 +84,16 @@ export function MarkPanel({
   return (
     <SidePanel
       title={t('editor.marks.heading')}
-      badge={<span className={FIELD_HINT_CLASS}>{t('editor.marks.count', { count: marks.length })}</span>}
+      // „1 / 3" statt „3 Stellen": Zugeklappt bleibt der Zähler stehen, und
+      // was man im Vorbeigehen wissen will, ist nicht wie viele es sind,
+      // sondern wie viele noch offen sind.
+      badge={
+        marks.length === 0 ? null : (
+          <span className={cn(FIELD_HINT_CLASS, 'tabular-nums')}>
+            {t('editor.marks.tally', { done, total: marks.length })}
+          </span>
+        )
+      }
       defaultOpen={defaultOpen}
     >
       <div className="flex flex-col gap-4">
@@ -105,19 +117,16 @@ export function MarkPanel({
                 : t('editor.marks.restored', { restored: restore.restored, total: restore.total })}
             </p>
           )}
-          {marks.length === 0 ? (
-            <p className={FIELD_HINT_CLASS}>{t('editor.marks.none')}</p>
-          ) : (
-            <p className={cn(FIELD_HINT_CLASS, 'text-[var(--color-ink)]')}>
-              {t('editor.marks.progress', { done, total: marks.length })}
-            </p>
-          )}
+          {/* „0 von 2 erledigt" stand hier und sagte dasselbe wie der
+              Zähler „0 / 2" in der Kopfzeile daneben. Geblieben ist der
+              Leerzustand — der hat keinen Zähler, der für ihn spräche. */}
+          {marks.length === 0 && <p className={FIELD_HINT_CLASS}>{t('editor.marks.none')}</p>}
         </div>
 
         {marks.length > 0 && (
-          <ol className="flex flex-col gap-3">
+          <ol className="flex flex-col gap-2">
             {marks.map((mark, index) => (
-              <li key={mark.id} className="flex flex-col gap-1">
+              <li key={mark.id} className="flex items-stretch gap-2">
                 <button
                   type="button"
                   // `aria-current` statt einer bloßen Umrandung: Welche
@@ -126,27 +135,85 @@ export function MarkPanel({
                   aria-current={mark.id === activeId ? 'true' : undefined}
                   onClick={() => onSelect(mark)}
                   className={cn(
-                    'rounded-md px-2 py-1 text-left text-[length:var(--text-body-sm-size)] leading-[var(--text-body-sm-leading)]',
-                    'hover:bg-[var(--color-surface-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring-color)]',
-                    mark.done ? 'text-[var(--color-muted)] line-through' : 'text-[var(--color-ink)]',
-                    mark.id === activeId && 'bg-[var(--color-surface-hover)] font-medium',
+                    'focus-ring flex w-full items-start gap-2.5 rounded-control border-[3px] px-3 py-2',
+                    'text-left text-[length:var(--text-body-sm-size)] leading-[1.45] transition-colors',
+                    'bg-[var(--field)]',
+                    mark.id === activeId
+                      ? 'border-[var(--accent-line)] bg-[var(--accent-wash)]'
+                      : 'border-[var(--line-soft)] hover:border-[var(--accent-line)] hover:bg-[var(--accent-wash)]',
+                    mark.done ? 'text-[var(--muted)]' : 'text-[var(--ink)]',
                   )}
                 >
-                  {t('editor.marks.entry', { number: index + 1, text: preview(mark.current) })}
+                  {/* Die Nummer trägt den Stand: tangerine offen, Minze mit
+                      Haken erledigt. Sie zählt Positionen, keine Kennungen —
+                      kommt eine Stelle dazwischen hinzu, rücken die folgenden
+                      nach. */}
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      'mt-px grid size-[22px] shrink-0 place-items-center rounded-pill border-2',
+                      'border-[var(--line)] font-display font-semibold tabular-nums',
+                      'text-[length:var(--text-label-size)]',
+                      mark.done
+                        ? 'bg-[var(--done)] text-[var(--done-ink)]'
+                        : 'bg-[var(--accent)] text-[var(--accent-ink)]',
+                    )}
+                  >
+                    {mark.done ? <CheckIcon className="size-3" /> : index + 1}
+                  </span>
+                  {/* Sichtbar steht nur der Wortlaut: Die Nummer steht schon
+                      in der Marke daneben, und zweimal dieselbe Ziffer in
+                      einer Zeile liest sich als Fehler. Vorgelesen bleibt es
+                      der ganze Satz — die Marke ist für den Vorleser nicht
+                      da.
+
+                      Zwei Zeilen und nicht mehr: In einer 16rem breiten
+                      Spalte wären sechzig Zeichen vier Zeilen, und die Liste
+                      wäre nicht mehr zu überfliegen. Wer den vollen Wortlaut
+                      sucht, klickt die Stelle an und findet sie im Brief. */}
+                  <span className="min-w-0">
+                    <span className="sr-only">
+                      {t('editor.marks.entry', { number: index + 1, text: preview(mark.current) })}
+                    </span>
+                    <span aria-hidden="true" className="line-clamp-2">
+                      {preview(mark.current)}
+                    </span>
+                  </span>
                 </button>
-                <div className="flex flex-wrap gap-2 pl-2">
+
+                {/* **Nur an der Stelle, an der gerade gearbeitet wird.**
+                    Zwei Sinnbilder an jeder Zeile nahmen einer 16rem breiten
+                    Spalte siebzig Pixel, und der Wortlaut, um den es geht,
+                    blieb auf drei Wörter zusammengedrückt. An allen anderen
+                    Zeilen steht deshalb nur, was die Attrappe zeigt: die
+                    Nummer und der Text.
+
+                    Verloren geht dabei nichts: Eine Stelle wird angeklickt,
+                    bevor man etwas mit ihr vorhat — auch mit dem Finger, wo
+                    diese Liste der einzige Weg ist, eine Vormerkung wieder
+                    aufzuheben. */}
+                {mark.id === activeId && (
+                <span className="flex shrink-0 items-center gap-1">
                   <Button
                     variant="ghost"
-                    size="sm"
+                    size="iconSm"
                     aria-pressed={mark.done}
+                    aria-label={t('editor.marks.done')}
                     onClick={() => onToggleDone(mark.id, !mark.done)}
+                    className={cn(mark.done && 'text-[var(--done-text)]')}
                   >
-                    {t('editor.marks.done')}
+                    <CheckIcon />
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={() => onRemove(mark.id)}>
-                    {t('editor.marks.remove')}
+                  <Button
+                    variant="ghost"
+                    size="iconSm"
+                    aria-label={t('editor.marks.remove')}
+                    onClick={() => onRemove(mark.id)}
+                  >
+                    <XIcon />
                   </Button>
-                </div>
+                </span>
+                )}
               </li>
             ))}
           </ol>

@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
 import de from '@/lib/i18n/locales/de.json'
 import { PROVIDER_LINKS } from '@/components/onboarding/providerLinks'
@@ -8,9 +9,19 @@ import Privacy from './Privacy'
 
 const t = i18n.getFixedT(i18n.resolvedLanguage ?? 'de')
 
+/** Die Seite trägt jetzt ihre eigene Kopfzeile mit dem Zurück-Knopf und
+ *  braucht deshalb einen Router um sich herum. */
+function renderPrivacy() {
+  return render(
+    <MemoryRouter initialEntries={['/datenschutz']}>
+      <Privacy />
+    </MemoryRouter>,
+  )
+}
+
 describe('Privacy', () => {
   it('stellt den Kernsatz an den Anfang', () => {
-    render(<Privacy />)
+    renderPrivacy()
 
     expect(screen.getByText(t('privacy.lead'))).toBeInTheDocument()
   })
@@ -24,7 +35,7 @@ describe('Privacy', () => {
   })
 
   it('nennt alles, was der Browser ablegt', () => {
-    render(<Privacy />)
+    renderPrivacy()
 
     expect(screen.getByText(t('privacy.storage.key'))).toBeInTheDocument()
     expect(screen.getByText(t('privacy.storage.drafts'))).toBeInTheDocument()
@@ -33,14 +44,14 @@ describe('Privacy', () => {
   })
 
   it('sagt, dass persönliche Daten vor dem Senden ersetzt werden, und dass der freie Gemini-Tarif zum Training dient', () => {
-    render(<Privacy />)
+    renderPrivacy()
 
     expect(screen.getByText(t('privacy.provider.anonymize'))).toBeInTheDocument()
     expect(screen.getByText(t('privacy.provider.training'))).toBeInTheDocument()
   })
 
   it('verweist auf die Bestimmungen aller drei Anbieter, aus derselben Quelle wie die Einrichtung', () => {
-    render(<Privacy />)
+    renderPrivacy()
 
     for (const id of PROVIDER_IDS) {
       const link = screen.getByRole('link', { name: PROVIDER_LINKS[id].label })
@@ -52,7 +63,7 @@ describe('Privacy', () => {
   })
 
   it('führt ein Impressum mit sichtbarem Platzhalter, statt Angaben zu erfinden', () => {
-    render(<Privacy />)
+    renderPrivacy()
 
     expect(
       screen.getByRole('heading', { name: t('privacy.imprint.heading') }),
@@ -61,9 +72,43 @@ describe('Privacy', () => {
   })
 
   it('gliedert sich in Abschnitte mit Überschriften', () => {
-    render(<Privacy />)
+    renderPrivacy()
 
     expect(screen.getByRole('heading', { level: 1, name: t('privacy.heading') })).toBeInTheDocument()
     expect(screen.getAllByRole('heading', { level: 2 }).length).toBeGreaterThanOrEqual(6)
+  })
+
+  it('trägt eine eigene Kopfzeile mit Zurück-Knopf und Marke', () => {
+    renderPrivacy()
+
+    expect(screen.getByRole('link', { name: t('nav.back') })).toHaveAttribute('href', '/')
+    expect(screen.getByTestId('wordmark')).toBeInTheDocument()
+  })
+
+  it('stellt die zwei Figuren in den Raum, nicht in die Karten', () => {
+    // Als Kind einer Karte richtete sich eine Figur nach ihr aus und läse
+    // sich als deren Beigabe. Und sie sagt nichts, was der Text nicht auch
+    // sagt — für den Vorleser ist sie deshalb nicht da.
+    renderPrivacy()
+
+    const raum = screen.getByTestId('room-figures')
+    expect(raum).toHaveAttribute('aria-hidden', 'true')
+    for (const pose of ['schirm', 'inkognito']) {
+      const figur = raum.querySelector(`[data-figure="${pose}"]`)
+      expect(figur).not.toBeNull()
+      expect(figur).toHaveAttribute('alt', '')
+    }
+  })
+
+  it('lässt die Figuren weg, wo kein Platz für sie ist', () => {
+    // Gemessen, nicht geschätzt: 780px Spalte plus Figur braucht 1140px.
+    // Am Bildrand kleben wäre schlimmer als wegbleiben.
+    renderPrivacy()
+
+    for (const pose of ['schirm', 'inkognito']) {
+      const figur = screen.getByTestId('room-figures').querySelector(`[data-figure="${pose}"]`)
+      expect(figur?.className).toContain('hidden')
+      expect(figur?.className).toContain('min-[1140px]:block')
+    }
   })
 })

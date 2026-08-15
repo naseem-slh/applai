@@ -140,7 +140,7 @@ export function PaidKeyHints({ provider, className }: PaidKeyHintsProps) {
                   href={hint.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="focus-ring mt-2 inline-block rounded-sm text-[length:var(--text-body-sm-size)] text-[var(--color-accent)] underline underline-offset-2 hover:decoration-2"
+                  className="focus-ring mt-2 inline-block rounded-sm text-[length:var(--text-body-sm-size)] text-[var(--accent-text)] underline underline-offset-2 hover:decoration-2"
                 >
                   {t('onboarding.paidHints.docsLink', { topic: t(hint.titleKey) })}
                 </a>

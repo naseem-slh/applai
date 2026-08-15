@@ -33,13 +33,17 @@ describe('SectionCard', () => {
         <p>Inhalt</p>
       </SectionCard>,
     )
-    expect(screen.getByRole('region', { name: 'A' }).className).toContain('shadow-[var(--shadow-raised)]')
+    expect(screen.getByRole('region', { name: 'A' }).className).toContain(
+      '[--pop-height:10px]',
+    )
 
     rerender(
       <SectionCard headingId="a" heading="A" variant="default">
         <p>Inhalt</p>
       </SectionCard>,
     )
-    expect(screen.getByRole('region', { name: 'A' }).className).not.toContain('shadow-')
+    expect(screen.getByRole('region', { name: 'A' }).className).not.toContain(
+      '[--pop-height:10px]',
+    )
   })
 })

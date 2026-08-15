@@ -25,6 +25,8 @@ function setup(overrides: Partial<Parameters<typeof SelectionLayer>[0]> = {}) {
     caretParagraph: null,
     onSelectWholeDocument: vi.fn(),
     onSelectParagraph: vi.fn(),
+    onUndo: vi.fn(),
+    canUndo: false,
     ...overrides,
   }
   render(<SelectionLayer {...props} />)
@@ -98,9 +100,33 @@ describe('SelectionLayer', () => {
   // Handgriff fuer etwas, das der erste schon sagt — und er kostete in der
   // einen Zeile die Breite, die der Rest braucht.
   it('bietet keinen Knopf zum Aufheben der Markierung an', () => {
+    // Ein Klick in die vorgemerkte Stelle nimmt sie weg, eine
+    // überschneidende Markierung ersetzt sie. Ein eigener Knopf wäre ein
+    // zweiter Handgriff für etwas, das der erste schon gesagt hat.
+    //
+    // Was dastehen **darf**: „Ganzes Dokument" (setzt die Markierung) und
+    // „Rückgängig" (die Gegenbewegung zum Übernehmen). Mehr nicht.
     setup({ selection: selection() })
 
-    expect(screen.getAllByRole('button')).toHaveLength(1)
+    expect(screen.getAllByRole('button').map((knopf) => knopf.textContent)).toEqual([
+      t('editor.selection.wholeDocument'),
+      t('editor.undo'),
+    ])
+  })
+
+  it('setzt „Rückgängig" ab und sperrt es, solange es nichts zurückzunehmen gibt', () => {
+    const props = setup({ selection: selection(), canUndo: true })
+
+    const undo = screen.getByRole('button', { name: t('editor.undo') })
+    expect(undo).toBeEnabled()
+    undo.click()
+    expect(props.onUndo).toHaveBeenCalledTimes(1)
+  })
+
+  it('sperrt „Rückgängig" ohne Verlauf', () => {
+    setup({ selection: selection() })
+
+    expect(screen.getByRole('button', { name: t('editor.undo') })).toBeDisabled()
   })
 
   // Weitergabe aus Aufgabe 3: Der Nutzer erfährt es, bevor etwas verrutscht.

@@ -1,8 +1,8 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { DocxDocument, Paragraph } from '@/lib/docx/model'
 import i18n from '@/lib/i18n/i18n'
-import { ExportBar, type ExportDocument } from './ExportBar'
+import { ExportBar, type ExportDocument, type ExportDocumentKind } from './ExportBar'
 
 const t = i18n.getFixedT(i18n.resolvedLanguage ?? 'de')
 
@@ -62,6 +62,7 @@ function setup(
     onNextPosting?: () => void
     document?: DocxDocument
     documents?: readonly ExportDocument[]
+    activeKind?: ExportDocumentKind
   } = {},
 ) {
   const onExported = vi.fn()
@@ -76,6 +77,9 @@ function setup(
           },
         ]
       }
+      // Heruntergeladen wird, was oben gewählt ist. Ohne Angabe das
+      // Anschreiben — die Reihenfolge des Umschalters.
+      activeKind={options.activeKind ?? 'letter'}
       company={options.company === undefined ? 'Musterwerk' : options.company}
       onExported={onExported}
       onNextPosting={options.onNextPosting ?? (() => {})}
@@ -221,10 +225,15 @@ describe('ExportBar', () => {
     expect(onExported).not.toHaveBeenCalled()
   })
 
-  it('sagt, dass das PDF neu gesetzt wird', () => {
+  it('sagt im Fähnchen, dass das PDF neu gesetzt wird', async () => {
+    // Der Halbsatz stand als dauerhafte Zeile unter den Knöpfen. Er sagt
+    // etwas über **einen** der drei Wege und gehört deshalb an ihn.
     setup()
 
-    expect(screen.getByText(t('editor.export.pdfHint'))).toBeInTheDocument()
+    fireEvent.focus(screen.getByRole('button', { name: t('editor.export.pdf') }))
+
+    const fahne = await screen.findAllByText(t('editor.export.pdfTooltip'))
+    expect(fahne.length).toBeGreaterThan(0)
   })
 })
 
@@ -258,31 +267,33 @@ describe('ExportBar — zwei Unterlagen', () => {
     { kind: 'cv', document: fakeDocument(['Berufserfahrung', 'Entwickelt Software']), blocked: false },
   ]
 
-  it('bietet jede Unterlage einzeln an und benennt sie', () => {
-    setup({ documents: BOTH })
+  it('bietet genau die Unterlage an, die oben gewählt ist', () => {
+    // Sechs Knöpfe für zwei Unterlagen waren vier zu viel: Heruntergeladen
+    // wird, was der Umschalter zeigt.
+    setup({ documents: BOTH, activeKind: 'cv' })
 
-    expect(screen.getAllByRole('button', { name: t('editor.export.docx') })).toHaveLength(2)
-    expect(screen.getByText(t('editor.switch.letter'))).toBeInTheDocument()
-    expect(screen.getByText(t('editor.switch.cv'))).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: t('editor.export.docx') })).toHaveLength(1)
   })
 
-  it('sperrt nur die Unterlage, in der die unbestätigte Aussage steht', () => {
-    setup({
-      documents: [
-        { kind: 'letter', document: DOCX, blocked: false },
-        { kind: 'cv', document: DOCX, blocked: true },
-      ],
-    })
+  it('sperrt den Weg, wenn in der gewählten Unterlage eine unbestätigte Aussage steht', () => {
+    const gesperrt: readonly ExportDocument[] = [
+      { kind: 'letter', document: DOCX, blocked: false },
+      { kind: 'cv', document: DOCX, blocked: true },
+    ]
 
-    const [letter, cv] = screen.getAllByRole('button', { name: t('editor.export.docx') })
-    expect(letter).toBeEnabled()
-    expect(cv).toBeDisabled()
+    setup({ documents: gesperrt, activeKind: 'letter' })
+    expect(screen.getByRole('button', { name: t('editor.export.docx') })).toBeEnabled()
+
+    cleanup()
+
+    setup({ documents: gesperrt, activeKind: 'cv' })
+    expect(screen.getByRole('button', { name: t('editor.export.docx') })).toBeDisabled()
   })
 
   it('sagt beim Erzeugen, um welche Unterlage es geht', async () => {
-    setup({ documents: BOTH })
+    setup({ documents: BOTH, activeKind: 'cv' })
 
-    fireEvent.click(screen.getAllByRole('button', { name: t('editor.export.docx') })[1]!)
+    fireEvent.click(screen.getByRole('button', { name: t('editor.export.docx') }))
 
     await waitFor(() =>
       expect(

@@ -3,11 +3,10 @@
     "name": "Applai"
   },
   "nav": {
-    "start": "Prepare",
-    "editor": "Tailor documents",
     "settings": "Settings",
-    "label": "Main navigation",
-    "privacy": "Privacy"
+    "privacy": "Privacy",
+    "back": "Back",
+    "home": "Back to the start page"
   },
   "routes": {
     "start": {
@@ -160,14 +159,9 @@
   "start": {
     "intro": "Drop in your cover letter, paste the job ad, and move on to the workspace. Everything stays in this browser until you ask for a passage to be rewritten.",
     "storageUnavailable": "Your browser is not releasing its storage right now. You can keep working, but Applai will remember none of it: no draft, no settings, no application list. In private mode this is normal.",
-    "documents": {
-      "heading": "Your documents"
-    },
     "files": {
       "letter": "Cover letter",
-      "letterDescription": "DOCX keeps its layout on export.",
       "cv": "CV",
-      "cvDescription": "Used as a basis of facts, never edited.",
       "choose": "Choose",
       "replace": "Replace",
       "remove": "Remove",
@@ -180,7 +174,6 @@
         "passwordProtected": "This PDF file is password protected. Please remove the protection and choose it again.",
         "unreadable": "The file could not be read. It may be damaged, or it may not be a Word or PDF document despite its extension."
       },
-      "formats": "DOCX or PDF",
       "optional": "Optional"
     },
     "pdf": {
@@ -189,12 +182,9 @@
     },
     "scope": {
       "label": "Tailor for this application",
-      "hint": "Unchecked: the document stays untouched and only serves as evidence for what the other one may claim.",
       "blocked": "Multi-column PDFs cannot be tailored. The text still counts as evidence."
     },
     "recent": {
-      "heading": "Last used",
-      "body": "This browser still holds a draft. You can carry on with it instead of looking for the file again. Drafts are deleted automatically after seven days.",
       "letter": "Cover letter, saved on {{date}}",
       "cv": "CV, saved on {{date}}",
       "use": "Carry on with it",
@@ -207,12 +197,10 @@
     },
     "jobAd": {
       "heading": "Job ad",
-      "label": "Text of the ad",
-      "hint": "The more complete, the more precise the list of requirements.",
-      "pdfLabel": "Read from a PDF",
-      "pdfHint": "A link could only be fetched by a server that loads the page for you. Applai deliberately has none.",
+      "pdfLabel": "PDF",
       "reading": "Reading the PDF …",
-      "pdfWhy": "Why no link to the ad"
+      "pdfAria": "Read job posting from PDF",
+      "placeholder": "Paste the posting here"
     },
     "applications": {
       "heading": "Application list",
@@ -231,7 +219,7 @@
       "userName": "your name",
       "scope": "at least one document to tailor"
     },
-    "continue": "Continue to the workspace"
+    "continue": "Continue"
   },
   "editor": {
     "loading": "Reading the cover letter.",
@@ -262,7 +250,7 @@
         "spaceBeforePunctuation": "Space before punctuation",
         "missingSpaceAfterComma": "Missing space",
         "doubleSpace": "Double space",
-        "seidForSeit": "This probably means \u201eseit\u201c",
+        "seidForSeit": "This probably means „seit“",
         "hyphenAsDash": "Dash instead of hyphen",
         "straightQuote": "Straight quotation mark"
       }
@@ -270,8 +258,6 @@
     "zoom": {
       "label": "Zoom",
       "value": "{{percent}} %",
-      "out": "Zoom out",
-      "in": "Zoom in",
       "reset": "{{percent}} %, reset to 100 %"
     },
     "switch": {
@@ -284,6 +270,7 @@
       "cv": "Tailoring the CV is new. Please read every applied wording before you use the file: especially periods, titles and figures."
     },
     "selection": {
+      "heading": "Selection",
       "wholeDocument": "Whole document",
       "currentParagraph": "Current paragraph",
       "paragraphShort": "Paragraph",
@@ -295,10 +282,7 @@
     },
     "marks": {
       "heading": "Marked passages",
-      "count_one": "1 passage",
-      "count_other": "{{count}} passages",
       "none": "Passages you mark appear here.",
-      "progress": "{{done}} of {{total}} done",
       "entry": "{{number}}. “{{text}}”",
       "select": "Select this passage",
       "done": "Done",
@@ -312,7 +296,8 @@
         "body": "These passages are no longer in the letter.",
         "dismiss": "Discard"
       },
-      "keep": "Keep for the next application"
+      "keep": "Keep for the next application",
+      "tally": "{{done}} / {{total}}"
     },
     "retained": {
       "heading": "Your selection reaches across fixed content.",
@@ -335,11 +320,15 @@
     },
     "variants": {
       "trigger": "Suggest rewordings",
-      "heading": "Three suggestions",
+      "heading": "Suggestion",
       "pending": "Generating a response",
       "cancel": "Cancel",
       "retry": "Try again",
-      "option": "Suggestion {{number}}",
+      "regenerate": "Generate again",
+      "close": "Close",
+      "previous": "Previous suggestion",
+      "next": "Next suggestion",
+      "position": "Suggestion {{number}} of {{count}}",
       "apply": "Use this one",
       "length": "{{chars}} characters",
       "unbacked": {
@@ -553,11 +542,10 @@
       "reference": "Marked passages and requirements"
     },
     "export": {
-      "heading": "Done? Then send it on its way",
-      "docx": "Word file",
+      "heading": "Export",
+      "docx": "Word",
       "pdf": "PDF",
       "copy": "Text",
-      "pdfHint": "The PDF is typeset afresh and comes very close to the original.",
       "working": "Creating the Word file.",
       "pdfWorking": "Creating the PDF.",
       "docxDone": "Word file created. The application is now in your list.",
@@ -566,9 +554,10 @@
       "pdfFailed": "The PDF could not be created.",
       "copyDone": "The text is in your clipboard.",
       "copyFailed": "The text could not be copied. The browser denied access to the clipboard.",
-      "pdfTooltip": "Creates a PDF file with the original's typeface, margins and letterhead.",
+      "pdfTooltip": "Creates a PDF file with the original's typeface, margins and letterhead. The PDF is typeset afresh and comes very close to the original.",
       "pdfBlockedTooltip": "This document contains a table. The PDF typesetter cannot lay out tables, so the result would lose its columns. The Word file passes the original through unchanged.",
-      "copyTooltip": "Puts the letter into the clipboard as plain text."
+      "copyTooltip": "Puts the letter into the clipboard as plain text.",
+      "docxTooltip": "Hands over the Word file unchanged, with everything attached to it."
     }
   },
   "settings": {
@@ -660,6 +649,11 @@
       "showAll": "Show all models",
       "filtered": "Only models that output text. On the free tier without Pro models, which it usually does not include.",
       "chainHint": "When one runs out, the next takes over.",
+      "summary_one": "One model: {{model}}.",
+      "summary_other": "{{count}} models, {{model}} first.",
+      "manage": "Manage models",
+      "dialogTitle": "Models and order",
+      "done": "Done",
       "empty": "None chosen. Applai uses the provider's default.",
       "entry": "{{position}}. {{model}}",
       "add": "Add",

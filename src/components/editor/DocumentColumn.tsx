@@ -1,23 +1,20 @@
-import { useMemo, type ReactNode } from 'react'
-import { useTranslation } from 'react-i18next'
-import { ApiUsageStatus } from '@/components/app/ApiUsageStatus'
-import { Button } from '@/components/ui/Button'
+import { useMemo } from 'react'
+import { Figure } from '@/components/app/Figures'
 import { readDocumentFormat } from '@/lib/docx/format'
-import type { Variant } from '@/lib/domain/rewrite'
 import { ClaimGuard } from './ClaimGuard'
 import { DocumentView } from './DocumentView'
 import { ProofreadingMenu } from './ProofreadingMenu'
-import { ZoomControl } from './ZoomControl'
-import { DraftStatus } from './DraftStatus'
-import { SelectionLayer } from './SelectionLayer'
-import { VariantPopover } from './VariantPopover'
-import { paragraphRange, wholeDocumentRange, type EditorSelection } from './documentSelection'
 import type { DocumentWorkspace } from './useDocumentWorkspace'
 import { sheetSize } from './zoom'
 
 /**
- * Die mittlere Spalte: das Blatt, die Leiste darüber und die unbelegten
- * Aussagen darunter.
+ * Die mittlere Spalte: das Blatt und die unbelegten Aussagen darunter.
+ *
+ * **Sonst nichts.** Die Leiste, die hier bis zur Übernahme der Attrappen
+ * stand, ist zur Karte „Auswahl" in der linken Spalte geworden
+ * (`SelectionLayer`). Die Mittelspalte beginnt damit auf derselben Höhe wie
+ * die Karten links und rechts, und der Brief steht allein da — so, wie er
+ * beim Empfänger auch allein dasteht.
  *
  * **Dokumentunabhängig.** Sie zeigt, was ihr `workspace` hält — Anschreiben
  * oder Lebenslauf. Was die beiden unterscheidet, kommt als Eigenschaft
@@ -34,25 +31,8 @@ export interface DocumentColumnProps {
   claimsHeadingId: string
   /** Sichtbarer Name des Dokuments — nur für Vorlesesoftware. */
   heading: string
-  /** Liegt ein genaues Zeigegerät vor? Siehe `usePrecisePointer`. */
-  fineSelection: boolean
-  /** Darf das ganze Dokument auf einmal markiert werden? Beim Lebenslauf nicht. */
-  allowWholeDocument?: boolean
-  rewrite: (selection: EditorSelection, signal: AbortSignal) => Promise<Variant[]>
-  /** Sind Anzeige und Stilprofil ausgewertet? Sonst bleibt der Knopf gesperrt. */
-  rewriteReady: boolean
-  /** Rückgängig — die Schale komponiert es, weil sie den Briefkopfbericht mitnimmt. */
-  onUndo: () => void
   foreignParagraphs?: readonly number[]
   letterheadParagraphs?: readonly number[]
-  /**
-   * Ein dauerhafter Hinweis zu diesem Dokument, unter der Leiste — heute der
-   * Beta-Vermerk des Lebenslaufs. Kein `role="status"`: Er steht schon da,
-   * bevor der Nutzer etwas tut, und ist keine Meldung auf eine Handlung hin.
-   */
-  notice?: ReactNode
-  /** Der Zustand der Auswertungen, unter der Leiste. */
-  status?: ReactNode
   /**
    * Der Maßstab des Blattes in Prozent (25–100).
    *
@@ -60,10 +40,6 @@ export interface DocumentColumnProps {
    * Schale hält ihn und sichert ihn in den Einstellungen.
    */
   zoom: number
-  /** Während des Ziehens am Regler. */
-  onZoomChange: (zoom: number) => void
-  /** Beim Loslassen — erst dann wird gesichert. */
-  onZoomCommit: (zoom: number) => void
 }
 
 export function DocumentColumn({
@@ -71,20 +47,10 @@ export function DocumentColumn({
   headingId,
   claimsHeadingId,
   heading,
-  fineSelection,
-  allowWholeDocument = true,
-  rewrite,
-  rewriteReady,
-  onUndo,
   foreignParagraphs = [],
   letterheadParagraphs = [],
-  notice,
-  status,
   zoom,
-  onZoomChange,
-  onZoomCommit,
 }: DocumentColumnProps) {
-  const { t } = useTranslation()
   const docx = workspace.document
 
   /**
@@ -115,80 +81,6 @@ export function DocumentColumn({
         {heading}
       </h2>
 
-      {/* Die Leiste steht fest über dem Blatt, statt mitzublättern: Der
-          Bereich darunter blättert für sich, also braucht sie kein
-          `sticky` mehr. */}
-      <div className="flex flex-none flex-col gap-2 border-b border-[var(--color-border)] bg-[var(--color-surface-raised)] px-4 py-2.5 lg:px-6">
-        {/* **Eine Zeile (Variante A).** Vorher wuchs die Leiste beim
-            Markieren von 87 auf bis zu 237 px, weil Knoepfe und Zeilen je
-            nach Zustand kamen und gingen; der Brief darunter sprang bei
-            jeder Markierung. Jetzt wechselt der Inhalt seinen Zustand,
-            nicht sein Mass (siehe `SelectionLayer`).
-
-            **Warum der Umbruch trotzdem bleibt.** Gemessen im Browser:
-            Die Markierungsleiste braucht 630 px, die Mittelspalte hat bei
-            einem Fenster von 1280 px aber nur 592 px. In einer Zeile geht
-            das nicht auf, und beide Auswege waren schlechter als ein
-            Umbruch: Laesst man die linke Seite nachgeben (`flex-1` setzt
-            die Basis auf 0), wird sie auf 47 px zusammengedrueckt und ihre
-            Knoepfe schieben sich unter die rechte Gruppe, die dann Klicks
-            abfaengt. Blendet man die Auskuenfte aus, fehlt dem Nutzer die
-            Bestaetigung, dass sein Zwischenstand gesichert ist.
-
-            Also bricht die Reihe um, wenn der Platz nicht reicht: eine
-            Zeile ab etwa 1330 px Fensterbreite, darunter zwei. Das Mass
-            haengt dann an der Breite, nicht mehr am Zustand der
-            Markierung — und genau darum ging es. */}
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-          <div className="min-w-[16rem] flex-1">
-            <SelectionLayer
-              selection={workspace.selection}
-              fineSelection={fineSelection}
-              allowWholeDocument={allowWholeDocument}
-              caretParagraph={workspace.caretParagraph}
-              onSelectWholeDocument={() => workspace.select(wholeDocumentRange(docx))}
-              onSelectParagraph={(index) => {
-                const range = paragraphRange(docx, index)
-                if (range !== null) {
-                  workspace.select(range)
-                  workspace.markHandle.toggle(range)
-                }
-              }}
-              actions={
-                <VariantPopover
-                  selection={workspace.selection}
-                  rewrite={rewrite}
-                  ready={rewriteReady}
-                  onApply={workspace.applyVariant}
-                />
-              }
-            />
-          </div>
-          {/* „Rueckgaengig" ist eine Handlung und behaelt ihre Breite.
-              Sicherungsstand und Anfragenzaehler sind leise Auskuenfte und
-              geben als einzige nach, wenn die Spalte eng wird: Sie kuerzen
-              mit Auslassungspunkten, statt die Zeile umbrechen zu lassen.
-
-              **Warum sie nicht einfach verschwinden.** Der erste Versuch
-              blendete sie unterhalb von 48rem aus. Das nimmt dem Nutzer
-              die Bestaetigung, dass sein Zwischenstand gesichert ist —
-              `happy-path.spec.ts` hat genau das gemeldet. Gekuerzt bleibt
-              der Text im Baum, sichtbar und auffindbar. */}
-          <div className="flex shrink-0 items-center gap-3">
-            <Button variant="ghost" size="sm" disabled={!workspace.canUndo} onClick={onUndo}>
-              {t('editor.undo')}
-            </Button>
-            <span className="flex min-w-0 items-center gap-3 [&>p]:truncate">
-              <DraftStatus state={workspace.draft} />
-              <ApiUsageStatus />
-            </span>
-          </div>
-        </div>
-
-        {notice}
-        {status}
-      </div>
-
       {/* Der Bereich, der das Blatt trägt. Er blättert für sich; die
           Seite als Ganzes steht still.
 
@@ -205,6 +97,43 @@ export function DocumentColumn({
           blätternden Bereich, nicht darin, damit die Leiste beim Blättern
           stehenbleibt statt mit dem Brief nach oben zu wandern. */}
       <div className="relative flex min-h-0 flex-1 flex-col">
+        {/* Die Spähende über der Blattkante.
+            ------------------------------------------------------------------
+            Ihre Vorlage bringt eine eigene Mauer mit, einen Querstrich; der
+            ist beim Zuschnitt entfernt worden (siehe `assets.py`), damit die
+            **Oberkante des Blattes** die Mauer ist. Was unterhalb des Strichs
+            übrig blieb, sind die Finger — die liegen nun auf dem Papier.
+
+            **Alle drei Maße sind Anteile der Blattbreite, keine Pixel.** Die
+            Attrappe setzt sie mit 175px auf ein 1080px breites Blatt: 16,2 %
+            breit, 9 % vom rechten Rand. Als Anteil geschrieben geht sie am
+            Maßstabsregler mit — bei 40 % ist das Blatt kleiner und sie mit
+            ihm, statt als Riesin daneben zu stehen.
+
+            **Senkrecht sitzt sie über `bottom` und eine Verschiebung um sich
+            selbst.** Der Kasten hier ist null Pixel hoch und liegt genau auf
+            der Oberkante des Blattes; `bottom-0` stellt sie darauf.
+            `translate-y-[8.69%]` schiebt sie um denselben Anteil ihrer
+            **eigenen** Höhe wieder herunter, den ihre Mauer vom unteren Bildrand
+            entfernt ist (die Kante sitzt bei 91,31 % der Höhe). Eine Rechnung
+            in `top` ginge nicht: Ein Prozentwert löste sich dort gegen die
+            Höhe des Kastens auf, und die ist null.
+
+            Sie steht **neben** dem blätternden Bereich, nicht darin: Dort
+            schnitte seine Kante ihr den Kopf ab. Die 24px Verschiebung holen
+            die Polsterung nach, mit der der Bereich beginnt. */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 top-0 z-[3] px-4 print:hidden lg:px-8"
+        >
+          <div style={sheetSize(zoom)} className="relative mx-auto h-0 translate-y-6">
+            <Figure
+              pose="spaehenOben"
+              className="right-[9%] bottom-0 w-[16.2%] translate-y-[8.69%]"
+            />
+          </div>
+        </div>
+
         <div
           tabIndex={0}
           className="flex min-h-0 flex-1 flex-col items-center gap-5 px-4 py-6 lg:overflow-y-auto lg:px-8"
@@ -276,9 +205,8 @@ export function DocumentColumn({
                 // wurde. Eigene Farbe, kein Fehler.
                 letterheadParagraphs={letterheadParagraphs}
                 onParagraphInput={workspace.handleParagraphInput}
-                // `rounded-lg` statt der Vorgabe `rounded-md`: Der Fokusring
-                // folgt dem Radius seines Elements und soll dem Blatt folgen,
-                // nicht daneben liegen.
+                // `rounded-lg` statt der Vorgabe `rounded-md`: der Radius
+                // des Blattes.
                 className="rounded-lg"
                 // Damit die Fläche den Brief zeigt, wie er beim Empfänger
                 // ankommt: in seiner Schrift, mit seinen Einzügen, auf seinem
@@ -305,16 +233,6 @@ export function DocumentColumn({
           </div>
         </div>
 
-        {/* Unten rechts, wie in Word. Unterhalb von `lg` blättert nicht
-            dieser Bereich, sondern die Seite — dort steht die Leiste
-            deshalb im Fluss am Ende statt zu schweben, sonst klebte sie am
-            unteren Ende eines Blocks, den man erst herunterblättern muss. */}
-        <ZoomControl
-          zoom={zoom}
-          onZoomChange={onZoomChange}
-          onZoomCommit={onZoomCommit}
-          className="m-4 self-end lg:absolute lg:right-8 lg:bottom-4 lg:m-0"
-        />
       </div>
     </>
   )

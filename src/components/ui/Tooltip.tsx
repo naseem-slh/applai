@@ -58,8 +58,12 @@ export function Tooltip({
             align={align}
             sideOffset={sideOffset}
             className={cn(
-              'z-50 max-w-64 rounded-sm bg-[var(--color-ink)] px-2 py-1',
-              'text-sm text-[var(--color-surface)] shadow-[var(--shadow-overlay)]',
+              // Umgekehrte Fläche: Tinte auf Papier wird zu Papier auf
+              // Tinte. So ist auf einen Blick klar, dass der Hinweis
+              // flüchtig ist und kein Popover mit Inhalt — er ist das
+              // einzige Element der Oberfläche ohne Kontur.
+              'z-50 max-w-64 rounded-control bg-[var(--ink-strong)] px-3 py-1.5',
+              'text-[length:var(--text-caption-size)] text-[var(--paper)]',
               'data-[state=delayed-open]:animate-content-in',
               'data-[state=instant-open]:animate-content-in',
               'data-[state=closed]:animate-content-out',
@@ -70,7 +74,7 @@ export function Tooltip({
             <TooltipPrimitive.Arrow
               width={10}
               height={5}
-              className="fill-[var(--color-ink)]"
+              className="fill-[var(--ink-strong)]"
             />
           </TooltipPrimitive.Content>
         </TooltipPrimitive.Portal>

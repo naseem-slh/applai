@@ -6,9 +6,12 @@ import { cn } from '@/lib/utils'
  *
  * **Ein Schritt, zwei Dokumente.** Die Seitenspalten gehören der Bewerbung —
  * Anforderungen, Lückenliste, Wahrheitsmodus, Export — und bleiben stehen;
- * nur das Blatt in der Mitte wechselt. Deshalb steht der Umschalter über dem
- * Blatt und nicht in der Kopfzeile: Er sagt „ein anderes Dokument", nicht
- * „ein anderer Arbeitsschritt".
+ * nur das Blatt in der Mitte wechselt.
+ *
+ * Er steht in der Kopfzeile, rechts neben der Marke. Er gehört zur Anwendung
+ * und nicht zum Blatt: Er sagt, **woran** man arbeitet, und nicht, was man
+ * damit macht. Die Mittelspalte trägt dadurch nur noch die Seite, und die
+ * beginnt auf derselben Höhe wie die beiden Seitenspalten.
  *
  * **Er erscheint nur, wenn es etwas zu schalten gibt** — bei einer Bewerbung,
  * die nur den Lebenslauf verlangt, wäre eine Leiste mit einem einzigen
@@ -46,10 +49,17 @@ export function DocumentSwitch({ available, active, onChange, beta = [] }: Docum
   if (available.length < 2) return null
 
   return (
+    // Dieselbe Pille mit Abschnitten wie die Auswahlreihe (`ui/Choice`),
+    // aber mit voller Tinte und harter Kante statt weicher: Sie steht in der
+    // Kopfzeile auf dem Blatt und nicht in einer Karte, und dort trägt jedes
+    // Element die kräftige Kontur.
     <div
       role="radiogroup"
       aria-label={t('editor.switch.label')}
-      className="flex flex-none items-center gap-1 border-b border-[var(--color-border)] bg-[var(--color-surface-raised)] px-4 pt-2.5 lg:px-6"
+      className={cn(
+        'pop inline-flex flex-none items-center gap-[3px] rounded-pill',
+        'border-[3px] border-[var(--line)] bg-[var(--card)] p-[3px] [--pop-height:4px]',
+      )}
     >
       {available.map((kind) => {
         const selected = kind === active
@@ -61,19 +71,19 @@ export function DocumentSwitch({ available, active, onChange, beta = [] }: Docum
             aria-checked={selected}
             onClick={() => onChange(kind)}
             className={cn(
-              'focus-ring rounded-t-md border border-b-0 px-3 py-1.5',
-              'text-[length:var(--text-body-sm-size)] leading-[var(--text-body-sm-leading)]',
-              'transition-colors',
+              'focus-ring rounded-pill border-[3px] border-transparent px-4 pt-[7px] pb-[8px]',
+              'font-display text-[length:var(--text-body-sm-size)] font-semibold',
+              'whitespace-nowrap transition-colors',
               selected
-                ? 'border-[var(--color-border)] bg-[var(--color-surface)] font-semibold text-[var(--color-ink-strong)]'
-                : 'border-transparent text-[var(--color-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-ink)]',
+                ? 'border-[var(--line)] bg-[var(--accent)] text-[var(--accent-ink)]'
+                : 'text-[var(--muted)] hover:text-[var(--ink-strong)]',
             )}
           >
             {t(`editor.switch.${kind}`)}
             {beta.includes(kind) && (
               <span
                 aria-hidden="true"
-                className="ml-2 rounded-full border border-[var(--color-border)] bg-[var(--color-surface-alt)] px-1.5 py-0.5 text-[length:var(--text-label-size)] font-semibold tracking-[var(--text-label-tracking)] text-[var(--color-muted)] uppercase"
+                className="ml-2 rounded-pill border-2 border-[var(--line-soft)] bg-[var(--field)] px-1.5 py-0.5 text-[length:var(--text-label-size)] font-semibold tracking-[var(--text-label-tracking)] text-[var(--muted)] uppercase"
               >
                 {t('editor.beta.badge')}
               </span>

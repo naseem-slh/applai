@@ -1,5 +1,7 @@
 import { useId, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Figure, RoomFigures } from '@/components/app/Figures'
+import { PageHeader } from '@/components/app/PageHeader'
 import { useApp } from '@/components/app/appContext'
 import { KeySetup } from '@/components/onboarding/KeySetup'
 import { Button } from '@/components/ui/Button'
@@ -57,7 +59,7 @@ const TRUTH_MODES: readonly TruthMode[] = ['strict', 'bridge', 'free']
  */
 function SettingRow({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-[var(--color-border)] py-3 first:border-t-0">
+    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t-2 border-[var(--line-soft)] py-3 first:border-t-0">
       <span className={FIELD_LABEL_CLASS}>{label}</span>
       {children}
     </div>
@@ -176,22 +178,41 @@ export default function SettingsRoute() {
   const deleteComplete = deleteOutcome !== null && deleteOutcome.storage && deleteOutcome.vault
 
   return (
-    <div className="w-full px-5 py-8 sm:px-8">
-      {/* 1100 statt 672 px. Die Einstellungen sind eine Sammlung kurzer
+    <>
+      <RoomFigures>
+        {/* Je ein Bild zu dem, was auf der Karte daneben steht: Die Kette der
+            Modelle hält mehrere in der Luft, und wenn eines erschöpft ist,
+            übernimmt das nächste — das ist Jonglieren. Die Sicherung nimmt
+            einem die Sorge ab, dass etwas verloren geht — das ist der Ballon.
+
+            470px ist die halbe Reihenbreite; unter 1280px bleibt daneben kein
+            Platz mehr. Beide sind auf 66px Kopfbreite gerechnet, dieselbe
+            Größe wie auf der Datenschutzseite, und stehen ausdrücklich nicht
+            auf einer Linie. */}
+        <Figure
+          pose="jonglieren"
+          className="hidden top-[23vh] right-[calc(50%+498px)] w-[104px] rotate-[5deg] min-[1280px]:block"
+        />
+        <Figure
+          pose="luftballon"
+          className="hidden bottom-[7vh] left-[calc(50%+486px)] w-[121px] rotate-[-3deg] min-[1280px]:block"
+        />
+      </RoomFigures>
+
+      {/* 940 statt 672 px. Die Einstellungen sind eine Sammlung kurzer
           Schalter, keine Lesespalte: In der schmalen Rinne stand jede
           Auswahlliste allein in ihrer Zeile, und die Seite war dreieinhalb
           Bildschirme hoch. Zwei Spalten bringen sie auf einen. */}
-      <div className="mx-auto flex w-full max-w-[1100px] flex-col gap-6">
-        {/* Seitentitel in Überschrift-, nicht in Display-Größe: Die
-            Kopfzeile ist mit 58px bewusst niedrig, und ein Titel von 44px
-            darunter kippt das Verhältnis. Display bleibt dem einen Fall
-            vorbehalten, in dem eine Seite nur aus einer Aussage besteht. */}
-        <h1 className="text-[length:var(--text-heading-size)] leading-[var(--text-heading-leading)] font-semibold text-[var(--color-ink-strong)]">
+      <div className="flex w-full flex-col items-center gap-6 px-4 pt-6 pb-8">
+        <PageHeader backTo="/" backLabel={t('nav.back')} className="max-w-[940px]" />
+
+        <main className="flex w-full max-w-[940px] flex-col gap-6">
+        <h1 className="font-display text-[length:var(--text-display-size)] leading-[var(--text-display-leading)] font-semibold tracking-[var(--text-display-tracking)] text-[var(--ink-strong)]">
           {t('routes.settings.heading')}
         </h1>
 
         {(storageUnavailable || saveFailed) && (
-          <Card variant="subtle" padding="md" className="text-[var(--color-ink)]">
+          <Card variant="subtle" padding="md" className="text-[var(--ink)]">
             <p role="alert" className="text-[length:var(--text-body-sm-size)]">
               {storageUnavailable ? t('settings.storageUnavailable') : t('settings.saveFailed')}
             </p>
@@ -202,7 +223,11 @@ export default function SettingsRoute() {
             niedrigere wird mitgezogen; ihr Inhalt rückt dafür in die Mitte,
             damit die gewonnene Höhe wie Rand aussieht und nicht wie ein
             abgeschnittener Boden. */}
-        <div className="grid gap-6 lg:grid-cols-2">
+        {/* `[&>*]:min-w-0`: Ein Rasterfeld ist von Haus aus mindestens so
+            breit wie sein Inhalt und wächst sonst über seine Zelle hinaus —
+            auf einem 360px-Fenster schob die Auswahlreihe „Wie das System"
+            die ganze Karte 19px über den Rand. */}
+        <div className="grid gap-6 min-[860px]:grid-cols-2 [&>*]:min-w-0">
           <SectionCard
             headingId={`${prefix}-appearance`}
             heading={t('settings.appearance.heading')}
@@ -267,7 +292,7 @@ export default function SettingsRoute() {
                 <p className={cn('pb-3', FIELD_ERROR_CLASS)}>{t('settings.anonymize.off')}</p>
               )}
 
-              <div className="border-t border-[var(--color-border)] py-3">
+              <div className="border-t-2 border-[var(--line-soft)] py-3">
                 <span className={cn('mb-2 block', FIELD_LABEL_CLASS)}>
                   {t('settings.truthMode.label')}
                 </span>
@@ -299,7 +324,7 @@ export default function SettingsRoute() {
           >
             <div className="mt-3 flex flex-1 flex-col gap-3">
               <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-                <span className="font-semibold text-[var(--color-ink-strong)]">
+                <span className="font-display font-semibold text-[var(--ink-strong)]">
                   {providerFromVault === null
                     ? t('settings.key.noProvider')
                     : PROVIDERS[providerFromVault].label}
@@ -336,7 +361,7 @@ export default function SettingsRoute() {
               )}
 
               {providerFromVault !== null && (
-                <div className="border-t border-[var(--color-border)] pt-3">
+                <div className="border-t-2 border-[var(--line-soft)] pt-3">
                   <ModelPicker
                     fieldId={`${prefix}-model-field`}
                     provider={PROVIDERS[providerFromVault]}
@@ -397,7 +422,7 @@ export default function SettingsRoute() {
               {backupDone !== null && (
                 <p
                   role="status"
-                  className="text-[length:var(--text-body-sm-size)] text-[var(--color-success)]"
+                  className="text-[length:var(--text-caption-size)] font-medium text-[var(--done-text)]"
                 >
                   {t(`settings.backup.done.${backupDone}`)}
                 </p>
@@ -407,13 +432,15 @@ export default function SettingsRoute() {
         </div>
 
         {/* Die einzige unumkehrbare Handlung der Anwendung steht außerhalb
-            des Rasters, über die volle Breite und mit rot getöntem Rand.
-            Zwischen „Darstellung" und „Sprache" hat sie nichts verloren. */}
+            des Rasters, über die volle Breite und mit roter Kontur.
+            Zwischen „Darstellung" und „Sprache" hat sie nichts verloren.
+            Die Bauform bleibt die der übrigen Karten — nur die Farbe der
+            Kontur wechselt, und die trägt die Bedeutung nicht allein: Die
+            Überschrift benennt sie. */}
         <SectionCard
           headingId={`${prefix}-delete`}
           heading={t('settings.delete.heading')}
-          variant="default"
-          className="border-[color-mix(in_oklab,var(--color-error)_35%,var(--color-border))]"
+          variant="danger"
         >
           <div className="mt-3 flex flex-wrap items-start gap-x-6 gap-y-3">
             <div className="min-w-[16rem] flex-1">
@@ -474,7 +501,8 @@ export default function SettingsRoute() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        </main>
       </div>
-    </div>
+    </>
   )
 }

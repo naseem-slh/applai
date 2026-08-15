@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router-dom'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 import {
   createFakeStorage,
@@ -24,7 +25,12 @@ beforeAll(() => {
 
 function setup(options: HarnessOptions = {}) {
   const harness = createHarness(options)
-  const view = render(<Settings />, { wrapper: harness.wrapper })
+  const view = render(
+    <MemoryRouter initialEntries={['/settings']}>
+      <Settings />
+    </MemoryRouter>,
+    { wrapper: harness.wrapper },
+  )
   return { ...view, ...harness, user: userEvent.setup() }
 }
 
@@ -301,7 +307,12 @@ describe('Settings — Alle Daten löschen', () => {
     const harness = createHarness({ storage })
     harness.value.keyVault = { ...harness.value.keyVault, vault: null }
     const user = userEvent.setup()
-    render(<Settings />, { wrapper: harness.wrapper })
+    render(
+      <MemoryRouter initialEntries={['/settings']}>
+        <Settings />
+      </MemoryRouter>,
+      { wrapper: harness.wrapper },
+    )
 
     await confirmDelete(user)
 

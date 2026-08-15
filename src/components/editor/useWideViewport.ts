@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useMediaQuery } from '@/components/app/useMediaQuery'
 
 /**
  * Ist neben dem Blatt Platz für eine zweite Spalte?
@@ -26,21 +26,5 @@ import { useEffect, useState } from 'react'
 export const WIDE_VIEWPORT_QUERY = '(min-width: 64rem)'
 
 export function useWideViewport(): boolean {
-  const [wide, setWide] = useState(matchesWide)
-
-  useEffect(() => {
-    if (typeof window.matchMedia !== 'function') return
-    const query = window.matchMedia(WIDE_VIEWPORT_QUERY)
-    setWide(query.matches)
-    const handle = (event: MediaQueryListEvent) => setWide(event.matches)
-    query.addEventListener('change', handle)
-    return () => query.removeEventListener('change', handle)
-  }, [])
-
-  return wide
-}
-
-function matchesWide(): boolean {
-  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return true
-  return window.matchMedia(WIDE_VIEWPORT_QUERY).matches
+  return useMediaQuery(WIDE_VIEWPORT_QUERY)
 }

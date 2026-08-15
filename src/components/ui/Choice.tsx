@@ -20,6 +20,12 @@ import { cn } from '@/lib/utils'
  * **`type="single"` mit erzwungenem Wert.** Ohne `value !== ''`-Schranke
  * ließe Radix das erneute Drücken des aktiven Knopfes die Auswahl leeren.
  * Eine Darstellung „gar keine" gibt es aber nicht.
+ *
+ * **Eine Pille mit Abschnitten, nicht drei Knöpfe nebeneinander.** Die Reihe
+ * trägt außen die weiche Tinte eines Eingabefeldes — sie ist ein Feld, in
+ * dem etwas gewählt wird. Die getroffene Wahl bekommt die Akzentfläche
+ * **und** eine eigene Kontur in voller Tinte: Sie ist damit nicht nur an der
+ * Farbe zu erkennen, sondern auch an der Linie ringsum.
  */
 
 export interface ChoiceOption<T extends string> {
@@ -58,26 +64,30 @@ export function Choice<T extends string>({
         if (next !== '') onValueChange(next as T)
       }}
       className={cn(
-        'inline-flex overflow-hidden rounded-md border border-[var(--color-control-border)]',
+        'inline-flex max-w-full gap-[3px] rounded-pill border-[3px] border-[var(--line-soft)]',
+        'bg-[var(--field)] p-[3px]',
         block && 'flex w-full',
         className,
       )}
     >
-      {options.map((option, index) => (
+      {options.map((option) => (
         <ToggleGroupPrimitive.Item
           key={option.value}
           value={option.value}
           className={cn(
-            'focus-ring h-9 px-3 text-[length:var(--text-body-sm-size)] whitespace-nowrap',
-            'bg-[var(--color-surface-raised)] text-[var(--color-ink)]',
-            'hover:bg-[var(--color-surface-hover)]',
-            // Trennlinie zwischen den Feldern statt einer Kontur um jedes:
-            // Die Reihe ist ein Bedienelement, nicht drei nebeneinander.
-            index > 0 && 'border-l border-[var(--color-control-border)]',
-            // Der aktive Wert trägt die Akzentfläche. Weiß auf #0077B6
-            // erreicht 4,6:1 und damit AA für Fließtext (siehe design.css).
-            'data-[state=on]:bg-[var(--color-accent)] data-[state=on]:font-semibold',
-            'data-[state=on]:text-[var(--color-accent-contrast)]',
+            'focus-ring rounded-pill border-[3px] border-transparent px-[15px]',
+            'pt-[7px] pb-[8px] font-display text-[length:var(--text-body-sm-size)]',
+            // `min-w-0` statt `whitespace-nowrap`: Auf einem 360px breiten
+            // Fenster passen „Hell", „Dunkel" und „Wie das System"
+            // nebeneinander nicht in eine Zeile, und eine Reihe, die sich
+            // nicht kleinmachen kann, schiebt die ganze Karte über den
+            // Fensterrand. Lieber bricht eine lange Beschriftung um.
+            'min-w-0 font-semibold transition-colors',
+            'text-[var(--muted)] not-disabled:hover:text-[var(--ink-strong)]',
+            // Die getroffene Wahl: Akzentfläche **und** volle Tinte ringsum.
+            // `accent-ink` auf Tangerine erreicht 6,89:1 (siehe DESIGN.md).
+            'data-[state=on]:border-[var(--line)] data-[state=on]:bg-[var(--accent)]',
+            'data-[state=on]:text-[var(--accent-ink)]',
             'disabled:cursor-not-allowed disabled:opacity-60',
             block && 'flex-1',
           )}

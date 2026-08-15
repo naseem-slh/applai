@@ -78,7 +78,7 @@ test.describe('Lebenslauf anpassen', () => {
     }
 
     await page.getByLabel(t('start.name.label'), { exact: true }).fill('Marlene Ostwald')
-    await page.getByLabel(t('start.jobAd.label'), { exact: true }).fill(JOB_AD_TEXT)
+    await page.getByLabel(t('start.jobAd.heading'), { exact: true }).fill(JOB_AD_TEXT)
     await page.getByRole('button', { name: t('start.continue') }).click()
 
     await waitForAnalysis(page)
@@ -86,14 +86,16 @@ test.describe('Lebenslauf anpassen', () => {
     const umschalter = page.getByRole('radiogroup', { name: t('editor.switch.label') })
     await expect(umschalter).toBeVisible()
 
-    // Der Export gehört der Bewerbung: beide Unterlagen, je eigener Knopf.
-    await expect(page.getByRole('button', { name: t('editor.export.docx') })).toHaveCount(2)
+    // Der Export folgt dem Umschalter: **eine** Unterlage, drei Wege. Sechs
+    // Knöpfe für zwei Unterlagen waren vier zu viel.
+    await expect(page.getByRole('button', { name: t('editor.export.docx') })).toHaveCount(1)
 
-    // Umschalten hält den Lebenslauf bereit, ohne die Seitenspalten zu
-    // wechseln.
+    // Umschalten wechselt das Blatt **und** die Datei, die herausgeht, ohne
+    // die Seitenspalten zu wechseln.
     await umschalter.getByRole('radio', { name: t('editor.switch.cv') }).click()
     await expect(
       page.getByRole('textbox', { name: t('editor.document.cvHeading') }),
     ).toBeVisible()
+    await expect(page.getByRole('button', { name: t('editor.export.docx') })).toHaveCount(1)
   })
 })

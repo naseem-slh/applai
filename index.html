@@ -10,6 +10,36 @@
       und würde sonst blockiert. Maßgeblich für die Auslieferung ist ohnehin
       public/_headers (siehe G3).
     -->
+    <!--
+      Die Farbe der Browserleiste folgt dem Blatt (`--paper`): weiß im Hellen,
+      #04061f im Dunklen. Ohne die beiden Angaben rahmt der Browser das
+      linierte Papier auf dem Telefon mit seiner eigenen Farbe ein, und der
+      Übergang bricht genau dort, wo er am meisten auffällt.
+    -->
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#04061f" />
+
+    <!--
+      Beide Schriften tragen die Oberfläche vom ersten Bild an: Fredoka jede
+      Beschriftung, Inter jeden Fließtext. Ohne Vorladen findet der Browser
+      sie erst, nachdem er das Stylesheet gelesen hat — eine Runde später.
+      Sie liegen im Projekt (G2), `font-src 'self'` deckt sie ab (G3).
+    -->
+    <link
+      rel="preload"
+      href="/fonts/inter-variable-latin.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="/fonts/fredoka-variable-latin.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+
     <title>Applai</title>
   </head>
   <body>

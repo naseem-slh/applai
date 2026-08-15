@@ -80,7 +80,7 @@ test.describe('Der ganze Weg', () => {
     // 7. Die Bewerbung steht in der Liste. Sie liegt seit dem Aufräumen der
     //    Einstiegsseite hinter einem Verweis in der Fußleiste, nicht mehr
     //    aufgeklappt unter der Stellenausschreibung.
-    await page.getByRole('link', { name: t('nav.start') }).click()
+    await page.getByRole('link', { name: t('editor.backToStart') }).click()
     await page.getByRole('button', { name: t('start.applications.open', { count: 1 }) }).click()
     const list = page.getByRole('dialog')
     await expect(list.getByRole('cell', { name: 'Musterwerk Solutions' })).toBeVisible()
@@ -100,8 +100,8 @@ test.describe('Der ganze Weg', () => {
     await download
 
     // Zweite Bewerbung: dieselbe Anzeige noch einmal einfügen.
-    await page.getByRole('link', { name: t('nav.start') }).click()
-    await page.getByLabel(t('start.jobAd.label'), { exact: true }).fill(JOB_AD_TEXT)
+    await page.getByRole('link', { name: t('editor.backToStart') }).click()
+    await page.getByLabel(t('start.jobAd.heading'), { exact: true }).fill(JOB_AD_TEXT)
 
     const hint = page.getByRole('alert').filter({ hasText: 'schon beworben' })
     await expect(hint).toBeVisible()
@@ -129,7 +129,14 @@ test.describe('Der Zwischenstand', () => {
 
     // Zurück auf der Einstiegsseite wird der Entwurf angeboten (die
     // Arbeitsfläche selbst hat nach dem Neuladen keinen Übergabestand mehr).
-    await expect(page.getByRole('heading', { name: t('start.recent.heading') })).toBeVisible()
+    //
+    // Als Zettel neben der Karte oder als Marke in der Kachel, je nach
+    // Fensterbreite — der Name des Knopfes ist in beiden Fassungen derselbe.
+    await expect(
+      page.getByRole('button', {
+        name: `${t('start.recent.use')} ${t('start.files.letter')}`,
+      }),
+    ).toBeVisible()
   })
 })
 

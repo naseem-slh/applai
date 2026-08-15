@@ -73,7 +73,7 @@ const VIEWS: { name: string; open: (page: Page) => Promise<void> }[] = [
     open: async (page) => {
       await page.goto('/')
       await completeOnboarding(page)
-      await page.getByRole('heading', { name: t('start.documents.heading') }).waitFor()
+      await page.getByRole('button', { name: t('start.continue') }).waitFor()
     },
   },
   {
@@ -115,7 +115,7 @@ const VIEWS: { name: string; open: (page: Page) => Promise<void> }[] = [
       // Auf schmalen Fenstern sind die Bereiche der Seitenspalte
       // zugeklappt. Zugeklappt ist die Merkliste weder für den Nutzer noch
       // für axe da — und geprüft werden soll sie aufgeklappt.
-      const progress = page.getByText(t('editor.marks.progress', { done: 0, total: 2 }))
+      const progress = page.getByText(t('editor.marks.tally', { done: 0, total: 2 }))
       if (!(await progress.isVisible())) {
         await page.getByRole('heading', { level: 3, name: t('editor.marks.heading') }).click()
       }
@@ -194,18 +194,31 @@ const VIEWPORTS = [
   { name: 'schmales Fenster', size: { width: 390, height: 700 } },
 ]
 
-for (const viewport of VIEWPORTS) {
-  test.describe(`Barrierefreiheit, ${viewport.name}`, () => {
-    for (const view of VIEWS) {
-      test(view.name, async ({ page }) => {
-        await page.setViewportSize(viewport.size)
-        await stubProvider(page)
-        await view.open(page)
+/**
+ * **Und beides in beiden Themen.** Die dunkle Fassung ist keine Umfärbung
+ * derselben Werte: Sie führt eigene Farben für Tinte, Karte, Feld und jeden
+ * Zustand. Ein Kontrast, der hell trägt, kann dunkel durchfallen — und
+ * umgekehrt. Geprüft wird die Systemwahl (`colorScheme`), weil die
+ * ausdrückliche Wahl über `data-theme` dieselben Werte setzt.
+ */
+const THEMES = ['light', 'dark'] as const
 
-        await scan(page)
-      })
-    }
-  })
+for (const viewport of VIEWPORTS) {
+  for (const theme of THEMES) {
+    test.describe(`Barrierefreiheit, ${viewport.name}, ${theme === 'light' ? 'hell' : 'dunkel'}`, () => {
+      test.use({ colorScheme: theme })
+
+      for (const view of VIEWS) {
+        test(view.name, async ({ page }) => {
+          await page.setViewportSize(viewport.size)
+          await stubProvider(page)
+          await view.open(page)
+
+          await scan(page)
+        })
+      }
+    })
+  }
 }
 
 test.describe('Bedienung mit der Tastatur', () => {

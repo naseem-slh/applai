@@ -1,6 +1,7 @@
 import type { ComponentProps } from 'react'
 import { Select as SelectPrimitive } from 'radix-ui'
 import { cn } from '@/lib/utils'
+import { CaretDownIcon, CheckIcon } from './icons'
 
 // Auswahlliste — für überschaubare Mengen mit klarer Vorauswahl (Anbieter,
 // Modell, Sprache). Radix baut daraus eine echte Combobox mit Tastatur-
@@ -10,42 +11,6 @@ export const Select = SelectPrimitive.Root
 export const SelectValue = SelectPrimitive.Value
 export const SelectGroup = SelectPrimitive.Group
 
-function ChevronGlyph() {
-  return (
-    <svg
-      viewBox="0 0 16 16"
-      className="size-4 shrink-0 text-[var(--color-muted)]"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-      focusable="false"
-    >
-      <path d="M4 6l4 4 4-4" />
-    </svg>
-  )
-}
-
-function CheckGlyph() {
-  return (
-    <svg
-      viewBox="0 0 16 16"
-      className="size-4 text-[var(--color-accent)]"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-      focusable="false"
-    >
-      <path d="M3.5 8.5l3 3 6-7" />
-    </svg>
-  )
-}
-
 export function SelectTrigger({
   className,
   children,
@@ -54,23 +19,24 @@ export function SelectTrigger({
   return (
     <SelectPrimitive.Trigger
       className={cn(
-        'focus-ring flex h-10 w-full items-center justify-between gap-2',
-        'rounded-md border border-[var(--color-control-border)]',
-        'bg-[var(--color-surface-raised)] px-3 text-left text-sm',
-        'text-[var(--color-ink)] transition-colors',
-        // Die Fläche bleibt unter dem Zeiger unverändert: ein Platzhalter
-        // in --color-muted würde auf --color-surface-hover unter 4,5:1
-        // rutschen. Stattdessen antwortet die Kontur.
-        'hover:border-[var(--color-accent)]',
-        'data-[placeholder]:text-[var(--color-muted)]',
-        'disabled:pointer-events-none disabled:opacity-50',
+        // Wort für Wort die Gestalt des Eingabefeldes (siehe Input.tsx):
+        // gleiche Polsterung, gleiche weiche Tinte, gleicher Radius. Feld
+        // und Auswahl nebeneinander sollen als eine Bauform zu lesen sein.
+        'focus-ring flex w-full items-center justify-between gap-2',
+        'rounded-control border-[3px] border-[var(--line-soft)]',
+        'bg-[var(--field)] px-4 py-3 text-left',
+        'text-[length:var(--text-body-sm-size)] text-[var(--ink)] transition-colors',
+        // Unter dem Zeiger antwortet die Kontur, nicht die Fläche.
+        'not-disabled:hover:border-[var(--accent-line)]',
+        'data-[placeholder]:text-[var(--muted)]',
+        'disabled:cursor-not-allowed disabled:bg-[var(--card)] disabled:text-[var(--muted)]',
         className,
       )}
       {...props}
     >
       {children}
       <SelectPrimitive.Icon asChild>
-        <ChevronGlyph />
+        <CaretDownIcon className="text-[var(--accent-line)]" />
       </SelectPrimitive.Icon>
     </SelectPrimitive.Trigger>
   )
@@ -89,8 +55,8 @@ export function SelectContent({
         position={position}
         sideOffset={sideOffset}
         className={cn(
-          'z-50 overflow-hidden rounded-lg border border-[var(--color-border)]',
-          'bg-[var(--color-surface-raised)] shadow-[var(--shadow-overlay)]',
+          'pop z-50 overflow-hidden rounded-card border-[3px] border-[var(--line)]',
+          'bg-[var(--card)] [--pop-height:10px] [--pop-shadow:var(--card-shadow)]',
           // Radix stellt beide Maße als CSS-Variablen bereit: die Liste ist
           // so breit wie ihr Auslöser und nie höher als der Platz darunter.
           'max-h-(--radix-select-content-available-height)',
@@ -100,7 +66,7 @@ export function SelectContent({
         )}
         {...props}
       >
-        <SelectPrimitive.Viewport className="p-1">
+        <SelectPrimitive.Viewport className="p-1.5">
           {children}
         </SelectPrimitive.Viewport>
       </SelectPrimitive.Content>
@@ -116,12 +82,13 @@ export function SelectItem({
   return (
     <SelectPrimitive.Item
       className={cn(
-        'relative flex cursor-default items-center rounded-sm py-2 pr-3 pl-8',
-        'text-sm text-[var(--color-ink)] select-none',
+        'relative flex cursor-default items-center rounded-control py-2 pr-3 pl-9',
+        'text-[length:var(--text-body-sm-size)] text-[var(--ink)] select-none',
         // Der Fokusring liegt hier innen: die Liste beschneidet ihren
         // Inhalt, ein außen liegender Ring würde abgeschnitten.
         'outline-none focus-ring-inset',
-        'data-[highlighted]:bg-[var(--color-accent-soft)]',
+        'data-[highlighted]:bg-[var(--accent-wash)]',
+        'data-[highlighted]:text-[var(--ink-strong)]',
         'data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
         className,
       )}
@@ -129,9 +96,9 @@ export function SelectItem({
     >
       {/* Der Haken trägt die Auswahl, nicht die Tönung dahinter — Zustand
           nie allein über Farbe. */}
-      <span className="absolute left-2 flex size-4 items-center justify-center">
+      <span className="absolute left-2.5 flex size-4 items-center justify-center">
         <SelectPrimitive.ItemIndicator>
-          <CheckGlyph />
+          <CheckIcon className="text-[var(--done-text)]" />
         </SelectPrimitive.ItemIndicator>
       </span>
       <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
@@ -148,8 +115,8 @@ export function SelectLabel({
   return (
     <SelectPrimitive.Label
       className={cn(
-        'px-2 py-1.5 text-[length:var(--text-label-size)] font-semibold',
-        'tracking-[var(--text-label-tracking)] text-[var(--color-muted)] uppercase',
+        'px-2 py-1.5 font-display text-[length:var(--text-label-size)] font-semibold',
+        'tracking-[var(--text-label-tracking)] text-[var(--muted)] uppercase',
         className,
       )}
       {...props}
@@ -163,7 +130,7 @@ export function SelectSeparator({
 }: ComponentProps<typeof SelectPrimitive.Separator>) {
   return (
     <SelectPrimitive.Separator
-      className={cn('my-1 h-px bg-[var(--color-border)]', className)}
+      className={cn('my-1 h-0.5 bg-[var(--line-soft)]', className)}
       {...props}
     />
   )

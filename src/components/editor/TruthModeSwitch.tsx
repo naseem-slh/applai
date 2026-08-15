@@ -8,6 +8,7 @@ import {
   DialogTitle,
 } from '@/components/ui/Dialog'
 import { Button } from '@/components/ui/Button'
+import { Card } from '@/components/ui/Card'
 import { Field } from '@/components/ui/Field'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select'
 import type { TruthMode } from '@/lib/storage/adapter'
@@ -59,28 +60,33 @@ export function TruthModeSwitch({ value, onChange }: TruthModeSwitchProps) {
 
   return (
     <>
-      <Field id={id} label={t('editor.truthMode.label')} labelledBy className="w-full max-w-[14rem]">
-        {({ id: fieldId, ...aria }) => (
-          <Select value={value} onValueChange={handleValueChange}>
-            <SelectTrigger id={fieldId} {...aria}>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {TRUTH_MODES.map((mode) => (
-                <SelectItem key={mode} value={mode}>
-                  {t(`settings.truthMode.options.${mode}`)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-      </Field>
+      {/* In einer Karte wie jeder andere Bereich der Spalte: Ein
+          Bedienelement, das frei auf dem linierten Blatt läge, hätte als
+          einziges keine Fläche unter sich. */}
+      <Card variant="default" padding="md" asChild>
+        <Field id={id} label={t('editor.truthMode.label')} labelledBy className="w-full">
+          {({ id: fieldId, ...aria }) => (
+            <Select value={value} onValueChange={handleValueChange}>
+              <SelectTrigger id={fieldId} {...aria}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {TRUTH_MODES.map((mode) => (
+                  <SelectItem key={mode} value={mode}>
+                    {t(`settings.truthMode.options.${mode}`)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </Field>
+      </Card>
 
       <Dialog open={asking} onOpenChange={setAsking}>
         <DialogContent>
           <DialogTitle>{t('editor.truthMode.free.heading')}</DialogTitle>
           <DialogDescription>{t('editor.truthMode.free.intro')}</DialogDescription>
-          <ul className="mt-4 flex list-disc flex-col gap-2 pl-5 text-[var(--color-ink)]">
+          <ul className="mt-4 flex list-disc flex-col gap-2 pl-5 text-[var(--ink)]">
             <li>{t('editor.truthMode.free.marked')}</li>
             <li>{t('editor.truthMode.free.confirm')}</li>
             <li>{t('editor.truthMode.free.export')}</li>

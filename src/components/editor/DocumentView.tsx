@@ -316,7 +316,17 @@ export function DocumentView({
       // ohne dass ein `transform` Cursorsetzung und Trefferprüfung gegen das
       // verschiebt, was der Nutzer sieht.
       style={{ '--pt': `${geometry.pxPerPt}px` } as CSSProperties}
-      className={cn('flex flex-col', editable && 'focus-ring rounded-md', className)}
+      // Kein Fokusring um das Blatt: Browser lassen `:focus-visible` an einem
+      // `contenteditable` auch beim Klick anspringen, also läge der Ring vom
+      // ersten Antippen an um den ganzen Brief — eine Kontur, die nichts
+      // meldet, was der blinkende Schreibcursor nicht schon zeigt. Der
+      // blätternde Bereich darum trägt seinen Ring weiter (`tabIndex={0}` in
+      // `DocumentColumn`); wer mit der Tastatur kommt, sieht dort, wo er ist.
+      className={cn(
+        'flex flex-col',
+        editable && 'rounded-md focus-visible:outline-none',
+        className,
+      )}
     >
       {pages.map((indices, pageIndex) => (
         <div
@@ -351,7 +361,16 @@ export function DocumentView({
             // sobald die Formatierung bekannt ist — Word setzt ihn je Absatz
             // und nicht gleichmäßig.
             page === null && 'gap-4 p-[9.5%]',
-            'rounded-lg bg-[var(--color-surface-raised)] shadow-[var(--shadow-raised)]',
+            // **Das Blatt bleibt in beiden Themen weiß.** Es zeigt die
+            // Word-Datei, und die sieht im Dunkelmodus nicht anders aus.
+            // Grund und Schriftfarbe sind deshalb feste Werte und keine
+            // abgeleiteten; nur Kontur und Schatten gehen mit dem Thema mit,
+            // weil sie zur Oberfläche gehören und nicht zum Dokument.
+            //
+            // Und als Einziges mit 8px Radius: Ein Word-Dokument hat keine
+            // runden Ecken, alles andere hier ist Bedienelement.
+            'rounded-sheet border-2 border-[var(--page-line)] bg-white text-[#16205c]',
+            'shadow-[var(--page-shadow)]',
             'mb-5 last:mb-0',
           )}
         >

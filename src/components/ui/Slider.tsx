@@ -26,10 +26,10 @@ import { cn } from '@/lib/utils'
 // Mitte); das liest sich als Bestätigung und nicht als Fehler.
 //
 // Bewusst ohne Teilstriche auf der Schiene: sie müssten zugleich auf der
-// gefüllten (Akzent) und auf der leeren Hälfte (surface-alt) erkennbar
-// sein, was mit einer Farbe nicht geht, und sie trügen keine Auskunft, die
-// nicht schon im Namen der Stufe steht. Dass die Skala stuft, zeigt das
-// Einrasten des Griffs.
+// gefüllten (Tangerine) und auf der leeren Hälfte (--field) erkennbar sein,
+// was mit einer Farbe nicht geht, und sie trügen keine Auskunft, die nicht
+// schon im Namen der Stufe steht. Dass die Skala stuft, zeigt das Einrasten
+// des Griffs.
 //
 // Die Beschriftungszeile ist aria-hidden: dieselbe Auskunft steht als
 // aria-valuetext am Griff, und ohne das Attribut läse die Vorlesesoftware
@@ -113,27 +113,30 @@ export function Slider({
       >
         <SliderPrimitive.Track
           className={cn(
-            'relative h-1.5 w-full grow overflow-hidden rounded-full',
-            'border border-[var(--color-control-border)]',
-            'bg-[var(--color-surface-alt)]',
+            // 14 px Schiene mit 3 px weicher Tinte — dieselbe Kontur, die
+            // jedes Eingabefeld trägt. Höher gelesen wäre sie ein
+            // Fortschrittsbalken, dünner verschwände die Kontur darin.
+            'relative h-[14px] w-full grow overflow-hidden rounded-pill',
+            'border-[3px] border-[var(--line-soft)] bg-[var(--field)]',
           )}
         >
-          <SliderPrimitive.Range className="absolute h-full bg-[var(--color-accent)]" />
+          <SliderPrimitive.Range className="absolute h-full bg-[var(--accent)]" />
         </SliderPrimitive.Track>
         <SliderPrimitive.Thumb
           className={cn(
-            'focus-ring block size-5 rounded-full border-2',
-            'border-[var(--color-accent)] bg-[var(--color-surface-raised)]',
-            'shadow-[var(--shadow-raised)] transition-colors',
+            // Der Griff trägt die volle Tinte, die Schiene die weiche: Was
+            // man anfasst, ist kräftiger umrandet als das, worauf es läuft.
+            'focus-ring block size-6 rounded-pill border-[3px]',
+            'border-[var(--line)] bg-[var(--accent)] transition-colors',
           )}
           aria-label={ariaLabel}
           aria-labelledby={ariaLabelledBy}
           aria-valuetext={steps[current]}
         />
       </SliderPrimitive.Root>
-      {/* Die Enden stehen in --color-muted und gehören damit auf `surface`
-          oder `surface-raised`, nicht auf eine getönte Fläche (siehe
-          DESIGN.md, Abschnitt Kontrast). */}
+      {/* Die Enden sagen, wofür die Achse steht; die Mitte sagt, wo man
+          gerade ist. Der Stand steht in Fredoka, weil er erkannt und nicht
+          gelesen wird. */}
       <div
         aria-hidden="true"
         className={cn(
@@ -145,11 +148,13 @@ export function Slider({
           disabled && 'opacity-50',
         )}
       >
-        <span className="text-xs text-[var(--color-muted)]">{steps[0]}</span>
-        <span className="text-center text-sm font-medium text-[var(--color-ink)]">
+        <span className="text-[length:var(--text-caption-size)] text-[var(--muted)]">
+          {steps[0]}
+        </span>
+        <span className="text-center font-display text-[length:var(--text-body-sm-size)] font-semibold text-[var(--ink-strong)]">
           {steps[current]}
         </span>
-        <span className="text-right text-xs text-[var(--color-muted)]">
+        <span className="text-right text-[length:var(--text-caption-size)] text-[var(--muted)]">
           {steps[max]}
         </span>
       </div>

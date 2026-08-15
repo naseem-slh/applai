@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
 import i18n from '@/lib/i18n/i18n'
@@ -7,10 +7,10 @@ import { createHarness, type HarnessOptions } from './appContext.testutils'
 
 const t = i18n.getFixedT(i18n.resolvedLanguage ?? 'de')
 
-function renderLayout(options: HarnessOptions = {}) {
+function renderLayout(pfad = '/', options: HarnessOptions = {}) {
   const harness = createHarness(options)
   render(
-    <MemoryRouter initialEntries={['/']}>
+    <MemoryRouter initialEntries={[pfad]}>
       <AppLayout />
     </MemoryRouter>,
     { wrapper: harness.wrapper },
@@ -19,43 +19,46 @@ function renderLayout(options: HarnessOptions = {}) {
 }
 
 describe('AppLayout', () => {
-  // Die Marke führt zurück auf die Einstiegsseite. Ihren Namen trägt der
-  // Schriftzug, nicht das Zeichen daneben.
-  it('führt mit der Marke zurück auf die Einstiegsseite', () => {
+  it('legt jede Ansicht auf das linierte Blatt', () => {
     renderLayout()
 
-    expect(screen.getByRole('link', { name: t('app.name') })).toHaveAttribute('href', '/')
+    const raum = screen.getByTestId('room')
+    expect(raum).toHaveClass('room-paper')
+    // Der Raum ist Zier: kein Name, keine Zeigerereignisse, unterste Ebene.
+    expect(raum).toHaveAttribute('aria-hidden', 'true')
+    expect(raum).toHaveClass('pointer-events-none')
+    expect(raum).toHaveClass('z-0')
   })
 
-  it('zeigt das Logo neben dem Schriftzug', () => {
+  it('baut keine gemeinsame Kopfzeile mehr', () => {
+    // Jede Ansicht bringt ihre eigene mit — eine, die all das zugleich sein
+    // müsste, wäre überall ein Kompromiss.
     renderLayout()
 
-    const marke = screen.getByRole('link', { name: t('app.name') })
-    const logo = marke.querySelector('img')
-
-    expect(logo).not.toBeNull()
-    expect(logo?.getAttribute('src')).toContain('logo')
+    expect(screen.queryByRole('banner')).not.toBeInTheDocument()
+    expect(screen.queryByRole('navigation')).not.toBeInTheDocument()
   })
 
-  // Das Zeichen sagt dasselbe wie der Schriftzug daneben. Zweimal derselbe
-  // Name wäre für Hilfsmittel nur Lärm, deshalb bleibt es ohne Textalternative.
-  it('lässt das Logo aus dem Namen der Marke heraus', () => {
+  it('hält Datenschutz und Einstellungen von jeder Ansicht aus erreichbar', () => {
+    // Der Datenschutz trägt das Impressum (§ 5 DDG), und die Einstellungen
+    // wären sonst nur über die Arbeitsfläche zu finden — die ohne Unterlagen
+    // gesperrt ist.
     renderLayout()
 
-    const marke = screen.getByRole('link', { name: t('app.name') })
-    const logo = marke.querySelector('img')
-
-    expect(logo).toHaveAttribute('alt', '')
-    expect(within(marke).getByText(t('app.name'))).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: t('nav.privacy') })).toHaveAttribute(
+      'href',
+      '/datenschutz',
+    )
+    expect(screen.getByRole('link', { name: t('nav.settings') })).toHaveAttribute(
+      'href',
+      '/settings',
+    )
   })
 
-  // Ohne feste Masse springt die Kopfzeile, sobald das Bild eintrifft.
-  it('gibt dem Logo feste Masse, damit die Kopfzeile nicht springt', () => {
-    renderLayout()
+  it('lässt den Verweis auf die Seite weg, auf der man schon steht', () => {
+    renderLayout('/datenschutz')
 
-    const logo = screen.getByRole('link', { name: t('app.name') }).querySelector('img')
-
-    expect(logo).toHaveAttribute('width')
-    expect(logo).toHaveAttribute('height')
+    expect(screen.queryByRole('link', { name: t('nav.privacy') })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: t('nav.settings') })).toBeInTheDocument()
   })
 })

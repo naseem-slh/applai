@@ -23,32 +23,15 @@ describe('ZoomControl', () => {
     expect(thumb).toHaveAttribute('aria-valuemax', String(ZOOM_MAX))
   })
 
-  it('stellt und sichert mit einem Klick auf „kleiner"', () => {
-    const { onZoomChange, onZoomCommit } = setup(60)
-    fireEvent.click(screen.getByRole('button', { name: t('editor.zoom.out') }))
-    // Ein Klick ist eine abgeschlossene Geste — anders als das Ziehen am
-    // Regler, wo erst das Loslassen sichert.
-    expect(onZoomChange).toHaveBeenCalledWith(55)
-    expect(onZoomCommit).toHaveBeenCalledWith(55)
-  })
+  it('kommt mit zwei Bedienelementen aus: Schiene und Stand', () => {
+    // Davor standen hier vier für eine einzige Zahl — ein Minus, eine
+    // Schiene, ein Plus und der Stand. Die beiden Knöpfe machten dasselbe
+    // wie ein Pfeiltastendruck auf der Schiene und dasselbe wie ein Zug mit
+    // dem Finger.
+    setup(60)
 
-  it('stellt und sichert mit einem Klick auf „größer"', () => {
-    const { onZoomChange, onZoomCommit } = setup(60)
-    fireEvent.click(screen.getByRole('button', { name: t('editor.zoom.in') }))
-    expect(onZoomChange).toHaveBeenCalledWith(65)
-    expect(onZoomCommit).toHaveBeenCalledWith(65)
-  })
-
-  it('sperrt den Knopf, der über das Ende hinausführen würde', () => {
-    setup(ZOOM_MAX)
-    expect(screen.getByRole('button', { name: t('editor.zoom.in') })).toBeDisabled()
-    expect(screen.getByRole('button', { name: t('editor.zoom.out') })).toBeEnabled()
-  })
-
-  it('sperrt am unteren Ende den anderen', () => {
-    setup(ZOOM_MIN)
-    expect(screen.getByRole('button', { name: t('editor.zoom.out') })).toBeDisabled()
-    expect(screen.getByRole('button', { name: t('editor.zoom.in') })).toBeEnabled()
+    expect(screen.getAllByRole('button')).toHaveLength(1)
+    expect(screen.getByRole('slider', { name: t('editor.zoom.label') })).toBeInTheDocument()
   })
 
   it('führt der Stand auf 100 % zurück', () => {

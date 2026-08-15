@@ -12,21 +12,32 @@ import { cn } from '@/lib/utils'
 // Die Gestalt ist unverändert die des Auswahlauslösers (siehe Select.tsx):
 // dieselbe Höhe, dieselbe Kontur, derselbe Radius. Ein Feld und eine
 // Auswahlliste nebeneinander sollen als dieselbe Bauform zu erkennen sein.
+//
+// **Weiche Tinte, nicht volle.** Eingabefelder tragen `--line-soft` und
+// Knöpfe `--line`. Daran hängt die ganze Hierarchie dieser Welt: Was man
+// drückt, ist kräftiger umrandet als das, was man ausfüllt.
 const CONTROL_CLASS = [
-  'focus-ring w-full rounded-md border border-[var(--color-control-border)]',
-  'bg-[var(--color-surface-raised)] px-3 text-sm text-[var(--color-ink)]',
-  'transition-colors hover:border-[var(--color-accent)]',
+  'focus-ring w-full rounded-control border-[3px] border-[var(--line-soft)]',
+  'bg-[var(--field)] px-4 text-[length:var(--text-body-sm-size)] text-[var(--ink)]',
+  'transition-colors placeholder:text-[var(--muted)]',
+  // Unter dem Zeiger und im Fokus antwortet die **Kontur**, nicht die
+  // Fläche: Ein Feld, das seinen Grund wechselt, sieht aus, als hätte es
+  // seinen Inhalt verloren.
+  'not-disabled:hover:border-[var(--accent-line)] focus-visible:border-[var(--accent-line)]',
   // Der Zustand hängt nie allein an der Farbe: `aria-invalid` trägt ihn für
   // die Vorlesesoftware, die Meldung unter dem Feld für alle anderen.
-  'aria-invalid:border-[var(--color-error)]',
-  'disabled:pointer-events-none disabled:opacity-50',
+  'aria-invalid:border-[var(--error)]',
+  'disabled:cursor-not-allowed disabled:bg-[var(--card)] disabled:text-[var(--muted)]',
 ]
 
-const inputClass = [...CONTROL_CLASS, 'h-10'].join(' ')
+// 12 px senkrecht, 16 px waagerecht — die Maße der Attrappe. Damit ist das
+// Feld einen Tick höher als ein Knopf derselben Zeile; das ist gewollt: Es
+// nimmt Text auf und ist keine Schaltfläche.
+const inputClass = [...CONTROL_CLASS, 'py-3'].join(' ')
 
 // Ein mehrzeiliges Feld fällt aus der Liste der Steuerhöhen (siehe
 // DESIGN.md): Es steht nicht in einer Textzeile, sondern trägt einen
-// Absatz. `py-2` und die Zeilenhöhe folgen deshalb dem Fließtext, nicht dem
+// Absatz. Polsterung und Zeilenhöhe folgen deshalb dem Fließtext, nicht dem
 // Raster der Knöpfe. Bewusst **nicht** mitwachsend (`field-sizing-content`):
 // Eine eingefügte Stellenausschreibung ist mehrere tausend Zeichen lang und
 // schöbe die Knöpfe darunter aus dem Bild. Stattdessen eine ruhige
@@ -34,7 +45,7 @@ const inputClass = [...CONTROL_CLASS, 'h-10'].join(' ')
 // wenig ist.
 const textareaClass = [
   ...CONTROL_CLASS,
-  'min-h-32 resize-y py-2 leading-[var(--text-body-sm-leading)]',
+  'min-h-[150px] resize-y py-3.5 leading-[1.65]',
 ].join(' ')
 
 export type InputProps = ComponentProps<'input'>

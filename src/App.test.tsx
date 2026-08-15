@@ -20,46 +20,47 @@ describe('App', () => {
     ).toBeInTheDocument()
   })
 
-  it('trägt in der Kopfzeile den Ablauf aus zwei Schritten', () => {
+  // Der Schrittanzeiger ist mit der Übernahme der Attrappen weggefallen: Er
+  // zählte Schritte, die sich von selbst zählen. Auf der Einstiegsseite
+  // steht, was fehlt; auf der Arbeitsfläche steht der Brief. Eine Ziffer
+  // davor sagte nichts dazu — und eine gemeinsame Kopfzeile gibt es nicht
+  // mehr, weil jede Ansicht eine andere braucht.
+  it('baut keine gemeinsame Kopfzeile mit Ablaufnavigation mehr', () => {
     render(<App />)
 
-    const language = i18n.resolvedLanguage ?? 'de'
-    const t = i18n.getFixedT(language)
-    const navigation = screen.getByRole('navigation', { name: t('nav.label') })
+    expect(screen.queryByRole('banner')).toBeNull()
+    expect(screen.queryByRole('navigation')).toBeNull()
+  })
 
-    expect(navigation).toBeInTheDocument()
-    // Beide Schritte stehen da, damit von Anfang an sichtbar ist, was noch
-    // kommt. Nur benannt sind sie, nicht beide begehbar — siehe unten.
-    expect(navigation).toHaveTextContent(t('nav.start'))
-    expect(navigation).toHaveTextContent(t('nav.editor'))
+  // Die Datenschutzerklärung trägt das Impressum und muss nach § 5 DDG von
+  // jeder Seite aus erreichbar sein — auch bevor irgendetwas hochgeladen
+  // wurde. Die Attrappen kennen den Verweis nicht: Sie sind Einzelseiten und
+  // haben nie modelliert, wie man zwischen ihnen wechselt.
+  it('hält Datenschutz und Einstellungen von jeder Seite aus erreichbar', () => {
+    render(<App />)
+
+    const t = i18n.getFixedT(i18n.resolvedLanguage ?? 'de')
+
+    expect(screen.getByRole('link', { name: t('nav.privacy') })).toHaveAttribute(
+      'href',
+      '/datenschutz',
+    )
+    expect(screen.getByRole('link', { name: t('nav.settings') })).toHaveAttribute(
+      'href',
+      '/settings',
+    )
   })
 
   // Die Arbeitsfläche hängt an einem Übergabestand der Einstiegsseite
-  // (`RequireSession`). Beim ersten Start gibt es keinen, also darf der
-  // zweite Schritt zwar dastehen, aber nicht anklickbar sein: Ein Verweis,
-  // der nur auf eine Umleitung führt, ist eine Sackgasse mit Umweg.
-  it('sperrt den zweiten Schritt, solange es keinen Übergabestand gibt', () => {
+  // (`RequireSession`). Beim ersten Start gibt es keinen — und keinen
+  // Verweis dorthin, der nur auf eine Umleitung führte.
+  it('bietet ohne Übergabestand keinen Weg auf die Arbeitsfläche an', () => {
     render(<App />)
 
-    const t = i18n.getFixedT(i18n.resolvedLanguage ?? 'de')
-    const navigation = screen.getByRole('navigation', { name: t('nav.label') })
-
-    expect(navigation.querySelectorAll('a')).toHaveLength(1)
-    expect(screen.queryByRole('link', { name: t('nav.editor') })).toBeNull()
-  })
-
-  // Die Datenschutzerklärung muss von jeder Seite aus erreichbar sein — auch
-  // bevor irgendetwas hochgeladen wurde.
-  it('führt den Datenschutz in der Kopfzeile, aber außerhalb des Ablaufs', () => {
-    render(<App />)
-
-    const t = i18n.getFixedT(i18n.resolvedLanguage ?? 'de')
-    const link = screen.getByRole('link', { name: t('nav.privacy') })
-
-    expect(link).toHaveAttribute('href', '/datenschutz')
-    // Erreichbar ja, Teil des Ablaufs nein: Datenschutz und Einstellungen
-    // tragen keine Schrittziffer und stehen außerhalb der Navigation.
-    expect(screen.getByRole('navigation', { name: t('nav.label') }).contains(link)).toBe(false)
+    expect(screen.queryByRole('link', { name: '/editor' })).toBeNull()
+    for (const link of screen.getAllByRole('link')) {
+      expect(link.getAttribute('href')).not.toBe('/editor')
+    }
   })
 
   it('beginnt beim ersten Start mit dem Datenschutzhinweis', async () => {

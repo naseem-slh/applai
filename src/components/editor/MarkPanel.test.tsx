@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import type { MarkAnchor } from '@/lib/storage/adapter'
 import i18n from '@/lib/i18n/i18n'
@@ -58,7 +58,7 @@ describe('MarkPanel', () => {
 
   it('zeigt den Fortschritt', () => {
     setup({ marks: [markOn('ich bewerbe mich', true), markOn('als Entwickler')] })
-    expect(screen.getByText(t('editor.marks.progress', { done: 1, total: 2 }))).toBeInTheDocument()
+    expect(screen.getByText(t('editor.marks.tally', { done: 1, total: 2 }))).toBeInTheDocument()
   })
 
   it('markiert die Stelle, die angeklickt wird', () => {
@@ -85,7 +85,10 @@ describe('MarkPanel', () => {
   })
 
   it('hakt eine Stelle ab, ohne sie zu entfernen', () => {
-    const props = setup({ marks: [markOn('ich bewerbe mich')] })
+    const props = setup({
+      marks: [markOn('ich bewerbe mich')],
+      activeId: 'ich bewerbe mich',
+    })
 
     fireEvent.click(screen.getByRole('button', { name: t('editor.marks.done'), pressed: false }))
 
@@ -94,11 +97,32 @@ describe('MarkPanel', () => {
   })
 
   it('entfernt eine Stelle auf Wunsch', () => {
-    const props = setup({ marks: [markOn('ich bewerbe mich')] })
+    const props = setup({
+      marks: [markOn('ich bewerbe mich')],
+      activeId: 'ich bewerbe mich',
+    })
 
     fireEvent.click(screen.getByRole('button', { name: t('editor.marks.remove') }))
 
     expect(props.onRemove).toHaveBeenCalledWith('ich bewerbe mich')
+  })
+
+  it('zeigt die beiden Handgriffe nur an der Stelle, an der gerade gearbeitet wird', () => {
+    // Zwei Sinnbilder an jeder Zeile nähmen der schmalen Spalte den Platz,
+    // den der Wortlaut braucht. Eine Stelle wird ohnehin angeklickt, bevor
+    // man etwas mit ihr vorhat.
+    setup({ marks: [markOn('ich bewerbe mich'), markOn('als Entwickler')] })
+
+    expect(screen.queryByRole('button', { name: t('editor.marks.remove') })).toBeNull()
+
+    cleanup()
+
+    setup({
+      marks: [markOn('ich bewerbe mich'), markOn('als Entwickler')],
+      activeId: 'als Entwickler',
+    })
+
+    expect(screen.getAllByRole('button', { name: t('editor.marks.remove') })).toHaveLength(1)
   })
 
   it('springt zur nächsten offenen Stelle', () => {

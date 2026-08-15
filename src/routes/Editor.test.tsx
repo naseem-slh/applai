@@ -1203,7 +1203,7 @@ describe('Editor — vorgemerkte Stellen', () => {
 
     markParagraph(1)
 
-    expect(screen.getByText(t('editor.marks.progress', { done: 0, total: 1 }))).toBeInTheDocument()
+    expect(screen.getByText(t('editor.marks.tally', { done: 0, total: 1 }))).toBeInTheDocument()
     expect(markEntry(1).textContent).toContain(paragraphText.slice(0, 20))
   })
 
@@ -1226,7 +1226,7 @@ describe('Editor — vorgemerkte Stellen', () => {
 
     fireEvent.click(screen.getByRole('button', { name: t('editor.selection.wholeDocument') }))
 
-    expect(screen.getByText(t('editor.marks.progress', { done: 0, total: 1 }))).toBeInTheDocument()
+    expect(screen.getByText(t('editor.marks.tally', { done: 0, total: 1 }))).toBeInTheDocument()
   })
 
   // Der Kernpunkt: Eine Textänderung davor darf die Vormerkung nicht
@@ -1254,7 +1254,7 @@ describe('Editor — vorgemerkte Stellen', () => {
     fireEvent.click(screen.getAllByRole('button', { name: t('editor.variants.apply') })[0]!)
 
     await waitFor(() =>
-      expect(screen.getByText(t('editor.marks.progress', { done: 1, total: 1 }))).toBeInTheDocument(),
+      expect(screen.getByText(t('editor.marks.tally', { done: 1, total: 1 }))).toBeInTheDocument(),
     )
     expect(markEntry(1)).toBeInTheDocument()
   })
@@ -1273,7 +1273,7 @@ describe('Editor — vorgemerkte Stellen', () => {
 
     clickInto(surface, 1, 5)
 
-    expect(screen.getByText(t('editor.marks.progress', { done: 0, total: 1 }))).toBeInTheDocument()
+    expect(screen.getByText(t('editor.marks.tally', { done: 0, total: 1 }))).toBeInTheDocument()
     expect(markEntry(1)).toBeInTheDocument()
   })
 
@@ -1292,7 +1292,7 @@ describe('Editor — vorgemerkte Stellen', () => {
     undoShortcut()
 
     await waitFor(() => expect(paragraphElement(1).textContent).toBe(original))
-    expect(screen.getByText(t('editor.marks.progress', { done: 0, total: 1 }))).toBeInTheDocument()
+    expect(screen.getByText(t('editor.marks.tally', { done: 0, total: 1 }))).toBeInTheDocument()
   })
 
   it('stellt die Vormerkungen beim nächsten Öffnen desselben Anschreibens wieder her', async () => {

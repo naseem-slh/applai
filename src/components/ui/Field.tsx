@@ -24,17 +24,21 @@ import { cn } from '@/lib/utils'
  */
 
 /** Beschriftung eines Feldes — und dieselbe Klasse an den
- *  Zwischenüberschriften eines Formulars. Sie sollen gliedern, nicht rufen. */
-export const FIELD_LABEL_CLASS = 'font-medium text-[var(--color-ink)]'
+ *  Zwischenüberschriften eines Formulars. In Fredoka und im Gewicht einer
+ *  Überschrift: Eine Beschriftung wird erkannt, nicht gelesen, und in dieser
+ *  Welt ist sie das, was einen Abschnitt benennt. */
+export const FIELD_LABEL_CLASS =
+  'font-display text-[length:var(--text-heading-size)] font-semibold text-[var(--ink-strong)]'
 
-/** Erklärender Satz unter einem Feld. Gedämpft, und damit nur auf
- *  `surface` oder `surface-raised` zulässig (Kontrastregel in DESIGN.md). */
+/** Erklärender Satz unter einem Feld. Eine Stufe kleiner als der Fließtext
+ *  daneben, damit er nicht mit ihm konkurriert. `--muted` trägt in dieser
+ *  Palette auf jeder Fläche über 5,5:1 (siehe DESIGN.md, Kontrast). */
 export const FIELD_HINT_CLASS =
-  'text-[length:var(--text-body-sm-size)] leading-[var(--text-body-sm-leading)] text-[var(--color-muted)]'
+  'text-[length:var(--text-caption-size)] leading-[var(--text-caption-leading)] text-[var(--muted)]'
 
 /** Meldung unter einem beanstandeten Feld. */
 export const FIELD_ERROR_CLASS =
-  'text-[length:var(--text-body-sm-size)] leading-[var(--text-body-sm-leading)] text-[var(--color-error)]'
+  'text-[length:var(--text-caption-size)] leading-[var(--text-caption-leading)] font-medium text-[var(--error)]'
 
 /**
  * Was das Bedienelement von der Hülle übernimmt. Bewusst genau die

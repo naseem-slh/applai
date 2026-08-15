@@ -62,7 +62,7 @@ async function startOver(page: Page): Promise<void> {
   if (await privacy.isVisible().catch(() => false)) {
     await completeOnboarding(page)
   }
-  await page.getByRole('heading', { name: t('start.documents.heading') }).waitFor()
+  await page.getByRole('button', { name: t('start.continue') }).waitFor()
 }
 
 test.describe('Vorgemerkte Stellen', () => {
@@ -76,7 +76,7 @@ test.describe('Vorgemerkte Stellen', () => {
     await markParagraph(page, 'ich bewerbe mich hiermit')
     await markParagraph(page, 'Mit freundlichen Grüßen')
 
-    await expect(page.getByText(t('editor.marks.progress', { done: 0, total: 2 }))).toBeVisible()
+    await expect(page.getByText(t('editor.marks.tally', { done: 0, total: 2 }))).toBeVisible()
     expect(await highlightedRanges(page, 'applai-mark')).toBe(2)
 
     // Eine Stelle aus der Liste anspringen macht sie zur laufenden
@@ -87,7 +87,7 @@ test.describe('Vorgemerkte Stellen', () => {
     await page.getByRole('button', { name: t('editor.variants.apply') }).first().click()
 
     // Abgehakt — und **nicht** verschwunden.
-    await expect(page.getByText(t('editor.marks.progress', { done: 1, total: 2 }))).toBeVisible()
+    await expect(page.getByText(t('editor.marks.tally', { done: 1, total: 2 }))).toBeVisible()
     await expect(markEntry(page, 1)).toBeVisible()
     await expect(markEntry(page, 2)).toBeVisible()
 
@@ -106,7 +106,7 @@ test.describe('Vorgemerkte Stellen', () => {
     await waitForAnalysis(page)
 
     await markParagraph(page, 'ich bewerbe mich hiermit')
-    await expect(page.getByText(t('editor.marks.progress', { done: 0, total: 1 }))).toBeVisible()
+    await expect(page.getByText(t('editor.marks.tally', { done: 0, total: 1 }))).toBeVisible()
     await keepMarks(page)
 
     // Das Ablegen ist bewusst verzögert (MARK_SAVE_DELAY_MS). Hier ist das

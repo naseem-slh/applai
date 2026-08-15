@@ -1,9 +1,10 @@
 // Wächter über die von Hand gepflegte Synchronität zwischen DESIGN.md und
 // design.css. Beide Dateien sagen es selbst als Regel — durchgesetzt hat
-// es bisher niemand. Mit Aufgabe 13a sind es 42 Paare geworden, und die
-// dunklen Werte stehen zusätzlich zweimal (Systemwahl und ausdrückliche
-// Nutzerwahl) und müssen untereinander gleich bleiben. Ab hier fällt jedes
-// Auseinanderlaufen im Test auf, nicht erst im Browser.
+// es bisher niemand. Mit der Übernahme der Attrappen sind es über neunzig
+// Paare geworden, und die dunklen Werte stehen zusätzlich zweimal
+// (Systemwahl und ausdrückliche Nutzerwahl) und müssen untereinander gleich
+// bleiben. Ab hier fällt jedes Auseinanderlaufen im Test auf, nicht erst im
+// Browser.
 //
 // Lädt beide Dateien per node:fs/promises von der Platte und läuft deshalb
 // unter tsconfig.test.json (mit 'node'), nicht unter tsconfig.app.json.
@@ -17,9 +18,9 @@ const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '../..')
 // --------------------------------------------------------------- Werkzeuge
 
 /** Vergleichsform: ohne Anführungszeichen, mit einfachem Leerraum, klein.
- *  DESIGN.md schreibt "#F7F4EF" und "Inter Variable, sans-serif",
- *  design.css schreibt #f7f4ef und 'Inter Variable', sans-serif — gemeint
- *  ist beides Mal dasselbe. */
+ *  DESIGN.md schreibt "#FBF6EC" und "Inter Variable, system-ui, sans-serif",
+ *  design.css schreibt #fbf6ec und 'Inter Variable', system-ui, sans-serif —
+ *  gemeint ist beides Mal dasselbe. */
 function normalise(value: string): string {
   return value
     .replace(/['"]/g, '')
@@ -100,31 +101,35 @@ const OHNE_CSS_ENTSPRECHUNG = new Set(['name', 'description'])
 const GESONDERT_GEPRUEFT = new Set([
   // steckt in --animate-overlay-in / --animate-content-in
   'motion.duration-overlay',
-  // alle typography.*.fontFamily zeigen auf dasselbe --font-sans in @theme
 ])
 
 type Ziel = { block: 'root' | 'theme'; name: string }
 
 /** Wo ein Blatt der Kopfzeile in design.css landet. `null` heißt: keine
- *  Zuordnung bekannt — der Abdeckungstest schlägt dann an. */
+ *  Zuordnung bekannt — der Abdeckungstest schlägt dann an.
+ *
+ *  Die Farben tragen ihren Namen ohne Präfix (`--line`, `--card`, `--accent`)
+ *  und stehen in :root, weil sie mit dem Thema umschalten. Schriften, Radien
+ *  und Beschleunigungskurven stehen in @theme unter Tailwinds eigenen
+ *  Namensräumen — nur dort entsteht eine Utility dafür. */
 function zuordnen(path: string): Ziel | null {
   const teile = path.split('.')
 
   if (teile[0] === 'colors' && teile.length === 2)
-    return { block: 'root', name: `--color-${teile[1]}` }
+    return { block: 'root', name: `--${teile[1]}` }
+
+  // elevation.card → --card-shadow (der Name, den die Attrappen führen)
+  if (teile[0] === 'elevation' && teile.length === 2)
+    return { block: 'root', name: `--${teile[1]}-shadow` }
+
+  if (teile[0] === 'sizes' && teile.length === 2)
+    return { block: 'root', name: `--${teile[1]}` }
 
   if (teile[0] === 'spacing' && teile.length === 2)
     return { block: 'root', name: `--space-${teile[1]}` }
 
-  if (teile[0] === 'elevation' && teile.length === 2)
-    return { block: 'root', name: `--shadow-${teile[1]}` }
-
-  if (teile[0] === 'rounded' && teile.length === 2)
-    // sm/md/lg liegen in @theme, weil Tailwind genau diese Namen selbst
-    // nutzt; pill hat kein Tailwind-Pendant und steht in :root.
-    return teile[1] === 'pill'
-      ? { block: 'root', name: '--radius-pill' }
-      : { block: 'theme', name: `--radius-${teile[1]}` }
+  if (teile[0] === 'radius' && teile.length === 2)
+    return { block: 'theme', name: `--radius-${teile[1]}` }
 
   if (teile[0] === 'focus' && teile.length === 2)
     return { block: 'root', name: `--focus-ring-${teile[1]}` }
@@ -136,6 +141,8 @@ function zuordnen(path: string): Ziel | null {
     return { block: 'theme', name: '--default-transition-duration' }
   if (teile[0] === 'motion' && teile[1] === 'easing')
     return { block: 'theme', name: '--default-transition-timing-function' }
+  if (teile[0] === 'motion' && teile[1] === 'bounce')
+    return { block: 'theme', name: '--ease-bounce' }
 
   if (teile[0] === 'typography' && teile.length === 3) {
     const rolle = teile[1]
@@ -145,12 +152,21 @@ function zuordnen(path: string): Ziel | null {
       lineHeight: 'leading',
       letterSpacing: 'tracking',
     }
-    if (teile[2] === 'fontFamily') return { block: 'theme', name: '--font-sans' }
+    // Zwei Familien, und welche gilt, sagt die Rolle. Geprüft wird das
+    // gesondert (siehe unten), weil hier zwei Ziele in Frage kommen.
+    if (teile[2] === 'fontFamily') return null
     const teil = suffix[teile[2]]
     return teil ? { block: 'root', name: `--text-${rolle}-${teil}` } : null
   }
 
   return null
+}
+
+/** Ein Wert, der nur ein anderes Token weiterreicht. Er folgt dessen dunkler
+ *  Fassung von selbst und braucht keinen eigenen Eintrag in den
+ *  Dunkelblöcken. */
+function reichtDurch(wert: string): boolean {
+  return wert.startsWith('var(')
 }
 
 // ------------------------------------------------------------------- Tests
@@ -193,6 +209,7 @@ describe('DESIGN.md ↔ design.css', () => {
       (pfad) =>
         !OHNE_CSS_ENTSPRECHUNG.has(pfad) &&
         !GESONDERT_GEPRUEFT.has(pfad) &&
+        !pfad.endsWith('.fontFamily') &&
         zuordnen(pfad) === null,
     )
     // Wer ein Token in die Kopfzeile schreibt, muss hier eine Zuordnung
@@ -221,28 +238,39 @@ describe('DESIGN.md ↔ design.css', () => {
   it('setzt die Bewegungsdauern der Kopfzeile in die Animationen ein', () => {
     // motion.duration-overlay zeigt auf keine eigene Variable, sondern
     // steckt in den vier --animate-*: herein mit der Überlagerungsdauer,
-    // heraus mit der kurzen.
+    // heraus mit der kurzen. Der Inhalt kommt federnd herein (motion.bounce)
+    // und glatt wieder heraus — siehe DESIGN.md, Abschnitt Bewegung.
     const herein = kopfzeile.get('motion.duration-overlay')
     const heraus = kopfzeile.get('motion.duration')
     const easing = kopfzeile.get('motion.easing')
+    const bounce = kopfzeile.get('motion.bounce')
     expect(herein).toBeDefined()
+    expect(bounce).toBeDefined()
 
-    for (const name of ['--animate-overlay-in', '--animate-content-in']) {
-      expect(theme.get(name)).toContain(`${herein} ${easing}`)
-    }
+    expect(theme.get('--animate-overlay-in')).toContain(`${herein} ${easing}`)
+    expect(theme.get('--animate-content-in')).toContain(`${herein} ${bounce}`)
     for (const name of ['--animate-overlay-out', '--animate-content-out']) {
       expect(theme.get(name)).toContain(`${heraus} ${easing}`)
     }
   })
 
-  it('nutzt für jede Schriftrolle dieselbe Familie wie --font-sans', () => {
+  it('setzt jede Schriftrolle auf eine der beiden Familien aus @theme', () => {
+    // Zwei Familien, zwei Aufgaben: Fredoka für alles, was erkannt wird
+    // (Titel, Überschriften, Beschriftungen), Inter für alles, was gelesen
+    // wird. Eine dritte Familie wäre eine Entscheidung und fiele hier auf.
     const familien = [...kopfzeile]
       .filter(([pfad]) => pfad.endsWith('.fontFamily'))
       .map(([, wert]) => wert)
     expect(familien.length).toBeGreaterThan(0)
+
+    const erlaubt = [theme.get('--font-sans'), theme.get('--font-display')]
+    expect(erlaubt).not.toContain(undefined)
     for (const familie of familien) {
-      expect(familie).toBe(theme.get('--font-sans'))
+      expect(erlaubt).toContain(familie)
     }
+    // Beide werden auch wirklich gebraucht — sonst stünde eine ungenutzt in
+    // @theme und niemand bemerkte es.
+    expect(new Set(familien)).toEqual(new Set(erlaubt))
   })
 })
 
@@ -256,20 +284,28 @@ describe('Dunkle Varianten', () => {
   })
 
   it('decken jedes umschaltbare Token aus :root ab', () => {
-    // Farb-, Schatten- und Knopftoken wechseln mit dem Modus. Was in :root
-    // steht und keine dunkle Fassung hat, wäre im Dunkeln schlicht falsch.
-    // Ausgenommen ist, was ein anderes Token weiterreicht (--focus-ring-color
-    // → --color-accent) — das folgt von selbst und trägt ein anderes Präfix.
-    const umschaltbar = [...root.keys()].filter(
-      (name) =>
-        name.startsWith('--color-') ||
-        name.startsWith('--shadow-') ||
-        name.startsWith('--btn-'),
-    )
+    // Farben und Schatten wechseln mit dem Modus. Was in :root steht und
+    // keine dunkle Fassung hat, wäre im Dunkeln schlicht falsch.
+    //
+    // Welche Token umschaltbar sind, sagt die Kopfzeile und nicht ein
+    // Namenspräfix: Die Farben dieser Welt heißen `--line`, `--card`,
+    // `--accent` — an ihrem Namen ist nichts abzulesen. Ausgenommen ist,
+    // was nur ein anderes Token weiterreicht (`--on-room: var(--ink-strong)`,
+    // `--focus: var(--accent-deep)`) — das folgt dessen dunkler Fassung von
+    // selbst.
+    const umschaltbar = [...kopfzeile]
+      .filter(([pfad]) => pfad.startsWith('colors.') || pfad.startsWith('elevation.'))
+      .map(([pfad, wert]) => ({ ziel: zuordnen(pfad)?.name, wert }))
+      .filter((eintrag): eintrag is { ziel: string; wert: string } =>
+        eintrag.ziel !== undefined && !reichtDurch(eintrag.wert),
+      )
+      .map((eintrag) => eintrag.ziel)
     expect(umschaltbar.length).toBeGreaterThan(20)
 
-    const fehlend = umschaltbar.filter((name) => !dunkelSystem.has(name))
-    expect(fehlend).toEqual([])
+    // Erst prüfen, dass sie überhaupt hell dastehen …
+    expect(umschaltbar.filter((name) => !root.has(name))).toEqual([])
+    // … dann, dass jede auch dunkel dasteht.
+    expect(umschaltbar.filter((name) => !dunkelSystem.has(name))).toEqual([])
   })
 
   it('führen nichts, was es in :root nicht gibt', () => {
